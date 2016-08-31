@@ -2,6 +2,8 @@
 
 Vessel classification pipeline: feature generation and model training/inference.
 
+[![Build Status](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline.svg?branch=master)](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline)
+
 # Building
 
 The various projects are built using the Scala build tool 'sbt'. You need a JVM on your machine
