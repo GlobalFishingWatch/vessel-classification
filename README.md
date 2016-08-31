@@ -1,2 +1,18 @@
 # vessel-classification-pipeline
+
 Vessel classification pipeline: feature generation and model training/inference.
+
+# Building
+
+The various projects are built using the Scala build tool 'sbt'. You need a JVM on your machine
+to get up and running. SBT has a repl, which can be entered using the checked-in 'sbt' script in
+the root directory. Some commands:
+
+* To compile: 'compile'.
+* To run: 'run'.
+* To test: 'test'.
+* To autoformat the code before check-in: 'scalafmt'.
+* To generate html Scaladoc: 'doc'.
+
+SBT uses maven to handle it's dependencies. So the first time you attempt a build your machine
+may take some time to download all the required libraries.
