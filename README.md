@@ -1,4 +1,4 @@
-# vessel-classification-pipeline
+# Global Fishing Watch Vessel Classification Pipeline.
 
 Vessel classification pipeline: feature generation and model training/inference.
 
