@@ -4,6 +4,7 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 import com.spotify.scio._
+import com.spotify.scio.values.SCollection
 import com.spotify.scio.bigquery._
 import com.typesafe.scalalogging.LazyLogging
 import org.joda.time.Instant
@@ -15,10 +16,9 @@ object AdditionalUnits {
 
 import AdditionalUnits._
 
-case class LatLon(val lat: Double, val lon: Double)
+case class LatLon(val lat: DoubleU[degrees], val lon: DoubleU[degrees])
 
 case class VesselLocationRecord(
-    val mmsi: Int,
     val timestamp: Instant,
     val location: LatLon,
     val distanceToShore: DoubleU[kilometer],
@@ -29,26 +29,40 @@ case class VesselLocationRecord(
 )
 
 object Pipeline extends LazyLogging {
-  def main(argArray: Array[String]) {
-    val (sc, args) = ContextAndArgs(argArray)
+  lazy val blacklistedMmsis = Set(0, 12345)
 
-    val inputData = args("input_data")
-
-    val locationRecords = sc.tableRowJsonFile(inputData)
-      // Keep only records with a location.
+  // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
+  // by ascending timestamp.
+  def readJsonRecords(
+      input: SCollection[TableRow]): SCollection[(Int, Seq[VesselLocationRecord])] =
+    // Keep only records with a location.
+    input
       .filter((json) => json.containsKey("lat") && json.containsKey("lon"))
       // Build a typed location record with units of measure.
       .map((json) => {
+        val mmsi = json.getLong("mmsi").toInt
         val record =
-          VesselLocationRecord(json.getLong("mmsi").toInt,
-                               Instant.parse(json.getString("timestamp")),
-                               LatLon(json.getDouble("lat"), json.getDouble("lon")),
+          VesselLocationRecord(Instant.parse(json.getString("timestamp")),
+                               LatLon(json.getDouble("lat").of[degrees],
+                                      json.getDouble("lon").of[degrees]),
                                json.getDouble("distance_to_shore").of[kilometer],
                                json.getDouble("distance_to_port").of[kilometer],
                                json.getDouble("speed").of[knots],
                                json.getDouble("course").of[degrees],
                                json.getDouble("heading").of[degrees])
+        (mmsi, record)
       })
+      .filter { case (mmsi, records) => !blacklistedMmsis.contains(mmsi) }
+      .groupByKey
+      .map { case (mmsi, records) => (mmsi, records.toSeq.sortBy(_.timestamp.getMillis)) }
+
+  def main(argArray: Array[String]) {
+    val (sc, args) = ContextAndArgs(argArray)
+
+    val inputData = args("input_data")
+
+    // Read, filter and build location records.
+    val locationRecords = readJsonRecords(sc.tableRowJsonFile(inputData))
 
     sc.close()
   }
