@@ -108,6 +108,46 @@ object Pipeline extends LazyLogging {
       .groupByKey
       .map { case (metadata, records) => (metadata, records.toSeq.sortBy(_.timestamp.getMillis)) }
 
+  def thinPoints(records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
+    val thinnedPoints = mutable.ListBuffer.empty[VesselLocationRecord]
+
+    // Thin locations down to a minimum time between each.
+    records.foreach { vr =>
+      if (thinnedPoints.isEmpty || !vr.timestamp.isBefore(
+            thinnedPoints.last.timestamp.plus(Parameters.minTimeBetweenPoints))) {
+        thinnedPoints.append(vr)
+      }
+    }
+
+    thinnedPoints
+  }
+
+  def removeStationaryPeriods(records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
+    // Remove long stationary periods from the record.
+    val withoutLongStationaryPeriods = mutable.ListBuffer.empty[VesselLocationRecord]
+    val currentPeriod = mutable.Queue.empty[VesselLocationRecord]
+    records.foreach { vr =>
+      currentPeriod.enqueue(vr)
+      val periodFirst = currentPeriod.front
+      val speed = vr.speed
+      val distanceDelta = vr.location.getDistance(periodFirst.location)
+      if (distanceDelta > Parameters.stationaryPeriodMaxDistance) {
+        if (vr.timestamp.isAfter(
+              periodFirst.timestamp.plus(Parameters.stationaryPeriodMinDuration))) {
+          withoutLongStationaryPeriods.append(periodFirst)
+          withoutLongStationaryPeriods.append(vr)
+        } else {
+          currentPeriod.foreach { vrInner =>
+            withoutLongStationaryPeriods.append(vrInner)
+          }
+        }
+
+        currentPeriod.clear
+      }
+    }
+    withoutLongStationaryPeriods
+  }
+
   def filterVesselRecords(
       input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
       minRequiredPositions: Int): SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
@@ -118,40 +158,10 @@ object Pipeline extends LazyLogging {
     // Remove vessels with insufficient locations.
     vesselsWithSufficientData.map {
       case (metadata, records) =>
-        val thinnedPoints = mutable.ListBuffer.empty[VesselLocationRecord]
+        val thinnedPoints = thinPoints(records)
+        val withoutLongStationaryPeriods = removeStationaryPeriods(thinnedPoints)
 
-        // Thin locations down to a minimum time between each.
-        records.foreach { vr =>
-          if (thinnedPoints.isEmpty || vr.timestamp.isAfter(
-                thinnedPoints.last.timestamp.plus(Parameters.minTimeBetweenPoints))) {
-            thinnedPoints.append(vr)
-          }
-        }
-
-        // Remove long stationary periods from the record.
-        val withoutLongStationaryPeriods = mutable.ListBuffer.empty[VesselLocationRecord]
-        val currentPeriod = mutable.Queue.empty[VesselLocationRecord]
-        thinnedPoints.foreach { vr =>
-          currentPeriod.enqueue(vr)
-          val periodFirst = currentPeriod.front
-          val speed = vr.speed
-          val distanceDelta = vr.location.getDistance(periodFirst.location)
-          if (distanceDelta > Parameters.stationaryPeriodMaxDistance) {
-            if (vr.timestamp.isAfter(
-                  periodFirst.timestamp.plus(Parameters.stationaryPeriodMinDuration))) {
-              withoutLongStationaryPeriods.append(periodFirst)
-              withoutLongStationaryPeriods.append(vr)
-            } else {
-              currentPeriod.foreach { vrInner =>
-                withoutLongStationaryPeriods.append(vrInner)
-              }
-            }
-
-            currentPeriod.clear
-          }
-        }
-
-        (metadata, withoutLongStationaryPeriods)
+        (metadata, withoutLongStationaryPeriods.toSeq)
     }
   }
 
@@ -173,6 +183,7 @@ object Pipeline extends LazyLogging {
           val integratedSpeedMps = distanceDeltaMeters / timestampDeltaSeconds
           val cogDeltaDegrees = angleNormalize((p1.course - p0.course)).value
 
+          // TODO(alexwilson): Expand to full feature set.
           Array(timestampDeltaSeconds,
                 distanceDeltaMeters,
                 speedMps,
@@ -199,9 +210,11 @@ object Pipeline extends LazyLogging {
     // TODO(alexwilson): Add timestamps for each for later subsequence selection.
     // Add all the sequence data as a feature.
     val sequenceData = FeatureList.newBuilder()
-    data.foreach { datum => 
+    data.foreach { datum =>
       val floatData = FloatList.newBuilder()
-      datum.foreach { v => floatData.addValue(v.toFloat) }
+      datum.foreach { v =>
+        floatData.addValue(v.toFloat)
+      }
       sequenceData.addFeature(Feature.newBuilder().setFloatList(floatData.build()))
     }
     val featureLists = FeatureLists.newBuilder()
@@ -234,8 +247,9 @@ object Pipeline extends LazyLogging {
     val filtered = filterVesselRecords(locationRecords, Parameters.minRequiredPositions)
     val features = buildVesselFeatures(filtered)
 
-    features.internal.apply("WriteTFRecords", Write.to(new TFRecordSink(Parameters.outputFeaturesPath,
-            "tfrecord", "shard")))
+    features.internal.apply(
+      "WriteTFRecords",
+      Write.to(new TFRecordSink(Parameters.outputFeaturesPath, "tfrecord", "shard")))
 
     sc.close()
   }
