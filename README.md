@@ -18,3 +18,11 @@ the root directory. Some commands:
 
 SBT uses maven to handle it's dependencies. So the first time you attempt a build your machine
 may take some time to download all the required libraries.
+
+# Running jobs
+
+* Compute Engine.
+  * Install the SDK: https://cloud.google.com/sdk/docs/.
+  * Sign in: `gcloud auth application-default login`.
+* Cloud Dataflow
+   * Run jobs, specifying the zone, e.g. `--zone=europe-west1-c`.
