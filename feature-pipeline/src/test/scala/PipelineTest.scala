@@ -89,17 +89,18 @@ class PipelineTests extends PipelineSpec with Matchers {
             buildMessage(mmsi = 127, timestamp = "2016-01-01T00:03:00Z", lat = 68.4, lon = 32.0)))
 
       val correctRecords =
-        Map(45 -> Seq(buildLocationRecord("2016-01-01T00:00:00Z", lat = 45.3, lon = 0.5),
-                      buildLocationRecord("2016-01-01T00:02:00Z", lat = 45.3, lon = 0.5)),
-            127 -> Seq(buildLocationRecord("2016-01-01T00:00:00Z", lat = 68.4, lon = 32.0),
-                       buildLocationRecord("2016-01-01T00:01:30Z", lat = 68.4, lon = 32.0),
-                       buildLocationRecord("2016-01-01T00:03:00Z", lat = 68.4, lon = 32.0)))
+        Map(VesselMetadata(45) -> Seq(
+              buildLocationRecord("2016-01-01T00:00:00Z", lat = 45.3, lon = 0.5),
+              buildLocationRecord("2016-01-01T00:02:00Z", lat = 45.3, lon = 0.5)),
+            VesselMetadata(127) -> Seq(
+              buildLocationRecord("2016-01-01T00:00:00Z", lat = 68.4, lon = 32.0),
+              buildLocationRecord("2016-01-01T00:01:30Z", lat = 68.4, lon = 32.0),
+              buildLocationRecord("2016-01-01T00:03:00Z", lat = 68.4, lon = 32.0)))
 
-      val locationRecords =
-        Pipeline.readJsonRecords(input)
+      val locationRecords = Pipeline.readJsonRecords(input)
 
       locationRecords should haveSize(2)
-    //locationRecords should equalMapOf(correctRecords)
+      locationRecords should equalMapOf(correctRecords)
     }
   }
 }
