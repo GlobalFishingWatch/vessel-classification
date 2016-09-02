@@ -122,29 +122,33 @@ object Pipeline extends LazyLogging {
     thinnedPoints
   }
 
-  def removeStationaryPeriods(records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
+  def removeStationaryPeriods(
+      records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
     // Remove long stationary periods from the record.
     val withoutLongStationaryPeriods = mutable.ListBuffer.empty[VesselLocationRecord]
     val currentPeriod = mutable.Queue.empty[VesselLocationRecord]
     records.foreach { vr =>
-      currentPeriod.enqueue(vr)
-      val periodFirst = currentPeriod.front
-      val speed = vr.speed
-      val distanceDelta = vr.location.getDistance(periodFirst.location)
-      if (distanceDelta > Parameters.stationaryPeriodMaxDistance) {
-        if (vr.timestamp.isAfter(
-              periodFirst.timestamp.plus(Parameters.stationaryPeriodMinDuration))) {
-          withoutLongStationaryPeriods.append(periodFirst)
-          withoutLongStationaryPeriods.append(vr)
-        } else {
-          currentPeriod.foreach { vrInner =>
-            withoutLongStationaryPeriods.append(vrInner)
+      if (!currentPeriod.isEmpty) {
+        val periodFirst = currentPeriod.front
+        val speed = vr.speed
+        val distanceDelta = vr.location.getDistance(periodFirst.location)
+        if (distanceDelta > Parameters.stationaryPeriodMaxDistance) {
+          if (vr.timestamp.isAfter(
+                periodFirst.timestamp.plus(Parameters.stationaryPeriodMinDuration))) {
+            withoutLongStationaryPeriods.append(periodFirst)
+            withoutLongStationaryPeriods.append(currentPeriod.last)
+          } else {
+            withoutLongStationaryPeriods ++= currentPeriod
           }
-        }
 
-        currentPeriod.clear
+          currentPeriod.clear
+        }
       }
+
+      currentPeriod.enqueue(vr)
     }
+    withoutLongStationaryPeriods ++= currentPeriod
+
     withoutLongStationaryPeriods
   }
 
