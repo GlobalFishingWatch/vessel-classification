@@ -248,9 +248,13 @@ object Pipeline extends LazyLogging {
     val locationRecords =
       readJsonRecords(sc.tableRowJsonFile(Parameters.inputMeasuresPath))
 
+    // TODO(alexwilson): Load up the vessel metadata as a side input and join
+    // with the JSON records.
+
     val filtered = filterVesselRecords(locationRecords, Parameters.minRequiredPositions)
     val features = buildVesselFeatures(filtered)
 
+    // TODO(alexwilson): Filter out the features into Train, Test, Unclassified.
     features.internal.apply(
       "WriteTFRecords",
       Write.to(new TFRecordSink(Parameters.outputFeaturesPath, "tfrecord", "shard")))
