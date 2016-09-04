@@ -53,7 +53,7 @@
 //   }
 //
 
-syntax = "proto3";
+syntax = "proto2";
 option cc_enable_arenas = true;
 option java_outer_classname = "FeatureProtos";
 option java_multiple_files = true;
