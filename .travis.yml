@@ -1,8 +1,8 @@
+before_script:
+  - wget https://github.com/google/protobuf/releases/download/v3.0.0/protoc-3.0.0-linux-x86_64.zip
+  - unzip protoc-3.0.0-linux-x86_64.zip -d protoc_dir
+  - export PATH=$PATH:$PWD/protoc_dir/bin
+
 language: scala
 scala:
   - 2.11.8
-
-addons:
-  apt:
-    packages:
-      - protobuf-compiler
