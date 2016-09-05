@@ -70,9 +70,8 @@ case class LatLon(val lat: DoubleU[degrees], val lon: DoubleU[degrees]) {
 
 case class VesselMetadata(
     val mmsi: Int,
-    // Training, Test, Unclassified
     val dataset: String = "Unclassified",
-    val vesselType: String = "Unclassified"
+    val vesselType: String = "Unknown"
 )
 
 case class VesselLocationRecord(
@@ -255,9 +254,8 @@ object Pipeline extends LazyLogging {
 
     val sc = ScioContext(options)
 
-    // TODO(alexwilson): Load up the vessel metadata as a side input and join
-    // with the JSON records.
-    // Read the vessel metadata for known vessels.
+    // Load up the vessel metadata as a side input and join
+    // with the JSON records for known vessels.
     val vesselMetadataCsv =
       remaining_args.getOrElse("vessel_metadata", Parameters.vesselClassificationPath)
     val metadataReader = new CSVReader(new FileReader(vesselMetadataCsv))
