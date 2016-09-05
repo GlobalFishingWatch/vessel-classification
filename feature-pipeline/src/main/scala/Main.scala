@@ -4,7 +4,7 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 import com.google.common.geometry.{S2LatLng}
-import com.google.protobuf.MessageLite
+import com.google.protobuf.{ByteString, MessageLite}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import com.spotify.scio.bigquery._
@@ -14,6 +14,7 @@ import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.io.{Write}
 import com.opencsv.CSVReader
 import java.io.FileReader
+import java.nio.charset.StandardCharsets
 import org.joda.time.{Instant, Duration}
 import org.skytruth.dataflow.{TFRecordSink}
 import org.tensorflow.example.{
@@ -68,11 +69,26 @@ case class LatLon(val lat: DoubleU[degrees], val lon: DoubleU[degrees]) {
   }
 }
 
+object VesselMetadata {
+  lazy val vesselTypeToIndexMap = Seq(
+    "Purse seine",
+    "Longliner",
+    "Trawler",
+    "Pots and traps",
+    "Passenger",
+    "Tug",
+    "Cargo/Tanker",
+    "Supply"
+  ).zipWithIndex.map { case (name, index) => (name, index + 1) }.toMap
+}
+
 case class VesselMetadata(
     val mmsi: Int,
     val dataset: String = "Unclassified",
     val vesselType: String = "Unknown"
-)
+) {
+  def vesselTypeIndex() = VesselMetadata.vesselTypeToIndexMap.getOrElse(vesselType, 0)
+}
 
 case class VesselLocationRecord(
     val timestamp: Instant,
@@ -210,16 +226,23 @@ object Pipeline extends LazyLogging {
     val example = SequenceExample.newBuilder()
     val contextBuilder = example.getContextBuilder()
 
-    // TODO(alexwilson): bring this in from vessel metadata when present.
-    val vessel_type = 0
+    val vessel_type = metadata.vesselTypeIndex()
 
     // Add the mmsi and vessel type to the builder
     contextBuilder.putFeature(
       "mmsi",
       Feature.newBuilder().setInt64List(Int64List.newBuilder().addValue(metadata.mmsi)).build())
     contextBuilder.putFeature(
-      "vessel_type",
+      "vessel_type_index",
       Feature.newBuilder().setInt64List(Int64List.newBuilder().addValue(vessel_type)).build())
+    // TODO(alexwilson): Add vessel type string for debug purposes.
+    contextBuilder.putFeature(
+      "vessel_type_name",
+      Feature
+        .newBuilder()
+        .setBytesList(
+          BytesList.newBuilder().addValue(ByteString.copyFromUtf8(metadata.vesselType)))
+        .build())
 
     // TODO(alexwilson): Add timestamps for each for later subsequence selection.
     // Add all the sequence data as a feature.
