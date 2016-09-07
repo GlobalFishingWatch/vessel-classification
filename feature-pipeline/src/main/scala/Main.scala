@@ -204,15 +204,16 @@ object Pipeline extends LazyLogging {
       .sliding(3)
       .map {
         case Seq(p0, p1, p2) =>
-          // Timestamp delta seconds, distance delta meters, cog delta degrees, sog mps,
-          // integrated cog delta degrees, integrated sog mps, local tod, local month of year,
-          // # neighbours, # closest neighbours.
           val timestampSeconds = p1.timestamp.getMillis / 1000
           val timestampDeltaSeconds = p1.timestamp.getMillis / 1000 - p0.timestamp.getMillis / 1000
           val distanceDeltaMeters = p1.location.getDistance(p0.location).value
           val speedMps = p1.speed.convert[meters_per_second].value
           val integratedSpeedMps = distanceDeltaMeters / timestampDeltaSeconds
           val cogDeltaDegrees = angleNormalize((p1.course - p0.course)).value
+          val distanceToShoreKm = p1.distanceToShore.convert[kilometer].value
+
+          // TODO: Integrated cog, local tod, local month of year.
+          // TODO(alexwilson): #neighbours, distance to closest neighbour.
 
           // We include the absolute time not as a feature, but to make it easy
           // to binary-search for the start and end of time ranges when running
@@ -222,7 +223,8 @@ object Pipeline extends LazyLogging {
                 distanceDeltaMeters,
                 speedMps,
                 integratedSpeedMps,
-                cogDeltaDegrees)
+                cogDeltaDegrees,
+                distanceToShoreKm)
       }
       .toSeq
 
@@ -258,7 +260,7 @@ object Pipeline extends LazyLogging {
       sequenceData.addFeature(Feature.newBuilder().setFloatList(floatData.build()))
     }
     val featureLists = FeatureLists.newBuilder()
-    featureLists.putFeatureList("movement features", sequenceData.build())
+    featureLists.putFeatureList("movement_features", sequenceData.build())
     example.setFeatureLists(featureLists)
 
     example.build()
