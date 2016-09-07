@@ -9,7 +9,6 @@ import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 
 
-
 public class TFRecordSink extends FileBasedSink<MessageLite> {
   public TFRecordSink(String baseOutputFilename, String extension, String fileNameTemplate) {
     super(baseOutputFilename, extension, fileNameTemplate);

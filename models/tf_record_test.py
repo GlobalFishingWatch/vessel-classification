@@ -11,8 +11,10 @@ def run():
     filename_queue = tf.train.string_input_producer([filename], num_epochs=None)
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
+
     # The serialized example is converted back to actual values.
-    # One needs to describe the format of the objects to be returned
+    # TODO(alexwilson): This is in fact an ExampleSequence not Example, extract
+    # the sequence data also.
     features = tf.parse_single_example(
         serialized_example,
         # Defaults are not specified since both keys are required.

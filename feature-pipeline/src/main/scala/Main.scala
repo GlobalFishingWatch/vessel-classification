@@ -239,7 +239,7 @@ object Pipeline extends LazyLogging {
     contextBuilder.putFeature(
       "vessel_type_index",
       Feature.newBuilder().setInt64List(Int64List.newBuilder().addValue(vessel_type)).build())
-    
+
     contextBuilder.putFeature(
       "vessel_type_name",
       Feature
