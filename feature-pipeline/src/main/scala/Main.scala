@@ -239,7 +239,7 @@ object Pipeline extends LazyLogging {
     contextBuilder.putFeature(
       "vessel_type_index",
       Feature.newBuilder().setInt64List(Int64List.newBuilder().addValue(vessel_type)).build())
-    // TODO(alexwilson): Add vessel type string for debug purposes.
+    
     contextBuilder.putFeature(
       "vessel_type_name",
       Feature
@@ -248,7 +248,6 @@ object Pipeline extends LazyLogging {
           BytesList.newBuilder().addValue(ByteString.copyFromUtf8(metadata.vesselType)))
         .build())
 
-    // TODO(alexwilson): Add timestamps for each for later subsequence selection.
     // Add all the sequence data as a feature.
     val sequenceData = FeatureList.newBuilder()
     data.foreach { datum =>

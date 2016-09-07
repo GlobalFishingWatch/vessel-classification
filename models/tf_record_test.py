@@ -16,16 +16,20 @@ def run():
     features = tf.parse_single_example(
         serialized_example,
         # Defaults are not specified since both keys are required.
-        features={
+        features = {
             'mmsi': tf.FixedLenFeature([], tf.int64),
             'vessel_type_index': tf.FixedLenFeature([], tf.int64),
+            'vessel_type_name': tf.FixedLenFeature([], tf.string),
         })
-    label = tf.cast(features['mmsi'], tf.int32)
+
+    mmsi = tf.cast(features['mmsi'], tf.int32)
+    type_index = tf.cast(features['vessel_type_index'], tf.int32)
+    type_name = tf.cast(features['vessel_type_name'], tf.string)
 
     sess = tf.Session()
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-    print(sess.run(label))
+    print(sess.run(type_name))
 
 
 if __name__ == '__main__':
