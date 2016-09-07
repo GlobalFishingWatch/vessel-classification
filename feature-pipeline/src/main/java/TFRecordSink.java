@@ -3,14 +3,11 @@ package org.skytruth.dataflow;
 import com.google.cloud.dataflow.sdk.io.FileBasedSink;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 
-import com.google.common.hash.Hashing;
-import com.google.common.io.LittleEndianDataOutputStream;
-
 import com.google.protobuf.MessageLite;
-import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
+
 
 
 public class TFRecordSink extends FileBasedSink<MessageLite> {
@@ -34,32 +31,11 @@ public class TFRecordSink extends FileBasedSink<MessageLite> {
     }
   }
 
-
   private static class TFRecordWriter extends FileBasedWriter<MessageLite> {
     private OutputStream out;
 
     public TFRecordWriter(FileBasedWriteOperation<MessageLite> writeOperation) {
       super(writeOperation);
-    }
-
-    // TFRecord masked crc checksum.
-    static private int checksum(byte[] input) {
-      int crc = Hashing.crc32c().hashBytes(input).asInt();
-      return ((crc >> 15) | (crc << 17)) + 0xa282ead8;
-    }
-
-    static private byte[] encodeLong(long in) throws Exception {
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      LittleEndianDataOutputStream out = new LittleEndianDataOutputStream(baos);
-      out.writeLong(in);
-      return baos.toByteArray();
-    }
-    
-    static private byte[] encodeInt(int in) throws Exception {
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      LittleEndianDataOutputStream out = new LittleEndianDataOutputStream(baos);
-      out.writeInt(in);
-      return baos.toByteArray();
     }
 
     @Override
@@ -68,16 +44,9 @@ public class TFRecordSink extends FileBasedSink<MessageLite> {
     }
 
     @Override
-    public void write(MessageLite value) throws Exception { 
-      byte[] protoAsBytes = value.toByteArray();
-      byte[] lengthAsBytes = encodeInt(protoAsBytes.length);
-      byte[] lengthHash = encodeInt(checksum(lengthAsBytes));
-      byte[] contentHash = encodeInt(checksum(protoAsBytes));
-      out.write(lengthAsBytes);
-      out.write(lengthHash);
-      out.write(protoAsBytes);
-      out.write(contentHash);
+    public void write(MessageLite value) throws Exception {
+      TFRecordUtils.write(out, value);
     }
-
   }
 }
+

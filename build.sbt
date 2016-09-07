@@ -44,10 +44,13 @@ lazy val common = project.in(file("common")).settings(commonSettings: _*)
 
 // The dataflow feature generation pipeline.
 lazy val featurePipeline =
-  project.in(file("feature-pipeline")).settings(commonSettings: _*)
-    .settings(Seq(
-      libraryDependencies += "com.opencsv" % "opencsv" % "3.7"
-    ))
+  project
+    .in(file("feature-pipeline"))
+    .settings(commonSettings: _*)
+    .settings(
+      Seq(
+        libraryDependencies += "com.opencsv" % "opencsv" % "3.7"
+      ))
     .dependsOn(tfExampleProtos)
 
 // An aggregation of all projects.

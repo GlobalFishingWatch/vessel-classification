@@ -207,14 +207,18 @@ object Pipeline extends LazyLogging {
           // Timestamp delta seconds, distance delta meters, cog delta degrees, sog mps,
           // integrated cog delta degrees, integrated sog mps, local tod, local month of year,
           // # neighbours, # closest neighbours.
+          val timestampSeconds = p1.timestamp.getMillis / 1000
           val timestampDeltaSeconds = p1.timestamp.getMillis / 1000 - p0.timestamp.getMillis / 1000
           val distanceDeltaMeters = p1.location.getDistance(p0.location).value
           val speedMps = p1.speed.convert[meters_per_second].value
           val integratedSpeedMps = distanceDeltaMeters / timestampDeltaSeconds
           val cogDeltaDegrees = angleNormalize((p1.course - p0.course)).value
 
-          // TODO(alexwilson): Expand to full feature set.
-          Array(timestampDeltaSeconds,
+          // We include the absolute time not as a feature, but to make it easy
+          // to binary-search for the start and end of time ranges when running
+          // under TensorFlow.
+          Array(timestampSeconds,
+                timestampDeltaSeconds,
                 distanceDeltaMeters,
                 speedMps,
                 integratedSpeedMps,
