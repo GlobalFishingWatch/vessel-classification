@@ -9,6 +9,7 @@ import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import com.spotify.scio.bigquery._
 import com.typesafe.scalalogging.LazyLogging
+import com.google.cloud.dataflow.sdk.coders.{Coder, CoderFactory, DoubleCoder}
 import com.google.cloud.dataflow.sdk.options.{DataflowPipelineOptions, PipelineOptionsFactory}
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.io.{Write}
@@ -37,7 +38,7 @@ object Parameters {
   val stationaryPeriodMinDuration = Duration.standardHours(2 * 24)
 
   val inputMeasuresPath =
-    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/*/*"
+    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2016-06*/*"
   val outputFeaturesPath =
     "gs://alex-dataflow-scratch/features-scratch"
   val gceProject = "world-fishing-827"
@@ -81,6 +82,17 @@ case class VesselLocationRecord(
     course: DoubleU[degrees],
     heading: DoubleU[degrees]
 )
+
+class DoubleUCoderFactory[T <: MUnit] extends CoderFactory {
+  override def create(componentCoders: java.util.List[_ <: Coder[_]]): Coder[_] =
+    DoubleCoder.of()
+  override def getInstanceComponents(value: Object): java.util.List[Object] = {
+    val componentValue: java.lang.Double = value.asInstanceOf[DoubleU[T]].value
+    val a = new java.util.ArrayList[Object]()
+    a.add(componentValue)
+    a
+  }
+}
 
 object Pipeline extends LazyLogging {
   lazy val blacklistedMmsis = Set(0, 12345)
@@ -254,6 +266,9 @@ object Pipeline extends LazyLogging {
     options.setStagingLocation(Parameters.dataflowStaging)
 
     val sc = ScioContext(options)
+
+    val coderRegistry = sc.pipeline.getCoderRegistry
+    coderRegistry.registerCoder(classOf[DoubleU[_]], new DoubleUCoderFactory())
 
     // Read, filter and build location records.
     val locationRecords =

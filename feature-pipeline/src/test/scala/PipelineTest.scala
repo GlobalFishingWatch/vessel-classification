@@ -52,6 +52,19 @@ class PipelineTests extends PipelineSpec with Matchers {
   import AdditionalUnits._
   import TestHelper._
 
+  "The pipeline" should "serialize and deserialize intermediate objects correctly" in {
+    val record = VesselLocationRecord(Instant.parse("2016-05-05T00:00:10"),
+                               LatLon(85.0.of[degrees],
+                                      73.0.of[degrees]),
+                               300.0.of[kilometer],
+                               640.0.of[kilometer],
+                               4.0.of[knots],
+                               22.of[degrees],
+                               30.of[degrees])
+
+    4 should equal(4)
+  }
+
   "The pipeline" should "filter out messages without location" in {
     runWithContext { sc =>
       val input = sc.parallelize(

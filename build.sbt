@@ -22,12 +22,12 @@ lazy val commonSettings = Seq(
     "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
     "io.github.karols" %% "units" % "0.2.1",
     "joda-time" % "joda-time" % "2.9.4",
-    "org.apache.commons" % "commons-math3" % "3.4",
+    "org.apache.commons" % "commons-math3" % "3.4"
   ),
   // Test dependencies.
   libraryDependencies ++= Seq(
     "ch.qos.logback" % "logback-classic" % "1.1.7",
-    "com.spotify" % "scio-test_2.11" % "0.2.1" % "test",
+    "com.spotify" % "scio-test_2.11" % "0.2.2" % "test",
     "org.scalactic" %% "scalactic" % "3.0.0" % "test",
     "org.scalatest" %% "scalatest" % "3.0.0" % "test"
   )
