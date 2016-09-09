@@ -2,6 +2,7 @@ import os
 
 import logging
 import tensorflow as tf
+#import tensorflow.contrib.slim as slim
 
 """ TODO(alexwilson):
 
@@ -19,7 +20,51 @@ import tensorflow as tf
   10. Investigate Cloud ML.
   11. Vessel labels as time series also for change of behaviour.
 
+  Slicing:
+    - tf.random_crop to extract a slice that could contain a max of 3 months.
+    - First timestamp (in crop) + 90 * 24 * 3600 as upper limit.
+    - While loop with counter. Copy the value at that index through. If the 
+      timestamp exceeds the upper time limit, reset counter to zero else inc.
+
 """
+
+def test():
+  limit = 33
+  with tf.Graph().as_default():
+    test_dims = 20
+
+    input_range = tf.cast(tf.range(0, test_dims), tf.float32)
+    packed_range = tf.pack([input_range], axis=1)
+    random = tf.random_uniform([test_dims, 6])
+
+    mixed = tf.concat(1, [packed_range, random])
+    
+    start = tf.constant([[]], shape=[0, 7])
+
+    def update(i, index, t):
+      element = tf.gather(mixed, index)
+      element_timestamp = tf.gather(element, 0)
+      index_inc = tf.add(index, 1)
+      next_index = tf.cond(tf.less(element_timestamp, 7), lambda: index_inc, lambda: tf.constant(0))
+      return [tf.add(i, 1), next_index, tf.concat(0, [t, tf.pack([element])])]
+
+    def condition(i, index, t):
+      return tf.less(i, test_dims)
+
+    #res = tf.concat(1, [start, inc])
+    init = tf.initialize_all_variables()
+
+    res = tf.while_loop(condition, update, [tf.constant(0), tf.constant(0), start])
+    
+
+    sess = tf.Session()
+    sess.run(init)
+    print(sess.run(mixed))
+    
+    #print(sess.run(random))
+    print(sess.run(res))
+
+
 
 def run():
   logging.getLogger().setLevel(logging.DEBUG)
@@ -55,5 +100,7 @@ def run():
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
     print(sess.run(type_name))
 
+
 if __name__ == '__main__':
-  run()
+  #run()
+  test()
