@@ -13,12 +13,16 @@ lazy val commonSettings = Seq(
   version := "0.0.1",
   scalaVersion := "2.11.8",
   scalacOptions ++= Seq("-optimize", "-Yinline-warnings"),
+  resolvers ++= Seq(
+    "Apache commons" at "https://repository.apache.org/snapshots"
+  ),
   // Main project dependencies.
   libraryDependencies ++= Seq(
     "com.spotify" % "scio-core_2.11" % "0.2.1",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
     "io.github.karols" %% "units" % "0.2.1",
-    "joda-time" % "joda-time" % "2.9.4"
+    "joda-time" % "joda-time" % "2.9.4",
+    "org.apache.commons" % "commons-math3" % "3.4",
   ),
   // Test dependencies.
   libraryDependencies ++= Seq(
