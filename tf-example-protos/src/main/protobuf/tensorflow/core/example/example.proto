@@ -1,6 +1,6 @@
 // Protocol messages for describing input data Examples for machine learning
 // model training or inference.
-syntax = "proto2";
+syntax = "proto3";
 
 import "tensorflow/core/example/feature.proto";
 option cc_enable_arenas = true;
@@ -86,7 +86,7 @@ package tensorflow;
 //       is considered to be an empty tensor and no default will be used.
 
 message Example {
-  optional Features features = 1;
+  Features features = 1;
 };
 
 // A SequenceExample is an Example representing one or more sequences, and
@@ -289,6 +289,6 @@ message Example {
 //    } }
 
 message SequenceExample {
-  optional Features context = 1;
-  optional FeatureLists feature_lists = 2;
+  Features context = 1;
+  FeatureLists feature_lists = 2;
 };
