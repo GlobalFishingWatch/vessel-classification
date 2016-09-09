@@ -4,7 +4,7 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 import com.google.common.geometry.{S2LatLng}
-import com.google.protobuf.MessageLite
+import com.google.protobuf.{ByteString, MessageLite}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import com.spotify.scio.bigquery._
@@ -12,6 +12,9 @@ import com.typesafe.scalalogging.LazyLogging
 import com.google.cloud.dataflow.sdk.options.{DataflowPipelineOptions, PipelineOptionsFactory}
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.io.{Write}
+import com.opencsv.CSVReader
+import java.io.FileReader
+import java.nio.charset.StandardCharsets
 import org.apache.commons.math3.util.MathUtils
 import org.joda.time.{Instant, Duration}
 import org.skytruth.dataflow.{TFRecordSink}
@@ -27,7 +30,7 @@ import org.tensorflow.example.{
   BytesList
 }
 import scala.collection.{mutable, immutable}
-import scala.collection.JavaConverters._
+import scala.collection.JavaConversions._
 
 object Parameters {
   val minRequiredPositions = 1000
@@ -42,9 +45,10 @@ object Parameters {
     "gs://alex-dataflow-scratch/features-scratch"
   val gceProject = "world-fishing-827"
   val dataflowStaging = "gs://alex-dataflow-scratch/dataflow-staging"
-}
 
-// Vessel classifications: https://github.com/GlobalFishingWatch/nn-vessel-classification/blob/master/metrics/combined_classification_list.csv
+  // Sourced from: https://github.com/GlobalFishingWatch
+  val vesselClassificationPath = "feature-pipeline/src/data/combined_classification_list.csv"
+}
 
 object AdditionalUnits {
   type knots = DefineUnit[_k ~: _n ~: _o ~: _t]
@@ -68,9 +72,26 @@ case class LatLon(lat: DoubleU[degrees], lon: DoubleU[degrees]) {
   }
 }
 
+object VesselMetadata {
+  val vesselTypeToIndexMap = Seq(
+    "Purse seine",
+    "Longliner",
+    "Trawler",
+    "Pots and traps",
+    "Passenger",
+    "Tug",
+    "Cargo/Tanker",
+    "Supply"
+  ).zipWithIndex.map { case (name, index) => (name, index + 1) }.toMap
+}
+
 case class VesselMetadata(
-    mmsi: Int
-)
+    mmsi: Int,
+    dataset: String = "Unclassified",
+    vesselType: String = "Unknown"
+) {
+  def vesselTypeIndex = VesselMetadata.vesselTypeToIndexMap.getOrElse(vesselType, 0)
+}
 
 case class VesselLocationRecord(
     timestamp: Instant,
@@ -87,15 +108,18 @@ object Pipeline extends LazyLogging {
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
   // by ascending timestamp.
-  def readJsonRecords(
-      input: SCollection[TableRow]): SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
+  def readJsonRecords(input: SCollection[TableRow], metadata: SCollection[(Int, VesselMetadata)])
+    : SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
+
+    val vesselMetadataMap = metadata.asMapSideInput
     // Keep only records with a location.
     input
-      .filter((json) => json.containsKey("lat") && json.containsKey("lon"))
+      .withSideInputs(vesselMetadataMap)
+      .filter((json, _) => json.containsKey("lat") && json.containsKey("lon"))
       // Build a typed location record with units of measure.
-      .map((json) => {
+      .map((json, s) => {
         val mmsi = json.getLong("mmsi").toInt
-        val metadata = VesselMetadata(mmsi)
+        val metadata = s(vesselMetadataMap).getOrElse(mmsi, VesselMetadata(mmsi))
         val record =
           // TODO(alexwilson): Double-check all these units are correct.
           VesselLocationRecord(Instant.parse(json.getString("timestamp")),
@@ -108,9 +132,11 @@ object Pipeline extends LazyLogging {
                                json.getDouble("heading").of[degrees])
         (metadata, record)
       })
+      .toSCollection
       .filter { case (metadata, records) => !blacklistedMmsis.contains(metadata.mmsi) }
       .groupByKey
       .map { case (metadata, records) => (metadata, records.toSeq.sortBy(_.timestamp.getMillis)) }
+  }
 
   def thinPoints(records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
     val thinnedPoints = mutable.ListBuffer.empty[VesselLocationRecord]
@@ -189,21 +215,27 @@ object Pipeline extends LazyLogging {
       .sliding(3)
       .map {
         case Seq(p0, p1, p2) =>
-          // Timestamp delta seconds, distance delta meters, cog delta degrees, sog mps,
-          // integrated cog delta degrees, integrated sog mps, local tod, local month of year,
-          // # neighbours, # closest neighbours.
+          val timestampSeconds = p1.timestamp.getMillis / 1000
           val timestampDeltaSeconds = p1.timestamp.getMillis / 1000 - p0.timestamp.getMillis / 1000
           val distanceDeltaMeters = p1.location.getDistance(p0.location).value
           val speedMps = p1.speed.convert[meters_per_second].value
           val integratedSpeedMps = distanceDeltaMeters / timestampDeltaSeconds
           val cogDeltaDegrees = angleNormalize((p1.course - p0.course)).value
+          val distanceToShoreKm = p1.distanceToShore.convert[kilometer].value
 
-          // TODO(alexwilson): Expand to full feature set.
-          Array(timestampDeltaSeconds,
+          // TODO: Integrated cog, local tod, local month of year.
+          // TODO(alexwilson): #neighbours, distance to closest neighbour.
+
+          // We include the absolute time not as a feature, but to make it easy
+          // to binary-search for the start and end of time ranges when running
+          // under TensorFlow.
+          Array(timestampSeconds,
+                timestampDeltaSeconds,
                 distanceDeltaMeters,
                 speedMps,
                 integratedSpeedMps,
-                cogDeltaDegrees)
+                cogDeltaDegrees,
+                distanceToShoreKm)
       }
       .toSeq
 
@@ -211,18 +243,24 @@ object Pipeline extends LazyLogging {
     val example = SequenceExample.newBuilder()
     val contextBuilder = example.getContextBuilder()
 
-    // TODO(alexwilson): bring this in from vessel metadata when present.
-    val vessel_type = 0
+    val vessel_type = metadata.vesselTypeIndex
 
     // Add the mmsi and vessel type to the builder
     contextBuilder.putFeature(
       "mmsi",
       Feature.newBuilder().setInt64List(Int64List.newBuilder().addValue(metadata.mmsi)).build())
     contextBuilder.putFeature(
-      "vessel_type",
+      "vessel_type_index",
       Feature.newBuilder().setInt64List(Int64List.newBuilder().addValue(vessel_type)).build())
 
-    // TODO(alexwilson): Add timestamps for each for later subsequence selection.
+    contextBuilder.putFeature(
+      "vessel_type_name",
+      Feature
+        .newBuilder()
+        .setBytesList(
+          BytesList.newBuilder().addValue(ByteString.copyFromUtf8(metadata.vesselType)))
+        .build())
+
     // Add all the sequence data as a feature.
     val sequenceData = FeatureList.newBuilder()
     data.foreach { datum =>
@@ -233,7 +271,7 @@ object Pipeline extends LazyLogging {
       sequenceData.addFeature(Feature.newBuilder().setFloatList(floatData.build()))
     }
     val featureLists = FeatureLists.newBuilder()
-    featureLists.putFeatureList("movement features", sequenceData.build())
+    featureLists.putFeatureList("movement_features", sequenceData.build())
     example.setFeatureLists(featureLists)
 
     example.build()
@@ -255,12 +293,27 @@ object Pipeline extends LazyLogging {
 
     val sc = ScioContext(options)
 
+    // Load up the vessel metadata as a side input and join
+    // with the JSON records for known vessels.
+    val vesselMetadataCsv =
+      remaining_args.getOrElse("vessel_metadata", Parameters.vesselClassificationPath)
+    val metadataReader = new CSVReader(new FileReader(vesselMetadataCsv))
+    val allLines = metadataReader.readAll()
+    val vesselMetadata = allLines.toList
+      .drop(1)
+      .map { l =>
+        val mmsi = l(0).toInt
+        val dataset = l(1)
+        val vesselType = l(2)
+
+        (mmsi, VesselMetadata(mmsi, dataset, vesselType))
+      }
+      .toMap
+
     // Read, filter and build location records.
     val locationRecords =
-      readJsonRecords(sc.tableRowJsonFile(Parameters.inputMeasuresPath))
-
-    // TODO(alexwilson): Load up the vessel metadata as a side input and join
-    // with the JSON records.
+      readJsonRecords(sc.tableRowJsonFile(Parameters.inputMeasuresPath),
+                      sc.parallelize(vesselMetadata))
 
     val filtered = filterVesselRecords(locationRecords, Parameters.minRequiredPositions)
     val features = buildVesselFeatures(filtered)

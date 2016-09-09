@@ -22,7 +22,7 @@ lazy val commonSettings = Seq(
     "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
     "io.github.karols" %% "units" % "0.2.1",
     "joda-time" % "joda-time" % "2.9.4",
-    "org.apache.commons" % "commons-math3" % "3.4",
+    "org.apache.commons" % "commons-math3" % "3.4"
   ),
   // Test dependencies.
   libraryDependencies ++= Seq(
@@ -48,7 +48,14 @@ lazy val common = project.in(file("common")).settings(commonSettings: _*)
 
 // The dataflow feature generation pipeline.
 lazy val featurePipeline =
-  project.in(file("feature-pipeline")).settings(commonSettings: _*).dependsOn(tfExampleProtos)
+  project
+    .in(file("feature-pipeline"))
+    .settings(commonSettings: _*)
+    .settings(
+      Seq(
+        libraryDependencies += "com.opencsv" % "opencsv" % "3.7"
+      ))
+    .dependsOn(tfExampleProtos)
 
 // An aggregation of all projects.
 lazy val root = (project in file(".")).aggregate(common, featurePipeline)

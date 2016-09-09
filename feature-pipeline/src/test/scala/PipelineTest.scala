@@ -59,7 +59,7 @@ class PipelineTests extends PipelineSpec with Matchers {
           TableRow("mmsi" -> "45", "foo" -> "bar")
         ))
       val locationRecords =
-        Pipeline.readJsonRecords(input)
+        Pipeline.readJsonRecords(input, sc.parallelize(Map[Int, VesselMetadata]()))
 
       locationRecords should beEmpty
     }
@@ -73,7 +73,7 @@ class PipelineTests extends PipelineSpec with Matchers {
           buildMessage(mmsi = 12345, timestamp = "2016-01-01T00:00:00Z", lon = 21.3, lat = 4.6)
         ))
       val locationRecords =
-        Pipeline.readJsonRecords(input)
+        Pipeline.readJsonRecords(input, sc.parallelize(Map[Int, VesselMetadata]()))
 
       locationRecords should beEmpty
     }
@@ -97,7 +97,8 @@ class PipelineTests extends PipelineSpec with Matchers {
               buildLocationRecord("2016-01-01T00:01:30Z", lat = 68.4, lon = 32.0),
               buildLocationRecord("2016-01-01T00:03:00Z", lat = 68.4, lon = 32.0)))
 
-      val locationRecords = Pipeline.readJsonRecords(input)
+      val locationRecords =
+        Pipeline.readJsonRecords(input, sc.parallelize(Map[Int, VesselMetadata]()))
 
       locationRecords should haveSize(2)
       locationRecords should equalMapOf(correctRecords)
