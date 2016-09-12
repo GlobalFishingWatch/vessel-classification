@@ -53,7 +53,9 @@ lazy val featurePipeline =
     .settings(commonSettings: _*)
     .settings(
       Seq(
-        libraryDependencies += "com.opencsv" % "opencsv" % "3.7"
+        libraryDependencies ++= Seq(
+          "com.opencsv" % "opencsv" % "3.7",
+          "org.scala-lang.modules" %% "scala-pickling" % "0.10.1")
       ))
     .dependsOn(tfExampleProtos)
 
