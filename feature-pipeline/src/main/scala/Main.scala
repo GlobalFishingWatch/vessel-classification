@@ -44,7 +44,7 @@ object Parameters {
 
   val inputMeasuresPath =
     //"gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/*/*"
-    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2015-06-*/*"
+    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2015-*/*"
   val outputFeaturesPath =
     "gs://alex-dataflow-scratch/features-scratch"
   val gceProject = "world-fishing-827"
@@ -286,7 +286,8 @@ object Pipeline extends LazyLogging {
     example.build()
   }
 
-  def buildVesselFeatures(input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])]): SCollection[(VesselMetadata, SequenceExample)] =
+  def buildVesselFeatures(input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
+    : SCollection[(VesselMetadata, SequenceExample)] =
     input.filter { case (metadata, records) => records.size() >= 3 }.map {
       case (metadata, records) =>
         val features = buildSingleVesselFeatures(records)
@@ -330,11 +331,13 @@ object Pipeline extends LazyLogging {
 
     Parameters.splits.foreach { split =>
       val outputPath =
-        Parameters.outputFeaturesPath + "/" + ISODateTimeFormat.basicDateTimeNoMillis().print(now) + "/" + split
+        Parameters.outputFeaturesPath + "/" + ISODateTimeFormat
+          .basicDateTimeNoMillis()
+          .print(now) + "/" + split
 
-      val filteredFeatures = features
-        .filter { case (md, _) => md.dataset == split }
-        .map { case (_, example) => example.asInstanceOf[MessageLite] }
+      val filteredFeatures = features.filter { case (md, _) => md.dataset == split }.map {
+        case (_, example) => example.asInstanceOf[MessageLite]
+      }
 
       filteredFeatures.internal.apply(
         "WriteTFRecords",
