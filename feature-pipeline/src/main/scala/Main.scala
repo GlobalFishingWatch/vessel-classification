@@ -43,10 +43,10 @@ object Parameters {
   val stationaryPeriodMinDuration = Duration.standardHours(2 * 24)
 
   val inputMeasuresPath =
-    //"gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2016-*/*"
-    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2016-06-*/*"
+    //"gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/*/*"
+    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2015-*/*"
   val outputFeaturesPath =
-    "gs://alex-dataflow-scratch/features-scratch/"
+    "gs://alex-dataflow-scratch/features-scratch"
   val gceProject = "world-fishing-827"
   val dataflowStaging = "gs://alex-dataflow-scratch/dataflow-staging"
 
@@ -328,10 +328,10 @@ object Pipeline extends LazyLogging {
 
     // TODO(alexwilson): Filter out the features into Train, Test, Unclassified.
     val outputPath =
-      new File(Parameters.outputFeaturesPath, ISODateTimeFormat.basicDateTimeNoMillis().print(now))
+      Parameters.outputFeaturesPath + "/" + ISODateTimeFormat.basicDateTimeNoMillis().print(now)
     features.internal.apply(
       "WriteTFRecords",
-      Write.to(new TFRecordSink(Parameters.outputFeaturesPath, "tfrecord", "shard")))
+      Write.to(new TFRecordSink(outputPath + "/", "tfrecord", "shard-SSSSS-of-NNNNN")))
 
     sc.close()
   }
