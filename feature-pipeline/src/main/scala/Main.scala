@@ -124,7 +124,7 @@ object Pipeline extends LazyLogging {
       // Build a typed location record with units of measure.
       .map((json, s) => {
         val mmsi = json.getLong("mmsi").toInt
-        val metadata: VesselMetadata = s(vesselMetadataMap).getOrElse(mmsi, VesselMetadata(mmsi))
+        val metadata = s(vesselMetadataMap).getOrElse(mmsi, VesselMetadata(mmsi))
         val record =
           // TODO(alexwilson): Double-check all these units are correct.
           VesselLocationRecord(Instant.parse(json.getString("timestamp")),
