@@ -44,7 +44,7 @@ object Parameters {
 
   val inputMeasuresPath =
     //"gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/*/*"
-    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2015-*/*"
+    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2015-06-*/*"
   val outputFeaturesPath =
     "gs://alex-dataflow-scratch/features-scratch"
   val gceProject = "world-fishing-827"
@@ -52,6 +52,8 @@ object Parameters {
 
   // Sourced from: https://github.com/GlobalFishingWatch
   val vesselClassificationPath = "feature-pipeline/src/data/combined_classification_list.csv"
+
+  val splits = Seq("Training", "Test", "Unclassified")
 }
 
 object AdditionalUnits {
@@ -284,12 +286,12 @@ object Pipeline extends LazyLogging {
     example.build()
   }
 
-  def buildVesselFeatures(input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])]) =
+  def buildVesselFeatures(input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])]): SCollection[(VesselMetadata, SequenceExample)] =
     input.filter { case (metadata, records) => records.size() >= 3 }.map {
       case (metadata, records) =>
         val features = buildSingleVesselFeatures(records)
         val featuresAsTFExample = buildTFExampleProto(metadata, features)
-        featuresAsTFExample.asInstanceOf[MessageLite]
+        (metadata, featuresAsTFExample)
     }
 
   def main(argArray: Array[String]) {
@@ -326,12 +328,18 @@ object Pipeline extends LazyLogging {
     val filtered = filterVesselRecords(locationRecords, Parameters.minRequiredPositions)
     val features = buildVesselFeatures(filtered)
 
-    // TODO(alexwilson): Filter out the features into Train, Test, Unclassified.
-    val outputPath =
-      Parameters.outputFeaturesPath + "/" + ISODateTimeFormat.basicDateTimeNoMillis().print(now)
-    features.internal.apply(
-      "WriteTFRecords",
-      Write.to(new TFRecordSink(outputPath + "/", "tfrecord", "shard-SSSSS-of-NNNNN")))
+    Parameters.splits.foreach { split =>
+      val outputPath =
+        Parameters.outputFeaturesPath + "/" + ISODateTimeFormat.basicDateTimeNoMillis().print(now) + "/" + split
+
+      val filteredFeatures = features
+        .filter { case (md, _) => md.dataset == split }
+        .map { case (_, example) => example.asInstanceOf[MessageLite] }
+
+      filteredFeatures.internal.apply(
+        "WriteTFRecords",
+        Write.to(new TFRecordSink(outputPath + "/", "tfrecord", "shard-SSSSS-of-NNNNN")))
+    }
 
     sc.close()
   }
