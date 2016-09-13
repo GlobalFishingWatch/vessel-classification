@@ -27,7 +27,7 @@ lazy val commonSettings = Seq(
   // Test dependencies.
   libraryDependencies ++= Seq(
     "ch.qos.logback" % "logback-classic" % "1.1.7",
-    "com.spotify" % "scio-test_2.11" % "0.2.1" % "test",
+    "com.spotify" % "scio-test_2.11" % "0.2.2" % "test",
     "org.scalactic" %% "scalactic" % "3.0.0" % "test",
     "org.scalatest" %% "scalatest" % "3.0.0" % "test"
   )
@@ -53,7 +53,8 @@ lazy val featurePipeline =
     .settings(commonSettings: _*)
     .settings(
       Seq(
-        libraryDependencies += "com.opencsv" % "opencsv" % "3.7"
+        libraryDependencies ++= Seq(
+          "com.opencsv" % "opencsv" % "3.7")
       ))
     .dependsOn(tfExampleProtos)
 

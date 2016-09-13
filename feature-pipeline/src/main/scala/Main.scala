@@ -3,6 +3,7 @@ package org.skytruth.feature_pipeline
 import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
+
 import com.google.common.geometry.{S2LatLng}
 import com.google.protobuf.{ByteString, MessageLite}
 import com.spotify.scio._
@@ -13,10 +14,11 @@ import com.google.cloud.dataflow.sdk.options.{DataflowPipelineOptions, PipelineO
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.io.{Write}
 import com.opencsv.CSVReader
-import java.io.FileReader
+import java.io.{File, FileReader, InputStream, OutputStream}
 import java.nio.charset.StandardCharsets
 import org.apache.commons.math3.util.MathUtils
-import org.joda.time.{Instant, Duration}
+import org.joda.time.{DateTime, DateTimeZone, Instant, Duration}
+import org.joda.time.format.ISODateTimeFormat
 import org.skytruth.dataflow.{TFRecordSink}
 import org.tensorflow.example.{
   Example,
@@ -29,6 +31,7 @@ import org.tensorflow.example.{
   FloatList,
   BytesList
 }
+
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConversions._
 
@@ -40,7 +43,8 @@ object Parameters {
   val stationaryPeriodMinDuration = Duration.standardHours(2 * 24)
 
   val inputMeasuresPath =
-    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/*/*"
+    //"gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/*/*"
+    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2015-*/*"
   val outputFeaturesPath =
     "gs://alex-dataflow-scratch/features-scratch"
   val gceProject = "world-fishing-827"
@@ -93,6 +97,7 @@ case class VesselMetadata(
   def vesselTypeIndex = VesselMetadata.vesselTypeToIndexMap.getOrElse(vesselType, 0)
 }
 
+// TODO(alexwilson): For now build simple coder for this class. :-(
 case class VesselLocationRecord(
     timestamp: Instant,
     location: LatLon,
@@ -133,9 +138,11 @@ object Pipeline extends LazyLogging {
         (metadata, record)
       })
       .toSCollection
-      .filter { case (metadata, records) => !blacklistedMmsis.contains(metadata.mmsi) }
+      .filter { case (metadata, record) => !blacklistedMmsis.contains(metadata.mmsi) }
       .groupByKey
-      .map { case (metadata, records) => (metadata, records.toSeq.sortBy(_.timestamp.getMillis)) }
+      .map {
+        case (metadata, records) => (metadata, records.toIndexedSeq.sortBy(_.timestamp.getMillis))
+      }
   }
 
   def thinPoints(records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
@@ -199,7 +206,7 @@ object Pipeline extends LazyLogging {
         val thinnedPoints = thinPoints(records)
         val withoutLongStationaryPeriods = removeStationaryPeriods(thinnedPoints)
 
-        (metadata, withoutLongStationaryPeriods.toSeq)
+        (metadata, withoutLongStationaryPeriods.toIndexedSeq)
     }
   }
 
@@ -237,7 +244,7 @@ object Pipeline extends LazyLogging {
                 cogDeltaDegrees,
                 distanceToShoreKm)
       }
-      .toSeq
+      .toIndexedSeq
 
   def buildTFExampleProto(metadata: VesselMetadata, data: Seq[Array[Double]]): SequenceExample = {
     val example = SequenceExample.newBuilder()
@@ -278,7 +285,7 @@ object Pipeline extends LazyLogging {
   }
 
   def buildVesselFeatures(input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])]) =
-    input.map {
+    input.filter { case (metadata, records) => records.size() >= 3 }.map {
       case (metadata, records) =>
         val features = buildSingleVesselFeatures(records)
         val featuresAsTFExample = buildTFExampleProto(metadata, features)
@@ -286,6 +293,7 @@ object Pipeline extends LazyLogging {
     }
 
   def main(argArray: Array[String]) {
+    val now = new DateTime(DateTimeZone.UTC)
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
     options.setRunner(classOf[DataflowPipelineRunner])
     options.setProject(Parameters.gceProject)
@@ -319,9 +327,11 @@ object Pipeline extends LazyLogging {
     val features = buildVesselFeatures(filtered)
 
     // TODO(alexwilson): Filter out the features into Train, Test, Unclassified.
+    val outputPath =
+      Parameters.outputFeaturesPath + "/" + ISODateTimeFormat.basicDateTimeNoMillis().print(now)
     features.internal.apply(
       "WriteTFRecords",
-      Write.to(new TFRecordSink(Parameters.outputFeaturesPath, "tfrecord", "shard")))
+      Write.to(new TFRecordSink(outputPath + "/", "tfrecord", "shard-SSSSS-of-NNNNN")))
 
     sc.close()
   }
