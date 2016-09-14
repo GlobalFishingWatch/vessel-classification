@@ -331,9 +331,9 @@ object Pipeline extends LazyLogging {
 
     Parameters.splits.foreach { split =>
       val outputPath =
-        Parameters.outputFeaturesPath + "/" + ISODateTimeFormat
-          .basicDateTimeNoMillis()
-          .print(now) + "/" + split
+        Parameters.outputFeaturesPath + "/" +
+          ISODateTimeFormat.basicDateTimeNoMillis().print(now) + "/" +
+          split
 
       val filteredFeatures = features.filter { case (md, _) => md.dataset == split }.map {
         case (_, example) => example.asInstanceOf[MessageLite]
