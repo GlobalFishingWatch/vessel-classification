@@ -4,7 +4,7 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
-import com.google.common.geometry.{S2LatLng}
+import com.google.common.geometry.{S2, S2LatLng}
 import com.google.protobuf.{ByteString, MessageLite}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
@@ -17,7 +17,7 @@ import com.opencsv.CSVReader
 import java.io.{File, FileReader, InputStream, OutputStream}
 import java.nio.charset.StandardCharsets
 import org.apache.commons.math3.util.MathUtils
-import org.joda.time.{DateTime, DateTimeZone, Instant, Duration}
+import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
 import org.joda.time.format.ISODateTimeFormat
 import org.skytruth.dataflow.{TFRecordSink}
 import org.tensorflow.example.{
@@ -222,27 +222,49 @@ object Pipeline extends LazyLogging {
       .sliding(3)
       .map {
         case Seq(p0, p1, p2) =>
+          val ll0 = S2LatLng.fromDegrees(p0.location.lat.value, p0.location.lon.value)
+          val ll1 = S2LatLng.fromDegrees(p1.location.lat.value, p1.location.lon.value)
+          val ll2 = S2LatLng.fromDegrees(p2.location.lat.value, p2.location.lon.value)
           val timestampSeconds = p1.timestamp.getMillis / 1000
           val timestampDeltaSeconds = p1.timestamp.getMillis / 1000 - p0.timestamp.getMillis / 1000
           val distanceDeltaMeters = p1.location.getDistance(p0.location).value
           val speedMps = p1.speed.convert[meters_per_second].value
           val integratedSpeedMps = distanceDeltaMeters / timestampDeltaSeconds
           val cogDeltaDegrees = angleNormalize((p1.course - p0.course)).value
+          val integratedCogDeltaDegrees = S2
+            .turnAngle(ll0.normalized().toPoint(),
+                       ll1.normalized().toPoint(),
+                       ll2.normalized().toPoint())
+            .of[radians]
+            .convert[degrees]
+            .value
           val distanceToShoreKm = p1.distanceToShore.convert[kilometer].value
 
-          // TODO: Integrated cog, local tod, local month of year.
-          // TODO(alexwilson): #neighbours, distance to closest neighbour.
+          // Calculate time features. TODO(alexwilson): Add tests.
+          val longitudeTzOffsetSeconds = 60 * 60 * 12 * (p1.location.lon
+              .convert[degrees]
+              .value / 180.0)
+          val offsetTimezone = DateTimeZone.forOffsetMillis(longitudeTzOffsetSeconds.toInt * 1000)
+          val localTime = new LocalDateTime(timestampSeconds, offsetTimezone)
+          val localTodFeature = ((localTime
+              .getHourOfDay() * (localTime.getMinuteOfHour() / 60.0)) - 12.0) / 12.0
+          val localMonthOfYearFeature = (localTime.getMonthOfYear() - 6.0) / 6.0
+
+          // TODO(alexwilson): #neighbours, distance to closest neighbour, is_dark.
 
           // We include the absolute time not as a feature, but to make it easy
           // to binary-search for the start and end of time ranges when running
           // under TensorFlow.
-          Array(timestampSeconds,
-                timestampDeltaSeconds,
-                distanceDeltaMeters,
-                speedMps,
-                integratedSpeedMps,
-                cogDeltaDegrees,
-                distanceToShoreKm)
+          Array[Double](timestampSeconds,
+                        timestampDeltaSeconds,
+                        distanceDeltaMeters,
+                        speedMps,
+                        integratedSpeedMps,
+                        cogDeltaDegrees,
+                        localTodFeature,
+                        localMonthOfYearFeature,
+                        integratedCogDeltaDegrees,
+                        distanceToShoreKm)
       }
       .toIndexedSeq
 
