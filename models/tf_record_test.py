@@ -38,7 +38,7 @@ def run():
   logging.getLogger().setLevel(logging.DEBUG)
   tf.logging.set_verbosity(tf.logging.DEBUG)
   with tf.Graph().as_default():
-    input_file_pattern = 'gs://alex-dataflow-scratch/features-scratch/20160913T200731Z/Training/shard-*-of-00380.tfrecord'
+    input_file_pattern = 'gs://alex-dataflow-scratch/features-scratch/20160913T200731Z/Training/shard-*-of-*.tfrecord'
     context_features, sequence_features = utility.feature_file_reader(input_file_pattern, NUM_FEATURE_DIMENSIONS)
     movement_features = sequence_features['movement_features']
 

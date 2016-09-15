@@ -4,7 +4,11 @@ import utility
 class InceptionLayerTest(tf.test.TestCase):
   def test_layer_shape(self):
     with self.test_session():
-      input_data = [[[[1., 5., 6.], [2., 4., 4.], [3., 7., 9.], [4., 9., 0.], [3., 7., 9.], [4., 9., 0.]]]]
+      input_data = [[1., 5., 6.], [2., 4., 4.], [3., 7., 9.], [4., 9., 0.], [3., 7., 9.], [4., 9., 0.]]
+      # Add an outer dimension to take the data from 1d to 2d
+      input_data = tf.expand_dims(input_data, 0)
+      # Add an outer dimension to take the data from unbatched to batch
+      input_data = tf.expand_dims(input_data, 0)
       input_data_shape = tf.shape(input_data)
       self.assertAllEqual(input_data_shape.eval(), [1, 1, 6, 3])
 
