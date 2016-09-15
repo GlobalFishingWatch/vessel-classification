@@ -2,7 +2,6 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
 
-
 def fixed_time_extract(input_series, max_time_delta, output_length):
   """Extracts a fixed-time slice from a tensor.
 
@@ -75,8 +74,7 @@ def single_feature_file_reader(filename_queue, num_features):
 
   return context_features, sequence_features
 
-def read_and_crop_fixed_window(filename_queue, num_features, num_classes,
-    max_time_delta, window_length):
+def read_and_crop_fixed_window(filename_queue, num_features, max_time_delta, window_length):
   """ Read from a TFRecord file, and extract a fixed-sized, fixed-time window. """
 
   context_features, sequence_features = single_feature_file_reader(filename_queue, num_features)
@@ -89,10 +87,9 @@ def read_and_crop_fixed_window(filename_queue, num_features, num_classes,
   # Take the movement features and expand them from 1d to 2d.
   movement_features = tf.expand_dims(cropped_movement, 0)  
 
-  label = slim.one_hot_encoding(tf.cast(context_features['vessel_type_index'],
-    tf.int32), num_classes)
+  label = tf.cast(context_features['vessel_type_index'],
+    tf.int32)
 
-  #return context_features, movement_features 
   return movement_features, label
 
 
@@ -108,6 +105,7 @@ def feature_file_reader(input_file_pattern, make_reader, num_parallel_readers,
   capacity = min_after_dequeue * 2
   features, labels = tf.train.shuffle_batch_join(readers, batch_size, capacity=capacity,
           min_after_dequeue=min_after_dequeue)
+  #features, labels = tf.train.batch_join(readers, batch_size)
 
   return features, labels
 
