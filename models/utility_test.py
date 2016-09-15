@@ -44,5 +44,14 @@ class FixedTimeExtractTest(tf.test.TestCase):
       res = utility.fixed_time_extract(input_data, 20, 5)
       self.assertAllEqual(res.eval(), expected_result)
 
+  def test_random_fixed_time_extract(self):
+    with self.test_session():
+      input_data = [[1., 5., 6.], [2., 4., 4.], [3., 7., 9.]]
+      
+      res = utility.fixed_time_extract(input_data, 3, 6)
+      res_shape = tf.shape(res)
+
+      self.assertAllEqual(res_shape.eval(), [6, 3])
+
 if __name__ == '__main__':
   tf.test.main()

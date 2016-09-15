@@ -75,7 +75,8 @@ def single_feature_file_reader(filename_queue, num_features):
 
   return context_features, sequence_features
 
-def read_and_crop_fixed_window(filename_queue, num_features, max_time_delta, window_length):
+def read_and_crop_fixed_window(filename_queue, num_features, num_classes,
+    max_time_delta, window_length):
   """ Read from a TFRecord file, and extract a fixed-sized, fixed-time window. """
 
   context_features, sequence_features = single_feature_file_reader(filename_queue, num_features)
@@ -83,11 +84,16 @@ def read_and_crop_fixed_window(filename_queue, num_features, max_time_delta, win
   # Crop out a random fixed-time subwindow.
   cropped_movement = random_fixed_time_extract(sequence_features['movement_features'],
           max_time_delta, window_length)
+  cropped_movement.set_shape([window_length, num_features])
   
   # Take the movement features and expand them from 1d to 2d.
   movement_features = tf.expand_dims(cropped_movement, 0)  
 
-  return context_features, movement_features 
+  label = slim.one_hot_encoding(tf.cast(context_features['vessel_type_index'],
+    tf.int32), num_classes)
+
+  #return context_features, movement_features 
+  return movement_features, label
 
 
 def feature_file_reader(input_file_pattern, make_reader, num_parallel_readers,
@@ -96,41 +102,46 @@ def feature_file_reader(input_file_pattern, make_reader, num_parallel_readers,
 
   input_files = tf.matching_files(input_file_pattern)
   filename_queue = tf.train.string_input_producer(input_files, shuffle=True, num_epochs=num_epochs)
-  readers = [single_feature_file_reader(filename_queue) for _ in range(num_parallel_readers)]
+  readers = [make_reader(filename_queue) for _ in range(num_parallel_readers)]
 
-  min_after_deque = batch_size * 3
-  capacity = min_after_deque * 2
-  context_batch, sequence_batch = tf.train.shuffle_batch_join(
-          readers, batch_size, capacity=capacity, min_after_deque=min_after_deque)
+  min_after_dequeue = batch_size * 3
+  capacity = min_after_dequeue * 2
+  features, labels = tf.train.shuffle_batch_join(readers, batch_size, capacity=capacity,
+          min_after_dequeue=min_after_dequeue)
 
-  return context_batch, sequence_batch
+  return features, labels
 
 
-def inception_layer(input, window_size, stride, depth):
-  with slim.arg_scope([slim.conv2d],
-                      padding = 'SAME',
-                      activation_fn=tf.nn.tanh,
-                      weights_initializer=tf.truncated_normal_initializer(0.0, 0.01)):
-      stage_1_oned = slim.conv2d(input, depth, [1, 1])
-      stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
-      stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
+def inception_layer(input, window_size, stride, depth, scope=None):
+  with tf.name_scope(scope):
+    with slim.arg_scope([slim.conv2d],
+                        padding = 'SAME',
+                        activation_fn=tf.nn.tanh,
+                        weights_initializer=tf.truncated_normal_initializer(0.0, 0.01)):
+        stage_1_oned = slim.conv2d(input, depth, [1, 1])
+        stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
+        stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
 
-      stage_2_oned = slim.conv2d(input, depth, [1, 1], stride=[1, 1])
-      stage_2_conv = slim.conv2d(stage_2_oned, depth, [1, window_size])
-      stage_2_max_pool_reduce = slim.max_pool2d(stage_2_conv, [1, window_size], stride=[1, stride],
-              padding = 'SAME')
+        stage_2_oned = slim.conv2d(input, depth, [1, 1], stride=[1, 1])
+        stage_2_conv = slim.conv2d(stage_2_oned, depth, [1, window_size])
+        stage_2_max_pool_reduce = slim.max_pool2d(stage_2_conv, [1, window_size], stride=[1, stride],
+                padding = 'SAME')
 
-      concat = tf.concat(3, [stage_1_conv_reduce, stage_2_max_pool_reduce])
+        concat = tf.concat(3, [stage_1_conv_reduce, stage_2_max_pool_reduce])
 
-      return concat
+        return concat
 
-def inception_model(input, window_size, stride, depth, levels):
+def inception_model(input, window_size, stride, depth, levels, num_classes):
+  with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu):
     net = slim.dropout(input, 0.05)
     net = slim.repeat(net, levels, inception_layer, window_size, stride, depth)
-    net = slim.fully_connected(net, 200, activation_fn=tf.nn.relu)
+    net = slim.flatten(net)
+    net = slim.fully_connected(net, 200)
     net = slim.dropout(net, 0.5)
-    net = slim.fully_connected(net, 100, activation_fn=tf.nn.relu)
+    net = slim.fully_connected(net, 100)
     net = slim.dropout(net, 0.5)
+
+    net = slim.fully_connected(net, num_classes, activation_fn=None) 
 
     return net
 

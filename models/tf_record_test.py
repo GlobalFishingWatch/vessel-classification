@@ -15,47 +15,55 @@ import tensorflow.contrib.slim as slim
   11. Vessel labels as time series also for change of behaviour.
 """
 
+MAX_SAMPLE_FREQUENCY_SECONDS = 5
 NUM_FEATURE_DIMENSIONS = 7
-FEATURE_DURATION_DAYS = 30
-WINDOW_DURATION_SECONDS = FEATURE_DURATION_DAYS * 24 * 3600
-ONE_MONTH_MAX_POINTS = FEATURE_DURATION_DAYS * 24 * (60/5)
+NUM_CLASSES = 8
 
-def train(features, labels, logdir):
-  predictions = utility.inception_model(features, 3, 2, 20, 12)
-  loss = slim.losses.softmax_cross_entropy(predictions, labels)
-  optimizer = tf.train.AdamOptimizer()
-  train_op = slim.learning.create_train_op(loss, optimizer)
+def run_training(base_feature_path, logdir, feature_duration_days, num_feature_dimensions):
+    max_window_duration_seconds = feature_duration_days * 24 * 3600
+    window_max_points = max_window_duration_seconds / MAX_SAMPLE_FREQUENCY_SECONDS
+    window_size = 3
+    stride = 2
+    feature_depth = 20
+    levels = 11
 
-  slim.learning.train(
-    train_op,
-    logdir,
-    number_of_steps=1000,
-    save_summaries_secs=300,
-    save_interval_secs=600)
+    input_file_pattern = base_feature_path + '/Training/shard-*-of-*.tfrecord'
+    num_parallel_readers = 4
+    num_training_epochs = None
+    batch_size = 32
+
+    def make_reader(filename_queue):
+      return utility.read_and_crop_fixed_window(filename_queue,
+          NUM_FEATURE_DIMENSIONS, NUM_CLASSES, max_window_duration_seconds,
+          window_max_points)
+
+    features, labels = utility.feature_file_reader(input_file_pattern,
+            make_reader, num_parallel_readers, NUM_FEATURE_DIMENSIONS, num_training_epochs,
+            batch_size)
+
+    predictions = utility.inception_model(features, window_size, stride,
+            feature_depth, levels, NUM_CLASSES)
+
+    loss = slim.losses.softmax_cross_entropy(predictions, labels)
+
+    optimizer = tf.train.AdamOptimizer(1e-4)
+    train_op = slim.learning.create_train_op(loss, optimizer,
+            update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+
+    slim.learning.train(
+      train_op,
+      logdir,
+      number_of_steps=1000,
+      save_summaries_secs=300,
+      save_interval_secs=600)
 
 def run():
-  return
   logging.getLogger().setLevel(logging.DEBUG)
   tf.logging.set_verbosity(tf.logging.DEBUG)
+
   with tf.Graph().as_default():
-    input_file_pattern = 'gs://alex-dataflow-scratch/features-scratch/20160913T200731Z/Training/shard-*-of-*.tfrecord'
-    context_features, sequence_features = utility.feature_file_reader(input_file_pattern, NUM_FEATURE_DIMENSIONS)
-    movement_features = sequence_features['movement_features']
-
-    cropped_features = utility.random_fixed_time_extract(movement_features, WINDOW_DURATION_SECONDS, ONE_MONTH_MAX_POINTS)
-
-    mmsi = tf.cast(context_features['mmsi'], tf.int32)
-    type_index = tf.cast(context_features['vessel_type_index'], tf.int32)
-    type_name = tf.cast(context_features['vessel_type_name'], tf.string)
-
-    sess = tf.Session()
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-    print(sess.run(mmsi))
-    print(sess.run(type_name))
-    #tf.random_crop
-    print(sess.run(tf.shape(cropped_features)))
-
+    run_training('gs://alex-dataflow-scratch/features-scratch/20160913T200731Z',
+        'gs://alex-dataflow-scratch/model-train-scratch', 30, 7)
 
 if __name__ == '__main__':
   run()
