@@ -34,6 +34,25 @@ def run_training(base_feature_path, logdir, feature_duration_days, num_feature_d
     #batch_size = 32
     batch_size = 8
 
+    if 1:
+
+      input_files = tf.matching_files(input_file_pattern)
+      filename_queue = tf.train.string_input_producer(input_files, shuffle=True,
+          num_epochs=num_training_epochs)
+
+      context, sequence = utility.single_feature_file_reader(filename_queue,
+          NUM_FEATURE_DIMENSIONS)
+
+      sess = tf.Session()
+      coord = tf.train.Coordinator()
+      threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+      sess.run(tf.initialize_all_variables())
+
+      for i in range(5000):
+        logging.info(sess.run(context))
+
+      return 0
+
     def make_reader(filename_queue):
       return utility.read_and_crop_fixed_window(filename_queue,
           NUM_FEATURE_DIMENSIONS, max_window_duration_seconds,
@@ -50,35 +69,39 @@ def run_training(base_feature_path, logdir, feature_duration_days, num_feature_d
 
     loss = slim.losses.softmax_cross_entropy(predictions, one_hot_labels)
 
-    # START TEMPORARY CODE
-
-    if 0:
-      sess = tf.Session()
-      coord = tf.train.Coordinator()
-      threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-      sess.run(tf.initialize_all_variables())
-      logging.info(sess.run(labels))
-      logging.info(sess.run(loss))
-      #logging.info(sess.run(labels))
-      #logging.info(sess.run(labels))
-      #logging.info(sess.run(labels))
-
-      return
-    # END TEMPORARY CODE
-
-
     tf.scalar_summary('Total loss', loss)
 
     optimizer = tf.train.AdamOptimizer(1e-4)
     train_op = slim.learning.create_train_op(loss, optimizer,
             update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
 
+    if 0:
+      sess = tf.Session()
+      coord = tf.train.Coordinator()
+      threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+      sess.run(tf.initialize_all_variables())
+
+      run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+      run_metadata = tf.RunMetadata()
+
+      sess.run(loss, options=run_options, run_metadata=run_metadata)
+
+      tl = timeline.Timeline(run_metadata.step_stats)
+      ctf = tl.generate_chrome_trace_format()
+      with open('timeline.json', 'w') as f:
+        f.write(ctf)
+
+      return
+
+
     slim.learning.train(
       train_op,
       logdir,
-      number_of_steps=1000,
+      number_of_steps=5,
       save_summaries_secs=300,
       save_interval_secs=600)
+
+
 
 def run():
   logging.getLogger().setLevel(logging.DEBUG)

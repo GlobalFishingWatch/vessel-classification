@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 import utility
 
 class InceptionLayerTest(tf.test.TestCase):
@@ -52,6 +53,35 @@ class FixedTimeExtractTest(tf.test.TestCase):
       res_shape = tf.shape(res)
 
       self.assertAllEqual(res_shape.eval(), [6, 3])
+
+class PythonFixedTimeExtractTest(tf.test.TestCase):
+  def test_cropped_extract(self):
+    with self.test_session():
+      input_data = np.array([[1., 5.], [2., 4.], [3., 7.], [4., 9.], [5., 3.],
+        [6., 8.], [7., 2.], [8., 9.]])
+      expected_result = np.array([[1., 5.], [2., 4.], [3., 7.], [4., 9.], [5.,
+        3.], [6., 8.], [1., 5.], [2., 4.]])
+
+      res = utility.np_array_fixed_time_extract(input_data, 5, 8)
+      
+      self.assertAllEqual(res, expected_result)
+
+  def test_uncropped_extract(self):
+    with self.test_session():
+      input_data = np.array([[1., 5., 6.], [2., 4., 4.], [3., 7., 9.], [4., 9.,
+        0.]])
+
+      res = utility.np_array_fixed_time_extract(input_data, 20, 4)
+      self.assertAllEqual(res, input_data)
+
+  def test_uncropped_extract_pad(self):
+    with self.test_session():
+      input_data = np.array([[1., 5., 6.], [2., 4., 4.], [3., 7., 9.]])
+      expected_result = np.array([[1., 5., 6.], [2., 4., 4.], [3., 7., 9.], [1.,
+        5., 6.], [2., 4., 4.]])
+
+      res = utility.np_array_fixed_time_extract(input_data, 20, 5)
+      self.assertAllEqual(res, expected_result)
 
 if __name__ == '__main__':
   tf.test.main()

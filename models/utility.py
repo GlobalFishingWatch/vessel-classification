@@ -1,6 +1,25 @@
+import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
+def np_array_fixed_time_extract(input_series, max_time_delta, output_length):
+  input_shape = input_series.shape
+  input_length = input_shape[0]
+  output_series = np.zeros((output_length, input_shape[1]))
+  input_index = 0
+  max_time = input_series[0][0] + max_time_delta
+  for output_index in range(output_length):
+    ins = input_series[input_index]
+    if ins[0] > max_time:
+      input_index = 0
+      ins = input_series[input_index]
+    output_series[output_index] = ins
+    if input_index < (input_length-1):
+      input_index += 1
+    else:
+      input_index = 0
+
+  return output_series
 
 def fixed_time_extract(input_series, max_time_delta, output_length):
   """Extracts a fixed-time slice from a tensor.
@@ -103,9 +122,9 @@ def feature_file_reader(input_file_pattern, make_reader, num_parallel_readers,
 
   min_after_dequeue = batch_size * 3
   capacity = min_after_dequeue * 2
-  features, labels = tf.train.shuffle_batch_join(readers, batch_size, capacity=capacity,
-          min_after_dequeue=min_after_dequeue)
-  #features, labels = tf.train.batch_join(readers, batch_size)
+  #features, labels = tf.train.shuffle_batch_join(readers, batch_size, capacity=capacity,
+  #        min_after_dequeue=min_after_dequeue)
+  features, labels = tf.train.batch_join(readers, batch_size)
 
   return features, labels
 
