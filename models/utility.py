@@ -173,7 +173,7 @@ def inception_layer(input, window_size, stride, depth, scope=None):
 
 def inception_model(input, window_size, stride, depth, levels, num_classes):
   with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu):
-    net = slim.dropout(input, 0.05)
+    net = slim.dropout(input, 0.5)
     net = slim.repeat(net, levels, inception_layer, window_size, stride, depth)
     net = slim.flatten(net)
     net = slim.fully_connected(net, 200)
