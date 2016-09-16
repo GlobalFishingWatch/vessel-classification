@@ -29,7 +29,10 @@ def np_array_random_fixed_time_extract(input_series, max_time_delta, output_leng
   input_shape = input_series.shape
   input_length = input_shape[0]
   max_offset = max(input_length - output_length, 0)
-  offset = np.random.randint(0, max_offset)
+  if max_offset != 0:
+    offset = np.random.randint(0, max_offset)
+  else:
+    offset = 0
 
   return np_array_fixed_time_extract(input_series[offset:], max_time_delta, output_length)
 
@@ -58,6 +61,7 @@ def np_array_fixed_time_extract(input_series, max_time_delta, output_length):
   output_series = np.zeros((output_length, input_shape[1]), dtype=np.float32)
   input_index = 0
   max_time = input_series[0][0] + max_time_delta
+  # TODO(alexwilson): I'm sure there's a more idiomatic numpy way to do this.
   for output_index in range(output_length):
     ins = input_series[input_index]
     if ins[0] > max_time:
@@ -71,6 +75,19 @@ def np_array_fixed_time_extract(input_series, max_time_delta, output_length):
 
   return output_series
 
+def extract_features(input, max_time_delta, window_size):
+  # Crop and pad to the specified time window.
+  features = np_array_random_fixed_time_extract(input, max_time_delta, window_size)
+
+  # Drop the first (timestamp) column
+  features = features[:,1:]
+
+  # Take the log of most of the remaining features
+  for i in [0,1,2,3,5]:
+    features[:,i] = np.log(features[:,i])
+
+  return features
+
 def cropping_feature_file_reader(filename_queue, num_features, max_time_delta,
     window_size):
   context_features, sequence_features = single_feature_file_reader(filename_queue, num_features)
@@ -78,12 +95,12 @@ def cropping_feature_file_reader(filename_queue, num_features, max_time_delta,
   movement_features = sequence_features['movement_features']
   label = tf.cast(context_features['vessel_type_index'], tf.int32)
 
-  def crop(input):
-    return np_array_fixed_time_extract(input, max_time_delta, window_size)
+  
 
-  cropped = tf.py_func(crop, [movement_features], [tf.float32])
+  features = tf.py_func(lambda input: extract_features(input, max_time_delta, window_size),
+      [movement_features], [tf.float32])
 
-  return cropped, label
+  return features, label
 
 
 def inception_layer(input, window_size, stride, depth, scope=None):
@@ -92,18 +109,18 @@ def inception_layer(input, window_size, stride, depth, scope=None):
                         padding = 'SAME',
                         activation_fn=tf.nn.tanh,
                         weights_initializer=tf.truncated_normal_initializer(0.0, 0.01)):
-        stage_1_oned = slim.conv2d(input, depth, [1, 1])
-        stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
-        stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
+      stage_1_oned = slim.conv2d(input, depth, [1, 1])
+      stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
+      stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
 
-        stage_2_oned = slim.conv2d(input, depth, [1, 1])
-        stage_2_conv = slim.conv2d(stage_2_oned, depth, [1, window_size])
-        stage_2_max_pool_reduce = slim.max_pool2d(stage_2_conv, [1, window_size], stride=[1, stride],
-                padding = 'SAME')
+      stage_2_oned = slim.conv2d(input, depth, [1, 1])
+      stage_2_conv = slim.conv2d(stage_2_oned, depth, [1, window_size])
+      stage_2_max_pool_reduce = slim.max_pool2d(stage_2_conv, [1, window_size], stride=[1, stride],
+              padding = 'SAME')
 
-        concat = tf.concat(3, [stage_1_conv_reduce, stage_2_max_pool_reduce])
+      concat = tf.concat(3, [stage_1_conv_reduce, stage_2_max_pool_reduce])
 
-        return concat
+      return concat
 
 def inception_model(input, window_size, stride, depth, levels, num_classes):
   with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu):
