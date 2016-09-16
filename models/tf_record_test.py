@@ -36,11 +36,13 @@ def run_training(base_feature_path, logdir, feature_duration_days, num_feature_d
     filename_queue = tf.train.input_producer(matching_files, shuffle=True)
     capacity = batch_size * 4
     min_size_after_deque = batch_size * 2
-    
-    unbatched = utility.cropping_feature_file_reader(filename_queue,
-        NUM_FEATURE_DIMENSIONS, max_window_duration_seconds, window_max_points)
 
-    features, labels = tf.train.shuffle_batch(unbatched, batch_size, capacity,
+    readers = []
+    for _ in range(num_parallel_readers):
+      readers.append(utility.cropping_feature_file_reader(filename_queue,
+        NUM_FEATURE_DIMENSIONS, max_window_duration_seconds, window_max_points))
+
+    features, labels = tf.train.shuffle_batch_join(readers, batch_size, capacity,
         min_size_after_deque,
         shapes=[[1, window_max_points, NUM_FEATURE_DIMENSIONS], []])
 
