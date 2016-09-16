@@ -30,14 +30,17 @@ def run_training(base_feature_path, logdir, feature_duration_days, num_feature_d
 
     input_file_pattern = base_feature_path + '/Training/shard-*-of-*.tfrecord'
     num_parallel_readers = 50
-    batch_size = 2
+    batch_size = 32
 
     matching_files = tf.matching_files(input_file_pattern)
     filename_queue = tf.train.input_producer(matching_files, shuffle=True)
+    capacity = batch_size * 4
+    min_size_after_deque = batch_size * 2
     unbatched = utility.cropping_feature_file_reader(filename_queue,
         NUM_FEATURE_DIMENSIONS, max_window_duration_seconds, window_max_points)
 
-    features, labels = tf.train.shuffle_batch(unbatched, batch_size, 32, 16,
+    features, labels = tf.train.shuffle_batch(unbatched, batch_size, capacity,
+        min_size_after_deque,
         shapes=[[1, window_max_points, NUM_FEATURE_DIMENSIONS], []])
 
     one_hot_labels = slim.one_hot_encoding(labels, NUM_CLASSES)
@@ -56,7 +59,7 @@ def run_training(base_feature_path, logdir, feature_duration_days, num_feature_d
     slim.learning.train(
       train_op,
       logdir,
-      number_of_steps=5,
+      number_of_steps=10000,
       save_summaries_secs=300,
       save_interval_secs=600)
 
@@ -66,7 +69,7 @@ def run():
   logging.getLogger().setLevel(logging.DEBUG)
   tf.logging.set_verbosity(tf.logging.DEBUG)
 
-  feature_duration_days = 30
+  feature_duration_days = 60
   with tf.Graph().as_default():
     run_training('gs://alex-dataflow-scratch/features-scratch/20160913T200731Z',
         'gs://alex-dataflow-scratch/model-train-scratch', feature_duration_days, 7)

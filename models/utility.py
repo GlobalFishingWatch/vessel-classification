@@ -46,10 +46,9 @@ def np_array_fixed_time_extract(input_series, max_time_delta, output_length):
   Returns:
     An array of the same shape as the input, representing the fixed time slice.
   """
-  logging.info("Cropping...")
   input_shape = input_series.shape
   input_length = input_shape[0]
-  output_series = np.zeros((output_length, input_shape[1]))
+  output_series = np.zeros((output_length, input_shape[1]), dtype=np.float32)
   input_index = 0
   max_time = input_series[0][0] + max_time_delta
   for output_index in range(output_length):
@@ -77,7 +76,7 @@ def cropping_feature_file_reader(filename_queue, num_features, max_time_delta,
 
   cropped = tf.py_func(crop, [movement_features], [tf.float32])
 
-  return [cropped], label
+  return cropped, label
 
 class CroppingFeatureReader(object):
   def __init__(self, filename_queue, num_feature_dimensions):
