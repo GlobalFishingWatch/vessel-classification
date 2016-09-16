@@ -2,6 +2,22 @@ import tensorflow as tf
 import numpy as np
 import utility
 
+
+class HelperFunctionsTesT(tf.test.TestCase):
+  def test_random_crop(self):
+    with self.test_session():
+      input_data = [[1., 5., 6.], [2., 4., 4.], [3., 7., 9.], [4., 9., 0.]]
+
+      self.assertAllEqual(utility.padding_crop(input_data, 5).eval(), [[1., 5., 6.],
+        [2., 4., 4.], [3., 7., 9.], [4., 9., 0.], [0., 0., 0.]])
+
+      self.assertAllEqual(utility.padding_crop(input_data, 4).eval(), [[1., 5., 6.],
+        [2., 4., 4.], [3., 7., 9.], [4., 9., 0.]])
+
+      smaller_cropped = tf.shape(utility.padding_crop(input_data, 3))
+      self.assertAllEqual(smaller_cropped.eval(), [3, 3])
+
+
 class InceptionLayerTest(tf.test.TestCase):
   def test_layer_shape(self):
     with self.test_session():

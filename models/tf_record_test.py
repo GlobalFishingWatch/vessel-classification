@@ -16,9 +16,11 @@ from tensorflow.python.client import timeline
   11. Vessel labels as time series also for change of behaviour.
 """
 
-MAX_SAMPLE_FREQUENCY_SECONDS = 5
+MAX_SAMPLE_FREQUENCY_SECONDS = 5 * 60
 NUM_FEATURE_DIMENSIONS = 7
 NUM_CLASSES = 9
+
+
 
 def run_training(base_feature_path, logdir, feature_duration_days, num_feature_dimensions):
     max_window_duration_seconds = feature_duration_days * 24 * 3600
@@ -29,27 +31,25 @@ def run_training(base_feature_path, logdir, feature_duration_days, num_feature_d
     levels = 11
 
     input_file_pattern = base_feature_path + '/Training/shard-*-of-*.tfrecord'
-    num_parallel_readers = 8
-    num_training_epochs = None
-    #batch_size = 32
-    batch_size = 8
+    num_parallel_readers = 50
+    batch_size = 32
 
     if 1:
-
-      input_files = tf.matching_files(input_file_pattern)
-      filename_queue = tf.train.string_input_producer(input_files, shuffle=True,
-          num_epochs=num_training_epochs)
-
-      context, sequence = utility.single_feature_file_reader(filename_queue,
-          NUM_FEATURE_DIMENSIONS)
+      matching_files = tf.matching_files(input_file_pattern)
+      file_queue = tf.train.input_producer(matching_files, shuffle=True)
+      reader = utility.CroppingFeatureReader(file_queue, NUM_FEATURE_DIMENSIONS)
+      feature_queue = tf.RandomShuffleQueue(200, 50, [tf.float32, tf.int32])
 
       sess = tf.Session()
       coord = tf.train.Coordinator()
       threads = tf.train.start_queue_runners(sess=sess, coord=coord)
       sess.run(tf.initialize_all_variables())
 
-      for i in range(5000):
-        logging.info(sess.run(context))
+      for i in range(500):
+        reader.read(sess, feature_queue, max_window_duration_seconds,
+            window_max_points)
+        qs = sess.run(feature_queue.size())
+        logging.info("%d - %d", i, qs)
 
       return 0
 
@@ -107,12 +107,10 @@ def run():
   logging.getLogger().setLevel(logging.DEBUG)
   tf.logging.set_verbosity(tf.logging.DEBUG)
 
-  #feature_duration_days = 30
-  feature_duration_days = 5
+  feature_duration_days = 30
   with tf.Graph().as_default():
     run_training('gs://alex-dataflow-scratch/features-scratch/20160913T200731Z',
         'gs://alex-dataflow-scratch/model-train-scratch', feature_duration_days, 7)
 
 if __name__ == '__main__':
   run()
-  #test()

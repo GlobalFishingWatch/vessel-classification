@@ -1,8 +1,49 @@
+import logging
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
+def single_feature_file_reader(filename_queue, num_features):
+  """ Read and interpret data from a TFRecord file. """
+  reader = tf.TFRecordReader()
+  _, serialized_example = reader.read(filename_queue)
+
+  # The serialized example is converted back to actual values.
+  context_features, sequence_features = tf.parse_single_sequence_example(
+      serialized_example,
+      # Defaults are not specified since both keys are required.
+      context_features = {
+          'mmsi': tf.FixedLenFeature([], tf.int64),
+          'vessel_type_index': tf.FixedLenFeature([], tf.int64),
+          'vessel_type_name': tf.FixedLenFeature([], tf.string)
+      },
+      sequence_features = {
+          'movement_features': tf.FixedLenSequenceFeature(shape=(num_features,),
+              dtype=tf.float32)
+      })
+
+  return context_features, sequence_features
+
 def np_array_fixed_time_extract(input_series, max_time_delta, output_length):
+  """Extracts a fixed-time slice from a 2d numpy array, representing a time
+  series.
+
+  The input array must be 2d, representing a time series, with the first
+  column representing a timestamp (sorted ascending). Any values in the series
+  with a time greater than (first time + max_time_delta) are removed and the
+  prefix series repeated into the window to pad.
+
+  Args:
+    input_series: the input series. A 2d array first column representing an ascending time.
+
+    max_time_delta: the maximum value of a time point in the returned series.
+
+    output_length: the number of points in the output series. Input series
+        shorter than this will be repeated into the output series.
+
+  Returns:
+    An array of the same shape as the input, representing the fixed time slice.
+  """
   input_shape = input_series.shape
   input_length = input_shape[0]
   output_series = np.zeros((output_length, input_shape[1]))
@@ -20,6 +61,52 @@ def np_array_fixed_time_extract(input_series, max_time_delta, output_length):
       input_index = 0
 
   return output_series
+
+class CroppingFeatureReader(object):
+  def __init__(self, filename_queue, num_feature_dimensions):
+    self.reader = single_feature_file_reader(filename_queue,
+        num_feature_dimensions)
+
+  def read(self, session, output_feature_queue, max_time_delta, window_length):
+    context_features, sequence_features = session.run(self.reader)
+    movement_features = sequence_features['movement_features']
+    mmsi = tf.cast(context_features['mmsi'], tf.int32)
+    label = tf.cast(context_features['vessel_type_index'], tf.int32)
+    label_name = tf.cast(context_features['vessel_type_name'], tf.string)
+
+    logging.info("Reading %d with %s", session.run(mmsi),
+        session.run(label_name))
+
+    cropped = np_array_fixed_time_extract(movement_features, max_time_delta,
+        window_length)
+
+    logging.info(cropped.shape)
+
+    session.run(output_feature_queue.enqueue((cropped, label)))
+
+def feature_file_reader(input_file_pattern, num_parallel_readers,
+        window_length, num_features, batch_size):
+  """ Shuffles files and then samples from multiple files concurrently, shuffling as it goes. """
+
+  input_files = tf.matching_files(input_file_pattern)
+  filename_queue = tf.train.string_input_producer(input_files, shuffle=True,
+      num_epochs=None)
+  readers = [features_and_labels(filename_queue, num_features, window_length) for _ in range(num_parallel_readers)]
+  return readers
+
+def padding_crop(input_series, output_length):
+  shape = tf.shape(input_series)
+  input_length = tf.gather(shape, 0)
+  num_features = tf.gather(shape, 1)
+  crop_size = tf.minimum(input_length, output_length)
+  pad_size = output_length - crop_size
+  cropped = tf.random_crop(input_series, [crop_size, num_features])
+  zeros = tf.zeros([pad_size, num_features])
+  padded = tf.concat(0, [cropped, zeros])
+
+  #padded.set_shape([output_length, num_features])
+
+  return padded
 
 def fixed_time_extract(input_series, max_time_delta, output_length):
   """Extracts a fixed-time slice from a tensor.
@@ -64,69 +151,6 @@ def fixed_time_extract(input_series, max_time_delta, output_length):
 
   return result
 
-def random_fixed_time_extract(input_series, max_time_delta, output_length):
-  dimensions = tf.gather(tf.shape(input_series), 1)
-  length = tf.gather(tf.shape(input_series), 0)
-  max_crop_length = tf.minimum(output_length, length)
-  cropped = tf.random_crop(input_series, [max_crop_length, dimensions])
-
-  return fixed_time_extract(cropped, max_time_delta, output_length)
-
-def single_feature_file_reader(filename_queue, num_features):
-  """ Read and interpret data from a TFRecord file. """
-  reader = tf.TFRecordReader()
-  _, serialized_example = reader.read(filename_queue)
-
-  # The serialized example is converted back to actual values.
-  context_features, sequence_features = tf.parse_single_sequence_example(
-      serialized_example,
-      # Defaults are not specified since both keys are required.
-      context_features = {
-          'mmsi': tf.FixedLenFeature([], tf.int64),
-          'vessel_type_index': tf.FixedLenFeature([], tf.int64),
-          'vessel_type_name': tf.FixedLenFeature([], tf.string)
-      },
-      sequence_features = {
-          'movement_features': tf.FixedLenSequenceFeature(shape=(num_features,),
-              dtype=tf.float32)
-      })
-
-  return context_features, sequence_features
-
-def read_and_crop_fixed_window(filename_queue, num_features, max_time_delta, window_length):
-  """ Read from a TFRecord file, and extract a fixed-sized, fixed-time window. """
-
-  context_features, sequence_features = single_feature_file_reader(filename_queue, num_features)
-  
-  # Crop out a random fixed-time subwindow.
-  cropped_movement = random_fixed_time_extract(sequence_features['movement_features'],
-          max_time_delta, window_length)
-  cropped_movement.set_shape([window_length, num_features])
-  
-  # Take the movement features and expand them from 1d to 2d.
-  movement_features = tf.expand_dims(cropped_movement, 0)  
-
-  label = tf.cast(context_features['vessel_type_index'],
-    tf.int32)
-
-  return movement_features, label
-
-
-def feature_file_reader(input_file_pattern, make_reader, num_parallel_readers,
-        num_features, num_epochs, batch_size):
-  """ Shuffles files and then samples from multiple files concurrently, shuffling as it goes. """
-
-  input_files = tf.matching_files(input_file_pattern)
-  filename_queue = tf.train.string_input_producer(input_files, shuffle=True, num_epochs=num_epochs)
-  readers = [make_reader(filename_queue) for _ in range(num_parallel_readers)]
-
-  min_after_dequeue = batch_size * 3
-  capacity = min_after_dequeue * 2
-  #features, labels = tf.train.shuffle_batch_join(readers, batch_size, capacity=capacity,
-  #        min_after_dequeue=min_after_dequeue)
-  features, labels = tf.train.batch_join(readers, batch_size)
-
-  return features, labels
 
 
 def inception_layer(input, window_size, stride, depth, scope=None):
