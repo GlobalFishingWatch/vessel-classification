@@ -4,18 +4,27 @@ import utility
 
 
 class HelperFunctionsTesT(tf.test.TestCase):
-  def test_random_crop(self):
-    with self.test_session():
-      input_data = [[1., 5., 6.], [2., 4., 4.], [3., 7., 9.], [4., 9., 0.]]
+  def test_batch_queue_functionality(self):
+    with self.test_session() as sess:
+      foo = tf.RandomShuffleQueue(10, 0, [tf.float32, tf.int32], shapes=[[1, 2],
+        [1]])
+      batched = foo.dequeue_many(3)
+      sess.run(foo.enqueue([[[3., 2.]], [6]]))
+      sess.run(foo.enqueue([[[5., 3.]], [5]]))
+      sess.run(foo.enqueue([[[5., 4.]], [4]]))
+      sess.run(foo.enqueue([[[6., 5.]], [3]]))
+      sess.run(foo.enqueue([[[7., 6.]], [2]]))
+      sess.run(foo.enqueue([[[6., 5.]], [3]]))
 
-      self.assertAllEqual(utility.padding_crop(input_data, 5).eval(), [[1., 5., 6.],
-        [2., 4., 4.], [3., 7., 9.], [4., 9., 0.], [0., 0., 0.]])
+      #res = sess.run(batched)
+      #print(res)
+      first = sess.run(batched[0])
+      print(first)
+      second = sess.run(batched[1])
+      print(second)
+      res = sess.run(batched)
+      print(res)
 
-      self.assertAllEqual(utility.padding_crop(input_data, 4).eval(), [[1., 5., 6.],
-        [2., 4., 4.], [3., 7., 9.], [4., 9., 0.]])
-
-      smaller_cropped = tf.shape(utility.padding_crop(input_data, 3))
-      self.assertAllEqual(smaller_cropped.eval(), [3, 3])
 
 
 class InceptionLayerTest(tf.test.TestCase):
