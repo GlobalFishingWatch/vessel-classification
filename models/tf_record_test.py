@@ -29,13 +29,14 @@ def run_training(base_feature_path, logdir, feature_duration_days, num_feature_d
     levels = 11
 
     input_file_pattern = base_feature_path + '/Training/shard-*-of-*.tfrecord'
-    num_parallel_readers = 50
+    num_parallel_readers = 4
     batch_size = 32
 
     matching_files = tf.matching_files(input_file_pattern)
     filename_queue = tf.train.input_producer(matching_files, shuffle=True)
     capacity = batch_size * 4
     min_size_after_deque = batch_size * 2
+    
     unbatched = utility.cropping_feature_file_reader(filename_queue,
         NUM_FEATURE_DIMENSIONS, max_window_duration_seconds, window_max_points)
 
