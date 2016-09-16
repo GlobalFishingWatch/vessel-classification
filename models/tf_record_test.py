@@ -37,7 +37,8 @@ def run_training(base_feature_path, logdir, feature_duration_days, num_feature_d
     unbatched = utility.cropping_feature_file_reader(filename_queue,
         NUM_FEATURE_DIMENSIONS, max_window_duration_seconds, window_max_points)
 
-    features, labels = tf.train.shuffle_batch(unbatched, batch_size, 32, 16)
+    features, labels = tf.train.shuffle_batch(unbatched, batch_size, 32, 16,
+        shapes=[[1, window_max_points, NUM_FEATURE_DIMENSIONS], []])
 
     one_hot_labels = slim.one_hot_encoding(labels, NUM_CLASSES)
 

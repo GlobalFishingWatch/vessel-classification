@@ -77,7 +77,7 @@ def cropping_feature_file_reader(filename_queue, num_features, max_time_delta,
 
   cropped = tf.py_func(crop, [movement_features], [tf.float32])
 
-  return cropped, label
+  return [cropped], label
 
 class CroppingFeatureReader(object):
   def __init__(self, filename_queue, num_feature_dimensions):
