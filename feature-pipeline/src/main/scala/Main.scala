@@ -47,6 +47,9 @@ object Parameters {
 
   // Sourced from: https://github.com/GlobalFishingWatch
   val vesselClassificationPath = "feature-pipeline/src/data/combined_classification_list.csv"
+
+  val minValidTime = Instant.parse("2012-01-01T00:00:00Z")
+  lazy val maxValidTime = Instant.now()
 }
 
 object AdditionalUnits {
@@ -129,7 +132,12 @@ object Pipeline extends LazyLogging {
         (metadata, record)
       })
       .toSCollection
-      .filter { case (metadata, records) => !blacklistedMmsis.contains(metadata.mmsi) }
+      .filter { case (metadata, _) => !blacklistedMmsis.contains(metadata.mmsi) }
+      .filter { case (_, record) =>
+        RangeValidator
+          .inRange(record.timestamp, Instant.)
+        record.timestamp.inRange()
+      }
       .groupByKey
       .map { case (metadata, records) => (metadata, records.toSeq.sortBy(_.timestamp.getMillis)) }
   }
