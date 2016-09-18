@@ -25,4 +25,4 @@ may take some time to download all the required libraries.
   * Install the SDK: https://cloud.google.com/sdk/docs/.
   * Sign in: `gcloud auth application-default login`.
 * Cloud Dataflow
-   * Run jobs, specifying the zone, e.g. `--zone=europe-west1-c`.
+   * Run jobs, specifying the zone and max number of workers, e.g. `--zone=europe-west1-c  --maxNumWorkers=80`.

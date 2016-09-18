@@ -3,7 +3,8 @@ package org.skytruth.feature_pipeline
 import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
-import com.google.common.geometry.{S2LatLng}
+
+import com.google.common.geometry.{S2, S2LatLng}
 import com.google.protobuf.{ByteString, MessageLite}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
@@ -13,9 +14,11 @@ import com.google.cloud.dataflow.sdk.options.{DataflowPipelineOptions, PipelineO
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.io.{Write}
 import com.opencsv.CSVReader
-import java.io.FileReader
+import java.io.{File, FileReader, InputStream, OutputStream}
 import java.nio.charset.StandardCharsets
-import org.joda.time.{Instant, Duration}
+import org.apache.commons.math3.util.MathUtils
+import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
+import org.joda.time.format.ISODateTimeFormat
 import org.skytruth.dataflow.{TFRecordSink}
 import org.tensorflow.example.{
   Example,
@@ -28,8 +31,10 @@ import org.tensorflow.example.{
   FloatList,
   BytesList
 }
+
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConversions._
+import scala.math
 
 object Parameters {
   val minRequiredPositions = 1000
@@ -39,7 +44,8 @@ object Parameters {
   val stationaryPeriodMinDuration = Duration.standardHours(2 * 24)
 
   val inputMeasuresPath =
-    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/*/*"
+    //"gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/*/*"
+    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2015-*/*"
   val outputFeaturesPath =
     "gs://alex-dataflow-scratch/features-scratch"
   val gceProject = "world-fishing-827"
@@ -50,20 +56,24 @@ object Parameters {
 
   val minValidTime = Instant.parse("2012-01-01T00:00:00Z")
   lazy val maxValidTime = Instant.now()
+
+  val splits = Seq("Training", "Test", "Unclassified")
 }
 
 object AdditionalUnits {
   type knots = DefineUnit[_k ~: _n ~: _o ~: _t]
   type meters_per_second = meter / second
 
-  implicit val knots_to_mps = one[knots].contains(0.514444)[meters_per_second]
-
   type degrees = DefineUnit[_d ~: _e ~: _g]
+  type radians = DefineUnit[_r ~: _a ~: _d]
+
+  implicit val knots_to_mps = one[knots].contains(0.514444)[meters_per_second]
+  implicit val radians_to_degrees = one[degrees].contains(MathUtils.TWO_PI / 360.0)[radians]
 }
 
 import AdditionalUnits._
 
-case class LatLon(val lat: DoubleU[degrees], val lon: DoubleU[degrees]) {
+case class LatLon(lat: DoubleU[degrees], lon: DoubleU[degrees]) {
   def getDistance(other: LatLon): DoubleU[meter] = {
     val p1 = S2LatLng.fromDegrees(lat.value, lon.value)
     val p2 = S2LatLng.fromDegrees(other.lat.value, other.lon.value)
@@ -73,7 +83,7 @@ case class LatLon(val lat: DoubleU[degrees], val lon: DoubleU[degrees]) {
 }
 
 object VesselMetadata {
-  lazy val vesselTypeToIndexMap = Seq(
+  val vesselTypeToIndexMap = Seq(
     "Purse seine",
     "Longliner",
     "Trawler",
@@ -86,25 +96,43 @@ object VesselMetadata {
 }
 
 case class VesselMetadata(
-    val mmsi: Int,
-    val dataset: String = "Unclassified",
-    val vesselType: String = "Unknown"
+    mmsi: Int,
+    dataset: String = "Unclassified",
+    vesselType: String = "Unknown"
 ) {
-  def vesselTypeIndex() = VesselMetadata.vesselTypeToIndexMap.getOrElse(vesselType, 0)
+  def vesselTypeIndex = VesselMetadata.vesselTypeToIndexMap.getOrElse(vesselType, 0)
 }
 
+// TODO(alexwilson): For now build simple coder for this class. :-(
 case class VesselLocationRecord(
-    val timestamp: Instant,
-    val location: LatLon,
-    val distanceToShore: DoubleU[kilometer],
-    val distanceToPort: DoubleU[kilometer],
-    val speed: DoubleU[knots],
-    val course: DoubleU[degrees],
-    val heading: DoubleU[degrees]
+    timestamp: Instant,
+    location: LatLon,
+    distanceToShore: DoubleU[kilometer],
+    distanceToPort: DoubleU[kilometer],
+    speed: DoubleU[knots],
+    course: DoubleU[degrees],
+    heading: DoubleU[degrees]
 )
+
+case class RangeValidator(valid: Boolean) extends AnyVal {
+  def inRange[T <: Ordered[T]](value: T, min: T, max: T) =
+    RangeValidator(valid && (value >= min && value <= max))
+  def inRange(value: Instant, min: Instant, max: Instant) =
+    RangeValidator(valid && (value.getMillis >= min.getMillis && value.getMillis <= max.getMillis))
+  def inRange[T <: MUnit](value: DoubleU[T], min: DoubleU[T], max: DoubleU[T]) =
+    RangeValidator(valid && (value.value >= min.value && value.value <= max.value))
+}
+
+object RangeValidator {
+  def apply() = new RangeValidator(true)
+}
 
 object Pipeline extends LazyLogging {
   lazy val blacklistedMmsis = Set(0, 12345)
+
+  // Normalize from -180 to + 180
+  def angleNormalize(angle: DoubleU[degrees]) =
+    MathUtils.normalizeAngle(angle.convert[radians].value, 0.0).of[radians].convert[degrees]
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
   // by ascending timestamp.
@@ -121,25 +149,40 @@ object Pipeline extends LazyLogging {
         val mmsi = json.getLong("mmsi").toInt
         val metadata = s(vesselMetadataMap).getOrElse(mmsi, VesselMetadata(mmsi))
         val record =
+          // TODO(alexwilson): Double-check all these units are correct.
           VesselLocationRecord(Instant.parse(json.getString("timestamp")),
-                               LatLon(json.getDouble("lat").of[degrees],
-                                      json.getDouble("lon").of[degrees]),
+                               LatLon(angleNormalize(json.getDouble("lat").of[degrees]),
+                                      angleNormalize(json.getDouble("lon").of[degrees])),
                                json.getDouble("distance_to_shore").of[kilometer],
                                json.getDouble("distance_to_port").of[kilometer],
                                json.getDouble("speed").of[knots],
-                               json.getDouble("course").of[degrees],
-                               json.getDouble("heading").of[degrees])
+                               angleNormalize(json.getDouble("course").of[degrees]),
+                               angleNormalize(json.getDouble("heading").of[degrees]))
         (metadata, record)
       })
       .toSCollection
       .filter { case (metadata, _) => !blacklistedMmsis.contains(metadata.mmsi) }
-      .filter { case (_, record) =>
-        RangeValidator
-          .inRange(record.timestamp, Instant.)
-        record.timestamp.inRange()
+      .filter {
+        case (_, record) =>
+          RangeValidator()
+            .inRange(record.timestamp, Parameters.minValidTime, Parameters.maxValidTime)
+            .inRange(record.location.lat, -90.0.of[degrees], 90.0.of[degrees])
+            .inRange(record.location.lon, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.distanceToShore, 0.0.of[kilometer], 20000.0.of[kilometer])
+            .inRange(record.distanceToPort, 0.0.of[kilometer], 20000.0.of[kilometer])
+            .inRange(record.speed, 0.0.of[knots], 100.0.of[knots])
+            .inRange(record.course, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.heading, -180.0.of[degrees], 180.of[degrees])
+            .valid
       }
       .groupByKey
-      .map { case (metadata, records) => (metadata, records.toSeq.sortBy(_.timestamp.getMillis)) }
+      .map {
+        case (metadata, records) =>
+          (metadata, records
+              .groupBy(_.timestamp.getMillis).map(_._2.head)
+              .toIndexedSeq
+              .sortBy(_.timestamp.getMillis))
+      }
   }
 
   def thinPoints(records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
@@ -158,7 +201,11 @@ object Pipeline extends LazyLogging {
 
   def removeStationaryPeriods(
       records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
-    // Remove long stationary periods from the record.
+    // Remove long stationary periods from the record: anything over the threshold
+    // time will be reduced to just the start and end points of the period.
+    // TODO(alexwilson): Tim points out that leaves vessels sitting around for t - delta looking
+    // significantly different from those sitting around for t + delta. Consider his scheme of just
+    // cropping all excess time over the threshold instead.
     val withoutLongStationaryPeriods = mutable.ListBuffer.empty[VesselLocationRecord]
     val currentPeriod = mutable.Queue.empty[VesselLocationRecord]
     records.foreach { vr =>
@@ -170,12 +217,14 @@ object Pipeline extends LazyLogging {
           if (vr.timestamp.isAfter(
                 periodFirst.timestamp.plus(Parameters.stationaryPeriodMinDuration))) {
             withoutLongStationaryPeriods.append(periodFirst)
-            withoutLongStationaryPeriods.append(currentPeriod.last)
+            if (currentPeriod.last != periodFirst) {
+              withoutLongStationaryPeriods.append(currentPeriod.last)
+            }
           } else {
             withoutLongStationaryPeriods ++= currentPeriod
           }
 
-          currentPeriod.clear
+          currentPeriod.clear()
         }
       }
 
@@ -199,12 +248,8 @@ object Pipeline extends LazyLogging {
         val thinnedPoints = thinPoints(records)
         val withoutLongStationaryPeriods = removeStationaryPeriods(thinnedPoints)
 
-        (metadata, withoutLongStationaryPeriods.toSeq)
+        (metadata, withoutLongStationaryPeriods.toIndexedSeq)
     }
-  }
-
-  def angleNormalize(angle: DoubleU[degrees]) = {
-    angle
   }
 
   def buildSingleVesselFeatures(input: Seq[VesselLocationRecord]): Seq[Array[Double]] =
@@ -212,35 +257,68 @@ object Pipeline extends LazyLogging {
       .sliding(3)
       .map {
         case Seq(p0, p1, p2) =>
+          if (p0 == p1) {
+            logger.error(s"p0 and p1 are the same: $p0, $p1")
+          }
+          val ll0 = S2LatLng.fromDegrees(p0.location.lat.value, p0.location.lon.value)
+          val ll1 = S2LatLng.fromDegrees(p1.location.lat.value, p1.location.lon.value)
+          val ll2 = S2LatLng.fromDegrees(p2.location.lat.value, p2.location.lon.value)
           val timestampSeconds = p1.timestamp.getMillis / 1000
           val timestampDeltaSeconds = p1.timestamp.getMillis / 1000 - p0.timestamp.getMillis / 1000
           val distanceDeltaMeters = p1.location.getDistance(p0.location).value
           val speedMps = p1.speed.convert[meters_per_second].value
           val integratedSpeedMps = distanceDeltaMeters / timestampDeltaSeconds
           val cogDeltaDegrees = angleNormalize((p1.course - p0.course)).value
+          val integratedCogDeltaDegrees = S2
+            .turnAngle(ll0.normalized().toPoint(),
+                       ll1.normalized().toPoint(),
+                       ll2.normalized().toPoint())
+            .of[radians]
+            .convert[degrees]
+            .value
           val distanceToShoreKm = p1.distanceToShore.convert[kilometer].value
 
-          // TODO: Integrated cog, local tod, local month of year.
-          // TODO(alexwilson): #neighbours, distance to closest neighbour.
+          // Calculate time features. TODO(alexwilson): Add tests.
+          val longitudeTzOffsetSeconds = 60 * 60 * 12 * (p1.location.lon
+              .convert[degrees]
+              .value / 180.0)
+          val offsetTimezone = DateTimeZone.forOffsetMillis(longitudeTzOffsetSeconds.toInt * 1000)
+          val localTime = new LocalDateTime(timestampSeconds, offsetTimezone)
+          val localTodFeature = ((localTime
+              .getHourOfDay() * (localTime.getMinuteOfHour() / 60.0)) - 12.0) / 12.0
+          val localMonthOfYearFeature = (localTime.getMonthOfYear() - 6.0) / 6.0
+
+          // TODO(alexwilson): #neighbours, distance to closest neighbour, is_dark.
 
           // We include the absolute time not as a feature, but to make it easy
           // to binary-search for the start and end of time ranges when running
           // under TensorFlow.
-          Array(timestampSeconds,
-                timestampDeltaSeconds,
-                distanceDeltaMeters,
-                speedMps,
-                integratedSpeedMps,
-                cogDeltaDegrees,
-                distanceToShoreKm)
-      }
-      .toSeq
+          val feature = Array[Double](timestampSeconds,
+                                      math.log(1.0 + timestampDeltaSeconds),
+                                      math.log(1.0 + distanceDeltaMeters),
+                                      math.log(1.0 + speedMps),
+                                      math.log(1.0 + integratedSpeedMps),
+                                      cogDeltaDegrees / 180.0,
+                                      localTodFeature,
+                                      localMonthOfYearFeature,
+                                      integratedCogDeltaDegrees / 180.0,
+                                      math.log(1.0 + distanceToShoreKm))
 
-  def buildTFExampleProto(metadata: VesselMetadata, data: Seq[Array[Double]]) = {
+          feature.foreach { v =>
+            if (v.isNaN || v.isInfinite) {
+              logger.error(s"Malformed feature: ${feature.toList}, $p0, $p1, $p2")
+            }
+          }
+
+          feature
+      }
+      .toIndexedSeq
+
+  def buildTFExampleProto(metadata: VesselMetadata, data: Seq[Array[Double]]): SequenceExample = {
     val example = SequenceExample.newBuilder()
     val contextBuilder = example.getContextBuilder()
 
-    val vessel_type = metadata.vesselTypeIndex()
+    val vessel_type = metadata.vesselTypeIndex
 
     // Add the mmsi and vessel type to the builder
     contextBuilder.putFeature(
@@ -274,15 +352,17 @@ object Pipeline extends LazyLogging {
     example.build()
   }
 
-  def buildVesselFeatures(input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])]) =
-    input.map {
+  def buildVesselFeatures(input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
+    : SCollection[(VesselMetadata, SequenceExample)] =
+    input.filter { case (metadata, records) => records.size() >= 3 }.map {
       case (metadata, records) =>
         val features = buildSingleVesselFeatures(records)
         val featuresAsTFExample = buildTFExampleProto(metadata, features)
-        featuresAsTFExample.asInstanceOf[MessageLite]
+        (metadata, featuresAsTFExample)
     }
 
   def main(argArray: Array[String]) {
+    val now = new DateTime(DateTimeZone.UTC)
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
     options.setRunner(classOf[DataflowPipelineRunner])
     options.setProject(Parameters.gceProject)
@@ -315,10 +395,20 @@ object Pipeline extends LazyLogging {
     val filtered = filterVesselRecords(locationRecords, Parameters.minRequiredPositions)
     val features = buildVesselFeatures(filtered)
 
-    // TODO(alexwilson): Filter out the features into Train, Test, Unclassified.
-    features.internal.apply(
-      "WriteTFRecords",
-      Write.to(new TFRecordSink(Parameters.outputFeaturesPath, "tfrecord", "shard")))
+    Parameters.splits.foreach { split =>
+      val outputPath =
+        Parameters.outputFeaturesPath + "/" +
+          ISODateTimeFormat.basicDateTimeNoMillis().print(now) + "/" +
+          split
+
+      val filteredFeatures = features.filter { case (md, _) => md.dataset == split }.map {
+        case (_, example) => example.asInstanceOf[MessageLite]
+      }
+
+      filteredFeatures.internal.apply(
+        "WriteTFRecords",
+        Write.to(new TFRecordSink(outputPath + "/", "tfrecord", "shard-SSSSS-of-NNNNN")))
+    }
 
     sc.close()
   }
