@@ -82,9 +82,8 @@ def extract_features(input, max_time_delta, window_size):
   # Drop the first (timestamp) column
   features = features[:,1:]
 
-  # Take the log of most of the remaining features
-  for i in [0,1,2,3,5]:
-    features[:,i] = np.log(features[:,i])
+  if not np.isfinite(features).all():
+    logging.fatal('Bad features: %s', features)
 
   return features
 
@@ -94,8 +93,6 @@ def cropping_feature_file_reader(filename_queue, num_features, max_time_delta,
 
   movement_features = sequence_features['movement_features']
   label = tf.cast(context_features['vessel_type_index'], tf.int32)
-
-  
 
   features = tf.py_func(lambda input: extract_features(input, max_time_delta, window_size),
       [movement_features], [tf.float32])
@@ -108,31 +105,34 @@ def inception_layer(input, window_size, stride, depth, scope=None):
     with slim.arg_scope([slim.conv2d],
                         padding = 'SAME',
                         activation_fn=tf.nn.tanh,
-                        weights_initializer=tf.truncated_normal_initializer(0.0, 0.01)):
-      stage_1_oned = slim.conv2d(input, depth, [1, 1])
-      stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
-      stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
+                        weights_initializer=tf.truncated_normal_initializer(0.0, 0.3)):
+      #stage_1_oned = slim.conv2d(input, depth, [1, 1])
+      #stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
+      #stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
 
       stage_2_oned = slim.conv2d(input, depth, [1, 1])
       stage_2_conv = slim.conv2d(stage_2_oned, depth, [1, window_size])
       stage_2_max_pool_reduce = slim.max_pool2d(stage_2_conv, [1, window_size], stride=[1, stride],
               padding = 'SAME')
 
-      concat = tf.concat(3, [stage_1_conv_reduce, stage_2_max_pool_reduce])
+      #concat = tf.concat(3, [stage_1_conv_reduce, stage_2_max_pool_reduce])
 
-      return concat
+      #return concat
+      return stage_2_max_pool_reduce
 
 def inception_model(input, window_size, stride, depth, levels, num_classes):
   with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu):
     net = slim.dropout(input, 0.5)
-    net = slim.repeat(net, levels, inception_layer, window_size, stride, depth)
+    for i in range(levels):
+      net = inception_layer(net, window_size, stride, depth, "inception_%d" % i)
+    #net = slim.repeat(net, levels, inception_layer, window_size, stride, depth)
     net = slim.flatten(net)
     net = slim.fully_connected(net, 200)
     net = slim.dropout(net, 0.5)
     net = slim.fully_connected(net, 100)
     net = slim.dropout(net, 0.5)
 
-    net = slim.fully_connected(net, num_classes, activation_fn=None) 
+    net = slim.fully_connected(net, num_classes) 
 
     return net
 
