@@ -56,8 +56,10 @@ def run_training(base_feature_path, logdir, feature_duration_days):
     predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
     loss = slim.losses.softmax_cross_entropy(logits, one_hot_labels)
-
     tf.scalar_summary('Total loss', loss)
+
+    accuracy = slim.metrics.accuracy(labels, predictions)
+    tf.scalar_summary('Accuracy', accuracy)
 
     optimizer = tf.train.AdamOptimizer(1e-5)
     train_op = slim.learning.create_train_op(loss, optimizer,
@@ -73,8 +75,8 @@ def run_training(base_feature_path, logdir, feature_duration_days):
       train_op,
       logdir,
       number_of_steps=50000,
-      save_summaries_secs=60,
-      save_interval_secs=300)
+      save_summaries_secs=30,
+      save_interval_secs=60)
 
 
 def run():
