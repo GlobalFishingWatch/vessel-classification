@@ -50,9 +50,14 @@ def run_training(base_feature_path, logdir, feature_duration_days):
 
     one_hot_labels = slim.one_hot_encoding(labels, NUM_CLASSES)
 
+    feature_pad_size = feature_depth - NUM_FEATURE_DIMENSIONS
+    assert(feature_pad_size >= 0)
+    zero_padding = tf.zeros([batch_size, 1, window_size, feature_pad_size])
+    padded_features = tf.concat(3, [features, zero_padding])
 
     logits = utility.inception_model(features, window_size, stride,
             feature_depth, levels, NUM_CLASSES)
+
     predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
     loss = slim.losses.softmax_cross_entropy(logits, one_hot_labels)
@@ -76,6 +81,13 @@ def run_training(base_feature_path, logdir, feature_duration_days):
       save_summaries_secs=60,
       save_interval_secs=300)
 
+
+# Parse a cluster spec json with tf.train.ClusterSpec from
+#   config = json.loads(os.environ.get('TF_CONFIG', '{}')), see
+#   https://cloud.google.com/ml/docs/distributed-training-environ-var
+#
+# Ps, Workers, master. Latter to run eval.
+# How do we get the server into slim for train/eval?
 
 def run():
   logging.getLogger().setLevel(logging.DEBUG)

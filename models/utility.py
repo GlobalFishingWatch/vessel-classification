@@ -120,11 +120,18 @@ def inception_layer(input, window_size, stride, depth, scope=None):
       #return concat
       return stage_2_max_pool_reduce
 
+def inception_with_bypass(input, window_size, stride, depth, scope=None):
+  with tf.name_scope(scope):
+    inception = inception_layer(input, window_size, stride, depth, scope)
+    bypass = slim.ave_pool2d(input, [1, window_size], stride=[1, stride], padding='SAME')
+
+    return inception + bypass
+
 def inception_model(input, window_size, stride, depth, levels, num_classes):
   with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu):
     net = slim.dropout(input, 0.5)
     for i in range(levels):
-      net = inception_layer(net, window_size, stride, depth, "inception_%d" % i)
+      net = inception_with_bypass(net, window_size, stride, depth, "inception_%d" % i)
     #net = slim.repeat(net, levels, inception_layer, window_size, stride, depth)
     net = slim.flatten(net)
     net = slim.fully_connected(net, 200)
