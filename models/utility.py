@@ -123,7 +123,7 @@ def inception_layer(input, window_size, stride, depth, scope=None):
 def inception_with_bypass(input, window_size, stride, depth, scope=None):
   with tf.name_scope(scope):
     inception = inception_layer(input, window_size, stride, depth, scope)
-    bypass = slim.ave_pool2d(input, [1, window_size], stride=[1, stride], padding='SAME')
+    bypass = slim.avg_pool2d(input, [1, window_size], stride=[1, stride], padding='SAME')
 
     return inception + bypass
 
