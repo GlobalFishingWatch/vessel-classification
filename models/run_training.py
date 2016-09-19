@@ -27,7 +27,7 @@ class Trainer(object):
     self.feature_depth = 20
     self.levels = 12
     self.batch_size = 32
-    self.num_parallel_readers = 8
+    self.num_parallel_readers = 12
 
   def data_reader(self, input_file_pattern):
     matching_files_i = tf.matching_files(input_file_pattern)
@@ -46,7 +46,7 @@ class Trainer(object):
         min_size_after_deque,
         shapes=[[1, self.window_max_points, self.num_feature_dimensions], []])
 
-    feature_pad_size = feature_depth - self.num_feature_dimensions
+    feature_pad_size = self.feature_depth - self.num_feature_dimensions
     assert(feature_pad_size >= 0)
     zero_padding = tf.zeros([self.batch_size, 1, self.window_max_points, feature_pad_size])
     features = tf.concat(3, [raw_features, zero_padding])
