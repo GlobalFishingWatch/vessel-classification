@@ -127,17 +127,19 @@ def inception_with_bypass(input, window_size, stride, depth, scope=None):
 
     return inception + bypass
 
-def inception_model(input, window_size, stride, depth, levels, num_classes):
+def inception_model(input, window_size, stride, depth, levels, num_classes, is_eval):
   with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu):
-    net = slim.dropout(input, 0.5)
+    keep_prob = 1.0 if is_eval else 0.5
+
+    net = slim.dropout(input, keep_prob)
     for i in range(levels):
       net = inception_with_bypass(net, window_size, stride, depth, "inception_%d" % i)
     #net = slim.repeat(net, levels, inception_layer, window_size, stride, depth)
     net = slim.flatten(net)
     net = slim.fully_connected(net, 200)
-    net = slim.dropout(net, 0.5)
+    net = slim.dropout(net, keep_prob)
     net = slim.fully_connected(net, 100)
-    net = slim.dropout(net, 0.5)
+    net = slim.dropout(net, keep_prob)
 
     net = slim.fully_connected(net, num_classes) 
 
