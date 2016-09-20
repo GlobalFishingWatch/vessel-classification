@@ -117,13 +117,13 @@ case class VesselLocationRecord(
 
 case class RangeValidator(valid: Boolean) extends AnyVal {
   def inRange[T <: Ordered[T]](value: T, min: T, max: T) =
-    RangeValidator(valid && (value >= min && value <= max))
+    RangeValidator(valid && (value >= min && value < max))
   // TODO(alexwilson): Both of these could be removed if Instant and MUnit can be
   // made to be Ordered, with appropriate use of implicits.
   def inRange(value: Instant, min: Instant, max: Instant) =
-    RangeValidator(valid && (value.getMillis >= min.getMillis && value.getMillis <= max.getMillis))
+    RangeValidator(valid && (value.getMillis >= min.getMillis && value.getMillis < max.getMillis))
   def inRange[T <: MUnit](value: DoubleU[T], min: DoubleU[T], max: DoubleU[T]) =
-    RangeValidator(valid && (value.value >= min.value && value.value <= max.value))
+    RangeValidator(valid && (value.value >= min.value && value.value < max.value))
 }
 
 object RangeValidator {
