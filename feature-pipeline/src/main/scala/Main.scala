@@ -9,12 +9,13 @@ import com.google.protobuf.{ByteString, MessageLite}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import com.spotify.scio.bigquery._
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.{LazyLogging, Logger}
 import com.google.cloud.dataflow.sdk.options.{DataflowPipelineOptions, PipelineOptionsFactory}
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.io.{Write}
 import com.opencsv.CSVReader
 import java.io.{File, FileReader, InputStream, OutputStream}
+import java.lang.{RuntimeException}
 import java.nio.charset.StandardCharsets
 import org.apache.commons.math3.util.MathUtils
 import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
@@ -34,6 +35,7 @@ import org.tensorflow.example.{
 
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConversions._
+import scala.math
 
 object Parameters {
   val minRequiredPositions = 1000
@@ -52,6 +54,9 @@ object Parameters {
 
   // Sourced from: https://github.com/GlobalFishingWatch
   val vesselClassificationPath = "feature-pipeline/src/data/combined_classification_list.csv"
+
+  val minValidTime = Instant.parse("2012-01-01T00:00:00Z")
+  lazy val maxValidTime = Instant.now()
 
   val splits = Seq("Training", "Test", "Unclassified")
 }
@@ -110,8 +115,34 @@ case class VesselLocationRecord(
     heading: DoubleU[degrees]
 )
 
+case class RangeValidator(valid: Boolean) extends AnyVal {
+  def inRange[T <: Ordered[T]](value: T, min: T, max: T) =
+    RangeValidator(valid && (value >= min && value < max))
+  // TODO(alexwilson): Both of these could be removed if Instant and MUnit can be
+  // made to be Ordered, with appropriate use of implicits.
+  def inRange(value: Instant, min: Instant, max: Instant) =
+    RangeValidator(valid && (value.getMillis >= min.getMillis && value.getMillis < max.getMillis))
+  def inRange[T <: MUnit](value: DoubleU[T], min: DoubleU[T], max: DoubleU[T]) =
+    RangeValidator(valid && (value.value >= min.value && value.value < max.value))
+}
+
+object RangeValidator {
+  def apply() = new RangeValidator(true)
+}
+
 object Pipeline extends LazyLogging {
+  implicit class RichLogger(val logger: Logger) {
+    def fatal(message: String) = {
+      logger.error(message)
+      throw new RuntimeException(s"Fatal error: $message")
+    }
+  }
+
   lazy val blacklistedMmsis = Set(0, 12345)
+
+  // Normalize from -180 to + 180
+  def angleNormalize(angle: DoubleU[degrees]) =
+    MathUtils.normalizeAngle(angle.convert[radians].value, 0.0).of[radians].convert[degrees]
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
   // by ascending timestamp.
@@ -130,20 +161,37 @@ object Pipeline extends LazyLogging {
         val record =
           // TODO(alexwilson): Double-check all these units are correct.
           VesselLocationRecord(Instant.parse(json.getString("timestamp")),
-                               LatLon(json.getDouble("lat").of[degrees],
-                                      json.getDouble("lon").of[degrees]),
+                               LatLon(angleNormalize(json.getDouble("lat").of[degrees]),
+                                      angleNormalize(json.getDouble("lon").of[degrees])),
                                json.getDouble("distance_to_shore").of[kilometer],
                                json.getDouble("distance_to_port").of[kilometer],
                                json.getDouble("speed").of[knots],
-                               json.getDouble("course").of[degrees],
-                               json.getDouble("heading").of[degrees])
+                               angleNormalize(json.getDouble("course").of[degrees]),
+                               angleNormalize(json.getDouble("heading").of[degrees]))
         (metadata, record)
       })
       .toSCollection
-      .filter { case (metadata, record) => !blacklistedMmsis.contains(metadata.mmsi) }
+      .filter { case (metadata, _) => !blacklistedMmsis.contains(metadata.mmsi) }
+      .filter {
+        case (_, record) =>
+          RangeValidator()
+            .inRange(record.timestamp, Parameters.minValidTime, Parameters.maxValidTime)
+            .inRange(record.location.lat, -90.0.of[degrees], 90.0.of[degrees])
+            .inRange(record.location.lon, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.distanceToShore, 0.0.of[kilometer], 20000.0.of[kilometer])
+            .inRange(record.distanceToPort, 0.0.of[kilometer], 20000.0.of[kilometer])
+            .inRange(record.speed, 0.0.of[knots], 100.0.of[knots])
+            .inRange(record.course, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.heading, -180.0.of[degrees], 180.of[degrees])
+            .valid
+      }
       .groupByKey
       .map {
-        case (metadata, records) => (metadata, records.toIndexedSeq.sortBy(_.timestamp.getMillis))
+        case (metadata, records) =>
+          (metadata,
+           records.toIndexedSeq
+           // On occasion the same message seems to appear twice in the record. Remove.
+           .distinct.sortBy(_.timestamp.getMillis))
       }
   }
 
@@ -179,7 +227,9 @@ object Pipeline extends LazyLogging {
           if (vr.timestamp.isAfter(
                 periodFirst.timestamp.plus(Parameters.stationaryPeriodMinDuration))) {
             withoutLongStationaryPeriods.append(periodFirst)
-            withoutLongStationaryPeriods.append(currentPeriod.last)
+            if (currentPeriod.last != periodFirst) {
+              withoutLongStationaryPeriods.append(currentPeriod.last)
+            }
           } else {
             withoutLongStationaryPeriods ++= currentPeriod
           }
@@ -212,18 +262,14 @@ object Pipeline extends LazyLogging {
     }
   }
 
-  // TODO(alexwilson): Implement
-  def angleNormalize(angle: DoubleU[degrees]) =
-    MathUtils
-      .normalizeAngle(angle.convert[radians].value, MathUtils.TWO_PI / 2.0)
-      .of[radians]
-      .convert[degrees]
-
   def buildSingleVesselFeatures(input: Seq[VesselLocationRecord]): Seq[Array[Double]] =
     input
       .sliding(3)
       .map {
         case Seq(p0, p1, p2) =>
+          if (p0 == p1) {
+            logger.fatal(s"p0 and p1 are the same: $p0, $p1")
+          }
           val ll0 = S2LatLng.fromDegrees(p0.location.lat.value, p0.location.lon.value)
           val ll1 = S2LatLng.fromDegrees(p1.location.lat.value, p1.location.lon.value)
           val ll2 = S2LatLng.fromDegrees(p2.location.lat.value, p2.location.lon.value)
@@ -257,16 +303,24 @@ object Pipeline extends LazyLogging {
           // We include the absolute time not as a feature, but to make it easy
           // to binary-search for the start and end of time ranges when running
           // under TensorFlow.
-          Array[Double](timestampSeconds,
-                        timestampDeltaSeconds,
-                        distanceDeltaMeters,
-                        speedMps,
-                        integratedSpeedMps,
-                        cogDeltaDegrees,
-                        localTodFeature,
-                        localMonthOfYearFeature,
-                        integratedCogDeltaDegrees,
-                        distanceToShoreKm)
+          val feature = Array[Double](timestampSeconds,
+                                      math.log(1.0 + timestampDeltaSeconds),
+                                      math.log(1.0 + distanceDeltaMeters),
+                                      math.log(1.0 + speedMps),
+                                      math.log(1.0 + integratedSpeedMps),
+                                      cogDeltaDegrees / 180.0,
+                                      localTodFeature,
+                                      localMonthOfYearFeature,
+                                      integratedCogDeltaDegrees / 180.0,
+                                      math.log(1.0 + distanceToShoreKm))
+
+          feature.foreach { v =>
+            if (v.isNaN || v.isInfinite) {
+              logger.fatal(s"Malformed feature: ${feature.toList}, $p0, $p1, $p2")
+            }
+          }
+
+          feature
       }
       .toIndexedSeq
 
