@@ -146,11 +146,6 @@ def run():
   feature_duration_days = 60
   trainer = Trainer(base_feature_path, train_scratch_path, feature_duration_days)
   
-  # We run a separate training coordinator on each worker.
-  # TODO(alexwilson): This can't be the best way to pass the local master
-  #   address in? Surely we must be able to pull it out of 'server'?
-  local_server = 'grpc://' + cluster_spec[task_type][task_index]
-
   with tf.Graph().as_default():
     if task_type == 'ps':
       server.join()
@@ -159,9 +154,9 @@ def run():
           worker_device="/job:worker/task:%d" % task_index, cluster=cluster_spec)):
         if task_type == 'worker':
           is_chief = task_index == 0
-          trainer.run_training(local_server, is_chief)
+          trainer.run_training(server.target, is_chief)
         elif task_type == 'master':
-          trainer.run_evaluation(local_server)
+          trainer.run_evaluation(server.target)
         else:
           logging.error('Unexpected task type: %s', task_type)
           sys.exit(-1)
