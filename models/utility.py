@@ -56,22 +56,12 @@ def np_array_fixed_time_extract(input_series, max_time_delta, output_length):
   Returns:
     An array of the same shape as the input, representing the fixed time slice.
   """
-  input_shape = input_series.shape
-  input_length = input_shape[0]
-  output_series = np.zeros((output_length, input_shape[1]), dtype=np.float32)
-  input_index = 0
   max_time = input_series[0][0] + max_time_delta
-  # TODO(alexwilson): I'm sure there's a more idiomatic numpy way to do this.
-  for output_index in range(output_length):
-    ins = input_series[input_index]
-    if ins[0] > max_time:
-      input_index = 0
-      ins = input_series[input_index]
-    output_series[output_index] = ins
-    if input_index < (input_length-1):
-      input_index += 1
-    else:
-      input_index = 0
+  last_index = np.searchsorted(input_series[:, 0], max_time, side='right')
+  input_series = input_series[:last_index]
+  input_length = len(input_series)
+  reps = int(np.ceil(output_length / float(input_length)))
+  output_series = np.concatenate([input_series] * reps, axis=0)[:output_length]
 
   return output_series
 
