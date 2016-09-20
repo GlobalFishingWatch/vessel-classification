@@ -53,8 +53,7 @@ lazy val featurePipeline =
     .settings(commonSettings: _*)
     .settings(
       Seq(
-        libraryDependencies ++= Seq(
-          "com.opencsv" % "opencsv" % "3.7")
+        libraryDependencies ++= Seq("com.opencsv" % "opencsv" % "3.7")
       ))
     .dependsOn(tfExampleProtos)
 
