@@ -106,19 +106,18 @@ def inception_layer(input, window_size, stride, depth, scope=None):
                         padding = 'SAME',
                         activation_fn=tf.nn.tanh,
                         weights_initializer=tf.truncated_normal_initializer(0.0, 0.3)):
-      #stage_1_oned = slim.conv2d(input, depth, [1, 1])
-      #stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
-      #stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
+      stage_1_oned = slim.conv2d(input, depth, [1, 1])
+      stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
+      stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
 
       stage_2_oned = slim.conv2d(input, depth, [1, 1])
       stage_2_conv = slim.conv2d(stage_2_oned, depth, [1, window_size])
       stage_2_max_pool_reduce = slim.max_pool2d(stage_2_conv, [1, window_size], stride=[1, stride],
               padding = 'SAME')
 
-      #concat = tf.concat(3, [stage_1_conv_reduce, stage_2_max_pool_reduce])
+      concat = tf.concat(3, [stage_1_conv_reduce, stage_2_max_pool_reduce])
 
-      #return concat
-      return stage_2_max_pool_reduce
+      return slim.conv2d(concat, depth, [1, 1])
 
 def inception_with_bypass(input, window_size, stride, depth, scope=None):
   with tf.name_scope(scope):

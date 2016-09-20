@@ -1,10 +1,11 @@
 import os
 import json
-
+import math
 import utility
 import logging
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
+import tensorflow.contrib.metrics as metrics
 from tensorflow.python.client import timeline
 
 """ TODO(alexwilson):
@@ -66,10 +67,10 @@ class Trainer(object):
     predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
     loss = slim.losses.softmax_cross_entropy(logits, one_hot_labels)
-    tf.scalar_summary('Total loss', loss)
+    tf.scalar_summary('Training loss', loss)
 
     accuracy = slim.metrics.accuracy(labels, predictions)
-    tf.scalar_summary('Accuracy', accuracy)
+    tf.scalar_summary('Training accuracy', accuracy)
 
     optimizer = tf.train.AdamOptimizer(1e-4)
     train_op = slim.learning.create_train_op(loss, optimizer,
@@ -86,7 +87,7 @@ class Trainer(object):
       save_summaries_secs=30,
       save_interval_secs=60)
 
-  def run_evaluation(self):
+  def run_evaluation(self, master):
     input_file_pattern = self.base_feature_path + '/Test/shard-*-of-*.tfrecord'
 
     features, labels, one_hot_labels = self.data_reader(input_file_pattern)
@@ -96,35 +97,38 @@ class Trainer(object):
 
     predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
-    names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
-        'accuracy': slim.metrics.accuracy(predictions, labels),
+    names_to_values, names_to_updates = metrics.aggregate_metric_map({
+        'Test accuracy': metrics.streaming_accuracy(predictions, labels),
+        'Test precision': metrics.streaming_precision(predictions, labels),
     })
 
     # Create the summary ops such that they also print out to std output:
     summary_ops = []
-    for metric_name, metric_value in metrics_to_values.iteritems():
+    for metric_name, metric_value in names_to_values.iteritems():
       op = tf.scalar_summary(metric_name, metric_value)
       op = tf.Print(op, [metric_value], metric_name)
       summary_ops.append(op)
-
-    num_examples = 500
+    
+    num_examples = 256
     num_evals = math.ceil(num_examples / float(self.batch_size))
 
     # Setup the global step.
     slim.get_or_create_global_step()
 
     slim.evaluation.evaluation_loop(
-        'local',
+        master,
         self.train_scratch_path,
         self.train_scratch_path,
         num_evals=num_evals,
         eval_op=names_to_updates.values(),
         summary_op=tf.merge_summary(summary_ops),
-        eval_interval_secs=eval_interval_secs)
+        eval_interval_secs=120)
 
 def run():
   logging.getLogger().setLevel(logging.DEBUG)
   tf.logging.set_verbosity(tf.logging.DEBUG)
+
+  logging.info("Running with Tensorflow version: %s", tf.__version__)
 
   config = json.loads(os.environ.get('TF_CONFIG', '{}'))
   cluster_spec = config['cluster']
@@ -141,12 +145,11 @@ def run():
   train_scratch_path = 'gs://alex-dataflow-scratch/model-train-scratch-eval'
   feature_duration_days = 60
   trainer = Trainer(base_feature_path, train_scratch_path, feature_duration_days)
-
   
   # We run a separate training coordinator on each worker.
   # TODO(alexwilson): This can't be the best way to pass the local master
   #   address in? Surely we must be able to pull it out of 'server'?
-  master = 'grpc://' + cluster_spec['worker'][task_index]
+  local_server = 'grpc://' + cluster_spec[task_type][task_index]
 
   with tf.Graph().as_default():
     if task_type == 'ps':
@@ -156,10 +159,9 @@ def run():
           worker_device="/job:worker/task:%d" % task_index, cluster=cluster_spec)):
         if task_type == 'worker':
           is_chief = task_index == 0
-          trainer.run_training(master, is_chief)
+          trainer.run_training(local_server, is_chief)
         elif task_type == 'master':
-          server.join()
-          trainer.run_evaluation()
+          trainer.run_evaluation(local_server)
         else:
           logging.error('Unexpected task type: %s', task_type)
           sys.exit(-1)
