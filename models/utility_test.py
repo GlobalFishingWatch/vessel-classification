@@ -2,16 +2,6 @@ import tensorflow as tf
 import numpy as np
 import utility
 
-
-class HelperFunctionsTesT(tf.test.TestCase):
-  def test_extract_features(self):
-    input_data = np.array([[1,2,3,4,5,6,7], [8,9,10,11,12,13,14]], dtype=np.float32)
-    expected_data = np.array([[np.log(2),np.log(3),np.log(4),np.log(5),6,np.log(7)],
-      [np.log(9),np.log(10),np.log(11),np.log(12),13,np.log(14)]], dtype=np.float32)
-
-    res = utility.extract_features(input_data, 100, 2)
-    self.assertAllEqual(res, expected_data)
-
 class InceptionLayerTest(tf.test.TestCase):
   def test_layer_shape(self):
     with self.test_session():
@@ -29,7 +19,7 @@ class InceptionLayerTest(tf.test.TestCase):
 
       tf.initialize_all_variables().run()
 
-      self.assertAllEqual(res_shape.eval(), [1, 1, 3, 10])
+      self.assertAllEqual(res_shape.eval(), [1, 1, 3, 5])
 
 class PythonFixedTimeExtractTest(tf.test.TestCase):
   def test_cropped_extract(self):
@@ -40,6 +30,8 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
         3.], [6., 8.], [1., 5.], [2., 4.]])
 
       res = utility.np_array_fixed_time_extract(input_data, 5, 8)
+
+      print res
       
       self.assertAllEqual(res, expected_result)
 

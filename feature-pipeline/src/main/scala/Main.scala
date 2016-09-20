@@ -9,12 +9,13 @@ import com.google.protobuf.{ByteString, MessageLite}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import com.spotify.scio.bigquery._
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.{LazyLogging, Logger}
 import com.google.cloud.dataflow.sdk.options.{DataflowPipelineOptions, PipelineOptionsFactory}
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.io.{Write}
 import com.opencsv.CSVReader
 import java.io.{File, FileReader, InputStream, OutputStream}
+import java.lang.{RuntimeException}
 import java.nio.charset.StandardCharsets
 import org.apache.commons.math3.util.MathUtils
 import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
@@ -116,11 +117,13 @@ case class VesselLocationRecord(
 
 case class RangeValidator(valid: Boolean) extends AnyVal {
   def inRange[T <: Ordered[T]](value: T, min: T, max: T) =
-    RangeValidator(valid && (value >= min && value <= max))
+    RangeValidator(valid && (value >= min && value < max))
+  // TODO(alexwilson): Both of these could be removed if Instant and MUnit can be
+  // made to be Ordered, with appropriate use of implicits.
   def inRange(value: Instant, min: Instant, max: Instant) =
-    RangeValidator(valid && (value.getMillis >= min.getMillis && value.getMillis <= max.getMillis))
+    RangeValidator(valid && (value.getMillis >= min.getMillis && value.getMillis < max.getMillis))
   def inRange[T <: MUnit](value: DoubleU[T], min: DoubleU[T], max: DoubleU[T]) =
-    RangeValidator(valid && (value.value >= min.value && value.value <= max.value))
+    RangeValidator(valid && (value.value >= min.value && value.value < max.value))
 }
 
 object RangeValidator {
@@ -128,6 +131,13 @@ object RangeValidator {
 }
 
 object Pipeline extends LazyLogging {
+  implicit class RichLogger(val logger: Logger) {
+    def fatal(message: String) = {
+      logger.error(message)
+      throw new RuntimeException(s"Fatal error: $message")
+    }
+  }
+
   lazy val blacklistedMmsis = Set(0, 12345)
 
   // Normalize from -180 to + 180
@@ -178,10 +188,10 @@ object Pipeline extends LazyLogging {
       .groupByKey
       .map {
         case (metadata, records) =>
-          (metadata, records
-              .groupBy(_.timestamp.getMillis).map(_._2.head)
-              .toIndexedSeq
-              .sortBy(_.timestamp.getMillis))
+          (metadata,
+           records.toIndexedSeq
+           // On occasion the same message seems to appear twice in the record. Remove.
+           .distinct.sortBy(_.timestamp.getMillis))
       }
   }
 
@@ -258,7 +268,7 @@ object Pipeline extends LazyLogging {
       .map {
         case Seq(p0, p1, p2) =>
           if (p0 == p1) {
-            logger.error(s"p0 and p1 are the same: $p0, $p1")
+            logger.fatal(s"p0 and p1 are the same: $p0, $p1")
           }
           val ll0 = S2LatLng.fromDegrees(p0.location.lat.value, p0.location.lon.value)
           val ll1 = S2LatLng.fromDegrees(p1.location.lat.value, p1.location.lon.value)
@@ -306,7 +316,7 @@ object Pipeline extends LazyLogging {
 
           feature.foreach { v =>
             if (v.isNaN || v.isInfinite) {
-              logger.error(s"Malformed feature: ${feature.toList}, $p0, $p1, $p2")
+              logger.fatal(s"Malformed feature: ${feature.toList}, $p0, $p1, $p2")
             }
           }
 
