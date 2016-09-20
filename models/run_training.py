@@ -80,7 +80,7 @@ class Trainer(object):
 
     slim.learning.train(
       train_op,
-      self.train_scratch_path,
+      self.train_scratch_path + '/train',
       master=master,
       is_chief=is_chief,
       number_of_steps=50000,
@@ -117,8 +117,8 @@ class Trainer(object):
 
     slim.evaluation.evaluation_loop(
         master,
-        self.train_scratch_path,
-        self.train_scratch_path,
+        self.train_scratch_path + '/train',
+        self.train_scratch_path + '/eval',
         num_evals=num_evals,
         eval_op=names_to_updates.values(),
         summary_op=tf.merge_summary(summary_ops),
@@ -141,25 +141,27 @@ def run():
                            job_name=task_type,
                            task_index=task_index)
 
+  logging.info("Server target: %s", server.target)
+
   base_feature_path = 'gs://alex-dataflow-scratch/features-scratch/20160917T220846Z'
   train_scratch_path = 'gs://alex-dataflow-scratch/model-train-scratch-eval'
   feature_duration_days = 60
   trainer = Trainer(base_feature_path, train_scratch_path, feature_duration_days)
   
-  with tf.Graph().as_default():
-    if task_type == 'ps':
-      server.join()
-    else:
-      with tf.device(tf.train.replica_device_setter(
-          worker_device="/job:worker/task:%d" % task_index, cluster=cluster_spec)):
-        if task_type == 'worker':
+  
+  if task_type == 'ps':
+    server.join()
+  else:
+    with tf.Graph().as_default():
+      if task_type == 'worker':
+        with tf.device(tf.train.replica_device_setter(
+            worker_device="/job:%s/task:%d" % (task_type, task_index), cluster=cluster_spec)):
           is_chief = task_index == 0
           trainer.run_training(server.target, is_chief)
-        elif task_type == 'master':
-          trainer.run_evaluation(server.target)
-        else:
-          logging.error('Unexpected task type: %s', task_type)
-          sys.exit(-1)
+      elif task_type == 'master':
+        trainer.run_evaluation(server.target)
+      else:
+        raise ValueError('Unexpected task type: %s', task_type)
 
 if __name__ == '__main__':
   run()
