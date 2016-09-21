@@ -25,7 +25,7 @@ def single_feature_file_reader(filename_queue, num_features):
 
   return context_features, sequence_features
 
-def np_array_random_fixed_time_extract(input_series, max_time_delta, output_length):
+def np_array_random_fixed_time_extract_inferior(input_series, max_time_delta, output_length):
   input_shape = input_series.shape
   input_length = input_shape[0]
   max_offset = max(input_length - output_length, 0)
@@ -65,12 +65,42 @@ def np_array_fixed_time_extract(input_series, max_time_delta, output_length):
 
   return output_series
 
+def np_array_random_fixed_time_extract(input_series, max_time_delta, output_length):
+  input_length = len(input_series)
+  start_time = input_series[0][0]
+  end_time = input_series[-1][0]
+  max_time_offset = max((end_time - start_time) - max_time_delta, 0)
+  if max_time_offset == 0:
+    time_offset = 0
+  else:
+    time_offset = np.random.randint(0, max_time_offset)
+  start_index = np.searchsorted(input_series[:, 0], start_time + time_offset, side='left')
+
+  # Cannot start closer than 500 points from the end
+  start_index = min(start_index, max(0, input_length - 500))
+  crop_end_time = min(input_series[start_index][0] + max_time_delta, end_time)
+
+  end_index = np.searchsorted(input_series[:, 0], crop_end_time, side='right')
+  
+  cropped = input_series[start_index:end_index]
+  cropped_length = len(cropped)
+  logging.debug("%d, %d, %d, %d, %d, %d, %d, %d", input_length, start_time, end_time,
+      max_time_offset, time_offset, start_index, end_index, cropped_length)
+  reps = int(np.ceil(output_length / float(cropped_length)))
+  output_series = np.concatenate([cropped] * reps, axis=0)[:output_length]
+
+  return output_series
+
 def extract_features(input, max_time_delta, window_size):
   # Crop and pad to the specified time window.
   features = np_array_random_fixed_time_extract(input, max_time_delta, window_size)
 
-  # Drop the first (timestamp) column
+  # Drop the first (timestamp) column.
   features = features[:,1:]
+
+  # Roll the features randomly to give different offsets.
+  roll = np.random.randint(0, window_size)
+  features = np.roll(features, roll, axis=0)
 
   if not np.isfinite(features).all():
     logging.fatal('Bad features: %s', features)
@@ -90,12 +120,11 @@ def cropping_feature_file_reader(filename_queue, num_features, max_time_delta,
   return features, label
 
 
-def inception_layer(input, window_size, stride, depth, scope=None):
+def misconception_layer(input, window_size, stride, depth, is_eval, scope=None):
   with tf.name_scope(scope):
     with slim.arg_scope([slim.conv2d],
                         padding = 'SAME',
-                        activation_fn=tf.nn.tanh,
-                        weights_initializer=tf.truncated_normal_initializer(0.0, 0.3)):
+                        activation_fn=tf.nn.elu):
       stage_1_oned = slim.conv2d(input, depth, [1, 1])
       stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
       stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
@@ -103,29 +132,29 @@ def inception_layer(input, window_size, stride, depth, scope=None):
       stage_2_oned = slim.conv2d(input, depth, [1, 1])
       stage_2_conv = slim.conv2d(stage_2_oned, depth, [1, window_size])
       stage_2_max_pool_reduce = slim.max_pool2d(stage_2_conv, [1, window_size], stride=[1, stride],
-              padding = 'SAME')
+          padding = 'SAME')
 
       concat = tf.concat(3, [stage_1_conv_reduce, stage_2_max_pool_reduce])
 
       return slim.conv2d(concat, depth, [1, 1])
 
-def inception_with_bypass(input, window_size, stride, depth, scope=None):
+def misconception_with_bypass(input, window_size, stride, depth, is_eval, scope=None):
   with tf.name_scope(scope):
-    inception = inception_layer(input, window_size, stride, depth, scope)
+    misconception = misconception_layer(input, window_size, stride, depth, is_eval, scope)
     bypass = slim.avg_pool2d(input, [1, window_size], stride=[1, stride], padding='SAME')
 
-    return inception + bypass
+    return misconception + bypass
 
-def inception_model(input, window_size, stride, depth, levels, num_classes, is_eval):
-  with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu):
+def misconception_model(input, window_size, stride, depth, levels, num_classes, is_eval):
+  with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu):
+    input_keep_prob = 1.0 if is_eval else 0.5
     keep_prob = 1.0 if is_eval else 0.5
 
-    net = slim.dropout(input, keep_prob)
+    net = slim.dropout(input, input_keep_prob)
     for i in range(levels):
-      net = inception_with_bypass(net, window_size, stride, depth, "inception_%d" % i)
-    #net = slim.repeat(net, levels, inception_layer, window_size, stride, depth)
+      net = misconception_with_bypass(net, window_size, stride, depth, is_eval, "misconception_%d" % i)
+    #net = slim.repeat(net, levels, misconception_with_bypass, window_size, stride, depth)
     net = slim.flatten(net)
-    net = slim.fully_connected(net, 200)
     net = slim.dropout(net, keep_prob)
     net = slim.fully_connected(net, 100)
     net = slim.dropout(net, keep_prob)

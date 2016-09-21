@@ -2,5 +2,5 @@ trainingInput:
   args: []
   packageUris: gs://world-fishing-827-ml/alex_vessel_classification/alex_vessel_classification-1.0.tar.gz
   pythonModule: models.run_training
-  scaleTier: STANDARD_1
+  scaleTier: STANDARD_2
   region: us-central1

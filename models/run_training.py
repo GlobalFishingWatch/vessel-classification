@@ -26,7 +26,7 @@ class Trainer(object):
     self.window_size = 3
     self.stride = 2
     self.feature_depth = 20
-    self.levels = 12
+    self.levels = 10
     self.batch_size = 32
     self.num_parallel_readers = 12
 
@@ -83,7 +83,7 @@ class Trainer(object):
       self.train_scratch_path + '/train',
       master=master,
       is_chief=is_chief,
-      number_of_steps=50000,
+      number_of_steps=250000,
       save_summaries_secs=30,
       save_interval_secs=60)
 
@@ -145,7 +145,7 @@ def run():
 
   base_feature_path = 'gs://alex-dataflow-scratch/features-scratch/20160917T220846Z'
   train_scratch_path = 'gs://alex-dataflow-scratch/model-train-scratch-eval'
-  feature_duration_days = 60
+  feature_duration_days = 90
   trainer = Trainer(base_feature_path, train_scratch_path, feature_duration_days)
   
   
