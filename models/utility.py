@@ -26,47 +26,7 @@ def single_feature_file_reader(filename_queue, num_features):
 
   return context_features, sequence_features
 
-def np_array_random_fixed_time_extract_inferior(input_series, max_time_delta, output_length):
-  input_shape = input_series.shape
-  input_length = input_shape[0]
-  max_offset = max(input_length - output_length, 0)
-  if max_offset != 0:
-    offset = np.random.randint(0, max_offset)
-  else:
-    offset = 0
-
-  return np_array_fixed_time_extract(input_series[offset:], max_time_delta, output_length)
-
-def np_array_fixed_time_extract(input_series, max_time_delta, output_length):
-  """Extracts a fixed-time slice from a 2d numpy array, representing a time
-  series.
-
-  The input array must be 2d, representing a time series, with the first
-  column representing a timestamp (sorted ascending). Any values in the series
-  with a time greater than (first time + max_time_delta) are removed and the
-  prefix series repeated into the window to pad.
-
-  Args:
-    input_series: the input series. A 2d array first column representing an ascending time.
-
-    max_time_delta: the maximum value of a time point in the returned series.
-
-    output_length: the number of points in the output series. Input series
-        shorter than this will be repeated into the output series.
-
-  Returns:
-    An array of the same shape as the input, representing the fixed time slice.
-  """
-  max_time = input_series[0][0] + max_time_delta
-  last_index = np.searchsorted(input_series[:, 0], max_time, side='right')
-  input_series = input_series[:last_index]
-  input_length = len(input_series)
-  reps = int(np.ceil(output_length / float(input_length)))
-  output_series = np.concatenate([input_series] * reps, axis=0)[:output_length]
-
-  return output_series
-
-def np_array_random_fixed_time_extract(input_series, max_time_delta, output_length):
+def np_array_random_fixed_time_extract(rng, input_series, max_time_delta, output_length):
   input_length = len(input_series)
   start_time = input_series[0][0]
   end_time = input_series[-1][0]
@@ -74,7 +34,7 @@ def np_array_random_fixed_time_extract(input_series, max_time_delta, output_leng
   if max_time_offset == 0:
     time_offset = 0
   else:
-    time_offset = np.random.randint(0, max_time_offset)
+    time_offset = rng(max_time_offset)
   start_index = np.searchsorted(input_series[:, 0], start_time + time_offset, side='left')
 
   # Cannot start closer than 500 points from the end
@@ -94,7 +54,9 @@ def np_array_random_fixed_time_extract(input_series, max_time_delta, output_leng
 
 def extract_features(input, max_time_delta, window_size):
   # Crop and pad to the specified time window.
-  features = np_array_random_fixed_time_extract(input, max_time_delta, window_size)
+  def rng(upper):
+    return np.random.randint(0, max_time_offset)
+  features = np_array_random_fixed_time_extract(rng, input, max_time_delta, window_size)
 
   # Drop the first (timestamp) column.
   features = features[:,1:]

@@ -14,7 +14,7 @@ class InceptionLayerTest(tf.test.TestCase):
       input_data_shape = tf.shape(input_data)
       self.assertAllEqual(input_data_shape.eval(), [1, 1, 6, 3])
 
-      res = utility.inception_layer(input_data, 3, 2, 5)
+      res = utility.misconception_layer(input_data, 3, 2, 5, True)
       res_shape = tf.shape(res)
 
       tf.initialize_all_variables().run()
@@ -29,9 +29,7 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
       expected_result = np.array([[1., 5.], [2., 4.], [3., 7.], [4., 9.], [5.,
         3.], [6., 8.], [1., 5.], [2., 4.]])
 
-      res = utility.np_array_fixed_time_extract(input_data, 5, 8)
-
-      print res
+      res = utility.np_array_random_fixed_time_extract(lambda _: 0, input_data, 5, 8)
       
       self.assertAllEqual(res, expected_result)
 
@@ -40,7 +38,7 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
       input_data = np.array([[1., 5., 6.], [2., 4., 4.], [3., 7., 9.], [4., 9.,
         0.]])
 
-      res = utility.np_array_fixed_time_extract(input_data, 20, 4)
+      res = utility.np_array_random_fixed_time_extract(lambda _: 0, input_data, 20, 4)
       self.assertAllEqual(res, input_data)
 
   def test_uncropped_extract_pad(self):
@@ -49,7 +47,7 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
       expected_result = np.array([[1., 5., 6.], [2., 4., 4.], [3., 7., 9.], [1.,
         5., 6.], [2., 4., 4.]])
 
-      res = utility.np_array_fixed_time_extract(input_data, 20, 5)
+      res = utility.np_array_random_fixed_time_extract(lambda _: 0, input_data, 20, 5)
       self.assertAllEqual(res, expected_result)
 
 if __name__ == '__main__':
