@@ -38,17 +38,18 @@ class Trainer(object):
     matching_files_i = tf.matching_files(input_file_pattern)
     matching_files = tf.Print(matching_files_i, [matching_files_i], "Files: ")
     filename_queue = tf.train.input_producer(matching_files, shuffle=True)
-    capacity = 600
+    capacity = 1000
     min_size_after_deque = capacity - self.batch_size * 4
 
     readers = []
     for _ in range(self.num_parallel_readers):
-      readers.append(utility.cropping_feature_file_reader(filename_queue,
-        self.num_feature_dimensions + 1, self.max_window_duration_seconds,
-        self.window_max_points))
+      readers.append(utility.cropping_weight_replicating_feature_file_reader(
+        filename_queue, self.num_feature_dimensions + 1,
+        self.max_window_duration_seconds, self.window_max_points))
 
     raw_features, labels = tf.train.shuffle_batch_join(readers, self.batch_size, capacity,
         min_size_after_deque,
+        enqueue_many=True,
         shapes=[[1, self.window_max_points, self.num_feature_dimensions], []])
 
     feature_pad_size = self.feature_depth - self.num_feature_dimensions
@@ -137,7 +138,7 @@ def run():
   logging.info("Running with Tensorflow version: %s", tf.__version__)
 
   base_feature_path = 'gs://alex-dataflow-scratch/features-scratch/20160922T075356Z'
-  train_scratch_path = 'gs://alex-dataflow-scratch/cloudml/model-train-scratch-eval-simple-batchnorm'
+  train_scratch_path = 'gs://alex-dataflow-scratch/cloudml/model-train-scratch-eval-simple-weighted'
   feature_duration_days = 180
   trainer = Trainer(base_feature_path, train_scratch_path, feature_duration_days)
 

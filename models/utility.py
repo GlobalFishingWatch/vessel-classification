@@ -55,7 +55,7 @@ def np_array_random_fixed_time_extract(rng, input_series, max_time_delta, output
 def extract_features(input, max_time_delta, window_size):
   # Crop and pad to the specified time window.
   def rng(upper):
-    return np.random.randint(0, max_time_offset)
+    return np.random.randint(0, upper)
   features = np_array_random_fixed_time_extract(rng, input, max_time_delta, window_size)
 
   # Drop the first (timestamp) column.
@@ -82,6 +82,29 @@ def cropping_feature_file_reader(filename_queue, num_features, max_time_delta,
       [movement_features], [tf.float32])
 
   return features, label
+
+
+def extract_n_features(input, label, n, max_time_delta, window_size):
+  res = [np.stack([extract_features(input, max_time_delta, window_size)]) for _ in range(n)]
+  return np.stack(res), [label] * n
+
+def cropping_weight_replicating_feature_file_reader(filename_queue, num_features, max_time_delta,
+    window_size):
+  context_features, sequence_features = single_feature_file_reader(filename_queue, num_features)
+
+  movement_features = sequence_features['movement_features']
+  label = tf.cast(context_features['vessel_type_index'], tf.int32)
+  weight = tf.cast(context_features['weight'], tf.float32)
+
+  def replicate_extract(input, label, weight):
+    n = int(np.ceil(8.0 / weight))
+    return extract_n_features(input, label, n, max_time_delta, window_size)
+
+  features_list, label_list = tf.py_func(replicate_extract,
+      [movement_features, label, weight], [tf.float32, tf.int32])
+
+  return features_list, label_list
+
 
 def misconception_layer(input, window_size, stride, depth, is_training, scope=None):
   with tf.name_scope(scope):
