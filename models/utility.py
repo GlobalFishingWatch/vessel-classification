@@ -15,6 +15,7 @@ def single_feature_file_reader(filename_queue, num_features):
       # Defaults are not specified since both keys are required.
       context_features = {
           'mmsi': tf.FixedLenFeature([], tf.int64),
+          'weight': tf.FixedLenFeature([], tf.float32),
           'vessel_type_index': tf.FixedLenFeature([], tf.int64),
           'vessel_type_name': tf.FixedLenFeature([], tf.string)
       },
@@ -113,46 +114,39 @@ def cropping_feature_file_reader(filename_queue, num_features, max_time_delta,
 
   movement_features = sequence_features['movement_features']
   label = tf.cast(context_features['vessel_type_index'], tf.int32)
+  weight = tf.cast(context_features['weight'], tf.float32)
 
   features = tf.py_func(lambda input: extract_features(input, max_time_delta, window_size),
       [movement_features], [tf.float32])
 
   return features, label
 
-
 def misconception_layer(input, window_size, stride, depth, is_training, scope=None):
   with tf.name_scope(scope):
     with slim.arg_scope([slim.conv2d],
                         padding = 'SAME',
                         activation_fn=tf.nn.elu):
-      input = slim.dropout(input, 0.5, is_training=is_training)
-
-      stage_1_oned = slim.conv2d(input, depth, [1, 1])
-      stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
-      stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
-
-      stage_2_oned = slim.conv2d(input, depth, [1, 1])
-      stage_2_conv = slim.conv2d(stage_2_oned, depth, [1, window_size])
-      stage_2_max_pool_reduce = slim.max_pool2d(stage_2_conv, [1, window_size], stride=[1, stride],
+      stage_conv = slim.conv2d(input, depth, [1, window_size], stride=[1, stride])
+      stage_max_pool_reduce = slim.max_pool2d(input, [1, window_size], stride=[1, stride],
           padding = 'SAME')
 
-      concat = tf.concat(3, [stage_1_conv_reduce, stage_2_max_pool_reduce])
+      concat = tf.concat(3, [stage_conv, stage_max_pool_reduce])
 
       return slim.conv2d(concat, depth, [1, 1])
+
 
 def misconception_with_bypass(input, window_size, stride, depth, is_training, scope=None):
   with tf.name_scope(scope):
     misconception = misconception_layer(input, window_size, stride, depth, is_training, scope)
     bypass = slim.avg_pool2d(input, [1, window_size], stride=[1, stride], padding='SAME')
 
+    #return slim.batch_norm(misconception + bypass, is_training=is_training)
     return misconception + bypass
 
 def misconception_model(input, window_size, stride, depth, levels, num_classes, is_training):
   with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu):
     net = input
-    for i in range(levels):
-      net = misconception_with_bypass(net, window_size, stride, depth, is_training, "misconception_%d" % i)
-    #net = slim.repeat(net, levels, misconception_with_bypass, window_size, stride, depth)
+    net = slim.repeat(net, levels, misconception_with_bypass, window_size, stride, depth, is_training)
     net = slim.flatten(net)
     net = slim.dropout(net, 0.5, is_training=is_training)
     net = slim.fully_connected(net, 100)

@@ -45,8 +45,7 @@ object Parameters {
   val stationaryPeriodMinDuration = Duration.standardHours(2 * 24)
 
   val inputMeasuresPath =
-    //"gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/*/*"
-    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2015-*/*"
+    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment"
   val outputFeaturesPath =
     "gs://alex-dataflow-scratch/features-scratch"
   val gceProject = "world-fishing-827"
@@ -398,9 +397,11 @@ object Pipeline extends LazyLogging {
       .toMap
 
     // Read, filter and build location records.
-    val locationRecords =
-      readJsonRecords(sc.tableRowJsonFile(Parameters.inputMeasuresPath),
-                      sc.parallelize(vesselMetadata))
+    val locationRecords = SCollection.unionAll(List("2012", "2013", "2014", "2015", "2016").map {
+      year =>
+        val path = s"${Parameters.inputMeasuresPath}/$year-*/*.json"
+        readJsonRecords(sc.tableRowJsonFile(path), sc.parallelize(vesselMetadata))
+    })
 
     val filtered = filterVesselRecords(locationRecords, Parameters.minRequiredPositions)
     val features = buildVesselFeatures(filtered)

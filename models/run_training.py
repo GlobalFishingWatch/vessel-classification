@@ -22,6 +22,9 @@ class Trainer(object):
     self.num_feature_dimensions = 9
     self.max_sample_frequency_seconds = 5 * 60
     self.max_window_duration_seconds = feature_duration_days * 24 * 3600
+    # We allocate a much smaller buffer than would fit the specified time
+    # sampled at 5 mins intervals, on the basis that the sample is almost
+    # always much more sparse.
     self.window_max_points = (self.max_window_duration_seconds /
         self.max_sample_frequency_seconds) / 4
     self.window_size = 3
@@ -29,9 +32,9 @@ class Trainer(object):
     self.feature_depth = 20
     self.levels = 10
     self.batch_size = 32
-    self.num_parallel_readers = 12
+    self.num_parallel_readers = 24
 
-  def data_reader(self, input_file_pattern):
+  def data_reader(self, input_file_pattern, is_training):
     matching_files_i = tf.matching_files(input_file_pattern)
     matching_files = tf.Print(matching_files_i, [matching_files_i], "Files: ")
     filename_queue = tf.train.input_producer(matching_files, shuffle=True)
@@ -60,7 +63,7 @@ class Trainer(object):
   def run_training(self, master, is_chief):
     input_file_pattern = self.base_feature_path + '/Training/shard-*-of-*.tfrecord'
 
-    features, labels, one_hot_labels = self.data_reader(input_file_pattern)
+    features, labels, one_hot_labels = self.data_reader(input_file_pattern, True)
 
     logits = utility.misconception_model(features, self.window_size, self.stride,
             self.feature_depth, self.levels, self.num_classes, True)
@@ -90,8 +93,10 @@ class Trainer(object):
 
   def run_evaluation(self, master):
     input_file_pattern = self.base_feature_path + '/Test/shard-*-of-*.tfrecord'
+    checkpoint_dir = self.train_scratch_path + '/train'
+    output_dir = self.train_scratch_path + '/eval'
 
-    features, labels, one_hot_labels = self.data_reader(input_file_pattern)
+    features, labels, one_hot_labels = self.data_reader(input_file_pattern, False)
 
     logits = utility.misconception_model(features, self.window_size, self.stride,
             self.feature_depth, self.levels, self.num_classes, False)
@@ -118,8 +123,8 @@ class Trainer(object):
 
     slim.evaluation.evaluation_loop(
         master,
-        self.train_scratch_path + '/train',
-        self.train_scratch_path + '/eval',
+        checkpoint_dir,
+        output_dir,
         num_evals=num_evals,
         eval_op=names_to_updates.values(),
         summary_op=tf.merge_summary(summary_ops),
@@ -131,38 +136,40 @@ def run():
 
   logging.info("Running with Tensorflow version: %s", tf.__version__)
 
-  config = json.loads(os.environ.get('TF_CONFIG', '{}'))
-  cluster_spec = config['cluster']
-  task_spec = config['task']
-  task_type = task_spec['type']
-  task_index = task_spec['index']
-  logging.info("Config dictionary: %s", config)
-
-  server = tf.train.Server(cluster_spec,
-                           job_name=task_type,
-                           task_index=task_index)
-
-  logging.info("Server target: %s", server.target)
-
-  base_feature_path = 'gs://alex-dataflow-scratch/features-scratch/20160917T220846Z'
-  train_scratch_path = 'gs://alex-dataflow-scratch/model-train-scratch-eval-dropout1/2'
+  base_feature_path = 'gs://alex-dataflow-scratch/features-scratch/20160922T075356Z'
+  train_scratch_path = 'gs://alex-dataflow-scratch/cloudml/model-train-scratch-eval-simple-batchnorm'
   feature_duration_days = 180
   trainer = Trainer(base_feature_path, train_scratch_path, feature_duration_days)
-  
-  
-  if task_type == 'ps':
-    server.join()
+
+  config = json.loads(os.environ.get('TF_CONFIG', '{}'))
+  if (config == {}):
+    trainer.run_evaluation('localhost')
   else:
-    with tf.Graph().as_default():
-      if task_type == 'worker':
-        with tf.device(tf.train.replica_device_setter(
-            worker_device="/job:%s/task:%d" % (task_type, task_index), cluster=cluster_spec)):
-          is_chief = task_index == 0
-          trainer.run_training(server.target, is_chief)
-      elif task_type == 'master':
-        trainer.run_evaluation(server.target)
-      else:
-        raise ValueError('Unexpected task type: %s', task_type)
+    cluster_spec = config['cluster']
+    task_spec = config['task']
+    task_type = task_spec['type']
+    task_index = task_spec['index']
+    logging.info("Config dictionary: %s", config)
+
+    server = tf.train.Server(cluster_spec,
+                             job_name=task_type,
+                             task_index=task_index)
+
+    logging.info("Server target: %s", server.target)
+
+    if task_type == 'ps':
+      server.join()
+    else:
+      with tf.Graph().as_default():
+        if task_type == 'worker':
+          with tf.device(tf.train.replica_device_setter(
+              worker_device="/job:%s/task:%d" % (task_type, task_index), cluster=cluster_spec)):
+            is_chief = task_index == 0
+            trainer.run_training(server.target, is_chief)
+        elif task_type == 'master':
+          trainer.run_evaluation(server.target)
+        else:
+          raise ValueError('Unexpected task type: %s', task_type)
 
 if __name__ == '__main__':
   run()
