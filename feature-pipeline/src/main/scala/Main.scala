@@ -44,6 +44,7 @@ object Parameters {
   val stationaryPeriodMaxDistance = 800.0.of[meter]
   val stationaryPeriodMinDuration = Duration.standardHours(2 * 24)
 
+  val allDataYears = List("2012", "2013", "2014", "2015", "2016")
   val inputMeasuresPath =
     "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment"
   val outputFeaturesPath =
@@ -397,7 +398,7 @@ object Pipeline extends LazyLogging {
       .toMap
 
     // Read, filter and build location records.
-    val locationRecords = SCollection.unionAll(List("2012", "2013", "2014", "2015", "2016").map {
+    val locationRecords = SCollection.unionAll((Parameters.allDataYears).map {
       year =>
         val path = s"${Parameters.inputMeasuresPath}/$year-*/*.json"
         readJsonRecords(sc.tableRowJsonFile(path), sc.parallelize(vesselMetadata))
