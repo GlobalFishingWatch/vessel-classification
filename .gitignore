@@ -1,2 +1,7 @@
 target
 *.swp
+*.pyc
+.DS_Store
+dist/
+*.egg-info
+
