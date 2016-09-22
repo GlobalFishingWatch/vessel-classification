@@ -96,31 +96,39 @@ def inception_layer(input, window_size, stride, depth, scope=None):
                         padding = 'SAME',
                         activation_fn=tf.nn.tanh,
                         weights_initializer=tf.truncated_normal_initializer(0.0, 0.3)):
-      #stage_1_oned = slim.conv2d(input, depth, [1, 1])
-      #stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
-      #stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
+      stage_1_oned = slim.conv2d(input, depth, [1, 1])
+      stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
+      stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
 
       stage_2_oned = slim.conv2d(input, depth, [1, 1])
       stage_2_conv = slim.conv2d(stage_2_oned, depth, [1, window_size])
       stage_2_max_pool_reduce = slim.max_pool2d(stage_2_conv, [1, window_size], stride=[1, stride],
               padding = 'SAME')
 
-      #concat = tf.concat(3, [stage_1_conv_reduce, stage_2_max_pool_reduce])
+      concat = tf.concat(3, [stage_1_conv_reduce, stage_2_max_pool_reduce])
 
-      #return concat
-      return stage_2_max_pool_reduce
+      return slim.conv2d(concat, depth, [1, 1])
 
-def inception_model(input, window_size, stride, depth, levels, num_classes):
+def inception_with_bypass(input, window_size, stride, depth, scope=None):
+  with tf.name_scope(scope):
+    inception = inception_layer(input, window_size, stride, depth, scope)
+    bypass = slim.avg_pool2d(input, [1, window_size], stride=[1, stride], padding='SAME')
+
+    return inception + bypass
+
+def inception_model(input, window_size, stride, depth, levels, num_classes, is_eval):
   with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu):
-    net = slim.dropout(input, 0.5)
+    keep_prob = 1.0 if is_eval else 0.5
+
+    net = slim.dropout(input, keep_prob)
     for i in range(levels):
-      net = inception_layer(net, window_size, stride, depth, "inception_%d" % i)
+      net = inception_with_bypass(net, window_size, stride, depth, "inception_%d" % i)
     #net = slim.repeat(net, levels, inception_layer, window_size, stride, depth)
     net = slim.flatten(net)
     net = slim.fully_connected(net, 200)
-    net = slim.dropout(net, 0.5)
+    net = slim.dropout(net, keep_prob)
     net = slim.fully_connected(net, 100)
-    net = slim.dropout(net, 0.5)
+    net = slim.dropout(net, keep_prob)
 
     net = slim.fully_connected(net, num_classes) 
 
