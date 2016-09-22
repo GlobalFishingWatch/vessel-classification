@@ -125,6 +125,9 @@ def misconception_layer(input, window_size, stride, depth, is_eval, scope=None):
     with slim.arg_scope([slim.conv2d],
                         padding = 'SAME',
                         activation_fn=tf.nn.elu):
+      keep_prob = 1.0 if is_eval else 0.5
+      input = slim.dropout(input, keep_prob)
+
       stage_1_oned = slim.conv2d(input, depth, [1, 1])
       stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
       stage_1_conv_reduce = slim.conv2d(stage_1_conv, depth, [1, window_size], stride=[1, stride])
@@ -147,10 +150,9 @@ def misconception_with_bypass(input, window_size, stride, depth, is_eval, scope=
 
 def misconception_model(input, window_size, stride, depth, levels, num_classes, is_eval):
   with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu):
-    input_keep_prob = 1.0 if is_eval else 0.5
     keep_prob = 1.0 if is_eval else 0.5
 
-    net = slim.dropout(input, input_keep_prob)
+    net = input
     for i in range(levels):
       net = misconception_with_bypass(net, window_size, stride, depth, is_eval, "misconception_%d" % i)
     #net = slim.repeat(net, levels, misconception_with_bypass, window_size, stride, depth)

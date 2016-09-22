@@ -22,7 +22,7 @@ class Trainer(object):
     self.num_feature_dimensions = 9
     self.max_sample_frequency_seconds = 5 * 60
     self.max_window_duration_seconds = feature_duration_days * 24 * 3600
-    self.window_max_points = self.max_window_duration_seconds / self.max_sample_frequency_seconds
+    self.window_max_points = (self.max_window_duration_seconds / self.max_sample_frequency_seconds)/4
     self.window_size = 3
     self.stride = 2
     self.feature_depth = 20
@@ -61,7 +61,7 @@ class Trainer(object):
 
     features, labels, one_hot_labels = self.data_reader(input_file_pattern)
 
-    logits = utility.inception_model(features, self.window_size, self.stride,
+    logits = utility.misconception_model(features, self.window_size, self.stride,
             self.feature_depth, self.levels, self.num_classes, False)
 
     predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
@@ -83,7 +83,7 @@ class Trainer(object):
       self.train_scratch_path + '/train',
       master=master,
       is_chief=is_chief,
-      number_of_steps=250000,
+      number_of_steps=500000,
       save_summaries_secs=30,
       save_interval_secs=60)
 
@@ -92,7 +92,7 @@ class Trainer(object):
 
     features, labels, one_hot_labels = self.data_reader(input_file_pattern)
 
-    logits = utility.inception_model(features, self.window_size, self.stride,
+    logits = utility.misconception_model(features, self.window_size, self.stride,
             self.feature_depth, self.levels, self.num_classes, True)
 
     predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
@@ -144,8 +144,8 @@ def run():
   logging.info("Server target: %s", server.target)
 
   base_feature_path = 'gs://alex-dataflow-scratch/features-scratch/20160917T220846Z'
-  train_scratch_path = 'gs://alex-dataflow-scratch/model-train-scratch-eval'
-  feature_duration_days = 90
+  train_scratch_path = 'gs://alex-dataflow-scratch/model-train-scratch-eval-dropout1/2'
+  feature_duration_days = 180
   trainer = Trainer(base_feature_path, train_scratch_path, feature_duration_days)
   
   
