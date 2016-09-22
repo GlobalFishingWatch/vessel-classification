@@ -58,7 +58,10 @@ object Parameters {
   val minValidTime = Instant.parse("2012-01-01T00:00:00Z")
   lazy val maxValidTime = Instant.now()
 
-  val splits = Seq("Training", "Test", "Unclassified")
+  val trainingSplit = "Training"
+  val testSplit = "Test"
+  val unclassifiedSplit = "Unclassified"
+  val splits = Seq(trainingSplit, testSplit, unclassifiedSplit)
 }
 
 object AdditionalUnits {
@@ -98,7 +101,8 @@ object VesselMetadata {
 
 case class VesselMetadata(
     mmsi: Int,
-    dataset: String = "Unclassified",
+    weight: Float = 1.0f,
+    dataset: String = Parameters.unclassifiedSplit,
     vesselType: String = "Unknown"
 ) {
   def vesselTypeIndex = VesselMetadata.vesselTypeToIndexMap.getOrElse(vesselType, 0)
@@ -135,6 +139,18 @@ object Pipeline extends LazyLogging {
     def fatal(message: String) = {
       logger.error(message)
       throw new RuntimeException(s"Fatal error: $message")
+    }
+  }
+
+  implicit class RicherIterable[T](val iterable: Iterable[T]) {
+    def countBy[K](fn: T => K): Map[K, Int] = {
+      val counts = mutable.Map[K, Int]()
+      iterable.foreach { el =>
+        val k = fn(el)
+        counts(k) = counts.getOrElse(k, 0) + 1
+      }
+      // Converts to immutable map.
+      counts.toMap
     }
   }
 
@@ -330,10 +346,13 @@ object Pipeline extends LazyLogging {
 
     val vessel_type = metadata.vesselTypeIndex
 
-    // Add the mmsi and vessel type to the builder
+    // Add the mmsi, weight and vessel type to the builder
     contextBuilder.putFeature(
       "mmsi",
       Feature.newBuilder().setInt64List(Int64List.newBuilder().addValue(metadata.mmsi)).build())
+    contextBuilder.putFeature(
+      "weight",
+      Feature.newBuilder().setFloatList(FloatList.newBuilder().addValue(metadata.weight)).build())
     contextBuilder.putFeature(
       "vessel_type_index",
       Feature.newBuilder().setInt64List(Int64List.newBuilder().addValue(vessel_type)).build())
@@ -371,31 +390,61 @@ object Pipeline extends LazyLogging {
         (metadata, featuresAsTFExample)
     }
 
-  def main(argArray: Array[String]) {
-    val now = new DateTime(DateTimeZone.UTC)
-    val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
-    options.setRunner(classOf[DataflowPipelineRunner])
-    options.setProject(Parameters.gceProject)
-    options.setStagingLocation(Parameters.dataflowStaging)
-
-    val sc = ScioContext(options)
-
-    // Load up the vessel metadata as a side input and join
-    // with the JSON records for known vessels.
-    val vesselMetadataCsv =
-      remaining_args.getOrElse("vessel_metadata", Parameters.vesselClassificationPath)
+  def readVesselMetadata(vesselMetadataCsv: String) = {
     val metadataReader = new CSVReader(new FileReader(vesselMetadataCsv))
     val allLines = metadataReader.readAll()
-    val vesselMetadata = allLines.toList
+    val unweightedVesselMetadata = allLines.toList
       .drop(1)
       .map { l =>
         val mmsi = l(0).toInt
         val dataset = l(1)
         val vesselType = l(2)
 
-        (mmsi, VesselMetadata(mmsi, dataset, vesselType))
+        (mmsi, VesselMetadata(mmsi, 0.0f, dataset, vesselType))
       }
       .toMap
+
+    // Count the number of training vessel types per vessel type.
+    val counts = unweightedVesselMetadata.collect {
+      case (_, vm) if vm.dataset == Parameters.trainingSplit => vm.vesselType
+    }.countBy(Predef.identity)
+
+    val rarestVesselTypeCount = counts.map(_._2).min
+    val vesselTypeSampleProbability = counts.map {
+      case (vt, c) =>
+        val sampleProbability = rarestVesselTypeCount.toFloat / c.toFloat
+        logger.info(s"Vessel type $vt has sample probability $sampleProbability")
+        (vt, sampleProbability)
+    }.toMap
+
+    val vesselMetadata = unweightedVesselMetadata.map {
+      case (mmsi, vm) =>
+        val weight = if (vm.dataset == Parameters.trainingSplit) {
+          vesselTypeSampleProbability(vm.vesselType)
+        } else {
+          1.0f
+        }
+        (mmsi, VesselMetadata(mmsi, weight, vm.dataset, vm.vesselType))
+    }
+
+    vesselMetadata
+  }
+
+  def main(argArray: Array[String]) {
+    val now = new DateTime(DateTimeZone.UTC)
+    val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
+
+    // Load up the vessel metadata as a side input and join
+    // with the JSON records for known vessels.
+    val vesselMetadataCsv =
+      remaining_args.getOrElse("vessel_metadata", Parameters.vesselClassificationPath)
+    val vesselMetadata = readVesselMetadata(vesselMetadataCsv)
+
+    options.setRunner(classOf[DataflowPipelineRunner])
+    options.setProject(Parameters.gceProject)
+    options.setStagingLocation(Parameters.dataflowStaging)
+
+    val sc = ScioContext(options)
 
     // Read, filter and build location records.
     val locationRecords =
