@@ -142,6 +142,18 @@ object Pipeline extends LazyLogging {
     }
   }
 
+  implicit class RicherIterable[T](val iterable: Iterable[T]) {
+    def countBy[K](fn: T => K): Map[K, Int] = {
+      val counts = mutable.Map[K, Int]()
+      iterable.foreach { el =>
+        val k = fn(el)
+        counts(k) = counts.getOrElse(k, 0) + 1
+      }
+      // Converts to immutable map.
+      counts.toMap
+    }
+  }
+
   lazy val blacklistedMmsis = Set(0, 12345)
 
   // Normalize from -180 to + 180
@@ -393,13 +405,9 @@ object Pipeline extends LazyLogging {
       .toMap
 
     // Count the number of training vessel types per vessel type.
-    val counts = mutable.Map[String, Int]()
-    unweightedVesselMetadata.foreach {
-      case (_, vm) =>
-        if (vm.dataset == Parameters.trainingSplit) {
-          counts(vm.vesselType) = counts.getOrElse(vm.vesselType, 0) + 1
-        }
-    }
+    val counts = unweightedVesselMetadata.collect {
+      case (_, vm) if vm.dataset == Parameters.trainingSplit => vm.vesselType
+    }.countBy(Predef.identity)
 
     val rarestVesselTypeCount = counts.map(_._2).min
     val vesselTypeSampleProbability = counts.map {
