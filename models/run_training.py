@@ -62,7 +62,7 @@ class Trainer(object):
     features, labels, one_hot_labels = self.data_reader(input_file_pattern)
 
     logits = utility.misconception_model(features, self.window_size, self.stride,
-            self.feature_depth, self.levels, self.num_classes, False)
+            self.feature_depth, self.levels, self.num_classes, True)
 
     predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
@@ -93,7 +93,7 @@ class Trainer(object):
     features, labels, one_hot_labels = self.data_reader(input_file_pattern)
 
     logits = utility.misconception_model(features, self.window_size, self.stride,
-            self.feature_depth, self.levels, self.num_classes, True)
+            self.feature_depth, self.levels, self.num_classes, False)
 
     predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 

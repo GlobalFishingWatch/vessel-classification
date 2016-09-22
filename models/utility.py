@@ -120,13 +120,12 @@ def cropping_feature_file_reader(filename_queue, num_features, max_time_delta,
   return features, label
 
 
-def misconception_layer(input, window_size, stride, depth, is_eval, scope=None):
+def misconception_layer(input, window_size, stride, depth, is_training, scope=None):
   with tf.name_scope(scope):
     with slim.arg_scope([slim.conv2d],
                         padding = 'SAME',
                         activation_fn=tf.nn.elu):
-      keep_prob = 1.0 if is_eval else 0.5
-      input = slim.dropout(input, keep_prob)
+      input = slim.dropout(input, 0.5, is_training=is_training)
 
       stage_1_oned = slim.conv2d(input, depth, [1, 1])
       stage_1_conv = slim.conv2d(stage_1_oned, depth, [1, window_size])
@@ -141,25 +140,23 @@ def misconception_layer(input, window_size, stride, depth, is_eval, scope=None):
 
       return slim.conv2d(concat, depth, [1, 1])
 
-def misconception_with_bypass(input, window_size, stride, depth, is_eval, scope=None):
+def misconception_with_bypass(input, window_size, stride, depth, is_training, scope=None):
   with tf.name_scope(scope):
-    misconception = misconception_layer(input, window_size, stride, depth, is_eval, scope)
+    misconception = misconception_layer(input, window_size, stride, depth, is_training, scope)
     bypass = slim.avg_pool2d(input, [1, window_size], stride=[1, stride], padding='SAME')
 
     return misconception + bypass
 
-def misconception_model(input, window_size, stride, depth, levels, num_classes, is_eval):
+def misconception_model(input, window_size, stride, depth, levels, num_classes, is_training):
   with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu):
-    keep_prob = 1.0 if is_eval else 0.5
-
     net = input
     for i in range(levels):
-      net = misconception_with_bypass(net, window_size, stride, depth, is_eval, "misconception_%d" % i)
+      net = misconception_with_bypass(net, window_size, stride, depth, is_training, "misconception_%d" % i)
     #net = slim.repeat(net, levels, misconception_with_bypass, window_size, stride, depth)
     net = slim.flatten(net)
-    net = slim.dropout(net, keep_prob)
+    net = slim.dropout(net, 0.5, is_training=is_training)
     net = slim.fully_connected(net, 100)
-    net = slim.dropout(net, keep_prob)
+    net = slim.dropout(net, 0.5, is_training=is_training)
 
     net = slim.fully_connected(net, num_classes) 
 
