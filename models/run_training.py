@@ -22,7 +22,8 @@ class Trainer(object):
     self.num_feature_dimensions = 9
     self.max_sample_frequency_seconds = 5 * 60
     self.max_window_duration_seconds = feature_duration_days * 24 * 3600
-    self.window_max_points = (self.max_window_duration_seconds / self.max_sample_frequency_seconds)/4
+    self.window_max_points = (self.max_window_duration_seconds /
+        self.max_sample_frequency_seconds) / 4
     self.window_size = 3
     self.stride = 2
     self.feature_depth = 20
