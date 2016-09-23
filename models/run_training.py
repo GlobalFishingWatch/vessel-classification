@@ -36,6 +36,7 @@ class ModelConfiguration(object):
     self.feature_depth = 20
     self.levels = 10
     self.batch_size = 32
+    self.min_viable_timeslice_length = 500
 
 class ModelTrainer(ModelConfiguration):
   """ Handles the mechanics of training and evaluating a vessel behaviour
@@ -85,7 +86,8 @@ class ModelTrainer(ModelConfiguration):
     for _ in range(self.num_parallel_readers):
       readers.append(utility.cropping_weight_replicating_feature_file_reader(
         filename_queue, self.num_feature_dimensions + 1,
-        self.max_window_duration_seconds, self.window_max_points, max_replication))
+        self.max_window_duration_seconds, self.window_max_points,
+        self.min_viable_timeslice_length, max_replication))
 
     raw_features, time_bounds, labels = tf.train.shuffle_batch_join(readers,
         self.batch_size, capacity,

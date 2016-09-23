@@ -11,7 +11,7 @@ def misconception_layer(input, window_size, stride, depth, is_training, scope=No
     depth: the depth of the output tensor.
 
   Returns:
-    a tensor of size [batch_size, 1, width/stride, depth]
+    a tensor of size [batch_size, 1, width/stride, depth].
   """
   with tf.name_scope(scope):
     with slim.arg_scope([slim.conv2d],
@@ -45,7 +45,7 @@ def misconception_model(input, window_size, stride, depth, levels, num_classes, 
     levels: The height of the tower in misconception layers.
 
   Returns:
-    a tensor of size [batch_size, num_classes]
+    a tensor of size [batch_size, num_classes].
   """
   with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu):
     net = input
