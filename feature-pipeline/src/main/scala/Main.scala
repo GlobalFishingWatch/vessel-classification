@@ -44,9 +44,9 @@ object Parameters {
   val stationaryPeriodMaxDistance = 800.0.of[meter]
   val stationaryPeriodMinDuration = Duration.standardHours(2 * 24)
 
+  val allDataYears = List("2012", "2013", "2014", "2015", "2016")
   val inputMeasuresPath =
-    //"gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/*/*"
-    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2015-*/*"
+    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment"
   val outputFeaturesPath =
     "gs://alex-dataflow-scratch/features-scratch"
   val gceProject = "world-fishing-827"
@@ -162,9 +162,10 @@ object Pipeline extends LazyLogging {
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
   // by ascending timestamp.
-  def readJsonRecords(input: SCollection[TableRow], metadata: SCollection[(Int, VesselMetadata)])
+  def readJsonRecords(inputs: Seq[SCollection[TableRow]], metadata: SCollection[(Int, VesselMetadata)])
     : SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
 
+    val input = SCollection.unionAll(inputs)
     val vesselMetadataMap = metadata.asMapSideInput
     // Keep only records with a location.
     input
@@ -446,10 +447,14 @@ object Pipeline extends LazyLogging {
 
     val sc = ScioContext(options)
 
-    // Read, filter and build location records.
-    val locationRecords =
-      readJsonRecords(sc.tableRowJsonFile(Parameters.inputMeasuresPath),
-                      sc.parallelize(vesselMetadata))
+    // Read, filter and build location records. We build a set of matches for all
+    // relevant years, as a single Cloud Dataflow text reader currently can't yet
+    // handle the sheer volume of matching files.
+    val matches = (Parameters.allDataYears).map { year =>
+      val path = s"${Parameters.inputMeasuresPath}/$year-*/*.json"
+      sc.tableRowJsonFile(path)
+    }
+    val locationRecords = readJsonRecords(matches, sc.parallelize(vesselMetadata))
 
     val filtered = filterVesselRecords(locationRecords, Parameters.minRequiredPositions)
     val features = buildVesselFeatures(filtered)
