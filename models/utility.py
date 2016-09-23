@@ -4,8 +4,48 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
 
+class ClusterNodeConfig(object):
+  """ Class that represent the configuration of this node in a cluster. """
+
+  def __init__(self, config):
+    task_spec = config['task']
+    self.task_type = task_spec['type']
+    self.task_index = task_spec['index']
+    self.cluster_spec = config['cluster']
+
+  def is_master(self):
+    return self.task_type == 'master'
+
+  def is_worker(self):
+    return self.task_type == 'worker'
+
+  def is_ps(self):
+    return self.task_type == 'ps'
+
+  def is_chief(self):
+    return task_index == 0
+
+  def make_server(self):
+    server = tf.train.Server(self.cluster_spec,
+        job_name=self.task_type, task_index=self.task_index)
+
+    logging.info("Server target: %s", server.target)
+    return server
+
+
 def single_feature_file_reader(filename_queue, num_features):
-  """ Read and interpret data from a TFRecord file. """
+  """ Read and interpret data from a set of TFRecord files.
+
+  Args:
+    filename_queue: a queue of filenames to read through.
+    num_features: the depth of the features.
+
+  Returns:
+    A pair of tuples:
+      1. a context dictionary for the feature
+      2. the vessel movement features, tensor of dimension [width, num_features].
+  """
+
   reader = tf.TFRecordReader()
   _, serialized_example = reader.read(filename_queue)
 
@@ -27,6 +67,27 @@ def single_feature_file_reader(filename_queue, num_features):
   return context_features, sequence_features
 
 def np_array_random_fixed_time_extract(rng, input_series, max_time_delta, output_length):
+  """ Extracts a random fixed-time slice from a 2d numpy array.
+    
+  The input array must be 2d, representing a time series, with the first    
+  column representing a timestamp (sorted ascending). Any values in the series    
+  with a time greater than (first time + max_time_delta) are removed and the    
+  prefix series repeated into the window to pad.    
+    
+  Args:
+    rng: a single-arg function taking an int and uniformly returning a random
+      number in the range [0, arg).
+    input_series: the input series. A 2d array first column representing an
+      ascending time.   
+    max_time_delta: the maximum duration of the returned timeseries in seconds.
+    output_length: the number of points in the output series. Input series    
+      shorter than this will be repeated into the output series.    
+    
+  Returns:    
+    An array of the same depth as the input, but altered width, representing
+    the fixed time slice.   
+  """
+
   input_length = len(input_series)
   start_time = input_series[0][0]
   end_time = input_series[-1][0]
@@ -37,7 +98,7 @@ def np_array_random_fixed_time_extract(rng, input_series, max_time_delta, output
     time_offset = rng(max_time_offset)
   start_index = np.searchsorted(input_series[:, 0], start_time + time_offset, side='left')
 
-  # Cannot start closer than 500 points from the end
+  # Should not start closer than 500 points from the end lest the series not be meaningful.
   start_index = min(start_index, max(0, input_length - 500))
   crop_end_time = min(input_series[start_index][0] + max_time_delta, end_time)
 
@@ -52,11 +113,23 @@ def np_array_random_fixed_time_extract(rng, input_series, max_time_delta, output
 
   return output_series
 
-def extract_features(input, max_time_delta, window_size):
-  # Crop and pad to the specified time window.
-  def rng(upper):
-    return np.random.randint(0, upper)
-  features = np_array_random_fixed_time_extract(rng, input, max_time_delta, window_size)
+def np_array_extract_features(input, max_time_delta, window_size):
+  """ Extract and process a random timeslice from vessel movement features.
+
+  Removes the timestamp column from the features, and applies a random roll to
+  the chosen timeslice to further augment the training data.
+
+  Args:
+    input: the input data as a 2d numpy array.
+
+  Returns:
+    A tuple comprising:
+      1. The extracted feature timeslice.
+      2. The start and end time of the timeslice (in int64 seconds since epoch).
+  """
+  features = np_array_random_fixed_time_extract(
+      lambda upper: np.random.randint(0, upper), input,
+      max_time_delta, window_size)
 
   start_time = features[0][0]
   end_time = features[-1][0]
@@ -73,29 +146,52 @@ def extract_features(input, max_time_delta, window_size):
 
   return features, [start_time, end_time]
 
-def cropping_feature_file_reader(filename_queue, num_features, max_time_delta,
-    window_size):
-  context_features, sequence_features = single_feature_file_reader(filename_queue, num_features)
+def np_array_extract_n_features(input, label, n, max_time_delta, window_size):
+  """ Extract and process multiple timeslices from a vessel movement feature.
 
-  movement_features = sequence_features['movement_features']
-  label = tf.cast(context_features['vessel_type_index'], tf.int32)
-  weight = tf.cast(context_features['weight'], tf.float32)
+  Args:
+    input: the input data as a 2d numpy array.
+    label: the label for the vessel which made this series.
+    n: the number of times to extract a feature timeslice from this series.
 
-  features, time_bounds = tf.py_func(lambda input: extract_features(input, max_time_delta, window_size),
-      [movement_features], [tf.float32, tf.int64])
+  Returns:
+    A tuple comprising:
+      1. An numpy array comprising N feature timeslices, of dimension
+          [n, 1, window_size, num_features].
+      2. A numpy array comprising timebounds for each slice, of dimension
+          [n, 2].
+      3. A numpy array with an int32 label for each slice, of dimension [n].
 
-  return features, time_bounds, label
+  """
 
-
-def extract_n_features(input, label, n, max_time_delta, window_size):
   samples = []
   for _ in range(n):
-    features, time_bounds = extract_features(input, max_time_delta, window_size)
+    features, time_bounds = np_array_extract_features(input, max_time_delta, window_size)
     samples.append((np.stack([features]), time_bounds, label))
   return zip(*samples)
 
 def cropping_weight_replicating_feature_file_reader(filename_queue, num_features, max_time_delta,
     window_size, max_replication_factor):
+  """ Set up a file reader and training feature extractor for the files in a queue.
+
+  As a training feature extractor, this pulls sets of random timeslices from the
+  vessels found in the files, with the number of draws for each sample determined
+  by the weight assigned to the particular vessel.
+
+  Args:
+    filename_queue: a queue of filenames for feature files to read.
+    num_features: the dimensionality of the features.
+    max_replication_factor: the maximum number of samples that can be drawn from a
+      single vessel series, regardless of the weight specified.
+
+  Returns:
+    A tuple comprising, for the n samples drawn for each vessel:
+      1. A tensor of the feature timeslices drawn, of dimension
+         [n, 1, window_size, num_features].
+      2. A tensor of the timebounds for the timeslices, of dimension [n, 2].
+      3. A tensor of the labels for each timeslice, of dimension [n].
+
+  """
   context_features, sequence_features = single_feature_file_reader(filename_queue, num_features)
 
   movement_features = sequence_features['movement_features']
@@ -104,45 +200,11 @@ def cropping_weight_replicating_feature_file_reader(filename_queue, num_features
 
   def replicate_extract(input, label, weight):
     n = int(np.ceil(float(max_replication_factor) * weight))
-    return extract_n_features(input, label, n, max_time_delta, window_size)
+    return np_array_extract_n_features(input, label, n, max_time_delta, window_size)
 
   features_list, time_bounds_list, label_list = tf.py_func(replicate_extract,
-      [movement_features, label, weight], [tf.float32, tf.float32, tf.int32])
+      [movement_features, label, weight], [tf.float32, tf.int32, tf.int32])
 
   return features_list, time_bounds_list, label_list
 
-
-def misconception_layer(input, window_size, stride, depth, is_training, scope=None):
-  with tf.name_scope(scope):
-    with slim.arg_scope([slim.conv2d],
-                        padding = 'SAME',
-                        activation_fn=tf.nn.elu):
-      stage_conv = slim.conv2d(input, depth, [1, window_size], stride=[1, stride])
-      stage_max_pool_reduce = slim.max_pool2d(input, [1, window_size], stride=[1, stride],
-          padding = 'SAME')
-
-      concat = tf.concat(3, [stage_conv, stage_max_pool_reduce])
-
-      return slim.conv2d(concat, depth, [1, 1])
-
-
-def misconception_with_bypass(input, window_size, stride, depth, is_training, scope=None):
-  with tf.name_scope(scope):
-    misconception = misconception_layer(input, window_size, stride, depth, is_training, scope)
-    bypass = slim.avg_pool2d(input, [1, window_size], stride=[1, stride], padding='SAME')
-
-    return misconception + bypass
-
-def misconception_model(input, window_size, stride, depth, levels, num_classes, is_training):
-  with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu):
-    net = input
-    net = slim.repeat(net, levels, misconception_with_bypass, window_size, stride, depth, is_training)
-    net = slim.flatten(net)
-    net = slim.dropout(net, 0.5, is_training=is_training)
-    net = slim.fully_connected(net, 100)
-    net = slim.dropout(net, 0.5, is_training=is_training)
-
-    net = slim.fully_connected(net, num_classes) 
-
-    return net
 
