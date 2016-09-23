@@ -1,13 +1,14 @@
-import os
+import argparse
 import json
-import math
 import layers
-import utility
 import logging
+import math
+import os
+import utility
+
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
-from tensorflow.python.client import timeline
 
 """ TODO(alexwilson):
   9. Build inference application.
@@ -24,7 +25,7 @@ class ModelConfiguration(object):
     self.num_classes = 9
     self.num_feature_dimensions = 9
     self.max_sample_frequency_seconds = 5 * 60
-    self.max_window_duration_seconds = feature_duration_days * 24 * 3600
+    self.max_window_duration_seconds = self.feature_duration_days * 24 * 3600
 
     # We allocate a much smaller buffer than would fit the specified time
     # sampled at 5 mins intervals, on the basis that the sample is almost
@@ -44,7 +45,7 @@ class ModelTrainer(ModelConfiguration):
   """ 
 
   def __init__(self, base_feature_path, train_scratch_path):
-    ModelBase.__init__(self)
+    ModelConfiguration.__init__(self)
 
     self.base_feature_path = base_feature_path
     self.train_scratch_path = train_scratch_path
@@ -224,10 +225,10 @@ def parse_args():
   """ Parses command-line arguments for training."""
   argparser = argparse.ArgumentParser('Train fishing classification model.')
 
-  argparser.add_argument('--root_feature_path', default=None,
+  argparser.add_argument('--root_feature_path', required=True,
       help='The root path to the vessel movement feature directories.')
 
-  argparser.add_argument('--training_output_path', default=None,
+  argparser.add_argument('--training_output_path', required=True,
       help='The working path for model statistics and checkpoints.')
 
   return argparser.parse_args()
