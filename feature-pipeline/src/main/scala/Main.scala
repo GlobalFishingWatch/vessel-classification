@@ -164,7 +164,8 @@ object Pipeline extends LazyLogging {
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
   // by ascending timestamp.
-  def readJsonRecords(inputs: Seq[SCollection[TableRow]], metadata: SCollection[(Int, VesselMetadata)])
+  def readJsonRecords(inputs: Seq[SCollection[TableRow]],
+                      metadata: SCollection[(Int, VesselMetadata)])
     : SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
 
     val input = SCollection.unionAll(inputs)
