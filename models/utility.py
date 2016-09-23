@@ -58,6 +58,9 @@ def extract_features(input, max_time_delta, window_size):
     return np.random.randint(0, upper)
   features = np_array_random_fixed_time_extract(rng, input, max_time_delta, window_size)
 
+  start_time = features[0][0]
+  end_time = features[-1][0]
+
   # Drop the first (timestamp) column.
   features = features[:,1:]
 
@@ -68,7 +71,7 @@ def extract_features(input, max_time_delta, window_size):
   if not np.isfinite(features).all():
     logging.fatal('Bad features: %s', features)
 
-  return features
+  return features, [start_time, end_time]
 
 def cropping_feature_file_reader(filename_queue, num_features, max_time_delta,
     window_size):
@@ -78,18 +81,21 @@ def cropping_feature_file_reader(filename_queue, num_features, max_time_delta,
   label = tf.cast(context_features['vessel_type_index'], tf.int32)
   weight = tf.cast(context_features['weight'], tf.float32)
 
-  features = tf.py_func(lambda input: extract_features(input, max_time_delta, window_size),
-      [movement_features], [tf.float32])
+  features, time_bounds = tf.py_func(lambda input: extract_features(input, max_time_delta, window_size),
+      [movement_features], [tf.float32, tf.int64])
 
-  return features, label
+  return features, time_bounds, label
 
 
 def extract_n_features(input, label, n, max_time_delta, window_size):
-  res = [np.stack([extract_features(input, max_time_delta, window_size)]) for _ in range(n)]
-  return np.stack(res), [label] * n
+  samples = []
+  for _ in range(n):
+    features, time_bounds = extract_features(input, max_time_delta, window_size)
+    samples.append((np.stack([features]), time_bounds, label))
+  return zip(*samples)
 
 def cropping_weight_replicating_feature_file_reader(filename_queue, num_features, max_time_delta,
-    window_size):
+    window_size, max_replication_factor):
   context_features, sequence_features = single_feature_file_reader(filename_queue, num_features)
 
   movement_features = sequence_features['movement_features']
@@ -97,13 +103,13 @@ def cropping_weight_replicating_feature_file_reader(filename_queue, num_features
   weight = tf.cast(context_features['weight'], tf.float32)
 
   def replicate_extract(input, label, weight):
-    n = int(np.ceil(8.0 / weight))
+    n = int(np.ceil(float(max_replication_factor) * weight))
     return extract_n_features(input, label, n, max_time_delta, window_size)
 
-  features_list, label_list = tf.py_func(replicate_extract,
-      [movement_features, label, weight], [tf.float32, tf.int32])
+  features_list, time_bounds_list, label_list = tf.py_func(replicate_extract,
+      [movement_features, label, weight], [tf.float32, tf.float32, tf.int32])
 
-  return features_list, label_list
+  return features_list, time_bounds_list, label_list
 
 
 def misconception_layer(input, window_size, stride, depth, is_training, scope=None):
@@ -125,7 +131,6 @@ def misconception_with_bypass(input, window_size, stride, depth, is_training, sc
     misconception = misconception_layer(input, window_size, stride, depth, is_training, scope)
     bypass = slim.avg_pool2d(input, [1, window_size], stride=[1, stride], padding='SAME')
 
-    #return slim.batch_norm(misconception + bypass, is_training=is_training)
     return misconception + bypass
 
 def misconception_model(input, window_size, stride, depth, levels, num_classes, is_training):
