@@ -413,7 +413,8 @@ object Pipeline extends LazyLogging {
       case (_, vm) => (vm.split, vm.vesselType)
     }
 
-    val vesselTypeWeights = Parameters.splits.map { currentSplit =>
+    val allSplits = allSplitCounts.map(_._1._1).toSeq.distinct
+    val vesselTypeWeights = allSplits.map { currentSplit =>
       val counts = allSplitCounts.collect {
         case ((split, vesselType), count) if split == currentSplit => (vesselType, count)
       }
