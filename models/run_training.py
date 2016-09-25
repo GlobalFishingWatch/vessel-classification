@@ -181,6 +181,7 @@ class ModelTrainer(ModelConfiguration):
 
 
 def run_training(config, server, trainer):
+  logging.info("Starting training task %s, %d", config.task_type, config.task_index)
   if config.is_ps():
     # This task is a parameter server.
     server.join()
@@ -212,14 +213,16 @@ def main(args):
 
   config = json.loads(os.environ.get('TF_CONFIG', '{}'))
   if (config == {}):
-    trainer.run_evaluation('localhost')
+    node_config = utility.ClusterNodeConfig.create_local_server_config()
+    server = tf.train.Server.create_local_server()
+    run_training(node_config, server, trainer)
   else:
     logging.info("Config dictionary: %s", config)
 
-    node_config = ClusterNodeConfig(config)
-    server = node_config.server()
+    node_config = utility.ClusterNodeConfig(config)
+    server = node_config.create_server()
     
-    run_training(config, server, trainer)
+    run_training(node_config, server, trainer)
 
 def parse_args():
   """ Parses command-line arguments for training."""

@@ -55,6 +55,8 @@ def misconception_model(input, window_size, stride, depth, levels, num_classes, 
     net = slim.fully_connected(net, 100)
     net = slim.dropout(net, 0.5, is_training=is_training)
 
-    net = slim.fully_connected(net, num_classes) 
+    net = slim.fully_connected(net, num_classes)
+
+    #net = slim.softmax(net)
 
     return net

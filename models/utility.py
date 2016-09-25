@@ -25,12 +25,16 @@ class ClusterNodeConfig(object):
   def is_chief(self):
     return task_index == 0
 
-  def make_server(self):
+  def create_server(self):
     server = tf.train.Server(self.cluster_spec,
         job_name=self.task_type, task_index=self.task_index)
 
     logging.info("Server target: %s", server.target)
     return server
+
+  @staticmethod
+  def create_local_server_config():
+    return ClusterNodeConfig({"cluster": {}, "task" : {"type": "worker", "index": 0}})
 
 
 def single_feature_file_reader(filename_queue, num_features):
@@ -110,8 +114,6 @@ def np_array_random_fixed_time_extract(rng, input_series, max_time_delta,
   
   cropped = input_series[start_index:end_index]
   cropped_length = len(cropped)
-  logging.debug("%d, %d, %d, %d, %d, %d, %d, %d", input_length, start_time, end_time,
-      max_time_offset, time_offset, start_index, end_index, cropped_length)
   reps = int(np.ceil(output_length / float(cropped_length)))
   output_series = np.concatenate([cropped] * reps, axis=0)[:output_length]
 
@@ -136,8 +138,8 @@ def np_array_extract_features(input, max_time_delta, window_size,
       lambda upper: np.random.randint(0, upper), input,
       max_time_delta, window_size, min_timeslice_size)
 
-  start_time = features[0][0]
-  end_time = features[-1][0]
+  start_time = int(features[0][0])
+  end_time = int(features[-1][0])
 
   # Drop the first (timestamp) column.
   features = features[:,1:]
@@ -149,7 +151,7 @@ def np_array_extract_features(input, max_time_delta, window_size,
   if not np.isfinite(features).all():
     logging.fatal('Bad features: %s', features)
 
-  return features, [start_time, end_time]
+  return features, np.array([start_time, end_time], dtype=np.int32)
 
 def np_array_extract_n_features(input, label, n, max_time_delta,
     window_size, min_timeslice_size):
