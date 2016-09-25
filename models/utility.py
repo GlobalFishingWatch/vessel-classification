@@ -70,7 +70,7 @@ def single_feature_file_reader(filename_queue, num_features):
 
   return context_features, sequence_features
 
-def np_array_random_fixed_time_extract(rng, input_series, max_time_delta,
+def np_array_random_fixed_time_extract(random_state, input_series, max_time_delta,
     output_length, min_timeslice_size):
   """ Extracts a random fixed-time slice from a 2d numpy array.
     
@@ -80,8 +80,7 @@ def np_array_random_fixed_time_extract(rng, input_series, max_time_delta,
   prefix series repeated into the window to pad.    
     
   Args:
-    rng: a single-arg function taking an int and uniformly returning a random
-      number in the range [0, arg).
+    random_state: a numpy randomstate object.
     input_series: the input series. A 2d array first column representing an
       ascending time.   
     max_time_delta: the maximum duration of the returned timeseries in seconds.
@@ -102,7 +101,7 @@ def np_array_random_fixed_time_extract(rng, input_series, max_time_delta,
   if max_time_offset == 0:
     time_offset = 0
   else:
-    time_offset = rng(max_time_offset)
+    time_offset = random_state.randint(0, max_time_offset)
   start_index = np.searchsorted(input_series[:, 0], start_time + time_offset, side='left')
 
   # Should not start closer than min_timeslice_size points from the end lest the 
@@ -119,7 +118,7 @@ def np_array_random_fixed_time_extract(rng, input_series, max_time_delta,
 
   return output_series
 
-def np_array_extract_features(input, max_time_delta, window_size,
+def np_array_extract_features(random_state, input, max_time_delta, window_size,
     min_timeslice_size):
   """ Extract and process a random timeslice from vessel movement features.
 
@@ -134,8 +133,7 @@ def np_array_extract_features(input, max_time_delta, window_size,
       1. The extracted feature timeslice.
       2. The start and end time of the timeslice (in int64 seconds since epoch).
   """
-  features = np_array_random_fixed_time_extract(
-      lambda upper: np.random.randint(0, upper), input,
+  features = np_array_random_fixed_time_extract(random_state, input,
       max_time_delta, window_size, min_timeslice_size)
 
   start_time = int(features[0][0])
@@ -145,7 +143,7 @@ def np_array_extract_features(input, max_time_delta, window_size,
   features = features[:,1:]
 
   # Roll the features randomly to give different offsets.
-  roll = np.random.randint(0, window_size)
+  roll = random_state.randint(0, window_size)
   features = np.roll(features, roll, axis=0)
 
   if not np.isfinite(features).all():
@@ -153,14 +151,15 @@ def np_array_extract_features(input, max_time_delta, window_size,
 
   return features, np.array([start_time, end_time], dtype=np.int32)
 
-def np_array_extract_n_features(input, label, n, max_time_delta,
+def np_array_extract_n_features(random_state, input, label, n, max_time_delta,
     window_size, min_timeslice_size):
   """ Extract and process multiple timeslices from a vessel movement feature.
 
   Args:
     input: the input data as a 2d numpy array.
     label: the label for the vessel which made this series.
-    n: the number of times to extract a feature timeslice from this series.
+    n: the (floating-point) number of times to extract a feature timeslice from
+       this series.
 
   Returns:
     A tuple comprising:
@@ -173,10 +172,19 @@ def np_array_extract_n_features(input, label, n, max_time_delta,
   """
 
   samples = []
-  for _ in range(n):
-    features, time_bounds = np_array_extract_features(input, max_time_delta,
-        window_size, min_timeslice_size)
+  int_n = int(n)
+  def add_sample():
+    features, time_bounds = np_array_extract_features(random_state, input,
+        max_time_delta, window_size, min_timeslice_size)
     samples.append((np.stack([features]), time_bounds, label))
+
+  for _ in range(int_n):
+    add_sample()
+
+  frac_n = n - float(int_n)
+  if (random_state.uniform(0.0, 1.0) <= frac_n):
+    add_sample()
+
   return zip(*samples)
 
 def cropping_weight_replicating_feature_file_reader(filename_queue, num_features,
@@ -208,10 +216,12 @@ def cropping_weight_replicating_feature_file_reader(filename_queue, num_features
   label = tf.cast(context_features['vessel_type_index'], tf.int32)
   weight = tf.cast(context_features['weight'], tf.float32)
 
+  random_state = np.random.RandomState()
+
   def replicate_extract(input, label, weight):
-    n = int(np.ceil(float(max_replication_factor) * weight))
-    return np_array_extract_n_features(input, label, n, max_time_delta,
-        window_size, min_timeslice_size)
+    n = min(float(max_replication_factor), weight)
+    return np_array_extract_n_features(random_state, input, label, n,
+      max_time_delta, window_size, min_timeslice_size)
 
   features_list, time_bounds_list, label_list = tf.py_func(replicate_extract,
       [movement_features, label, weight], [tf.float32, tf.int32, tf.int32])
