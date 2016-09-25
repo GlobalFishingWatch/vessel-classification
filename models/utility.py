@@ -70,6 +70,24 @@ def single_feature_file_reader(filename_queue, num_features):
 
   return context_features, sequence_features
 
+def np_pad_repeat_slice(slice, window_size):
+  """ Pads slice to the specified window size.
+
+  Series that are shorter than window_size are repeated into unfilled space.
+
+  Args:
+    slice: a numpy array.
+    window_size: the size the array must be padded to.
+
+  Returns:
+    a numpy array of length window_size in the first dimension.
+  """
+
+  slice_length = len(slice)
+  assert(slice_length <= window_size)
+  reps = int(np.ceil(output_length / float(slice_length)))
+  return np.concatenate([slice] * reps, axis=0)[:window_size]
+
 def np_array_random_fixed_time_extract(random_state, input_series, max_time_delta,
     output_length, min_timeslice_size):
   """ Extracts a random fixed-time slice from a 2d numpy array.
@@ -112,9 +130,7 @@ def np_array_random_fixed_time_extract(random_state, input_series, max_time_delt
   end_index = np.searchsorted(input_series[:, 0], crop_end_time, side='right')
   
   cropped = input_series[start_index:end_index]
-  cropped_length = len(cropped)
-  reps = int(np.ceil(output_length / float(cropped_length)))
-  output_series = np.concatenate([cropped] * reps, axis=0)[:output_length]
+  output_series = np_pad_repeat_slice(cropped, output_length)
 
   return output_series
 
@@ -151,9 +167,9 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
 
   return features, np.array([start_time, end_time], dtype=np.int32)
 
-def np_array_extract_n_features(random_state, input, label, n, max_time_delta,
+def np_array_extract_n_random_features(random_state, input, label, n, max_time_delta,
     window_size, min_timeslice_size):
-  """ Extract and process multiple timeslices from a vessel movement feature.
+  """ Extract and process multiple random timeslices from a vessel movement feature.
 
   Args:
     input: the input data as a 2d numpy array.
@@ -220,7 +236,7 @@ def cropping_weight_replicating_feature_file_reader(filename_queue, num_features
 
   def replicate_extract(input, label, weight):
     n = min(float(max_replication_factor), weight)
-    return np_array_extract_n_features(random_state, input, label, n,
+    return np_array_extract_n_random_features(random_state, input, label, n,
       max_time_delta, window_size, min_timeslice_size)
 
   features_list, time_bounds_list, label_list = tf.py_func(replicate_extract,
@@ -228,4 +244,81 @@ def cropping_weight_replicating_feature_file_reader(filename_queue, num_features
 
   return features_list, time_bounds_list, label_list
 
+def np_array_extract_all_sequential_slices(input_series, label, max_time_delta, window_size):
+  """ Extract and process all sequential timeslices from a vessel movement feature.
+
+  Args:
+    input: the input data as a 2d numpy array.
+    label: the label for the vessel which made this series.
+    max_time_delta: the maximum time contained in each window.
+    window_size: the size of the window.
+
+  Returns:
+    A tuple comprising:
+      1. An numpy array comprising N feature timeslices, of dimension
+          [n, 1, window_size, num_features].
+      2. A numpy array comprising timebounds for each slice, of dimension
+          [n, 2].
+      3. A numpy array with an int32 label for each slice, of dimension [n].
+
+  """
+  series_length = len(input_series)
+  start_time = input_series[0][0]
+  current_window_start_index = 0
+
+  slices = []
+  while True:
+    current_window_start_time = input_series[current_window_start_index][0]
+    current_window_end_index = min(current_window_start_index + window_size,
+        np.searchsorted(
+          input_series[current_window_start_index:, 0],
+          current_window_start_time + max_time_delta, side='right'))
+    current_window_end_time = input_series[current_window_end_index][0]
+
+    cropped = input_series[current_window_start_index:current_window_end_index]
+    output_slice = np_pad_repeat_slice(cropped, window_size)
+    time_bounds = np.array([current_window_start_time, window_end_time],
+      dtype=np.int32)
+
+    slices.append((output_slice, time_bounds, label))
+
+    current_window_start_index = current_window_end_index
+    if current_window_start_index >= (series_length-1):
+      break
+
+  return slices
+
+def cropping_all_slice_feature_file_reader(filename_queue, num_features,
+    max_time_delta, window_size):
+  """ Set up a file reader and inference feature extractor for the files in a queue.
+
+  An inference feature extractor, pulling all sequential slices from a vessel
+  movement series.
+
+  Args:
+    filename_queue: a queue of filenames for feature files to read.
+    num_features: the dimensionality of the features.
+
+  Returns:
+    A tuple comprising, for the n slices comprising each vessel:
+      1. A tensor of the feature timeslices drawn, of dimension
+         [n, 1, window_size, num_features].
+      2. A tensor of the timebounds for the timeslices, of dimension [n, 2].
+      3. A tensor of the labels for each timeslice, of dimension [n].
+
+  """
+  context_features, sequence_features = single_feature_file_reader(filename_queue,
+      num_features)
+
+  movement_features = sequence_features['movement_features']
+  label = tf.cast(context_features['vessel_type_index'], tf.int32)
+
+  def replicate_extract(input, label):
+    return np_array_extract_all_sequential_slices(input, label,
+      max_time_delta, window_size)
+
+  features_list, time_bounds_list, label_list = tf.py_func(replicate_extract,
+      [movement_features, label], [tf.float32, tf.int32, tf.int32])
+
+  return features_list, time_bounds_list, label_list
 
