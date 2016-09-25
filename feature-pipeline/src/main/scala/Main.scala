@@ -433,7 +433,11 @@ object Pipeline extends LazyLogging {
 
     val vesselMetadata = unweightedVesselMetadata.map {
       case (mmsi, vm) =>
-        val weight = vesselTypeWeights(vm.split)(vm.vesselType)
+        val weight = if (vm.split == Parameters.unclassifiedSplit) {
+          1.0f
+        } else {
+          vesselTypeWeights(vm.split)(vm.vesselType)
+        }
 
         (mmsi, VesselMetadata(mmsi, weight, vm.split, vm.vesselType))
     }
