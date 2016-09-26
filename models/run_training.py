@@ -15,87 +15,13 @@ import tensorflow.contrib.metrics as metrics
   11. Vessel labels as time series also for change of behaviour.
 """
 
-class ModelConfiguration(object):
-  """ Configuration for the vessel behaviour model, shared between training and
-      inference.
-  """
-
-  def __init__(self):
-    self.feature_duration_days = 180
-    self.num_classes = 9
-    self.num_feature_dimensions = 9
-    self.max_sample_frequency_seconds = 5 * 60
-    self.max_window_duration_seconds = self.feature_duration_days * 24 * 3600
-
-    # We allocate a much smaller buffer than would fit the specified time
-    # sampled at 5 mins intervals, on the basis that the sample is almost
-    # always much more sparse.
-    self.window_max_points = (self.max_window_duration_seconds /
-        self.max_sample_frequency_seconds) / 4
-    self.window_size = 3
-    self.stride = 2
-    self.feature_depth = 20
-    self.levels = 10
-    self.batch_size = 32
-    self.min_viable_timeslice_length = 500
-
-  def zero_pad_features(self, features):
-    """ Zero-pad features in the depth dimension to match requested feature depth. """
-
-    feature_pad_size = self.feature_depth - self.num_feature_dimensions
-    assert(feature_pad_size >= 0)
-    zero_padding = tf.zeros([self.batch_size, 1, self.window_max_points,
-        feature_pad_size])
-    padded = tf.concat(3, [raw_features, zero_padding])
-
-    return padded
-
-class ModelInference(ModelConfiguration):
-  def __init__(self, model_checkpoint_path, unclassified_feature_path):
-    ModelConfiguration.__init__(self)
-
-    self.model_checkpoint_path = model_checkpoint_path
-    self.unclassified_feature_path = unclassified_feature_path
-
-
-  def run_inference(self, inference_results_path):
-    matching_files = tf.matching_files(self.unclassified_feature_path)
-    filename_queue = tf.train.input_producer(matching_files, shuffle=False,
-        epochs = 1)
-
-    # To parallelise. How? Multiple local copies of the graph? Or multiple
-    # workers, in which case how do we apportion work appropriately?
-    reader = utility.cropping_all_slice_feature_file_reader(filename_queue,
-        self.num_features, self.max_time_delta, self.window_size)
-    features, time_ranges, mmsis = tf.train.batch(reader, self.batch_size)
-
-    features = self.zero_pad_features(features)
-
-    logits = layers.misconception_model(features, self.window_size, self.stride,
-            self.feature_depth, self.levels, self.num_classes, False)
-
-    softmax = slim.softmax(logits)
-
-    predictions = tf.cast(tf.argmax(softmax, 1), tf.int32)
-
-    saver = tf.train.Saver()
-    # Open output file, on cloud storage - so what file api?
-    with tf.Session() as sess:
-      saver.restore(sess, self.model_checkpoint_path)
-
-      # In a loop, calculate logits and predictions and write out. Will
-      # be terminated when an EOF exception is thrown.
-      result = sess.run(predictions)
-
-      # Write predictions to file: mmsi, max_feature, logits.
-
-class ModelTrainer(ModelConfiguration):
+class ModelTrainer(utility.ModelConfiguration):
   """ Handles the mechanics of training and evaluating a vessel behaviour
       model.
   """ 
 
   def __init__(self, base_feature_path, train_scratch_path):
-    ModelConfiguration.__init__(self)
+    utility.ModelConfiguration.__init__(self)
 
     self.base_feature_path = base_feature_path
     self.train_scratch_path = train_scratch_path
@@ -146,7 +72,7 @@ class ModelTrainer(ModelConfiguration):
         enqueue_many=True,
         shapes=[[1, self.window_max_points, self.num_feature_dimensions], [2], []])
 
-    features = self.zero_pad_features(features)
+    features = self.zero_pad_features(raw_features)
 
     one_hot_labels = slim.one_hot_encoding(labels, self.num_classes)
 

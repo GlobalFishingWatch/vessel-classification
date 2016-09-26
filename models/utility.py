@@ -4,6 +4,42 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
 
+class ModelConfiguration(object):
+  """ Configuration for the vessel behaviour model, shared between training and
+      inference.
+  """
+
+  def __init__(self):
+    self.feature_duration_days = 180
+    self.num_classes = 9
+    self.num_feature_dimensions = 9
+    self.max_sample_frequency_seconds = 5 * 60
+    self.max_window_duration_seconds = self.feature_duration_days * 24 * 3600
+
+    # We allocate a much smaller buffer than would fit the specified time
+    # sampled at 5 mins intervals, on the basis that the sample is almost
+    # always much more sparse.
+    self.window_max_points = (self.max_window_duration_seconds /
+        self.max_sample_frequency_seconds) / 4
+    self.window_size = 3
+    self.stride = 2
+    self.feature_depth = 20
+    self.levels = 10
+    self.batch_size = 32
+    self.min_viable_timeslice_length = 500
+
+  def zero_pad_features(self, features):
+    """ Zero-pad features in the depth dimension to match requested feature depth. """
+
+    feature_pad_size = self.feature_depth - self.num_feature_dimensions
+    assert(feature_pad_size >= 0)
+    zero_padding = tf.zeros([self.batch_size, 1, self.window_max_points,
+        feature_pad_size])
+    padded = tf.concat(3, [features, zero_padding])
+
+    return padded
+
+
 class ClusterNodeConfig(object):
   """ Class that represent the configuration of this node in a cluster. """
 
@@ -85,7 +121,7 @@ def np_pad_repeat_slice(slice, window_size):
 
   slice_length = len(slice)
   assert(slice_length <= window_size)
-  reps = int(np.ceil(output_length / float(slice_length)))
+  reps = int(np.ceil(window_size / float(slice_length)))
   return np.concatenate([slice] * reps, axis=0)[:window_size]
 
 def np_array_random_fixed_time_extract(random_state, input_series, max_time_delta,
@@ -318,7 +354,7 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
       max_time_delta, window_size)
 
   features_list, time_bounds_list, mmsis = tf.py_func(replicate_extract,
-      [movement_features, label], [tf.float32, tf.int32, tf.int32])
+      [movement_features, mmsi], [tf.float32, tf.int32, tf.int32])
 
   return features_list, time_bounds_list, mmsis
 
