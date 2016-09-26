@@ -31,7 +31,11 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
       expected_result = np.array([[1., 5.], [2., 4.], [3., 7.], [4., 9.], [5.,
         3.], [6., 8.], [1., 5.], [2., 4.]])
 
-      res = utility.np_array_random_fixed_time_extract(lambda _: 0, input_data, 5, 8, 50)
+      class FakeRandomState(object):
+        def randint(self, min, max):
+          return 0
+
+      res = utility.np_array_random_fixed_time_extract(FakeRandomState(), input_data, 5, 8, 50)
       
       self.assertAllEqual(res, expected_result)
 

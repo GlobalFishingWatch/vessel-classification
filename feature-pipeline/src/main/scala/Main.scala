@@ -104,7 +104,7 @@ object VesselMetadata {
 case class VesselMetadata(
     mmsi: Int,
     weight: Float = 1.0f,
-    dataset: String = Parameters.unclassifiedSplit,
+    split: String = Parameters.unclassifiedSplit,
     vesselType: String = "Unknown"
 ) {
   def vesselTypeIndex = VesselMetadata.vesselTypeToIndexMap.getOrElse(vesselType, 0)
@@ -408,27 +408,39 @@ object Pipeline extends LazyLogging {
       }
       .toMap
 
-    // Count the number of training vessel types per vessel type.
-    val counts = unweightedVesselMetadata.collect {
-      case (_, vm) if vm.dataset == Parameters.trainingSplit => vm.vesselType
-    }.countBy(Predef.identity)
+    // Count the number of training vessels per split per vessel type.
+    val allSplitCounts = unweightedVesselMetadata.countBy {
+      case (_, vm) => (vm.split, vm.vesselType)
+    }
 
-    val rarestVesselTypeCount = counts.map(_._2).min
-    val vesselTypeSampleProbability = counts.map {
-      case (vt, c) =>
-        val sampleProbability = rarestVesselTypeCount.toFloat / c.toFloat
-        logger.info(s"Vessel type $vt has sample probability $sampleProbability")
-        (vt, sampleProbability)
+    val allSplits = allSplitCounts.map(_._1._1).toSeq.distinct
+    val vesselTypeWeights = allSplits.map { currentSplit =>
+      val counts = allSplitCounts.collect {
+        case ((split, vesselType), count) if split == currentSplit => (vesselType, count)
+      }
+      val commonestVesselTypeCount = counts.map(_._2).max
+      val vesselTypeSampleWeights = counts.map {
+        case (vt, c) =>
+          // The commonest vessel has weight 1.0, the others higher reflecting the
+          // number of times they should be over-sampled to achieve equivalent
+          // training.
+          val sampleWeight = commonestVesselTypeCount.toFloat / c.toFloat
+          logger.info(s"For split $currentSplit, vessel type $vt has weight $sampleWeight")
+          (vt, sampleWeight)
+      }.toMap
+
+      (currentSplit, vesselTypeSampleWeights)
     }.toMap
 
     val vesselMetadata = unweightedVesselMetadata.map {
       case (mmsi, vm) =>
-        val weight = if (vm.dataset == Parameters.trainingSplit) {
-          vesselTypeSampleProbability(vm.vesselType)
-        } else {
+        val weight = if (vm.split == Parameters.unclassifiedSplit) {
           1.0f
+        } else {
+          vesselTypeWeights(vm.split)(vm.vesselType)
         }
-        (mmsi, VesselMetadata(mmsi, weight, vm.dataset, vm.vesselType))
+
+        (mmsi, VesselMetadata(mmsi, weight, vm.split, vm.vesselType))
     }
 
     vesselMetadata
@@ -468,7 +480,7 @@ object Pipeline extends LazyLogging {
           ISODateTimeFormat.basicDateTimeNoMillis().print(now) + "/" +
           split
 
-      val filteredFeatures = features.filter { case (md, _) => md.dataset == split }.map {
+      val filteredFeatures = features.filter { case (md, _) => md.split == split }.map {
         case (_, example) => example.asInstanceOf[MessageLite]
       }
 
