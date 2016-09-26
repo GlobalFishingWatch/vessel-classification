@@ -244,7 +244,7 @@ def cropping_weight_replicating_feature_file_reader(filename_queue, num_features
 
   return features_list, time_bounds_list, label_list
 
-def np_array_extract_all_sequential_slices(input_series, label, max_time_delta, window_size):
+def np_array_extract_all_sequential_slices(input_series, mmsi, max_time_delta, window_size):
   """ Extract and process all sequential timeslices from a vessel movement feature.
 
   Args:
@@ -280,7 +280,7 @@ def np_array_extract_all_sequential_slices(input_series, label, max_time_delta, 
     time_bounds = np.array([current_window_start_time, window_end_time],
       dtype=np.int32)
 
-    slices.append((output_slice, time_bounds, label))
+    slices.append((output_slice, time_bounds, mmsi))
 
     current_window_start_index = current_window_end_index
     if current_window_start_index >= (series_length-1):
@@ -311,14 +311,14 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
       num_features)
 
   movement_features = sequence_features['movement_features']
-  label = tf.cast(context_features['vessel_type_index'], tf.int32)
+  mmsi = tf.cast(context_features['mmsi'], tf.int32)
 
   def replicate_extract(input, label):
-    return np_array_extract_all_sequential_slices(input, label,
+    return np_array_extract_all_sequential_slices(input, mmsi,
       max_time_delta, window_size)
 
-  features_list, time_bounds_list, label_list = tf.py_func(replicate_extract,
+  features_list, time_bounds_list, mmsis = tf.py_func(replicate_extract,
       [movement_features, label], [tf.float32, tf.int32, tf.int32])
 
-  return features_list, time_bounds_list, label_list
+  return features_list, time_bounds_list, mmsis
 
