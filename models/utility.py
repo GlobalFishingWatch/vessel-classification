@@ -163,7 +163,8 @@ def np_array_random_fixed_time_extract(random_state, input_series, max_time_delt
   start_index = min(start_index, max(0, input_length - min_timeslice_size))
   crop_end_time = min(input_series[start_index][0] + max_time_delta, end_time)
 
-  end_index = np.searchsorted(input_series[:, 0], crop_end_time, side='right')
+  end_index = min(start_index + output_length,
+      np.searchsorted(input_series[:, 0], crop_end_time, side='right'))
   
   cropped = input_series[start_index:end_index]
   output_series = np_pad_repeat_slice(cropped, output_length)
@@ -305,24 +306,37 @@ def np_array_extract_all_sequential_slices(input_series, mmsi, max_time_delta, w
   slices = []
   while True:
     current_window_start_time = input_series[current_window_start_index][0]
-    current_window_end_index = min(current_window_start_index + window_size,
+    current_window_end_index = current_window_start_index + min(window_size,
         np.searchsorted(
           input_series[current_window_start_index:, 0],
-          current_window_start_time + max_time_delta, side='right'))
+          current_window_start_time + max_time_delta, side='left'))
+    current_window_end_index = min(current_window_end_index, series_length-1)
     current_window_end_time = input_series[current_window_end_index][0]
 
     cropped = input_series[current_window_start_index:current_window_end_index]
-    output_slice = np_pad_repeat_slice(cropped, window_size)
-    time_bounds = np.array([current_window_start_time, window_end_time],
-      dtype=np.int32)
+    time_bounds = np.array([current_window_start_time, current_window_end_time],
+        dtype=np.int32)
+    #logging.info("%d: Time bounds: %s (%d) %d %d", mmsi, time_bounds, len(cropped), window_size,
+    #    (current_window_end_index - current_window_start_index))
+    if len(cropped) >= 250:
+      output_slice = np_pad_repeat_slice(cropped, window_size)
 
-    slices.append((output_slice, time_bounds, mmsi))
+      # Drop the first (timestamp) column.
+      output_slice = output_slice[:,1:]
+
+      slices.append((np.stack([output_slice]), time_bounds, mmsi))
 
     current_window_start_index = current_window_end_index
     if current_window_start_index >= (series_length-1):
       break
 
-  return slices
+  if slices == []:
+    return (np.empty([0, 1, window_size, 9], dtype=np.float32),
+        np.empty(shape=[0, 2], dtype=np.int32),
+        np.empty(shape=[0], dtype=np.int32))
+
+  return zip(*slices)
+
 
 def cropping_all_slice_feature_file_reader(filename_queue, num_features,
     max_time_delta, window_size):
@@ -349,7 +363,7 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
   movement_features = sequence_features['movement_features']
   mmsi = tf.cast(context_features['mmsi'], tf.int32)
 
-  def replicate_extract(input, label):
+  def replicate_extract(input, mmsi):
     return np_array_extract_all_sequential_slices(input, mmsi,
       max_time_delta, window_size)
 
