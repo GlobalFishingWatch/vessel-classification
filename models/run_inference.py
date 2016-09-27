@@ -17,7 +17,7 @@ class ModelInference(utility.ModelConfiguration):
     matching_files_i = tf.matching_files(self.unclassified_feature_path)
     matching_files = tf.Print(matching_files_i, [matching_files_i], "Files: ")
     filename_queue = tf.train.input_producer(matching_files, shuffle=False,
-        num_epochs = None)
+        num_epochs = 1)
 
     # To parallelise. How? Multiple local copies of the graph? Or multiple
     # workers, in which case how do we apportion work appropriately?
@@ -25,7 +25,7 @@ class ModelInference(utility.ModelConfiguration):
         self.num_feature_dimensions+1, self.max_window_duration_seconds,
         self.window_max_points)
     features, time_ranges, mmsis = tf.train.batch(reader, self.batch_size,
-      enqueue_many=True,
+      enqueue_many=True, allow_smaller_final_batch=True,
       shapes=[[1, self.window_max_points, self.num_feature_dimensions], [2], []])
 
     features = self.zero_pad_features(features)
@@ -39,7 +39,11 @@ class ModelInference(utility.ModelConfiguration):
 
     # Open output file, on cloud storage - so what file api?
     with tf.Session() as sess:
-      tf.initialize_all_variables()
+      init_op = tf.group(
+        tf.initialize_local_variables(),
+        tf.initialize_all_variables())
+
+      sess.run(init_op)
 
       logging.info("Restoring model: %s", self.model_checkpoint_path)
       saver = tf.train.Saver()
