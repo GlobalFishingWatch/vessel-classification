@@ -4,6 +4,18 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
 
+VESSEL_CLASS_NAMES = [
+    "Unknown",
+    "Purse seine",
+    "Longliner",
+    "Trawler",
+    "Pots and traps",
+    "Passenger",
+    "Tug",
+    "Cargo/Tanker",
+    "Supply"
+]
+
 class ModelConfiguration(object):
   """ Configuration for the vessel behaviour model, shared between training and
       inference.

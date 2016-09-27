@@ -41,6 +41,7 @@ class ModelInference(utility.ModelConfiguration):
     softmax = slim.softmax(logits)
 
     predictions = tf.cast(tf.argmax(softmax, 1), tf.int32)
+    max_probabilities = tf.reduce_max(softmax, [1])
 
     # Open output file, on cloud storage - so what file api?
     parallelism = 16 
@@ -69,12 +70,13 @@ class ModelInference(utility.ModelConfiguration):
         while True:
           logging.info("Inference step: %d", i)
           i += 1
-          result = sess.run([mmsis, time_ranges, predictions])
-          for mmsi, (start_time_seconds, end_time_seconds), label in zip(*result):
+          result = sess.run([mmsis, time_ranges, predictions, max_probabilities])
+          for mmsi, (start_time_seconds, end_time_seconds), label, max_probability in zip(*result):
             start_time = datetime.datetime.utcfromtimestamp(start_time_seconds)
             end_time = datetime.datetime.utcfromtimestamp(end_time_seconds)
-            output_file.write('%d, %s, %s, %s\n' % (mmsi, start_time.isoformat(),
-                end_time.isoformat(), label))
+            output_file.write('%d, %s, %s, %s, %.3f\n' % (mmsi, start_time.isoformat(),
+                end_time.isoformat(), utility.VESSEL_CLASS_NAMES[label],
+                max_probability))
 
       # Write predictions to file: mmsi, max_feature, logits.
 
