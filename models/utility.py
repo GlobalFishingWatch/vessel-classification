@@ -59,7 +59,7 @@ class ClusterNodeConfig(object):
     return self.task_type == 'ps'
 
   def is_chief(self):
-    return task_index == 0
+    return self.task_index == 0
 
   def create_server(self):
     server = tf.train.Server(self.cluster_spec,
