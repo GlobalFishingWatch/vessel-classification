@@ -12,6 +12,8 @@ class ModelInference(utility.ModelConfiguration):
 
     self.model_checkpoint_path = model_checkpoint_path
     self.unclassified_feature_path = unclassified_feature_path
+    self.num_parallel_readers = 16
+    self.batch_size = 64
 
 
   def run_inference(self, inference_results_path):
@@ -20,13 +22,15 @@ class ModelInference(utility.ModelConfiguration):
     filename_queue = tf.train.input_producer(matching_files, shuffle=False,
         num_epochs = 1)
 
-    # To parallelise. How? Multiple local copies of the graph? Or multiple
-    # workers, in which case how do we apportion work appropriately?
-    reader = utility.cropping_all_slice_feature_file_reader(filename_queue,
-        self.num_feature_dimensions+1, self.max_window_duration_seconds,
-        self.window_max_points)
-    features, time_ranges, mmsis = tf.train.batch(reader, self.batch_size,
-      enqueue_many=True, allow_smaller_final_batch=True, capacity=1000,
+    readers = []
+    for _ in range(self.num_parallel_readers):
+      reader = utility.cropping_all_slice_feature_file_reader(filename_queue,
+          self.num_feature_dimensions+1, self.max_window_duration_seconds,
+          self.window_max_points)
+      readers.append(reader)
+
+    features, time_ranges, mmsis = tf.train.batch_join(readers, self.batch_size,
+      enqueue_many=True, capacity=1000,
       shapes=[[1, self.window_max_points, self.num_feature_dimensions], [2], []])
 
     features = self.zero_pad_features(features)
@@ -39,7 +43,7 @@ class ModelInference(utility.ModelConfiguration):
     predictions = tf.cast(tf.argmax(softmax, 1), tf.int32)
 
     # Open output file, on cloud storage - so what file api?
-    parallelism = 16
+    parallelism = 16 
     config=tf.ConfigProto(
                     inter_op_parallelism_threads=parallelism,
                     intra_op_parallelism_threads=parallelism)
@@ -60,12 +64,17 @@ class ModelInference(utility.ModelConfiguration):
       # In a loop, calculate logits and predictions and write out. Will
       # be terminated when an EOF exception is thrown.
       logging.info("Running predictions.")
-      while True:
-        result = sess.run([mmsis, time_ranges, predictions])
-        for mmsi, (start_time_seconds, end_time_seconds), label in zip(*result):
-          start_time = datetime.datetime.utcfromtimestamp(start_time_seconds)
-          end_time = datetime.datetime.utcfromtimestamp(end_time_seconds)
-          logging.info("%d, %s, %s, %s", mmsi, start_time.isoformat(), end_time.isoformat(), label)
+      i = 0
+      with open(inference_results_path, 'w') as output_file:
+        while True:
+          logging.info("Inference step: %d", i)
+          i += 1
+          result = sess.run([mmsis, time_ranges, predictions])
+          for mmsi, (start_time_seconds, end_time_seconds), label in zip(*result):
+            start_time = datetime.datetime.utcfromtimestamp(start_time_seconds)
+            end_time = datetime.datetime.utcfromtimestamp(end_time_seconds)
+            output_file.write('%d, %s, %s, %s\n' % (mmsi, start_time.isoformat(),
+                end_time.isoformat(), label))
 
       # Write predictions to file: mmsi, max_feature, logits.
 

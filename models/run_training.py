@@ -27,7 +27,7 @@ class ModelTrainer(utility.ModelConfiguration):
     self.train_scratch_path = train_scratch_path
     self.checkpoint_dir = self.train_scratch_path + '/train'
     self.eval_dir = self.train_scratch_path + '/eval'
-    self.num_parallel_readers = 24
+    self.num_parallel_readers = 16
 
   def _training_data_reader(self, input_file_pattern, is_training):
     """ Concurrent training data reader.
@@ -169,7 +169,7 @@ def run_training(config, server, trainer):
 
           # The chief worker is responsible for writing out checkpoints as the
           # run progresses.
-          trainer.run_training(server.target, config.is_chief)
+          trainer.run_training(server.target, config.is_chief())
       elif config.is_master():
         # This task is the master, running evaluation.
         trainer.run_evaluation(server.target)
