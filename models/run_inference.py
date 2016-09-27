@@ -1,4 +1,5 @@
 import argparse
+import datetime
 import layers
 import logging
 import tensorflow.contrib.slim as slim
@@ -52,15 +53,11 @@ class ModelInference(utility.ModelConfiguration):
       # be terminated when an EOF exception is thrown.
       logging.info("Running predictions.")
       while True:
-        result = sess.run([mmsis, predictions])
-        result_dict = {}
-        for mmsi, label in zip(*result):
-          if not mmsi in result_dict:
-            result_dict[mmsi] = []
-          result_dict[mmsi].append(label)
-
-        for mmsi, label in result_dict.iteritems():
-          logging.info("Result: %d, %s", mmsi, label)
+        result = sess.run([mmsis, time_ranges, predictions])
+        for mmsi, (start_time_seconds, end_time_seconds), label in zip(*result):
+          start_time = datetime.datetime.utcfromtimestamp(start_time_seconds)
+          end_time = datetime.datetime.utcfromtimestamp(end_time_seconds)
+          logging.info("%d, %s, %s, %s", mmsi, start_time.isoformat(), end_time.isoformat(), label)
 
       # Write predictions to file: mmsi, max_feature, logits.
 
