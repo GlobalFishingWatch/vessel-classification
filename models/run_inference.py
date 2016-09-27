@@ -26,7 +26,7 @@ class ModelInference(utility.ModelConfiguration):
         self.num_feature_dimensions+1, self.max_window_duration_seconds,
         self.window_max_points)
     features, time_ranges, mmsis = tf.train.batch(reader, self.batch_size,
-      enqueue_many=True, allow_smaller_final_batch=True,
+      enqueue_many=True, allow_smaller_final_batch=True, capacity=1000,
       shapes=[[1, self.window_max_points, self.num_feature_dimensions], [2], []])
 
     features = self.zero_pad_features(features)
@@ -39,7 +39,11 @@ class ModelInference(utility.ModelConfiguration):
     predictions = tf.cast(tf.argmax(softmax, 1), tf.int32)
 
     # Open output file, on cloud storage - so what file api?
-    with tf.Session() as sess:
+    parallelism = 16
+    config=tf.ConfigProto(
+                    inter_op_parallelism_threads=parallelism,
+                    intra_op_parallelism_threads=parallelism)
+    with tf.Session(config=config) as sess:
       init_op = tf.group(
         tf.initialize_local_variables(),
         tf.initialize_all_variables())
