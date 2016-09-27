@@ -60,7 +60,8 @@ class ModelInference(utility.ModelConfiguration):
         for mmsi, (start_time_seconds, end_time_seconds), label in zip(*result):
           start_time = datetime.datetime.utcfromtimestamp(start_time_seconds)
           end_time = datetime.datetime.utcfromtimestamp(end_time_seconds)
-          logging.info("%d, %s, %s, %s", mmsi, start_time.isoformat(), end_time.isoformat(), label)
+          logging.info("%d, %s, %s, %s", mmsi, start_time.isoformat(), end_time.isoformat(),
+            utility.VESSEL_CLASS_NAMES[label])
 
       # Write predictions to file: mmsi, max_feature, logits.
 
