@@ -15,43 +15,19 @@ import tensorflow.contrib.metrics as metrics
   11. Vessel labels as time series also for change of behaviour.
 """
 
-class ModelConfiguration(object):
-  """ Configuration for the vessel behaviour model, shared between training and
-      inference.
-  """
-
-  def __init__(self):
-    self.feature_duration_days = 180
-    self.num_classes = 9
-    self.num_feature_dimensions = 9
-    self.max_sample_frequency_seconds = 5 * 60
-    self.max_window_duration_seconds = self.feature_duration_days * 24 * 3600
-
-    # We allocate a much smaller buffer than would fit the specified time
-    # sampled at 5 mins intervals, on the basis that the sample is almost
-    # always much more sparse.
-    self.window_max_points = (self.max_window_duration_seconds /
-        self.max_sample_frequency_seconds) / 4
-    self.window_size = 3
-    self.stride = 2
-    self.feature_depth = 20
-    self.levels = 10
-    self.batch_size = 32
-    self.min_viable_timeslice_length = 500
-
-class ModelTrainer(ModelConfiguration):
+class ModelTrainer(utility.ModelConfiguration):
   """ Handles the mechanics of training and evaluating a vessel behaviour
       model.
   """ 
 
   def __init__(self, base_feature_path, train_scratch_path):
-    ModelConfiguration.__init__(self)
+    utility.ModelConfiguration.__init__(self)
 
     self.base_feature_path = base_feature_path
     self.train_scratch_path = train_scratch_path
     self.checkpoint_dir = self.train_scratch_path + '/train'
     self.eval_dir = self.train_scratch_path + '/eval'
-    self.num_parallel_readers = 24
+    self.num_parallel_readers = 16
 
   def _training_data_reader(self, input_file_pattern, is_training):
     """ Concurrent training data reader.
@@ -96,10 +72,7 @@ class ModelTrainer(ModelConfiguration):
         enqueue_many=True,
         shapes=[[1, self.window_max_points, self.num_feature_dimensions], [2], []])
 
-    feature_pad_size = self.feature_depth - self.num_feature_dimensions
-    assert(feature_pad_size >= 0)
-    zero_padding = tf.zeros([self.batch_size, 1, self.window_max_points, feature_pad_size])
-    features = tf.concat(3, [raw_features, zero_padding])
+    features = self.zero_pad_features(raw_features)
 
     one_hot_labels = slim.one_hot_encoding(labels, self.num_classes)
 
@@ -196,7 +169,7 @@ def run_training(config, server, trainer):
 
           # The chief worker is responsible for writing out checkpoints as the
           # run progresses.
-          trainer.run_training(server.target, config.is_chief)
+          trainer.run_training(server.target, config.is_chief())
       elif config.is_master():
         # This task is the master, running evaluation.
         trainer.run_evaluation(server.target)
