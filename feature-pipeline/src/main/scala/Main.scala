@@ -90,14 +90,14 @@ case class LatLon(lat: DoubleU[degrees], lon: DoubleU[degrees]) {
 
 object VesselMetadata {
   val vesselTypeToIndexMap = Seq(
-    "Purse seine",      // 1
-    "Longliner",        // 2
-    "Trawler",          // 3
-    "Pots and traps",   // 4
-    "Passenger",        // 5
-    "Tug",              // 6
-    "Cargo/Tanker",     // 7
-    "Supply"            // 8
+    "Purse seine",
+    "Longliner",
+    "Trawler",
+    "Pots and traps",
+    "Passenger",
+    "Tug",
+    "Cargo/Tanker",
+    "Supply"
   ).zipWithIndex.map { case (name, index) => (name, index + 1) }.toMap
 }
 
