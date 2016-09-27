@@ -8,7 +8,7 @@ trainingInput:
   scaleTier: CUSTOM
   masterType: "standard"
   parameterServerType: "standard"
-  workerType: "standard"
-  workerCount: 3
+  workerType: "large_model"
+  workerCount: 5
   parameterServerCount: 1
   region: us-central1
