@@ -12,19 +12,18 @@ class ModelInference(utility.ModelConfiguration):
 
     self.model_checkpoint_path = model_checkpoint_path
     self.unclassified_feature_path = unclassified_feature_path
-    self.num_parallel_readers = 16
     self.batch_size = 64
     self.min_points_for_classification = 250
 
 
-  def run_inference(self, inference_results_path):
+  def run_inference(self, inference_parallelism, inference_results_path):
     matching_files_i = tf.matching_files(self.unclassified_feature_path)
     matching_files = tf.Print(matching_files_i, [matching_files_i], "Files: ")
     filename_queue = tf.train.input_producer(matching_files, shuffle=False,
         num_epochs = 1)
 
     readers = []
-    for _ in range(self.num_parallel_readers):
+    for _ in range(inference_parallelism):
       reader = utility.cropping_all_slice_feature_file_reader(filename_queue,
           self.num_feature_dimensions+1, self.max_window_duration_seconds,
           self.window_max_points, self.min_points_for_classification)
@@ -45,10 +44,9 @@ class ModelInference(utility.ModelConfiguration):
     max_probabilities = tf.reduce_max(softmax, [1])
 
     # Open output file, on cloud storage - so what file api?
-    parallelism = 16 
     config=tf.ConfigProto(
-                    inter_op_parallelism_threads=parallelism,
-                    intra_op_parallelism_threads=parallelism)
+                    inter_op_parallelism_threads=inference_parallelism,
+                    intra_op_parallelism_threads=inference_parallelism)
     with tf.Session(config=config) as sess:
       init_op = tf.group(
         tf.initialize_local_variables(),
@@ -88,9 +86,10 @@ def main(args):
   model_checkpoint_path = args.model_checkpoint_path
   unclassified_feature_path = args.unclassified_feature_path
   inference_results_path = args.inference_results_path
+  inference_parallelism = args.inference_parallelism
 
   inference = ModelInference(model_checkpoint_path, unclassified_feature_path)
-  inference.run_inference(inference_results_path)
+  inference.run_inference(inference_parallelism, inference_results_path)
 
 def parse_args():
   """ Parses command-line arguments for training."""
@@ -103,6 +102,9 @@ def parse_args():
       help='Path to the checkpointed model to use for inference.')
 
   argparser.add_argument('--inference_results_path', required=True,
+      help='Path to the csv file to dump all inference results.')
+
+  argparser.add_argument('--inference_parallelism', type=int, default=4,
       help='Path to the csv file to dump all inference results.')
 
   return argparser.parse_args()
