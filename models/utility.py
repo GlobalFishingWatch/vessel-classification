@@ -293,7 +293,8 @@ def cropping_weight_replicating_feature_file_reader(filename_queue, num_features
 
   return features_list, time_bounds_list, label_list
 
-def np_array_extract_all_sequential_slices(input_series, mmsi, max_time_delta, window_size):
+def np_array_extract_all_sequential_slices(input_series, mmsi, max_time_delta,
+    window_size, min_points_for_classification):
   """ Extract and process all sequential timeslices from a vessel movement feature.
 
   Args:
@@ -328,9 +329,8 @@ def np_array_extract_all_sequential_slices(input_series, mmsi, max_time_delta, w
     cropped = input_series[current_window_start_index:current_window_end_index]
     time_bounds = np.array([current_window_start_time, current_window_end_time],
         dtype=np.int32)
-    #logging.info("%d: Time bounds: %s (%d) %d %d", mmsi, time_bounds, len(cropped), window_size,
-    #    (current_window_end_index - current_window_start_index))
-    if len(cropped) >= 250:
+
+    if len(cropped) >= min_points_for_classification:
       output_slice = np_pad_repeat_slice(cropped, window_size)
 
       # Drop the first (timestamp) column.
@@ -351,7 +351,7 @@ def np_array_extract_all_sequential_slices(input_series, mmsi, max_time_delta, w
 
 
 def cropping_all_slice_feature_file_reader(filename_queue, num_features,
-    max_time_delta, window_size):
+    max_time_delta, window_size, min_points_for_classification):
   """ Set up a file reader and inference feature extractor for the files in a queue.
 
   An inference feature extractor, pulling all sequential slices from a vessel
@@ -377,7 +377,7 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
 
   def replicate_extract(input, mmsi):
     return np_array_extract_all_sequential_slices(input, mmsi,
-      max_time_delta, window_size)
+      max_time_delta, window_size, min_points_for_classification)
 
   features_list, time_bounds_list, mmsis = tf.py_func(replicate_extract,
       [movement_features, mmsi], [tf.float32, tf.int32, tf.int32])

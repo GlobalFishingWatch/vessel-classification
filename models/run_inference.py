@@ -14,6 +14,7 @@ class ModelInference(utility.ModelConfiguration):
     self.unclassified_feature_path = unclassified_feature_path
     self.num_parallel_readers = 16
     self.batch_size = 64
+    self.min_points_for_classification = 250
 
 
   def run_inference(self, inference_results_path):
@@ -26,7 +27,7 @@ class ModelInference(utility.ModelConfiguration):
     for _ in range(self.num_parallel_readers):
       reader = utility.cropping_all_slice_feature_file_reader(filename_queue,
           self.num_feature_dimensions+1, self.max_window_duration_seconds,
-          self.window_max_points)
+          self.window_max_points, self.min_points_for_classification)
       readers.append(reader)
 
     features, time_ranges, mmsis = tf.train.batch_join(readers, self.batch_size,
