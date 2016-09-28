@@ -36,7 +36,7 @@ def launch(model_name):
         config_template = f.read()
 
     time_stamp = datetime.datetime.now().strftime('%y%m%d_%H%M%S')
-    job_id = model_name + '_' + time_stamp
+    job_id = model_name.replace('.', '_') + '_' + time_stamp
 
     config_txt = config_template.format(model_name=model_name, job_id=job_id)
     config = yaml.load(config_txt)

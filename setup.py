@@ -4,4 +4,4 @@ setuptools.setup(
   version='1.0',
   author='Alex Wilson',
   author_email='alexwilson@google.com',
-  packages=['classification', 'classification.models'])
+  packages=['classification', 'classification.models', 'classification.models.alex', 'classification.models.tim'])

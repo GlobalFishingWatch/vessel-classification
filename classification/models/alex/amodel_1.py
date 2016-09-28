@@ -1,11 +1,11 @@
 from __future__ import absolute_import
 import argparse
 import json
-from .. import layers
+from . import layers
 import logging
 import math
 import os
-from .. import utility
+from ... import utility
 
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
