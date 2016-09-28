@@ -25,8 +25,8 @@ from oauth2client.client import GoogleCredentials
 from googleapiclient import discovery
 import tempfile
 
-
 project_id = 'world-fishing-827'
+
 
 def launch(model_name):
     # Read the configuration file so that we 
@@ -47,8 +47,9 @@ def launch(model_name):
 
     # By convention package has same name here and uploaded
     file_name = os.path.basename(train_uri)
-    source_uri = os.path.join('dist', "vessel_classification-1.0.tar.gz") # XXX this is fragile
-    subprocess.check_call(['gsutil', 'cp',  source_uri, train_uri])
+    source_uri = os.path.join(
+        'dist', "vessel_classification-1.0.tar.gz")  # XXX this is fragile
+    subprocess.check_call(['gsutil', 'cp', source_uri, train_uri])
 
     print("Deployed", source_uri, "to", train_uri)
 
@@ -56,16 +57,17 @@ def launch(model_name):
     with tempfile.NamedTemporaryFile() as temp:
         temp.write(config_txt)
         temp.flush()
-        subprocess.check_call(['gcloud', 'beta', 'ml', 'jobs', 'submit', 'training', job_id, 
-            '--config', temp.name])
+        subprocess.check_call(['gcloud', 'beta', 'ml', 'jobs', 'submit',
+                               'training', job_id, '--config', temp.name])
 
     return job_id
 
 
 LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
+
 def print_logs(job_id, level="INFO"):
-    print('Printing logs of', level, "and above") 
+    print('Printing logs of', level, "and above")
 
     if level not in LEVELS:
         raise ValueError("unknown log level", level)
@@ -78,13 +80,10 @@ def print_logs(job_id, level="INFO"):
     #                   discoveryServiceUrl='https://storage.googleapis.com/cloud-ml/discovery/ml_v1alpha3_discovery.json')
     # op_name = ('projects/%s/operations/%s' % (project_id, job_id))
 
-    tail = ['gcloud', 'beta', 'logging', 'read', 
-            '--format=json', 'labels."ml.googleapis.com/job_id"="%s"' % (job_id,)
-    ]
+    tail = ['gcloud', 'beta', 'logging', 'read', '--format=json',
+            'labels."ml.googleapis.com/job_id"="%s"' % (job_id, )]
     while True:
         entries = json.loads(subprocess.check_output(tail))
-
-
 
         if not entries:
             time.sleep(10)
@@ -107,20 +106,19 @@ def print_logs(job_id, level="INFO"):
                     print("Uninterpreatable log entry:", entry)
                     continue
                 print(text)
-                if text.strip() in ["Job failed.", "Job completed successfully."]: 
+                if text.strip() in ["Job failed.",
+                                    "Job completed successfully."]:
                     return
         last_timestamp = entries[-1]['timestamp']
 
-        tail[-1] = (
-                'labels."ml.googleapis.com/job_id"="%s" AND '
-                'timestamp>"%s"' % (job_id, last_timestamp))
+        tail[-1] = ('labels."ml.googleapis.com/job_id"="%s" AND '
+                    'timestamp>"%s"' % (job_id, last_timestamp))
 
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Deploy ML Training.')
-    parser.add_argument('model_name', 
-                        help='module name of model')
+    parser.add_argument('model_name', help='module name of model')
 
     args = parser.parse_args()
 

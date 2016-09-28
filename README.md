@@ -4,6 +4,12 @@ Vessel classification pipeline: feature generation and model training/inference.
 
 [![Build Status](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline.svg?branch=master)](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline)
 
+# Developing
+
+* Code is to be formatted using [YAPF](https://github.com/google/yapf) before submission. Use `yapf -r -i .` in top level
+  directory.
+
+
 # Building
 
 The various projects are built using the Scala build tool 'sbt'. You need a JVM on your machine
@@ -26,3 +32,7 @@ may take some time to download all the required libraries.
   * Sign in: `gcloud auth application-default login`.
 * Cloud Dataflow
    * Run jobs, specifying the zone and max number of workers, e.g. `--zone=europe-west1-c  --maxNumWorkers=80`.
+* Cloud ML
+   * Training:
+       - `./deploy_cloudml.py alex.amodel_1`
+       - `./deploy_cloudml.py tim.tmodel_1`
