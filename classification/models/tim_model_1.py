@@ -173,13 +173,6 @@ class Trainer:
         return X, y, Y_, logits
 
 
-    # @property
-    # def CHECKPOINT_DIR(self):
-    #     checkpoint_dir = os.path.join(self.BASE_CHECKPOINT_DIR, self.checkpoint_name)
-    #     if not checkpoint_dir.startswith("gs:") and not os.path.exists(checkpoint_dir):
-    #         os.mkdir(checkpoint_dir)
-    #     return checkpoint_dir
-
     @property
     def CHECKPOINT_PATH(self):
         return os.path.join(self.CHECKPOINT_DIR, 
@@ -273,9 +266,9 @@ class Trainer:
             predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
             accuracy = slim.metrics.accuracy(y, predictions)
 
-            tf.scalar_summary('train-loss', loss)
-            tf.scalar_summary('train-accuracy', accuracy)
-            tf.scalar_summary('learning-rate', learning_rate)
+            tf.scalar_summary('Training loss', loss)
+            tf.scalar_summary('Training accuracy', accuracy)
+            tf.scalar_summary('Learning rate', learning_rate)
 
         return GraphData(X, y, Y_, logits, is_training, sess, batch_size, optimizer),  batch
 
@@ -389,7 +382,7 @@ class Trainer:
                 logging.debug("Eval step: %s", batch_val)
                 preds, labels = self.eval_in_batches(self.VALIDATION_POINTS, gdata)
                 accuracy = (labels == np.argmax(preds, axis=1)).mean()
-                writer.add_summary(make_summary("test-accuracy", accuracy), batch_val) 
+                writer.add_summary(make_summary("Test accuracy", accuracy), batch_val) 
                 #
                 writer.flush()
 
@@ -421,7 +414,7 @@ class Trainer:
         capacity = 600
         min_size_after_deque = capacity - self.DEFAULT_BATCH_SIZE * 4
 
-        max_replication = 8 if is_training else 1
+        max_replication = 8
 
         readers = []
         for _ in range(self.NUM_PARALLEL_READERS):
