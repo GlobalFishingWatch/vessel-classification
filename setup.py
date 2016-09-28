@@ -1,7 +1,7 @@
 import setuptools
 setuptools.setup(
-  name='alex_vessel_classification',
+  name='vessel_classification',
   version='1.0',
   author='Alex Wilson',
   author_email='alexwilson@google.com',
-  packages=['models'])
+  packages=['classification', 'classification.models', 'classification.models.alex', 'classification.models.tim'])
