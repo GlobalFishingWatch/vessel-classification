@@ -9,16 +9,16 @@ import utility
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
-
 """ TODO(alexwilson):
   9. Build inference application.
   11. Vessel labels as time series also for change of behaviour.
 """
 
+
 class ModelTrainer(utility.ModelConfiguration):
   """ Handles the mechanics of training and evaluating a vessel behaviour
       model.
-  """ 
+  """
 
   def __init__(self, base_feature_path, train_scratch_path):
     utility.ModelConfiguration.__init__(self)
@@ -61,16 +61,20 @@ class ModelTrainer(utility.ModelConfiguration):
 
     readers = []
     for _ in range(self.num_parallel_readers):
-      readers.append(utility.cropping_weight_replicating_feature_file_reader(
-        filename_queue, self.num_feature_dimensions + 1,
-        self.max_window_duration_seconds, self.window_max_points,
-        self.min_viable_timeslice_length, max_replication))
+      readers.append(
+          utility.cropping_weight_replicating_feature_file_reader(
+              filename_queue, self.num_feature_dimensions + 1,
+              self.max_window_duration_seconds, self.window_max_points,
+              self.min_viable_timeslice_length, max_replication))
 
-    raw_features, time_bounds, labels = tf.train.shuffle_batch_join(readers,
-        self.batch_size, capacity,
+    raw_features, time_bounds, labels = tf.train.shuffle_batch_join(
+        readers,
+        self.batch_size,
+        capacity,
         min_size_after_deque,
         enqueue_many=True,
-        shapes=[[1, self.window_max_points, self.num_feature_dimensions], [2], []])
+        shapes=[[1, self.window_max_points, self.num_feature_dimensions], [2],
+                []])
 
     features = self.zero_pad_features(raw_features)
 
@@ -86,8 +90,9 @@ class ModelTrainer(utility.ModelConfiguration):
     features, labels, one_hot_labels = self._training_data_reader(
         input_file_pattern, True)
 
-    logits = layers.misconception_model(features, self.window_size, self.stride,
-            self.feature_depth, self.levels, self.num_classes, True)
+    logits = layers.misconception_model(features, self.window_size,
+                                        self.stride, self.feature_depth,
+                                        self.levels, self.num_classes, True)
 
     predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
@@ -98,19 +103,19 @@ class ModelTrainer(utility.ModelConfiguration):
     tf.scalar_summary('Training accuracy', accuracy)
 
     optimizer = tf.train.AdamOptimizer(1e-4)
-    train_op = slim.learning.create_train_op(loss, optimizer,
-            update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+    train_op = slim.learning.create_train_op(
+        loss, optimizer, update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
 
     model_variables = slim.get_model_variables()
 
     slim.learning.train(
-      train_op,
-      self.checkpoint_dir,
-      master=master,
-      is_chief=is_chief,
-      number_of_steps=500000,
-      save_summaries_secs=30,
-      save_interval_secs=60)
+        train_op,
+        self.checkpoint_dir,
+        master=master,
+        is_chief=is_chief,
+        number_of_steps=500000,
+        save_summaries_secs=30,
+        save_interval_secs=60)
 
   def run_evaluation(self, master):
     """ The function for running model evaluation on the master. """
@@ -120,8 +125,9 @@ class ModelTrainer(utility.ModelConfiguration):
     features, labels, one_hot_labels = self._training_data_reader(
         input_file_pattern, False)
 
-    logits = layers.misconception_model(features, self.window_size, self.stride,
-            self.feature_depth, self.levels, self.num_classes, False)
+    logits = layers.misconception_model(features, self.window_size,
+                                        self.stride, self.feature_depth,
+                                        self.levels, self.num_classes, False)
 
     predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
@@ -136,7 +142,7 @@ class ModelTrainer(utility.ModelConfiguration):
       op = tf.scalar_summary(metric_name, metric_value)
       op = tf.Print(op, [metric_value], metric_name)
       summary_ops.append(op)
-    
+
     num_examples = 256
     num_evals = math.ceil(num_examples / float(self.batch_size))
 
@@ -154,7 +160,8 @@ class ModelTrainer(utility.ModelConfiguration):
 
 
 def run_training(config, server, trainer):
-  logging.info("Starting training task %s, %d", config.task_type, config.task_index)
+  logging.info("Starting training task %s, %d", config.task_type,
+               config.task_index)
   if config.is_ps():
     # This task is a parameter server.
     server.join()
@@ -163,9 +170,11 @@ def run_training(config, server, trainer):
       if config.is_worker():
         # This task is a worker, running training and sharing parameters with
         # other workers via the parameter server.
-        with tf.device(tf.train.replica_device_setter(
-            worker_device = '/job:%s/task:%d' % (config.task_type, config.task_index),
-            cluster = config.cluster_spec)):
+        with tf.device(
+            tf.train.replica_device_setter(
+                worker_device='/job:%s/task:%d' % (config.task_type,
+                                                   config.task_index),
+                cluster=config.cluster_spec)):
 
           # The chief worker is responsible for writing out checkpoints as the
           # run progresses.
@@ -175,6 +184,7 @@ def run_training(config, server, trainer):
         trainer.run_evaluation(server.target)
       else:
         raise ValueError('Unexpected task type: %s', config.task_type)
+
 
 def main(args):
   logging.getLogger().setLevel(logging.DEBUG)
@@ -194,20 +204,26 @@ def main(args):
 
     node_config = utility.ClusterNodeConfig(config)
     server = node_config.create_server()
-    
+
     run_training(node_config, server, trainer)
+
 
 def parse_args():
   """ Parses command-line arguments for training."""
   argparser = argparse.ArgumentParser('Train fishing classification model.')
 
-  argparser.add_argument('--root_feature_path', required=True,
+  argparser.add_argument(
+      '--root_feature_path',
+      required=True,
       help='The root path to the vessel movement feature directories.')
 
-  argparser.add_argument('--training_output_path', required=True,
+  argparser.add_argument(
+      '--training_output_path',
+      required=True,
       help='The working path for model statistics and checkpoints.')
 
   return argparser.parse_args()
+
 
 if __name__ == '__main__':
   args = parse_args()
