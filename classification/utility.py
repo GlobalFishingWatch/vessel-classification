@@ -308,9 +308,8 @@ def cropping_weight_replicating_feature_file_reader(
 
 
 # TODO(alexwilson): build relevant time ranges (180 day slices).
-def np_array_extract_slices_for_time_ranges(random_state,
-                                            input_series, mmsi, time_ranges,
-                                            window_size,
+def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
+                                            time_ranges, window_size,
                                             min_points_for_classification):
     """ Extract and process a set of specified time slices from a vessel
         movement feature.
@@ -346,7 +345,7 @@ def np_array_extract_slices_for_time_ranges(random_state,
         if (length > window_size):
             max_offset = length - window_size
             start_offset = random_state.uniform(max_offset)
-            cropped = cropped[max_offset:max_offset+window_size]
+            cropped = cropped[max_offset:max_offset + window_size]
 
         if len(cropped) >= min_points_for_classification:
             output_slice = np_pad_repeat_slice(cropped, window_size)
@@ -355,12 +354,13 @@ def np_array_extract_slices_for_time_ranges(random_state,
             slices.append((np.stack([output_slice]), time_bounds, mmsi))
 
     if slices == []:
-      return (np.empty(
-          [0, 1, window_size, 9], dtype=np.float32), np.empty(
-              shape=[0, 2], dtype=np.int32), np.empty(
-                  shape=[0], dtype=np.int32))
+        return (np.empty(
+            [0, 1, window_size, 9], dtype=np.float32), np.empty(
+                shape=[0, 2], dtype=np.int32), np.empty(
+                    shape=[0], dtype=np.int32))
 
     return zip(*slices)
+
 
 def np_array_extract_all_sequential_slices(input_series, mmsi, max_time_delta,
                                            window_size,
@@ -455,6 +455,7 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
     mmsi = tf.cast(context_features['mmsi'], tf.int32)
 
     random_state = np.random.RandomState()
+
     def replicate_extract(input, mmsi):
         return np_array_extract_slices_for_time_ranges(
             random_state, input, mmsi, time_ranges, window_size,

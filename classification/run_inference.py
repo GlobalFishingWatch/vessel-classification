@@ -10,6 +10,7 @@ import tensorflow as tf
 import time
 import utility
 
+
 class ModelInference(utility.ModelConfiguration):
     def __init__(self, model_checkpoint_path, unclassified_feature_path):
         utility.ModelConfiguration.__init__(self)
@@ -18,7 +19,7 @@ class ModelInference(utility.ModelConfiguration):
         self.unclassified_feature_path = unclassified_feature_path
         self.batch_size = 64
         self.min_points_for_classification = 250
-        
+
         def _build_starts():
             today = datetime.datetime.now(pytz.utc)
             months = [1, 4, 7, 10]
@@ -34,7 +35,8 @@ class ModelInference(utility.ModelConfiguration):
 
         time_starts = _build_starts()
 
-        self.time_ranges = [(s, e) for (s, e) in zip(time_starts, time_starts[2:])]
+        self.time_ranges = [(s, e)
+                            for (s, e) in zip(time_starts, time_starts[2:])]
 
     def run_inference(self, inference_parallelism, inference_results_path):
         matching_files_i = tf.matching_files(self.unclassified_feature_path)
@@ -97,8 +99,10 @@ class ModelInference(utility.ModelConfiguration):
                     i += 1
                     result = sess.run(
                         [mmsis, time_ranges, predictions, max_probabilities])
-                    for mmsi, (start_time_seconds, end_time_seconds
-                               ), label, max_probability in zip(*result):
+                    for mmsi, (
+                            start_time_seconds,
+                            end_time_seconds), label, max_probability in zip(
+                                *result):
                         start_time = datetime.datetime.utcfromtimestamp(
                             start_time_seconds)
                         end_time = datetime.datetime.utcfromtimestamp(

@@ -373,8 +373,7 @@ class Trainer:
                 gdata_list = list(gdata)
                 gdata_list[5] = sess
                 gdata = GraphData(
-                    *
-                    gdata_list)  # XXX: Hacky! At a minimum pull sess out of gdata
+                    *gdata_list)  # XXX: Hacky! At a minimum pull sess out of gdata
 
                 logging.debug("Eval step: %s", batch_val)
                 preds, labels = self.eval_in_batches(self.VALIDATION_POINTS,
