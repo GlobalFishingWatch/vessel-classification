@@ -307,7 +307,6 @@ def cropping_weight_replicating_feature_file_reader(
     return features_list, time_bounds_list, label_list
 
 
-# TODO(alexwilson): build relevant time ranges (180 day slices).
 def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
                                             time_ranges, window_size,
                                             min_points_for_classification):
@@ -315,6 +314,7 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
         movement feature.
 
       Args:
+      random_state: a numpy randomstate object.
       input: the input data as a 2d numpy array.
       mmsi: the id of the vessel which made this series.
       max_time_delta: the maximum time contained in each window.
@@ -354,72 +354,7 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
             slices.append((np.stack([output_slice]), time_bounds, mmsi))
 
     if slices == []:
-        return (np.empty(
-            [0, 1, window_size, 9], dtype=np.float32), np.empty(
-                shape=[0, 2], dtype=np.int32), np.empty(
-                    shape=[0], dtype=np.int32))
-
-    return zip(*slices)
-
-
-def np_array_extract_all_sequential_slices(input_series, mmsi, max_time_delta,
-                                           window_size,
-                                           min_points_for_classification):
-    """ Extract and process all sequential timeslices from a vessel movement feature.
-
-    Args:
-        input: the input data as a 2d numpy array.
-        mmsi: the id of the vessel which made this series.
-        max_time_delta: the maximum time contained in each window.
-        window_size: the size of the window.
-        min_points_for_classification: the minumum number of points in a window for
-            it to be usable.
-
-    Returns:
-        A tuple comprising:
-          1. An numpy array comprising N feature timeslices, of dimension
-              [n, 1, window_size, num_features].
-          2. A numpy array comprising timebounds for each slice, of dimension
-              [n, 2].
-          3. A numpy array with an int32 mmsi for each slice, of dimension [n].
-
-    """
-    series_length = len(input_series)
-    start_time = input_series[0][0]
-    current_window_start_index = 0
-
-    slices = []
-    while True:
-        current_window_start_time = input_series[current_window_start_index][0]
-        current_window_end_index = current_window_start_index + min(
-            window_size,
-            np.searchsorted(
-                input_series[current_window_start_index:, 0],
-                current_window_start_time + max_time_delta,
-                side='left'))
-        current_window_end_index = min(current_window_end_index,
-                                       series_length - 1)
-        current_window_end_time = input_series[current_window_end_index][0]
-
-        cropped = input_series[current_window_start_index:
-                               current_window_end_index]
-        time_bounds = np.array(
-            [current_window_start_time, current_window_end_time],
-            dtype=np.int32)
-
-        if len(cropped) >= min_points_for_classification:
-            output_slice = np_pad_repeat_slice(cropped, window_size)
-
-            # Drop the first (timestamp) column.
-            output_slice = output_slice[:, 1:]
-
-            slices.append((np.stack([output_slice]), time_bounds, mmsi))
-
-        current_window_start_index = current_window_end_index
-        if current_window_start_index >= (series_length - 1):
-            break
-
-    if slices == []:
+        # Return an appropriately shaped empty numpy array.
         return (np.empty(
             [0, 1, window_size, 9], dtype=np.float32), np.empty(
                 shape=[0, 2], dtype=np.int32), np.empty(
