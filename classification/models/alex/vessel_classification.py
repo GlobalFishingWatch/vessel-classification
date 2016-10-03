@@ -149,11 +149,16 @@ class Trainer(utility.ModelConfiguration):
         # Setup the global step.
         slim.get_or_create_global_step()
 
-        slim.evaluation.evaluation_loop(
-            master,
-            self.checkpoint_dir,
-            self.eval_dir,
-            num_evals=num_evals,
-            eval_op=names_to_updates.values(),
-            summary_op=tf.merge_summary(summary_ops),
-            eval_interval_secs=120)
+        while True:
+            try:
+                slim.evaluation.evaluation_loop(
+                    master,
+                    self.checkpoint_dir,
+                    self.eval_dir,
+                    num_evals=num_evals,
+                    eval_op=names_to_updates.values(),
+                    summary_op=tf.merge_summary(summary_ops),
+                    eval_interval_secs=120)
+            except ValueError as e:
+                logging.warning('Error in evaluation loop: (%s), retrying',
+                                str(e))
