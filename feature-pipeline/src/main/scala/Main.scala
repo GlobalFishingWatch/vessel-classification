@@ -10,17 +10,20 @@ import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import com.spotify.scio.bigquery._
 import com.typesafe.scalalogging.{LazyLogging, Logger}
-import com.google.cloud.dataflow.sdk.options.{DataflowPipelineOptions, PipelineOptionsFactory}
+import com.google.cloud.dataflow.sdk.options.{DataflowPipelineOptions, PipelineOptions, PipelineOptionsFactory}
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
-import com.google.cloud.dataflow.sdk.io.{Write}
+import com.google.cloud.dataflow.sdk.io.{FileBasedSink, Write}
+import com.google.cloud.dataflow.sdk.util.{GcsUtil}
+import com.google.cloud.dataflow.sdk.util.gcsfs.{GcsPath}
 import com.opencsv.CSVReader
-import java.io.{File, FileReader, InputStream, OutputStream}
+import java.io.{File, FileOutputStream, FileReader, InputStream, OutputStream}
 import java.lang.{RuntimeException}
+import java.nio.channels.Channels
 import java.nio.charset.StandardCharsets
 import org.apache.commons.math3.util.MathUtils
 import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
 import org.joda.time.format.ISODateTimeFormat
-import org.skytruth.dataflow.{TFRecordSink}
+import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 import org.tensorflow.example.{
   Example,
   Feature,
@@ -46,7 +49,8 @@ object Parameters {
 
   // TODO(alexwilson): remove years list when cloud dataflow text source can
   // handle our volume of files.
-  val allDataYears = List("2012", "2013", "2014", "2015", "2016")
+  //val allDataYears = List("2012", "2013", "2014", "2015", "2016")
+  val allDataYears = List("2015")
   val inputMeasuresPath =
     "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment"
   val outputFeaturesPath =
@@ -472,23 +476,48 @@ object Pipeline extends LazyLogging {
     val locationRecords = readJsonRecords(matches, sc.parallelize(vesselMetadata))
 
     val filtered = filterVesselRecords(locationRecords, Parameters.minRequiredPositions)
-    val features = buildVesselFeatures(filtered)
-
-    Parameters.splits.foreach { split =>
-      val outputPath =
-        Parameters.outputFeaturesPath + "/" +
-          ISODateTimeFormat.basicDateTimeNoMillis().print(now) + "/" +
-          split
-
-      val filteredFeatures = features.filter { case (md, _) => md.split == split }.map {
-        case (_, example) => example.asInstanceOf[MessageLite]
-      }
-
-      filteredFeatures.internal.apply(
-        "WriteTFRecords",
-        Write.to(new TFRecordSink(outputPath + "/", "tfrecord", "shard-SSSSS-of-NNNNN")))
+    val features = buildVesselFeatures(filtered).map { case (md, feature) =>
+      (s"${md.mmsi}", feature)
     }
+    val outputPath = Parameters.outputFeaturesPath + "/" +
+          ISODateTimeFormat.basicDateTimeNoMillis().print(now)
+
+    val res = oneFilePerTFRecordSink(outputPath, features)
 
     sc.close()
+  }
+
+  // TODO(alexwilson): Rolling this ourselves isn't nice. Explore how to do this with existing cloud dataflow sinks.
+  def oneFilePerTFRecordSink[T <: MessageLite](basePath: String, values: SCollection[(String, T)]) = {
+    // Write data to temporary files, one per mmsi.
+    val tempFiles = values.map { case (name, value) =>
+      val tempPath = s"$basePath/$name.tfrecord-tmp"
+      val finalPath = s"$basePath/$name.tfrecord"
+
+      val pipelineOptions = PipelineOptionsFactory.create()
+      val gcsUtil = new GcsUtil.GcsUtilFactory().create(pipelineOptions)
+
+      val channel = gcsUtil.create(GcsPath.fromUri(tempPath), "application/octet-stream")
+      val outFs = Channels.newOutputStream(channel)
+      TFRecordUtils.write(outFs, value)
+      outFs.close()
+
+      (tempPath, finalPath)
+    }
+
+    // Copy the files to their final destinations, then delete.
+    tempFiles.map { case (tempPath, finalPath) =>
+
+      val pipelineOptions = PipelineOptionsFactory.create()
+      val gcsUtil = new GcsUtil.GcsUtilFactory().create(pipelineOptions)
+
+      // TODO(alexwilson): This API is designed for batching copies. It might
+      // be better to do this multiple-filenames at a time.
+      gcsUtil.copy(List(tempPath), List(finalPath))
+
+      gcsUtil.remove(List(tempPath))
+
+      finalPath
+    }
   }
 }
