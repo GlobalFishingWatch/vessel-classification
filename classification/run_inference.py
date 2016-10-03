@@ -77,8 +77,10 @@ class ModelInference(utility.ModelConfiguration):
                     i += 1
                     result = sess.run(
                         [mmsis, time_ranges, predictions, max_probabilities])
-                    for mmsi, (start_time_seconds, end_time_seconds
-                               ), label, max_probability in zip(*result):
+                    for mmsi, (
+                            start_time_seconds,
+                            end_time_seconds), label, max_probability in zip(
+                                *result):
                         start_time = datetime.datetime.utcfromtimestamp(
                             start_time_seconds)
                         end_time = datetime.datetime.utcfromtimestamp(
