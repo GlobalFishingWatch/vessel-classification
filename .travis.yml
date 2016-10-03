@@ -1,5 +1,5 @@
 install:
-  - pip install --upgrade $TF_BINARY_URL
+  - pip install --upgrade $TF_BINARY_URLg
 
 before_script:
   - wget https://github.com/google/protobuf/releases/download/v3.0.0/protoc-3.0.0-linux-x86_64.zip
@@ -10,3 +10,7 @@ before_script:
 language: scala
 scala:
   - 2.11.8
+
+script:
+  - python utility/utility_test.py
+  - ./sbt test
