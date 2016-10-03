@@ -1,5 +1,5 @@
 install:
-  - pip install --upgrade $TF_BINARY_URLg
+  - pip install --upgrade $TF_BINARY_URL
 
 before_script:
   - wget https://github.com/google/protobuf/releases/download/v3.0.0/protoc-3.0.0-linux-x86_64.zip
