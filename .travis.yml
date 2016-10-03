@@ -1,11 +1,10 @@
 install:
-  - pip install --upgrade $TF_BINARY_URL
+  - pip install --upgrade https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0rc0-cp27-none-linux_x86_64.whl
 
 before_script:
   - wget https://github.com/google/protobuf/releases/download/v3.0.0/protoc-3.0.0-linux-x86_64.zip
   - unzip protoc-3.0.0-linux-x86_64.zip -d protoc_dir
   - export PATH=$PATH:$PWD/protoc_dir/bin
-  - export TF_BINARY_URL=https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0rc0-cp27-none-linux_x86_64.whl
 
 language: scala
 scala:
