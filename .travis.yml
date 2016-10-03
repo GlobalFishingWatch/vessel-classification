@@ -12,5 +12,5 @@ scala:
   - 2.11.8
 
 script:
-  - python utility/utility_test.py
-  - ./sbt test
+  - python classification/utility_test.py
+  - sbt test
