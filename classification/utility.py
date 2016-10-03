@@ -313,14 +313,14 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
     """ Extract and process a set of specified time slices from a vessel
         movement feature.
 
-      Args:
-      random_state: a numpy randomstate object.
-      input: the input data as a 2d numpy array.
-      mmsi: the id of the vessel which made this series.
-      max_time_delta: the maximum time contained in each window.
-      window_size: the size of the window.
-      min_points_for_classification: the minumum number of points in a window for
-          it to be usable.
+    Args:
+        random_state: a numpy randomstate object.
+        input: the input data as a 2d numpy array.
+        mmsi: the id of the vessel which made this series.
+        max_time_delta: the maximum time contained in each window.
+        window_size: the size of the window.
+        min_points_for_classification: the minumum number of points in a window for
+            it to be usable.
 
     Returns:
       A tuple comprising:
