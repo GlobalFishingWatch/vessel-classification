@@ -1,4 +1,4 @@
-import layers
+from models.alex import layers
 import numpy as np
 import utility
 import tensorflow as tf
