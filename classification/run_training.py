@@ -4,6 +4,8 @@ import json
 import logging
 import math
 import os
+from pkg_resources import resource_filename
+import sys
 from . import utility
 import importlib
 
@@ -52,8 +54,38 @@ def main(args):
     except:
         logging.error("Could not load model: {}".format(module))
         raise
+    metadata_file = os.path.abspath(
+        resource_filename('classification.data',
+                          'combined_classification_list.csv'))
+    if not os.path.exists(metadata_file):
+        logging.fatal("Could not find metadata file: %s.", args.metadata_file)
+        sys.exit(-1)
 
-    trainer = Trainer(args.root_feature_path, args.training_output_path)
+    # TODO(alexwilson): Using a temporary session to get the matching files on
+    # GCS is far from ideal. However the alternative is to bring in additional
+    # libraries with explicit auth that may or may not play nicely with CloudML.
+    # Improve later...
+    with tf.Session() as sess:
+        logging.info(
+            "Finding matching features files. May take a few minutes...")
+        matching_files = tf.train.match_filenames_once(args.root_feature_path +
+                                                       "/*.tfrecord")
+        sess.run(tf.initialize_all_variables())
+
+        all_feature_files = sess.run(matching_files)
+        if len(all_feature_files) == 0:
+            logging.fatal("Error: no feature files found.")
+            sys.exit(-1)
+        logging.info("Found %d feature files.", len(all_feature_files))
+
+    all_available_mmsis = set(
+        [int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files])
+
+    vessel_metadata = utility.read_vessel_metadata(all_available_mmsis,
+                                                   metadata_file)
+
+    trainer = Trainer(vessel_metadata, args.root_feature_path,
+                      args.training_output_path)
 
     config = json.loads(os.environ.get('TF_CONFIG', '{}'))
     if (config == {}):

@@ -10,6 +10,7 @@ before_script:
   - export PATH=$PATH:$PWD/protoc_dir/bin
   - export PATH=$HOME/.local/bin:$PATH
   - pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0rc0-cp27-none-linux_x86_64.whl --user `whoami`
+  - pip install google-api-python-client pyyaml
 
 script:
   - python classification/utility_test.py

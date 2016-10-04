@@ -14,44 +14,48 @@ import tensorflow.contrib.metrics as metrics
 
 class Trainer(utility.ModelConfiguration):
     """ Handles the mechanics of training and evaluating a vessel behaviour
-      model.
-  """
+        model.
+    """
 
-    def __init__(self, base_feature_path, train_scratch_path):
+    def __init__(self, vessel_metadata, base_feature_path, train_scratch_path):
         utility.ModelConfiguration.__init__(self)
 
+        self.vessel_metadata = vessel_metadata
         self.base_feature_path = base_feature_path
         self.train_scratch_path = train_scratch_path
         self.checkpoint_dir = self.train_scratch_path + '/train'
         self.eval_dir = self.train_scratch_path + '/eval'
         self.num_parallel_readers = 16
 
-    def _training_data_reader(self, input_file_pattern, is_training):
-        """ Concurrent training data reader.
+    def _feature_files(self, split):
+        return ['%s/%d.tfrecord' % (self.base_feature_path, mmsi)
+                for mmsi in self.vessel_metadata[split].keys()]
 
-    Given a pattern for a set of input files, repeatedly read from these in
-    shuffled order, outputing batches of randomly sampled segments of vessel
-    tracks for model training or evaluation. Multiple readers are started
-    concurrently, and the multiple samples can be output per vessel depending
-    upon the weight set for each (used for generating more samples for vessel
-    types for which we have fewer examples).
+    def _feature_data_reader(self, split, is_training):
+        """ Concurrent feature data reader.
 
-    Args:
-      input_file_pattern: glob for input files for training.
-      is_training: whether the data is for training (or evaluation).
+        For a given data split (Training/Test) and a set of input files that
+        comes in via the vessel metadata, repeatedly read from these in
+        shuffled order, outputing batches of randomly sampled segments of vessel
+        tracks for model training or evaluation. Multiple readers are started
+        concurrently, and the multiple samples can be output per vessel depending
+        upon the weight set for each (used for generating more samples for vessel
+        types for which we have fewer examples).
 
-    Returns:
-      A tuple of tensors:
-        1. A tensor of features of dimension [batch_size, 1, width, depth]
-        2. A tensor of int32 labels of dimension [batch_size]
-        3. A tensor of one-hot encodings of the labels of dimension
-           [batch_size, num_classes]
+        Args:
+            split: The subset of data to read (Training/Test).
+            is_training: whether the data is for training (or evaluation).
 
-    """
-        matching_files_i = tf.matching_files(input_file_pattern)
-        matching_files = tf.Print(matching_files_i, [matching_files_i],
-                                  "Files: ")
-        filename_queue = tf.train.input_producer(matching_files, shuffle=True)
+        Returns:
+            A tuple of tensors:
+                1. A tensor of features of dimension [batch_size, 1, width, depth]
+                2. A tensor of int32 labels of dimension [batch_size]
+                3. A tensor of one-hot encodings of the labels of dimension
+                    batch_size, num_classes]
+
+        """
+        input_files = self._feature_files(split)
+        filename_queue = tf.train.input_producer(input_files, shuffle=True)
         capacity = 1000
         min_size_after_deque = capacity - self.batch_size * 4
 
@@ -61,7 +65,8 @@ class Trainer(utility.ModelConfiguration):
         for _ in range(self.num_parallel_readers):
             readers.append(
                 utility.cropping_weight_replicating_feature_file_reader(
-                    filename_queue, self.num_feature_dimensions + 1,
+                    self.vessel_metadata[split], filename_queue,
+                    self.num_feature_dimensions + 1,
                     self.max_window_duration_seconds, self.window_max_points,
                     self.min_viable_timeslice_length, max_replication))
 
@@ -83,10 +88,8 @@ class Trainer(utility.ModelConfiguration):
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
-        input_file_pattern = self.base_feature_path + '/Training/shard-*-of-*.tfrecord'
-
-        features, labels, one_hot_labels = self._training_data_reader(
-            input_file_pattern, True)
+        features, labels, one_hot_labels = self._feature_data_reader(
+            'Training', True)
 
         logits = layers.misconception_model(
             features, self.window_size, self.stride, self.feature_depth,
@@ -100,7 +103,7 @@ class Trainer(utility.ModelConfiguration):
         accuracy = slim.metrics.accuracy(labels, predictions)
         tf.scalar_summary('Training accuracy', accuracy)
 
-        optimizer = tf.train.AdamOptimizer(1e-4)
+        optimizer = tf.train.AdamOptimizer(2e-5)
         train_op = slim.learning.create_train_op(
             loss,
             optimizer,
@@ -120,10 +123,8 @@ class Trainer(utility.ModelConfiguration):
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
 
-        input_file_pattern = self.base_feature_path + '/Test/shard-*-of-*.tfrecord'
-
-        features, labels, one_hot_labels = self._training_data_reader(
-            input_file_pattern, False)
+        features, labels, one_hot_labels = self._feature_data_reader('Test',
+                                                                     False)
 
         logits = layers.misconception_model(
             features, self.window_size, self.stride, self.feature_depth,

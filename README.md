@@ -32,6 +32,9 @@ may take some time to download all the required libraries.
   * Sign in: `gcloud auth application-default login`.
 * Cloud Dataflow
    * Run jobs, specifying the zone and max number of workers, e.g. `--zone=europe-west1-c  --maxNumWorkers=80`.
+* Running TF locally:
+   * Training:
+       - python -m classification.run_training alex.vessel_classification <...>
 * Cloud ML
    * Training:
        - `./deploy_cloudml.py alex.amodel_1`

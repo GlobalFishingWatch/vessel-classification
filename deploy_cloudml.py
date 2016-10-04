@@ -103,7 +103,7 @@ def print_logs(job_id, level="INFO"):
                 elif 'textPayload' in entry:
                     text = entry['textPayload']
                 else:
-                    print("Uninterpreatable log entry:", entry)
+                    print("Uninterpretable log entry:", entry)
                     continue
                 print(text)
                 if text.strip() in ["Job failed.",
