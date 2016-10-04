@@ -32,7 +32,7 @@ GraphData = namedtuple("GraphData", ["X", "y", "Y_", "logits", "is_training",
 
 class Trainer:
     DEFAULT_BATCH_SIZE = 32
-    DEFAULT_EPOCHS = 400 
+    DEFAULT_MAX_EXAMPLES = 30000 
     N_FEATURES = 9
     N_LOADED_FEATURES = 9
     INITIAL_LEARNING_RATE = 0.1
@@ -70,14 +70,9 @@ class Trainer:
         return length
 
     # TODO: remove X, y (they are there for backwards compatibility during transisiton)
-    def build_model(self, is_training, X=None):
+    def build_model(self, is_training, X):
 
-        if X is None:
-            X = tf.placeholder(
-                tf.float32,
-                shape=(None, self.SEQ_LENGTH, 1, self.N_FEATURES),
-                name="inputs")
-        y = tf.placeholder(tf.int64, shape=(None, ), name="labels")
+        y = tf.placeholder(tf.int64, shape=(None, ), name="labels") # XXX GET RID OF?
 
         current = X
 
@@ -104,10 +99,10 @@ class Trainer:
                 with tf.variable_scope('shunt'):
                     # Trim current before making the skip layer so that it matches the dimensons of
                     # the mc stack
-                    H = int(current.get_shape().dims[1])
+                    W = int(current.get_shape().dims[2])
                     delta = sum(tp.filter_widths) - len(tp.filter_widths)
-                    shunt = tf.slice(current, [0, delta // 2, 0, 0],
-                                     [-1, H - delta, -1, -1])
+                    shunt = tf.slice(current, [0, 0, delta // 2, 0],
+                                     [-1, -1, W - delta, -1])
                     shunt = leaky_rectify(
                         batch_norm(
                             conv1d_layer(shunt, 1, tp.filter_count),
@@ -116,8 +111,8 @@ class Trainer:
                 current = shunt + mc
 
                 current = tf.nn.max_pool(
-                    current, [1, tp.pool_size, 1, 1],
-                    [1, tp.pool_stride, 1, 1],
+                    current, [1, 1, tp.pool_size, 1],
+                    [1, 1, tp.pool_stride, 1],
                     padding="VALID")
                 if tp.keep_prob < 1:
                     current = dropout_layer(current, is_training, tp.keep_prob)
@@ -178,7 +173,6 @@ class Trainer:
     def build_test_graph(self, batch_size, X, y):
 
         is_training = tf.placeholder(tf.bool)
-        X = tf.reshape(X, (-1, self.SEQ_LENGTH, 1, self.N_FEATURES))
 
         _, _, Y_, logits = self.build_model(is_training, X)
         self._set_trainable_parameters()
@@ -193,7 +187,6 @@ class Trainer:
     def build_train_graph(self, batch_size, X, y, train_size=20000):
 
         is_training = tf.placeholder(tf.bool)
-        X = tf.reshape(X, (-1, self.SEQ_LENGTH, 1, self.N_FEATURES))
         _, _, Y_, logits = self.build_model(is_training, X)
         #
         self._set_trainable_parameters()
@@ -232,12 +225,11 @@ class Trainer:
         return GraphData(X, y, Y_, logits, is_training, batch_size,
                          optimizer), batch
 
-    def run_training(self, target="", is_chief=True, epochs=None):
+    def run_training(self, target="", is_chief=True):
 
         input_file_pattern = self.BASE_FEATURE_PATH + '/Training/shard-*-of-*.tfrecord'
         features, labels = self.data_reader(input_file_pattern, True)
 
-        epochs = epochs or self.DEFAULT_EPOCHS
         batch_size = self.DEFAULT_BATCH_SIZE
 
         gdata, batch = self.build_train_graph(batch_size, features, labels)
@@ -258,26 +250,24 @@ class Trainer:
         with sv.managed_session(target) as sess:
 
 
-            try:
-                for step in count():
+            for step in count():
 
-                    feed_dict = {
-                        gdata.is_training: True
-                    }  # XXX could now built this into train / test dics!
+                # XXX could now built this into train / test dics!
+                feed_dict = {
+                    gdata.is_training: True
+                }  
 
-                    summary, predicted, _ = sess.run(fetches=[merged, gdata.Y_,
-                                                              gdata.optimizer],
-                                                     feed_dict=feed_dict)
+                summary, predicted, _ = sess.run(fetches=[merged, gdata.Y_,
+                                                          gdata.optimizer],
+                                                 feed_dict=feed_dict)
 
-                    if is_chief:
-                        writer.add_summary(summary, step)
+                if is_chief:
+                    writer.add_summary(summary, step)
 
-                    if sv.should_stop(
-                    ):  # XXX need some way to stop (based on steps perhaps)
-                        break
+                if sv.should_stop(
+                ): 
+                    break
 
-            except KeyboardInterrupt:
-                pass
 
             writer.flush()
             sv.stop()
@@ -324,7 +314,6 @@ class Trainer:
                 except:
                     logging.warning("Could not restore from %s %s",
                                     checkpoint_path, "skipping")
-                    sys.stdout.flush()
                     continue
                 sv.start_queue_runners(sess)
 
@@ -340,7 +329,7 @@ class Trainer:
                 #
                 writer.flush()
 
-                if sv.should_stop():
+                if batch_val * batch_size > self.DEFAULT_MAX_EXAMPLES or sv.should_stop():
                     logging.info("Ending: %s", sv.should_stop())
                     sys.stdout.flush()
                     break
