@@ -49,8 +49,7 @@ object Parameters {
 
   // TODO(alexwilson): remove years list when cloud dataflow text source can
   // handle our volume of files.
-  //val allDataYears = List("2012", "2013", "2014", "2015", "2016")
-  val allDataYears = List("2015")
+  val allDataYears = List("2012", "2013", "2014", "2015", "2016")
   val inputMeasuresPath =
     "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment"
   val outputFeaturesPath =
@@ -491,7 +490,8 @@ object Pipeline extends LazyLogging {
   def oneFilePerTFRecordSink[T <: MessageLite](basePath: String, values: SCollection[(String, T)]) = {
     // Write data to temporary files, one per mmsi.
     val tempFiles = values.map { case (name, value) =>
-      val tempPath = s"$basePath/$name.tfrecord-tmp"
+      val suffix = scala.util.Random.nextInt
+      val tempPath = s"$basePath/$name.tfrecord-tmp-$suffix"
       val finalPath = s"$basePath/$name.tfrecord"
 
       val pipelineOptions = PipelineOptionsFactory.create()
