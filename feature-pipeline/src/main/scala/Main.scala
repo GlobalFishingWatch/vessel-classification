@@ -10,7 +10,11 @@ import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import com.spotify.scio.bigquery._
 import com.typesafe.scalalogging.{LazyLogging, Logger}
-import com.google.cloud.dataflow.sdk.options.{DataflowPipelineOptions, PipelineOptions, PipelineOptionsFactory}
+import com.google.cloud.dataflow.sdk.options.{
+  DataflowPipelineOptions,
+  PipelineOptions,
+  PipelineOptionsFactory
+}
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.io.{FileBasedSink, Write}
 import com.google.cloud.dataflow.sdk.util.{GcsUtil}
@@ -91,27 +95,9 @@ case class LatLon(lat: DoubleU[degrees], lon: DoubleU[degrees]) {
   }
 }
 
-object VesselMetadata {
-  val vesselTypeToIndexMap = Seq(
-    "Purse seine",
-    "Longliner",
-    "Trawler",
-    "Pots and traps",
-    "Passenger",
-    "Tug",
-    "Cargo/Tanker",
-    "Supply"
-  ).zipWithIndex.map { case (name, index) => (name, index + 1) }.toMap
-}
-
 case class VesselMetadata(
-    mmsi: Int,
-    weight: Float = 1.0f,
-    split: String = Parameters.unclassifiedSplit,
-    vesselType: String = "Unknown"
-) {
-  def vesselTypeIndex = VesselMetadata.vesselTypeToIndexMap.getOrElse(vesselType, 0)
-}
+    mmsi: Int
+)
 
 // TODO(alexwilson): For now build simple coder for this class. :-(
 case class VesselLocationRecord(
@@ -167,20 +153,17 @@ object Pipeline extends LazyLogging {
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
   // by ascending timestamp.
-  def readJsonRecords(inputs: Seq[SCollection[TableRow]],
-                      metadata: SCollection[(Int, VesselMetadata)])
+  def readJsonRecords(inputs: Seq[SCollection[TableRow]])
     : SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
 
     val input = SCollection.unionAll(inputs)
-    val vesselMetadataMap = metadata.asMapSideInput
     // Keep only records with a location.
     input
-      .withSideInputs(vesselMetadataMap)
-      .filter((json, _) => json.containsKey("lat") && json.containsKey("lon"))
+      .filter(json => json.containsKey("lat") && json.containsKey("lon"))
       // Build a typed location record with units of measure.
-      .map((json, s) => {
+      .map(json => {
         val mmsi = json.getLong("mmsi").toInt
-        val metadata = s(vesselMetadataMap).getOrElse(mmsi, VesselMetadata(mmsi))
+        val metadata = VesselMetadata(mmsi)
         val record =
           // TODO(alexwilson): Double-check all these units are correct.
           VesselLocationRecord(Instant.parse(json.getString("timestamp")),
@@ -193,7 +176,6 @@ object Pipeline extends LazyLogging {
                                angleNormalize(json.getDouble("heading").of[degrees]))
         (metadata, record)
       })
-      .toSCollection
       .filter { case (metadata, _) => !blacklistedMmsis.contains(metadata.mmsi) }
       .filter {
         case (_, record) =>
@@ -351,26 +333,10 @@ object Pipeline extends LazyLogging {
     val example = SequenceExample.newBuilder()
     val contextBuilder = example.getContextBuilder()
 
-    val vessel_type = metadata.vesselTypeIndex
-
     // Add the mmsi, weight and vessel type to the builder
     contextBuilder.putFeature(
       "mmsi",
       Feature.newBuilder().setInt64List(Int64List.newBuilder().addValue(metadata.mmsi)).build())
-    contextBuilder.putFeature(
-      "weight",
-      Feature.newBuilder().setFloatList(FloatList.newBuilder().addValue(metadata.weight)).build())
-    contextBuilder.putFeature(
-      "vessel_type_index",
-      Feature.newBuilder().setInt64List(Int64List.newBuilder().addValue(vessel_type)).build())
-
-    contextBuilder.putFeature(
-      "vessel_type_name",
-      Feature
-        .newBuilder()
-        .setBytesList(
-          BytesList.newBuilder().addValue(ByteString.copyFromUtf8(metadata.vesselType)))
-        .build())
 
     // Add all the sequence data as a feature.
     val sequenceData = FeatureList.newBuilder()
@@ -397,67 +363,9 @@ object Pipeline extends LazyLogging {
         (metadata, featuresAsTFExample)
     }
 
-  def readVesselMetadata(vesselMetadataCsv: String) = {
-    val metadataReader = new CSVReader(new FileReader(vesselMetadataCsv))
-    val allLines = metadataReader.readAll()
-    val unweightedVesselMetadata = allLines.toList
-      .drop(1)
-      .map { l =>
-        val mmsi = l(0).toInt
-        val dataset = l(1)
-        val vesselType = l(2)
-
-        (mmsi, VesselMetadata(mmsi, 0.0f, dataset, vesselType))
-      }
-      .toMap
-
-    // Count the number of training vessels per split per vessel type.
-    val allSplitCounts = unweightedVesselMetadata.countBy {
-      case (_, vm) => (vm.split, vm.vesselType)
-    }
-
-    val allSplits = allSplitCounts.map(_._1._1).toSeq.distinct
-    val vesselTypeWeights = allSplits.map { currentSplit =>
-      val counts = allSplitCounts.collect {
-        case ((split, vesselType), count) if split == currentSplit => (vesselType, count)
-      }
-      val commonestVesselTypeCount = counts.map(_._2).max
-      val vesselTypeSampleWeights = counts.map {
-        case (vt, c) =>
-          // The commonest vessel has weight 1.0, the others higher reflecting the
-          // number of times they should be over-sampled to achieve equivalent
-          // training.
-          val sampleWeight = commonestVesselTypeCount.toFloat / c.toFloat
-          logger.info(s"For split $currentSplit, vessel type $vt has weight $sampleWeight")
-          (vt, sampleWeight)
-      }.toMap
-
-      (currentSplit, vesselTypeSampleWeights)
-    }.toMap
-
-    val vesselMetadata = unweightedVesselMetadata.map {
-      case (mmsi, vm) =>
-        val weight = if (vm.split == Parameters.unclassifiedSplit) {
-          1.0f
-        } else {
-          vesselTypeWeights(vm.split)(vm.vesselType)
-        }
-
-        (mmsi, VesselMetadata(mmsi, weight, vm.split, vm.vesselType))
-    }
-
-    vesselMetadata
-  }
-
   def main(argArray: Array[String]) {
     val now = new DateTime(DateTimeZone.UTC)
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
-
-    // Load up the vessel metadata as a side input and join
-    // with the JSON records for known vessels.
-    val vesselMetadataCsv =
-      remaining_args.getOrElse("vessel_metadata", Parameters.vesselClassificationPath)
-    val vesselMetadata = readVesselMetadata(vesselMetadataCsv)
 
     options.setRunner(classOf[DataflowPipelineRunner])
     options.setProject(Parameters.gceProject)
@@ -472,14 +380,15 @@ object Pipeline extends LazyLogging {
       val path = s"${Parameters.inputMeasuresPath}/$year-*/*.json"
       sc.tableRowJsonFile(path)
     }
-    val locationRecords = readJsonRecords(matches, sc.parallelize(vesselMetadata))
+    val locationRecords = readJsonRecords(matches)
 
     val filtered = filterVesselRecords(locationRecords, Parameters.minRequiredPositions)
-    val features = buildVesselFeatures(filtered).map { case (md, feature) =>
-      (s"${md.mmsi}", feature)
+    val features = buildVesselFeatures(filtered).map {
+      case (md, feature) =>
+        (s"${md.mmsi}", feature)
     }
     val outputPath = Parameters.outputFeaturesPath + "/" +
-          ISODateTimeFormat.basicDateTimeNoMillis().print(now)
+        ISODateTimeFormat.basicDateTimeNoMillis().print(now)
 
     val res = oneFilePerTFRecordSink(outputPath, features)
 
@@ -487,37 +396,39 @@ object Pipeline extends LazyLogging {
   }
 
   // TODO(alexwilson): Rolling this ourselves isn't nice. Explore how to do this with existing cloud dataflow sinks.
-  def oneFilePerTFRecordSink[T <: MessageLite](basePath: String, values: SCollection[(String, T)]) = {
+  def oneFilePerTFRecordSink[T <: MessageLite](basePath: String,
+                                               values: SCollection[(String, T)]) = {
     // Write data to temporary files, one per mmsi.
-    val tempFiles = values.map { case (name, value) =>
-      val suffix = scala.util.Random.nextInt
-      val tempPath = s"$basePath/$name.tfrecord-tmp-$suffix"
-      val finalPath = s"$basePath/$name.tfrecord"
+    val tempFiles = values.map {
+      case (name, value) =>
+        val suffix = scala.util.Random.nextInt
+        val tempPath = s"$basePath/$name.tfrecord-tmp-$suffix"
+        val finalPath = s"$basePath/$name.tfrecord"
 
-      val pipelineOptions = PipelineOptionsFactory.create()
-      val gcsUtil = new GcsUtil.GcsUtilFactory().create(pipelineOptions)
+        val pipelineOptions = PipelineOptionsFactory.create()
+        val gcsUtil = new GcsUtil.GcsUtilFactory().create(pipelineOptions)
 
-      val channel = gcsUtil.create(GcsPath.fromUri(tempPath), "application/octet-stream")
-      val outFs = Channels.newOutputStream(channel)
-      TFRecordUtils.write(outFs, value)
-      outFs.close()
+        val channel = gcsUtil.create(GcsPath.fromUri(tempPath), "application/octet-stream")
+        val outFs = Channels.newOutputStream(channel)
+        TFRecordUtils.write(outFs, value)
+        outFs.close()
 
-      (tempPath, finalPath)
+        (tempPath, finalPath)
     }
 
     // Copy the files to their final destinations, then delete.
-    tempFiles.map { case (tempPath, finalPath) =>
+    tempFiles.map {
+      case (tempPath, finalPath) =>
+        val pipelineOptions = PipelineOptionsFactory.create()
+        val gcsUtil = new GcsUtil.GcsUtilFactory().create(pipelineOptions)
 
-      val pipelineOptions = PipelineOptionsFactory.create()
-      val gcsUtil = new GcsUtil.GcsUtilFactory().create(pipelineOptions)
+        // TODO(alexwilson): This API is designed for batching copies. It might
+        // be better to do this multiple-filenames at a time.
+        gcsUtil.copy(List(tempPath), List(finalPath))
 
-      // TODO(alexwilson): This API is designed for batching copies. It might
-      // be better to do this multiple-filenames at a time.
-      gcsUtil.copy(List(tempPath), List(finalPath))
+        gcsUtil.remove(List(tempPath))
 
-      gcsUtil.remove(List(tempPath))
-
-      finalPath
+        finalPath
     }
   }
 }
