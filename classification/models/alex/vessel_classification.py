@@ -124,7 +124,7 @@ class Trainer(utility.ModelConfiguration):
         """ The function for running model evaluation on the master. """
 
         features, labels, one_hot_labels = self._feature_data_reader('Test',
-                                                                      False)
+                                                                     False)
 
         logits = layers.misconception_model(
             features, self.window_size, self.stride, self.feature_depth,
