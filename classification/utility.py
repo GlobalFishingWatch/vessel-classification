@@ -1,3 +1,4 @@
+from collections import defaultdict
 import logging
 import numpy as np
 import tensorflow as tf
@@ -368,21 +369,21 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
                                            min_points_for_classification):
     """ Set up a file reader and inference feature extractor for the files in a queue.
 
-  An inference feature extractor, pulling all sequential slices from a vessel
-  movement series.
+    An inference feature extractor, pulling all sequential slices from a vessel
+    movement series.
 
-  Args:
-    filename_queue: a queue of filenames for feature files to read.
-    num_features: the dimensionality of the features.
+    Args:
+        filename_queue: a queue of filenames for feature files to read.
+        num_features: the dimensionality of the features.
 
-  Returns:
-    A tuple comprising, for the n slices comprising each vessel:
-      1. A tensor of the feature timeslices drawn, of dimension
-         [n, 1, window_size, num_features].
-      2. A tensor of the timebounds for the timeslices, of dimension [n, 2].
-      3. A tensor of the labels for each timeslice, of dimension [n].
+    Returns:
+        A tuple comprising, for the n slices comprising each vessel:
+          1. A tensor of the feature timeslices drawn, of dimension
+             [n, 1, window_size, num_features].
+          2. A tensor of the timebounds for the timeslices, of dimension [n, 2].
+          3. A tensor of the labels for each timeslice, of dimension [n].
 
-  """
+    """
     context_features, sequence_features = single_feature_file_reader(
         filename_queue, num_features)
 
@@ -401,3 +402,28 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
         [tf.float32, tf.int32, tf.int32])
 
     return features_list, time_bounds_list, mmsis
+
+def read_vessel_metadata_file_lines(lines):
+    dataset_kind_counts = defaultdict(lambda: defaultdict(lambda: 0))
+    vessel_types = []
+    for line in lines[1:]:
+        mmsi, split, vessel_type = line.split(',')
+        vessel_types.append((int(mmsi), split, vessel_type))
+        dataset_kind_counts[split][vessel_type] += 1
+
+    dataset_kind_weights = defaultdict(lambda: {})
+    for split, counts in dataset_kind_counts.iteritems():
+        max_count = max(counts.values())
+        for vessel_type, count in counts.iteritems():
+            dataset_kind_weights[split][vessel_type] = float(max_count) / float(count)
+
+    metadata_dict = defaultdict(lambda: {})
+    for mmsi, split, vessel_type in vessel_types:
+        metadata_dict[split][mmsi] = (vessel_type, dataset_kind_weights[split][vessel_type])
+
+    return metadata_dict
+
+
+def read_vessel_metadata(metadata_file):
+    with open(metadata_file, 'r') as f:
+        return read_vessel_metadata_file_lines(f.readlines())

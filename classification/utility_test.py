@@ -63,5 +63,41 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
             self.assertAllEqual(res, expected_result)
 
 
+class VesselMetadataFileReader(tf.test.TestCase):
+    def test_metadata_file_reader(self):
+        lines = [
+            'mmsi,split,kind',
+            '100001,Training,Longliner',
+            '100002,Training,Longliner',
+            '100003,Training,Longliner',
+            '100004,Training,Longliner',
+            '100005,Training,Trawler',
+            '100006,Training,Trawler',
+            '100007,Training,Passenger',
+            '100008,Test,Trawler',
+            '100009,Test,Trawler',
+            '100010,Test,Trawler',
+            '100011,Test,Tug',
+            '100012,Test,Tug',
+        ]
+        result = utility.read_vessel_metadata_file_lines(lines)
+
+        self.assertTrue('Training' in result)
+        self.assertEquals(result['Training'][100001], ('Longliner', 1.0))
+        self.assertEquals(result['Training'][100002], ('Longliner', 1.0))
+        self.assertEquals(result['Training'][100003], ('Longliner', 1.0))
+        self.assertEquals(result['Training'][100004], ('Longliner', 1.0))
+        self.assertEquals(result['Training'][100005], ('Trawler', 2.0))
+        self.assertEquals(result['Training'][100006], ('Trawler', 2.0))
+        self.assertEquals(result['Training'][100007], ('Passenger', 4.0))
+
+        self.assertTrue('Test' in result)
+        self.assertEquals(result['Test'][100008], ('Trawler', 1.0))
+        self.assertEquals(result['Test'][100009], ('Trawler', 1.0))
+        self.assertEquals(result['Test'][100010], ('Trawler', 1.0))
+        self.assertEquals(result['Test'][100011], ('Tug', 3.0 / 2.0))
+        self.assertEquals(result['Test'][100012], ('Tug', 3.0 / 2.0))
+
+
 if __name__ == '__main__':
     tf.test.main()

@@ -44,6 +44,8 @@ def main(args):
 
     logging.info("Running with Tensorflow version: %s", tf.__version__)
 
+    metadata = utility.read_vessel_metadata(args.metadata_file)
+
     logging.info("Loading model: %s", args.model_name)
 
     module = "classification.models.{}".format(args.model_name)
@@ -74,6 +76,10 @@ def parse_args():
     argparser = argparse.ArgumentParser('Train fishing classification model.')
 
     argparser.add_argument('model_name')
+
+    argparser.add_argument('--metadata_file',
+        required=True,
+        help='The path to the vessel metadata file (with labels).')
 
     argparser.add_argument(
         '--root_feature_path',
