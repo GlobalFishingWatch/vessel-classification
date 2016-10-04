@@ -59,19 +59,22 @@ def main(args):
     # libraries with explicit auth that may or may not play nicely with CloudML.
     # Improve later...
     with tf.Session() as sess:
-        matching_files = tf.train.match_filenames_once(args.root_feature_path + "/*.tfrecord")
+        matching_files = tf.train.match_filenames_once(args.root_feature_path +
+                                                       "/*.tfrecord")
         sess.run(tf.initialize_all_variables())
-        logging.info("Finding matching features files. May take a few minutes...")
+        logging.info(
+            "Finding matching features files. May take a few minutes...")
         all_feature_files = sess.run(matching_files)
         if len(all_feature_files) == 0:
             logging.fatal("Error: no feature files found.")
             sys.exit(-1)
         logging.info("Found %d feature files.", len(all_feature_files))
 
-    all_available_mmsis = set([int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files])
+    all_available_mmsis = set(
+        [int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files])
 
-    vessel_metadata = utility.read_vessel_metadata(all_available_mmsis, args.metadata_file)
-
+    vessel_metadata = utility.read_vessel_metadata(all_available_mmsis,
+                                                   args.metadata_file)
 
     trainer = Trainer(vessel_metadata, args.root_feature_path,
                       args.training_output_path)
