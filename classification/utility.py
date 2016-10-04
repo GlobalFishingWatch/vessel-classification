@@ -1,6 +1,7 @@
 from collections import defaultdict
 import logging
 import numpy as np
+import sys
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
@@ -406,15 +407,17 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
     return features_list, time_bounds_list, mmsis
 
 
-def read_vessel_metadata_file_lines(lines):
+def read_vessel_metadata_file_lines(available_mmsis, lines):
     vessel_type_set = set()
     dataset_kind_counts = defaultdict(lambda: defaultdict(lambda: 0))
     vessel_types = []
     for line in lines[1:]:
-        mmsi, split, vessel_type = line.strip().split(',')
-        vessel_types.append((int(mmsi), split, vessel_type))
-        dataset_kind_counts[split][vessel_type] += 1
-        vessel_type_set.add(vessel_type)
+        mmsi_str, split, vessel_type = line.strip().split(',')
+        mmsi = int(mmsi_str)
+        if mmsi in available_mmsis:
+            vessel_types.append((mmsi, split, vessel_type))
+            dataset_kind_counts[split][vessel_type] += 1
+            vessel_type_set.add(vessel_type)
 
     dataset_kind_weights = defaultdict(lambda: {})
     for split, counts in dataset_kind_counts.iteritems():
@@ -428,11 +431,15 @@ def read_vessel_metadata_file_lines(lines):
         metadata_dict[split][mmsi] = (vessel_type,
                                       dataset_kind_weights[split][vessel_type])
 
+    if len(vessel_type_set) == 0:
+        logging.fatal('No vessel types found for training.')
+        sys.exit(-1)
+
     logging.info("Vessel types: %s", list(vessel_type_set))
 
     return metadata_dict
 
 
-def read_vessel_metadata(metadata_file):
+def read_vessel_metadata(available_mmsis, metadata_file):
     with open(metadata_file, 'r') as f:
-        return read_vessel_metadata_file_lines(f.readlines())
+        return read_vessel_metadata_file_lines(available_mmsis, f.readlines())

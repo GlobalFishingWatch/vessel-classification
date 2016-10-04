@@ -79,8 +79,10 @@ class VesselMetadataFileReader(tf.test.TestCase):
             '100010,Test,Trawler\n',
             '100011,Test,Tug\n',
             '100012,Test,Tug\n',
+            '100013,Test,Tug\n',
         ]
-        result = utility.read_vessel_metadata_file_lines(lines)
+        available_vessels = set(range(100001, 100013))
+        result = utility.read_vessel_metadata_file_lines(available_vessels, lines)
 
         self.assertTrue('Training' in result)
         self.assertEquals(result['Training'][100001], ('Longliner', 1.0))
