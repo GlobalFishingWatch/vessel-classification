@@ -102,7 +102,7 @@ class Trainer(utility.ModelConfiguration):
         accuracy = slim.metrics.accuracy(labels, predictions)
         tf.scalar_summary('Training accuracy', accuracy)
 
-        optimizer = tf.train.AdamOptimizer(1e-4)
+        optimizer = tf.train.AdamOptimizer(2e-5)
         train_op = slim.learning.create_train_op(
             loss,
             optimizer,

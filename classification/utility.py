@@ -408,6 +408,21 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
 
 
 def read_vessel_metadata_file_lines(available_mmsis, lines):
+    """ For a set of vessels, read metadata and calculate class weights.
+
+    Args:
+        available_mmsis: a set of all mmsis for which we have feature data.
+        lines: a list of comma-separated vessel metadata lines. Columns are
+            the mmsi, the split (train/test) and the vessel type
+            (Longliner/Passenger etc.).
+
+    Returns:
+        A dictionary from data split (training/test) to a dictionary from
+        mmsi to the type and weight for a vessel.
+    """
+
+    # Build a list of vessels + split + and vessel type. Count the occurrence
+    # of each vessel type per split.
     vessel_type_set = set()
     dataset_kind_counts = defaultdict(lambda: defaultdict(lambda: 0))
     vessel_types = []
@@ -419,6 +434,10 @@ def read_vessel_metadata_file_lines(available_mmsis, lines):
             dataset_kind_counts[split][vessel_type] += 1
             vessel_type_set.add(vessel_type)
 
+    # Calculate weights for each vessel type per split: the weight is the count
+    # of the most frequent vessel type divided by the count for the current
+    # vessel type. Used to sample more frequently from less-represented vessel
+    # types.
     dataset_kind_weights = defaultdict(lambda: {})
     for split, counts in dataset_kind_counts.iteritems():
         max_count = max(counts.values())

@@ -399,7 +399,7 @@ class Trainer:
         cls().eval(target=target)
 
     def _feature_files(self, split):
-        return ['%s/%d.tfrecord' % (self.base_feature_path, mmsi)
+        return ['%s/%d.tfrecord' % (self.BASE_FEATURE_PATH, mmsi)
                 for mmsi in self.VESSEL_METADATA[split].keys()]
 
     def data_reader(self, split):
