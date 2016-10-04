@@ -4,6 +4,7 @@ import json
 import logging
 import math
 import os
+from pkg_resources import resource_filename
 import sys
 from . import utility
 import importlib
@@ -53,6 +54,12 @@ def main(args):
     except:
         logging.error("Could not load model: {}".format(module))
         raise
+    metadata_file = os.path.abspath(
+        resource_filename('classification.data',
+                          'combined_classification_list.csv'))
+    if not os.path.exists(metadata_file):
+        logging.fatal("Could not find metadata file: %s.", args.metadata_file)
+        sys.exit(-1)
 
     # TODO(alexwilson): Using a temporary session to get the matching files on
     # GCS is far from ideal. However the alternative is to bring in additional
@@ -75,7 +82,7 @@ def main(args):
         [int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files])
 
     vessel_metadata = utility.read_vessel_metadata(all_available_mmsis,
-                                                   args.metadata_file)
+                                                   metadata_file)
 
     trainer = Trainer(vessel_metadata, args.root_feature_path,
                       args.training_output_path)
@@ -99,11 +106,6 @@ def parse_args():
     argparser = argparse.ArgumentParser('Train fishing classification model.')
 
     argparser.add_argument('model_name')
-
-    argparser.add_argument(
-        '--metadata_file',
-        required=True,
-        help='The path to the vessel metadata file (with labels).')
 
     argparser.add_argument(
         '--root_feature_path',

@@ -1,1 +1,1 @@
-include classification/data/*
+include classification/data/combined_classification_list.csv

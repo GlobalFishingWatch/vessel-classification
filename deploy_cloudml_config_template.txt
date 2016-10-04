@@ -2,8 +2,7 @@ trainingInput:
   args: [
     "{model_name}",
     "--root_feature_path", "gs://alex-dataflow-scratch/features-scratch/20161003T203417Z",
-    "--training_output_path", "gs://world-fishing-827/scratch/classification/{model_name}/{job_id}",
-    "--metadata_file", "data/combined_classification_list.csv"]
+    "--training_output_path", "gs://world-fishing-827/scratch/classification/{model_name}/{job_id}"]
   packageUris: gs://world-fishing-827/scratch/classification/{model_name}/{job_id}.tar.gz
   pythonModule: classification.run_training
   scaleTier: CUSTOM
