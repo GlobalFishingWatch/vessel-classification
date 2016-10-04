@@ -91,7 +91,9 @@ class Trainer:
 
     INIT_KEEP_PROB = 1.0
 
-    def __init__(self, root_feature_path, training_output_path):
+    def __init__(self, vessel_metadata, root_feature_path,
+                 training_output_path):
+        self.VESSEL_METADATA = vessel_metadata
         self.CHECKPOINT_DIR = training_output_path
         self.BASE_FEATURE_PATH = root_feature_path
 
@@ -267,9 +269,7 @@ class Trainer:
                          optimizer), batch
 
     def run_training(self, target="", is_chief=True, epochs=None):
-
-        input_file_pattern = self.BASE_FEATURE_PATH + '/Training/shard-*-of-*.tfrecord'
-        features, labels = self.data_reader(input_file_pattern, True)
+        features, labels = self.data_reader('Training')
 
         epochs = epochs or self.DEFAULT_EPOCHS
         batch_size = self.DEFAULT_BATCH_SIZE
@@ -324,9 +324,7 @@ class Trainer:
         return self
 
     def run_evaluation(self, target="", timeout=60 * 5):
-
-        input_file_pattern = self.BASE_FEATURE_PATH + '/Test/shard-*-of-*.tfrecord'
-        features, labels = self.data_reader(input_file_pattern, False)
+        features, labels = self.data_reader('Test')
 
         batch_size = self.DEFAULT_BATCH_SIZE
 
@@ -400,11 +398,13 @@ class Trainer:
         target = "" if server is None else server.target
         cls().eval(target=target)
 
-    def data_reader(self, input_file_pattern, is_training):
-        matching_files_i = tf.matching_files(input_file_pattern)
-        matching_files = tf.Print(matching_files_i, [matching_files_i],
-                                  "Files: ")
-        filename_queue = tf.train.input_producer(matching_files, shuffle=True)
+    def _feature_files(self, split):
+        return ['%s/%d.tfrecord' % (self.base_feature_path, mmsi)
+                for mmsi in self.VESSEL_METADATA[split].keys()]
+
+    def data_reader(self, split):
+        input_files = self._feature_files(split)
+        filename_queue = tf.train.input_producer(input_files, shuffle=True)
         capacity = 600
         min_size_after_deque = capacity - self.DEFAULT_BATCH_SIZE * 4
 
@@ -414,9 +414,9 @@ class Trainer:
         for _ in range(self.NUM_PARALLEL_READERS):
             readers.append(
                 utility.cropping_weight_replicating_feature_file_reader(
-                    filename_queue, self.N_LOADED_FEATURES + 1,
-                    self.MAX_WINDOW_DURATION_SECONDS, self.SEQ_LENGTH, 500,
-                    max_replication))
+                    self.VESSEL_METADATA[split], filename_queue, self.
+                    N_LOADED_FEATURES + 1, self.MAX_WINDOW_DURATION_SECONDS,
+                    self.SEQ_LENGTH, 500, max_replication))
 
         features, time_bounds, labels = tf.train.shuffle_batch_join(
             readers,
