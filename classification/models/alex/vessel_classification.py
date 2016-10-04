@@ -31,10 +31,11 @@ class Trainer(utility.ModelConfiguration):
         return ['%s/%d.tfrecord' % (self.base_feature_path, mmsi)
                 for mmsi in self.vessel_metadata[split].keys()]
 
-    def _training_data_reader(self, split, is_training):
-        """ Concurrent training data reader.
+    def _feature_data_reader(self, split, is_training):
+        """ Concurrent feature data reader.
 
-        Given a pattern for a set of input files, repeatedly read from these in
+        For a given data split (Training/Test) and a set of input files that
+        comes in via the vessel metadata, repeatedly read from these in
         shuffled order, outputing batches of randomly sampled segments of vessel
         tracks for model training or evaluation. Multiple readers are started
         concurrently, and the multiple samples can be output per vessel depending
@@ -42,7 +43,7 @@ class Trainer(utility.ModelConfiguration):
         types for which we have fewer examples).
 
         Args:
-            input_files: a list of input files for training/eval.
+            split: The subset of data to read (Training/Test).
             is_training: whether the data is for training (or evaluation).
 
         Returns:
@@ -87,7 +88,7 @@ class Trainer(utility.ModelConfiguration):
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
-        features, labels, one_hot_labels = self._training_data_reader(
+        features, labels, one_hot_labels = self._feature_data_reader(
             'Training', True)
 
         logits = layers.misconception_model(
@@ -122,7 +123,7 @@ class Trainer(utility.ModelConfiguration):
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
 
-        features, labels, one_hot_labels = self._training_data_reader('Test',
+        features, labels, one_hot_labels = self._feature_data_reader('Test',
                                                                       False)
 
         logits = layers.misconception_model(
