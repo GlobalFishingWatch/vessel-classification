@@ -44,7 +44,7 @@ def main(args):
 
     logging.info("Running with Tensorflow version: %s", tf.__version__)
 
-    metadata = utility.read_vessel_metadata(args.metadata_file)
+    vessel_metadata = utility.read_vessel_metadata(args.metadata_file)
 
     logging.info("Loading model: %s", args.model_name)
 
@@ -55,7 +55,8 @@ def main(args):
         logging.error("Could not load model: {}".format(module))
         raise
 
-    trainer = Trainer(args.root_feature_path, args.training_output_path)
+    trainer = Trainer(vessel_metadata, args.root_feature_path,
+                      args.training_output_path)
 
     config = json.loads(os.environ.get('TF_CONFIG', '{}'))
     if (config == {}):
@@ -77,7 +78,8 @@ def parse_args():
 
     argparser.add_argument('model_name')
 
-    argparser.add_argument('--metadata_file',
+    argparser.add_argument(
+        '--metadata_file',
         required=True,
         help='The path to the vessel metadata file (with labels).')
 

@@ -6,15 +6,18 @@ import tensorflow.contrib.slim as slim
 import threading
 
 VESSEL_CLASS_NAMES = [
-    "Unknown", "Purse seine", "Longliner", "Trawler", "Pots and traps",
-    "Passenger", "Tug", "Cargo/Tanker", "Supply"
+    "Purse seine", "Longliner", "Trawler", "Pots and traps", "Squid fishing",
+    "Passenger", "Cargo/Tanker", "Seismic", "Tug/Pilot/Supply"
 ]
+
+VESSEL_CLASS_INDICES = dict(
+    zip(VESSEL_CLASS_NAMES, range(len(VESSEL_CLASS_NAMES))))
 
 
 class ModelConfiguration(object):
     """ Configuration for the vessel behaviour model, shared between training and
       inference.
-  """
+    """
 
     def __init__(self):
         self.feature_duration_days = 180
@@ -251,7 +254,7 @@ def np_array_extract_n_random_features(random_state, input, label, n,
         features, time_bounds = np_array_extract_features(
             random_state, input, max_time_delta, window_size,
             min_timeslice_size)
-        samples.append((np.stack([features]), time_bounds, label))
+        samples.append((np.stack([features]), time_bounds, np.int32(label)))
 
     for _ in range(int_n):
         add_sample()
@@ -264,45 +267,44 @@ def np_array_extract_n_random_features(random_state, input, label, n,
 
 
 def cropping_weight_replicating_feature_file_reader(
-        filename_queue, num_features, max_time_delta, window_size,
-        min_timeslice_size, max_replication_factor):
+        vessel_metadata, filename_queue, num_features, max_time_delta,
+        window_size, min_timeslice_size, max_replication_factor):
     """ Set up a file reader and training feature extractor for the files in a queue.
 
-  As a training feature extractor, this pulls sets of random timeslices from the
-  vessels found in the files, with the number of draws for each sample determined
-  by the weight assigned to the particular vessel.
+    As a training feature extractor, this pulls sets of random timeslices from the
+    vessels found in the files, with the number of draws for each sample determined
+    by the weight assigned to the particular vessel.
 
-  Args:
-    filename_queue: a queue of filenames for feature files to read.
-    num_features: the dimensionality of the features.
-    max_replication_factor: the maximum number of samples that can be drawn from a
-      single vessel series, regardless of the weight specified.
+    Args:
+        filename_queue: a queue of filenames for feature files to read.
+        num_features: the dimensionality of the features.
+        max_replication_factor: the maximum number of samples that can be drawn from a
+          single vessel series, regardless of the weight specified.
 
-  Returns:
-    A tuple comprising, for the n samples drawn for each vessel:
-      1. A tensor of the feature timeslices drawn, of dimension
-         [n, 1, window_size, num_features].
-      2. A tensor of the timebounds for the timeslices, of dimension [n, 2].
-      3. A tensor of the labels for each timeslice, of dimension [n].
-
-  """
+    Returns:
+        A tuple comprising, for the n samples drawn for each vessel:
+            1. A tensor of the feature timeslices drawn, of dimension
+               [n, 1, window_size, num_features].
+            2. A tensor of the timebounds for the timeslices, of dimension [n, 2].
+            3. A tensor of the labels for each timeslice, of dimension [n].
+    """
     context_features, sequence_features = single_feature_file_reader(
         filename_queue, num_features)
 
     movement_features = sequence_features['movement_features']
-    label = tf.cast(context_features['vessel_type_index'], tf.int32)
-    weight = tf.cast(context_features['weight'], tf.float32)
-
+    mmsi = tf.cast(context_features['mmsi'], tf.int32)
     random_state = np.random.RandomState()
 
-    def replicate_extract(input, label, weight):
+    def replicate_extract(input, mmsi):
+        string_label, weight = vessel_metadata[mmsi]
+        label = VESSEL_CLASS_INDICES[string_label]
         n = min(float(max_replication_factor), weight)
         return np_array_extract_n_random_features(
             random_state, input, label, n, max_time_delta, window_size,
             min_timeslice_size)
 
     features_list, time_bounds_list, label_list = tf.py_func(
-        replicate_extract, [movement_features, label, weight],
+        replicate_extract, [movement_features, mmsi],
         [tf.float32, tf.int32, tf.int32])
 
     return features_list, time_bounds_list, label_list
@@ -403,23 +405,30 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
 
     return features_list, time_bounds_list, mmsis
 
+
 def read_vessel_metadata_file_lines(lines):
+    vessel_type_set = set()
     dataset_kind_counts = defaultdict(lambda: defaultdict(lambda: 0))
     vessel_types = []
     for line in lines[1:]:
-        mmsi, split, vessel_type = line.split(',')
+        mmsi, split, vessel_type = line.strip().split(',')
         vessel_types.append((int(mmsi), split, vessel_type))
         dataset_kind_counts[split][vessel_type] += 1
+        vessel_type_set.add(vessel_type)
 
     dataset_kind_weights = defaultdict(lambda: {})
     for split, counts in dataset_kind_counts.iteritems():
         max_count = max(counts.values())
         for vessel_type, count in counts.iteritems():
-            dataset_kind_weights[split][vessel_type] = float(max_count) / float(count)
+            dataset_kind_weights[split][vessel_type] = float(
+                max_count) / float(count)
 
     metadata_dict = defaultdict(lambda: {})
     for mmsi, split, vessel_type in vessel_types:
-        metadata_dict[split][mmsi] = (vessel_type, dataset_kind_weights[split][vessel_type])
+        metadata_dict[split][mmsi] = (vessel_type,
+                                      dataset_kind_weights[split][vessel_type])
+
+    logging.info("Vessel types: %s", list(vessel_type_set))
 
     return metadata_dict
 

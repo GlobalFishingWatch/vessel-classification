@@ -66,19 +66,19 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
 class VesselMetadataFileReader(tf.test.TestCase):
     def test_metadata_file_reader(self):
         lines = [
-            'mmsi,split,kind',
-            '100001,Training,Longliner',
-            '100002,Training,Longliner',
-            '100003,Training,Longliner',
-            '100004,Training,Longliner',
-            '100005,Training,Trawler',
-            '100006,Training,Trawler',
-            '100007,Training,Passenger',
-            '100008,Test,Trawler',
-            '100009,Test,Trawler',
-            '100010,Test,Trawler',
-            '100011,Test,Tug',
-            '100012,Test,Tug',
+            'mmsi,split,kind\n',
+            '100001,Training,Longliner\n',
+            '100002,Training,Longliner\n',
+            '100003,Training,Longliner\n',
+            '100004,Training,Longliner\n',
+            '100005,Training,Trawler\n',
+            '100006,Training,Trawler\n',
+            '100007,Training,Passenger\n',
+            '100008,Test,Trawler\n',
+            '100009,Test,Trawler\n',
+            '100010,Test,Trawler\n',
+            '100011,Test,Tug\n',
+            '100012,Test,Tug\n',
         ]
         result = utility.read_vessel_metadata_file_lines(lines)
 
