@@ -176,7 +176,7 @@ class LocationResamplerTests extends PipelineSpec with Matchers {
   import AdditionalUnits._
 
   def rvl(timestamp: String, lat: Double, lon: Double) =
-      ResampledVesselLocation(ts(timestamp), LatLon(lat.of[degrees], lon.of[degrees]))
+    ResampledVesselLocation(ts(timestamp), LatLon(lat.of[degrees], lon.of[degrees]))
 
   "The resampler" should "resample points, but not if they are too far apart" in {
     val inputRecords = Seq(buildLocationRecord("2011-06-30T23:59:00Z", lat = 10.0, lon = 10.0),
@@ -198,4 +198,3 @@ class LocationResamplerTests extends PipelineSpec with Matchers {
     result should contain theSameElementsAs expected
   }
 }
-

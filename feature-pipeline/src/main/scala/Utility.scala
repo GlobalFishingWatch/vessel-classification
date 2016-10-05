@@ -4,7 +4,7 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
-import com.google.common.geometry.{S2, S2CellId, S2LatLng}
+import com.google.common.geometry.{S2, S2Cap, S2CellId, S2LatLng, S2RegionCoverer}
 import com.google.protobuf.{ByteString, MessageLite}
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.io.{FileBasedSink, Write}
@@ -43,7 +43,7 @@ object AdditionalUnits {
 import AdditionalUnits._
 
 case class LatLon(lat: DoubleU[degrees], lon: DoubleU[degrees]) {
-  private def getS2LatLng() = S2LatLng.fromDegrees(lat.value, lon.value)
+  def getS2LatLng() = S2LatLng.fromDegrees(lat.value, lon.value)
 
   def getDistance(other: LatLon): DoubleU[meter] =
     getS2LatLng().getEarthDistance(other.getS2LatLng()).of[meter]
@@ -144,6 +144,35 @@ object Utility extends LazyLogging {
     }
   }
 
+  // TODO(alexwilson): For each resampled vessel point, send it out keyed against each constituent
+  // cell (a choice of level 13 seems reasonable) and the quantised time (in 10 minute buckets). Then
+  // for each cell and time point, do an N^2 comparison between all vessel points, re-broadcast, group
+  // by time and first mmsi and de-dupe. Then extract the count and the top 10 from each.
+
+  // For a given radius of cap on the sphere, a given location and a given S2 cell level, return
+  // all the S2 cells required to cover the cap.
+  def getCapCoveringCells(location: LatLon,
+                             radius: DoubleU[kilometer],
+                             level: Int): Seq[S2CellId] = {
+    val earthRadiusKm = S2LatLng.EARTH_RADIUS_METERS / 1000.0
+    val capRadiusOnUnitSphere = radius.value / earthRadiusKm
+    val coverer = new S2RegionCoverer()
+    coverer.setMinLevel(level)
+    coverer.setMaxLevel(level)
+
+    // S2 cap requires an axis (location on unit sphere) and the height of the cap (the cap is
+    // a planar cut on the unit sphere). The cap height is 1 - (sqrt(r^2 - a^2)/r) where r is
+    // the radius of the circle (1.0 after we've normalized) and a is the radius of the cap itself.
+    val axis = location.getS2LatLng().normalized().toPoint()
+    val capHeight = 1.0 - (math.sqrt(1.0 - capRadiusOnUnitSphere * capRadiusOnUnitSphere))
+    val cap = S2Cap.fromAxisHeight(axis, capHeight)
+
+    val coverCells = new java.util.ArrayList[S2CellId]()
+    coverer.getCovering(cap, coverCells)
+
+    coverCells.toList
+  }
+
   def resampleVesselSeries(input: Seq[VesselLocationRecord]): Seq[ResampledVesselLocation] = {
     val incrementSeconds = Duration.standardMinutes(10).getStandardSeconds
     val maxInterpolateGapSeconds = Duration.standardMinutes(60).getStandardSeconds
@@ -157,7 +186,7 @@ object Utility extends LazyLogging {
 
     var iterLocation = input.iterator
 
-    logger.info(s"Running to ${new Instant(endTime*1000)}")
+    logger.info(s"Running to ${new Instant(endTime * 1000)}")
 
     val interpolatedSeries = mutable.ListBuffer.empty[ResampledVesselLocation]
     var lastLocationRecord: Option[VesselLocationRecord] = None
@@ -167,7 +196,8 @@ object Utility extends LazyLogging {
         lastLocationRecord = Some(currentLocationRecord)
         currentLocationRecord = iterLocation.next()
       }
-      logger.info(s"Running from ${new Instant(iterTime*1000)} - ${currentLocationRecord.timestamp}")
+      logger.info(
+        s"Running from ${new Instant(iterTime * 1000)} - ${currentLocationRecord.timestamp}")
 
       lastLocationRecord.foreach { llr =>
         val firstTimeSeconds = tsToUnixSeconds(llr.timestamp)

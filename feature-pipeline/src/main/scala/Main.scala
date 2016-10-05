@@ -63,7 +63,7 @@ object Parameters {
   val splits = Seq(trainingSplit, testSplit, unclassifiedSplit)
 
   // Around 1km^2
-  val portsS2Scale = 23
+  val portsS2Scale = 13
   val minUniqueVesselsForPort = 10
 }
 
