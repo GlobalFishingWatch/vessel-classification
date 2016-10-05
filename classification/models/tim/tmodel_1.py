@@ -11,7 +11,7 @@ import tensorflow.contrib.slim as slim
 from tensorflow.python.framework import ops
 import time
 from classification import utility
-from classification.model import ModelBase
+from classification.model import ModelBase, TrainNetInfo
 import logging
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm, leaky_rectify
@@ -114,9 +114,9 @@ class Model(ModelBase):
     def build_training_net(self, features, labels):
 
         logits = self.build_model(tf.constant(True), features)
-        #
-        # XXX leftover from when actually knew training size so could drop size once per
-        # XXX epoch. Replace with some sort of sensible decay;
+        # TODO [bitsofbits]
+        # leftover from when actually knew training size so could drop size once per
+        # epoch. Replace with some sort of sensible decay;
         train_size = 20000
         #
         batch = slim.get_or_create_global_step()
@@ -141,4 +141,4 @@ class Model(ModelBase):
                 # Use simple momentum for the optimization.
                 optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
 
-        return loss, optimizer, logits
+        return TrainNetInfo(loss, optimizer, logits)

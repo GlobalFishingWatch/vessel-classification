@@ -2,7 +2,7 @@ from __future__ import absolute_import
 import argparse
 import json
 from . import layers
-from classification.model import ModelBase
+from classification.model import ModelBase, TrainNetInfo
 import logging
 import math
 import os
@@ -56,7 +56,7 @@ class Model(ModelBase):
 
         optimizer = tf.train.AdamOptimizer(2e-5)
 
-        return loss, optimizer, logits
+        return TrainNetInfo(loss, optimizer, logits)
 
     def build_inference_net(self, features):
 
@@ -64,6 +64,6 @@ class Model(ModelBase):
 
         logits = layers.misconception_model(
             features, self.window_size, self.stride, self.feature_depth,
-            self.levels, self.num_classes, tf.constant(False))
+            self.levels, self.num_classes, False)
 
         return logits

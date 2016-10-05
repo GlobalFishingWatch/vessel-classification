@@ -30,10 +30,11 @@ class Trainer:
         return ['%s/%d.tfrecord' % (self.base_feature_path, mmsi)
                 for mmsi in self.vessel_metadata[split].keys()]
 
-    def _training_data_reader(self, split, is_training):
-        """ Concurrent training data reader.
+   def _feature_data_reader(self, split, is_training):
+        """ Concurrent feature data reader.
 
-        Given a pattern for a set of input files, repeatedly read from these in
+        For a given data split (Training/Test) and a set of input files that
+        comes in via the vessel metadata, repeatedly read from these in
         shuffled order, outputing batches of randomly sampled segments of vessel
         tracks for model training or evaluation. Multiple readers are started
         concurrently, and the multiple samples can be output per vessel depending
@@ -41,7 +42,7 @@ class Trainer:
         types for which we have fewer examples).
 
         Args:
-            input_files: a list of input files for training/eval.
+            split: The subset of data to read (Training/Test).
             is_training: whether the data is for training (or evaluation).
 
         Returns:
@@ -55,7 +56,7 @@ class Trainer:
         input_files = self._feature_files(split)
         filename_queue = tf.train.input_producer(input_files, shuffle=True)
         capacity = 1000
-        min_size_after_deque = capacity - self.model.batch_size * 4
+        min_size_after_deque = capacity - self.batch_size * 4
 
         max_replication = 8.0
 
@@ -64,25 +65,27 @@ class Trainer:
             readers.append(
                 utility.cropping_weight_replicating_feature_file_reader(
                     self.vessel_metadata[split], filename_queue,
-                    self.model.num_feature_dimensions + 1, self.model.
-                    max_window_duration_seconds, self.model.window_max_points,
-                    self.model.min_viable_timeslice_length, max_replication))
+                    self.num_feature_dimensions + 1,
+                    self.max_window_duration_seconds, self.window_max_points,
+                    self.min_viable_timeslice_length, max_replication))
 
-        features, time_bounds, labels = tf.train.shuffle_batch_join(
+        raw_features, time_bounds, labels = tf.train.shuffle_batch_join(
             readers,
-            self.model.batch_size,
+            self.batch_size,
             capacity,
             min_size_after_deque,
             enqueue_many=True,
-            shapes=[[1, self.model.window_max_points,
-                     self.model.num_feature_dimensions], [2], []])
+            shapes=[[1, self.window_max_points, self.num_feature_dimensions],
+                    [2], []])
+
+        features = self.zero_pad_features(raw_features)
 
         return features, labels
 
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
-        features, labels = self._training_data_reader('Training', True)
+        features, labels = self._feature_data_reader('Training', True)
 
         loss, optimizer, logits = self.model.build_training_net(features,
                                                                 labels)
@@ -111,7 +114,7 @@ class Trainer:
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
 
-        features, labels = self._training_data_reader('Test', False)
+        features, labels = self._feature_data_reader('Test', False)
 
         logits = self.model.build_inference_net(features)
 

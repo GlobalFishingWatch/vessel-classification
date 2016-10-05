@@ -1,5 +1,7 @@
 import abc
+import namedtuple
 
+TrainNetInfo = namedtuple("TrainNetInfo", ["loss", "optimizer", "logits"])
 
 class ModelBase(object):
     __metaclass__ = abc.ABCMeta
@@ -8,16 +10,16 @@ class ModelBase(object):
     def build_training_net(self, features, labels):
         """Build net suitable for training model
 
-		Args:
-			features : tensor
-				queue of features to feed into net
-			labels : tensor
-				queue of groundtruth labels for training
+        Args:
+            features : queue
+                features to feed into net
+            labels : queue
+                groundtruth labels for training
 
-		Returns:
-			(loss, optimizer, logits):
+        Returns:
+            TrainNetInfo
 
-    	"""
+        """
         loss = optimizer = logits = None
         return loss, optimizer, logits
 
@@ -25,13 +27,13 @@ class ModelBase(object):
     def build_inference_net(self, features):
         """Build net suitable for running inference on model
 
-		Args:
-			features : tensor
-				queue of features to feed into net
+        Args:
+            features : tensor
+                queue of features to feed into net
 
-		Returns:
-			logits : tensor
+        Returns:
+            logits : tensor
 
-    	"""
-        loss = None
-        return loss
+        """
+        logits = None
+        return logits

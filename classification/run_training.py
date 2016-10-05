@@ -52,7 +52,7 @@ def main(args):
     try:
         Model = importlib.import_module(module).Model
     except:
-        logging.error("Could not load model: {}".format(module))
+        logging.fatal("Could not load model: {}".format(module))
         raise
     metadata_file = os.path.abspath(
         resource_filename('classification.data',
