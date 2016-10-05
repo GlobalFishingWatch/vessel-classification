@@ -123,10 +123,11 @@ class Model:
         # XXX epoch. Replace with some sort of sensible decay;
         train_size=20000
         #
+        batch = slim.get_or_create_global_step()    
+        #
         with tf.variable_scope('training'):
             # Optimizer: set up a variable that's incremented once per batch and
             # controls the learning rate decay.
-            batch = slim.get_or_create_global_step()
             #
             # Decay once per epoch, using an exponential schedule starting at 0.01.
             learning_rate = tf.train.exponential_decay(
