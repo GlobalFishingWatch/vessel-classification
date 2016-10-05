@@ -79,9 +79,11 @@ case class VesselLocationRecord(timestamp: Instant,
                                 course: DoubleU[degrees],
                                 heading: DoubleU[degrees])
 
+case class ResampledVesselLocation(timestamp: Instant, location: LatLon)
+
 case class SuspectedPort(location: LatLon, vessels: Seq[VesselMetadata])
 
-object Utility {
+object Utility extends LazyLogging {
   implicit class RichLogger(val logger: Logger) {
     def fatal(message: String) = {
       logger.error(message)
@@ -141,4 +143,55 @@ object Utility {
         finalPath
     }
   }
+
+  def resampleVesselSeries(input: Seq[VesselLocationRecord]): Seq[ResampledVesselLocation] = {
+    val incrementSeconds = Duration.standardMinutes(10).getStandardSeconds
+    val maxInterpolateGapSeconds = Duration.standardMinutes(60).getStandardSeconds
+
+    def tsToUnixSeconds(timestamp: Instant): Long = (timestamp.getMillis / 1000L)
+    def roundToIncrement(timestamp: Instant): Long =
+      (tsToUnixSeconds(timestamp) / incrementSeconds) * incrementSeconds
+
+    var iterTime = roundToIncrement(input.head.timestamp)
+    val endTime = roundToIncrement(input.last.timestamp)
+
+    var iterLocation = input.iterator
+
+    logger.info(s"Running to ${new Instant(endTime*1000)}")
+
+    val interpolatedSeries = mutable.ListBuffer.empty[ResampledVesselLocation]
+    var lastLocationRecord: Option[VesselLocationRecord] = None
+    var currentLocationRecord = iterLocation.next()
+    while (iterTime <= endTime) {
+      while (tsToUnixSeconds(currentLocationRecord.timestamp) < iterTime && iterLocation.hasNext) {
+        lastLocationRecord = Some(currentLocationRecord)
+        currentLocationRecord = iterLocation.next()
+      }
+      logger.info(s"Running from ${new Instant(iterTime*1000)} - ${currentLocationRecord.timestamp}")
+
+      lastLocationRecord.foreach { llr =>
+        val firstTimeSeconds = tsToUnixSeconds(llr.timestamp)
+        val secondTimeSeconds = tsToUnixSeconds(currentLocationRecord.timestamp)
+        val timeDeltaSeconds = secondTimeSeconds - firstTimeSeconds
+        if (firstTimeSeconds <= iterTime && secondTimeSeconds >= iterTime &&
+            timeDeltaSeconds < maxInterpolateGapSeconds) {
+          val mix = (secondTimeSeconds - iterTime).toDouble / (secondTimeSeconds - firstTimeSeconds).toDouble
+
+          val interpLat = currentLocationRecord.location.lat.value * mix +
+              llr.location.lat.value * (1.0 - mix)
+          val interpLon = currentLocationRecord.location.lon.value * mix +
+              llr.location.lon.value * (1.0 - mix)
+
+          interpolatedSeries.append(
+            ResampledVesselLocation(new Instant(iterTime),
+                                    LatLon(interpLat.of[degrees], interpLon.of[degrees])))
+        }
+      }
+
+      iterTime += incrementSeconds
+    }
+
+    interpolatedSeries.toIndexedSeq
+  }
+
 }
