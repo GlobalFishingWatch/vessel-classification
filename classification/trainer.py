@@ -69,7 +69,7 @@ class Trainer:
                     self.model.max_window_duration_seconds, self.model.window_max_points,
                     self.model.min_viable_timeslice_length, max_replication))
 
-        raw_features, time_bounds, labels = tf.train.shuffle_batch_join(
+        features, time_bounds, labels = tf.train.shuffle_batch_join(
             readers,
             self.model.batch_size,
             capacity,
@@ -79,7 +79,7 @@ class Trainer:
                     [2], []])
 
         return features, labels
-        
+
 
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
