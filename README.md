@@ -18,7 +18,7 @@ Vessel classification pipeline: feature generation and model training/inference.
 * A proto3-compatible version of protoc. See: [protocol buffers](https://developers.google.com/protocol-buffers/).
 * Python.
 * Tensorflow.
-* [Google Compute Engine](https://console.cloud.google.com) access and SDK installed locally.
+* [Google Compute Engine](https://console.cloud.google.com) access and [SDK](https://cloud.google.com/sdk) installed locally.
 
 ## Scala
 
