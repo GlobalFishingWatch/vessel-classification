@@ -64,7 +64,7 @@ object Parameters {
 
   // Around 1km^2
   val portsS2Scale = 13
-  val minUniqueVesselsForPort = 10
+  val minUniqueVesselsForPort = 50
 }
 
 import AdditionalUnits._
