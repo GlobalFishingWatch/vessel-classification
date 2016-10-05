@@ -11,10 +11,11 @@ import time
 import utility
 
 
-class ModelInference(utility.ModelConfiguration):
-    def __init__(self, model_checkpoint_path, unclassified_feature_path):
-        utility.ModelConfiguration.__init__(self)
+class Inferer(object):
+    def __init__(self, model, model_checkpoint_path,
+                 unclassified_feature_path):
 
+        self.model = model
         self.model_checkpoint_path = model_checkpoint_path
         self.unclassified_feature_path = unclassified_feature_path
         self.batch_size = 64
@@ -61,11 +62,7 @@ class ModelInference(utility.ModelConfiguration):
             shapes=[[1, self.window_max_points, self.num_feature_dimensions],
                     [2], []])
 
-        features = self.zero_pad_features(features)
-
-        logits = layers.misconception_model(
-            features, self.window_size, self.stride, self.feature_depth,
-            self.levels, self.num_classes, False)
+        logits = self.model.build_inference_net(features)
 
         softmax = slim.softmax(logits)
 
@@ -124,15 +121,25 @@ def main(args):
     inference_results_path = args.inference_results_path
     inference_parallelism = args.inference_parallelism
 
-    inference = ModelInference(model_checkpoint_path,
-                               unclassified_feature_path)
-    inference.run_inference(inference_parallelism, inference_results_path)
+    module = "classification.models.{}".format(args.model_name)
+    try:
+        Model = importlib.import_module(module).Model
+    except:
+        logging.error("Could not load model: {}".format(module))
+        raise
+
+    model = Model()
+    infererer = Inferer(model, model_checkpoint_path,
+                        unclassified_feature_path)
+    infererer.run_inference(inference_parallelism, inference_results_path)
 
 
 def parse_args():
     """ Parses command-line arguments for training."""
     argparser = argparse.ArgumentParser(
         'Infer behavioural labels for a set of vessels.')
+
+    argparser.add_argument('model_name')
 
     argparser.add_argument(
         '--unclassified_feature_path',

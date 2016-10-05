@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 import tensorflow as tf
+import tensorflow.contrib.slim as slim
 
 
 def weight_variable(shape):
@@ -32,6 +33,8 @@ def dense_layer(inputs, size, name='dense-layer'):
         b = bias_variable([size])
         return tf.matmul(inputs, W) + b
 
+# Batch, 1, Width, Depth
+
 
 def conv1d_layer(inputs,
                  filter_size,
@@ -41,11 +44,25 @@ def conv1d_layer(inputs,
                  name='conv1d-layer'):
     with tf.variable_scope(name):
         h, w, n = [int(x) for x in inputs.get_shape().dims[1:]]
-        assert w == 1
-        W = weight_variable([filter_size, 1, n, filter_count])
+        assert h == 1
+        W = weight_variable([1, filter_size, n, filter_count])
         b = bias_variable([filter_count])
         return (tf.nn.conv2d(
-            inputs, W, strides=[1, stride, 1, 1], padding=padding) + b)
+            inputs, W, strides=[1, 1, stride, 1], padding=padding) + b)
+
+
+def atrous_conv1d_layer(inputs,
+                        filter_size,
+                        filter_count,
+                        rate=1,
+                        padding="SAME",
+                        name='conv1d-layer'):
+    with tf.variable_scope(name):
+        h, w, n = [int(x) for x in inputs.get_shape().dims[1:]]
+        assert h == 1
+        W = weight_variable([1, filter_size, n, filter_count])
+        b = bias_variable([filter_count])
+        return (tf.nn.atrous_conv2d(inputs, W, rate=rate, padding=padding) + b)
 
 
 def batch_norm(inputs,
@@ -99,14 +116,14 @@ def misconception_layer(inputs,
         conv = conv1d_layer(inputs, filter_size, filter_count, padding=padding)
         #
         pool = tf.nn.max_pool(
-            inputs, [1, filter_size, 1, 1], [1, 1, 1, 1],
+            inputs, [1, 1, filter_size, 1], [1, 1, 1, 1],
             padding=padding,
             data_format='NHWC')
         #
-        joint = leaky_rectify(
+        joint = tf.nn.elu(
             batch_norm(tf.concat(3, [conv, pool]), is_training, **decay_arg))
         #
-        return leaky_rectify(
+        return tf.nn.elu(
             batch_norm(
                 conv1d_layer(
                     joint, 1, filter_count, name="NIN"),
