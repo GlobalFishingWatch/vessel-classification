@@ -12,9 +12,16 @@ Vessel classification pipeline: feature generation and model training/inference.
 
 # Building
 
-The various projects are built using the Scala build tool 'sbt'. You need a JVM on your machine
-to get up and running. SBT has a repl, which can be entered using the checked-in 'sbt' script in
-the root directory. Some commands:
+## Requirements
+
+* A JVM.
+* A proto3-compatible version of protoc. See: [protocol buffers](https://developers.google.com/protocol-buffers/).
+* Python.
+* Tensorflow.
+* [Google Compute Engine](https://console.cloud.google.com) access and SDK installed locally.
+
+The various projects are built using the Scala build tool 'sbt'. SBT has a repl, which can be
+entered using the checked-in 'sbt' script in the root directory. Some commands:
 
 * To compile: 'compile'.
 * To run: 'run'.
