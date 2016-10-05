@@ -11,6 +11,7 @@ import tensorflow.contrib.slim as slim
 from tensorflow.python.framework import ops
 import time
 from classification import utility
+from classification.model import ModelBase
 import logging
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm, leaky_rectify
@@ -20,7 +21,7 @@ TowerParams = namedtuple("TowerParams",
                           "pool_stride", "keep_prob"])
 
 
-class Model:
+class Model(ModelBase):
     DEFAULT_BATCH_SIZE = 32
     N_FEATURES = 9
     INITIAL_LEARNING_RATE = 0.1

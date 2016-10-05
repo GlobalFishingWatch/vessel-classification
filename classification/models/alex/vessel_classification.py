@@ -2,6 +2,7 @@ from __future__ import absolute_import
 import argparse
 import json
 from . import layers
+from classification.model import ModelBase
 import logging
 import math
 import os
@@ -11,7 +12,7 @@ import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 
 
-class Model:
+class Model(ModelBase):
 
     feature_duration_days = 180
     num_classes = 9
