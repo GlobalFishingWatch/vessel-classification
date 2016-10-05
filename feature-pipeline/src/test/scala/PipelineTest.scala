@@ -5,7 +5,7 @@ import com.spotify.scio.testing.PipelineSpec
 import io.github.karols.units._
 import io.github.karols.units.SI._
 import java.io.File
-import org.joda.time.Instant
+import org.joda.time.{Duration, Instant}
 import org.scalatest._
 
 object TestHelper {
@@ -108,6 +108,7 @@ class PipelineTests extends PipelineSpec with Matchers {
 
 class VesselSeriesTests extends PipelineSpec with Matchers {
   import TestHelper._
+  import AdditionalUnits._
 
   "The pipeline" should "successfully thin points down" in {
     val inputRecords = Seq(buildLocationRecord("2011-07-01T00:00:00Z", lat = 10.0, lon = 10.0),
@@ -146,7 +147,7 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
                            buildLocationRecord("2011-07-13T00:00:00Z", lat = 15, lon = 10),
                            buildLocationRecord("2011-07-14T00:00:00Z", lat = 16, lon = 10))
 
-    val expected = Seq(buildLocationRecord("2011-07-01T00:00:00Z", lat = 10, lon = 10),
+    val expectedLocations = Seq(buildLocationRecord("2011-07-01T00:00:00Z", lat = 10, lon = 10),
                        buildLocationRecord("2011-07-04T00:00:00Z", lat = 10, lon = 10),
                        buildLocationRecord("2011-07-05T00:00:00Z", lat = 11, lon = 10),
                        buildLocationRecord("2011-07-06T00:00:00Z", lat = 12, lon = 10),
@@ -157,8 +158,13 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
                        buildLocationRecord("2011-07-13T00:00:00Z", lat = 15, lon = 10),
                        buildLocationRecord("2011-07-14T00:00:00Z", lat = 16, lon = 10))
 
+    val expectedStationaryPeriods = Seq(
+      StationaryPeriod(LatLon(10.0.of[degrees], 10.0.of[degrees]), Duration.standardHours(24 * 3)),
+      StationaryPeriod(LatLon(14.0.of[degrees], 10.0.of[degrees]), Duration.standardHours(24 * 3)))
+
     val result = Pipeline.removeStationaryPeriods(inputRecords)
 
-    result should contain theSameElementsAs expected
+    result.locations should contain theSameElementsAs expectedLocations
+    result.stationaryPeriods should contain theSameElementsAs expectedStationaryPeriods
   }
 }
