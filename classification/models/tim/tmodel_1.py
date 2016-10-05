@@ -86,12 +86,12 @@ class Model:
                     shunt = tf.nn.elu(
                         batch_norm(
                             conv1d_layer(shunt, 1, tp.filter_count),
-                            is_training))                
+                            is_training))
                 current = shunt + mc
 
                 current = tf.nn.max_pool(
-                    current, [1, 1, tp.pool_size,   1],
-                             [1, 1, tp.pool_stride, 1],
+                    current, [1, 1, tp.pool_size, 1],
+                    [1, 1, tp.pool_stride, 1],
                     padding="VALID")
                 if tp.keep_prob < 1:
                     current = dropout_layer(current, is_training, tp.keep_prob)
@@ -106,14 +106,9 @@ class Model:
 
         return logits
 
-
-
-
     def build_inference_net(self, features):
 
         return self.build_model(tf.constant(False), features)
-
-
 
     def build_training_net(self, features, labels):
 
@@ -121,9 +116,9 @@ class Model:
         #
         # XXX leftover from when actually knew training size so could drop size once per
         # XXX epoch. Replace with some sort of sensible decay;
-        train_size=20000
+        train_size = 20000
         #
-        batch = slim.get_or_create_global_step()    
+        batch = slim.get_or_create_global_step()
         #
         with tf.variable_scope('training'):
             # Optimizer: set up a variable that's incremented once per batch and
@@ -140,11 +135,9 @@ class Model:
             # Compute loss and predicted probabilities `Y_`
             with tf.name_scope('loss-function'):
                 loss = tf.reduce_mean(
-                    tf.nn.sparse_softmax_cross_entropy_with_logits(logits, labels))
+                    tf.nn.sparse_softmax_cross_entropy_with_logits(logits,
+                                                                   labels))
                 # Use simple momentum for the optimization.
-                optimizer = tf.train.MomentumOptimizer(learning_rate,
-                                                       0.9)
+                optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9)
 
         return loss, optimizer, logits
-
-

@@ -16,7 +16,8 @@ class Trainer:
         model.
     """
 
-    def __init__(self, model, vessel_metadata, base_feature_path, train_scratch_path):
+    def __init__(self, model, vessel_metadata, base_feature_path,
+                 train_scratch_path):
         self.model = model
         self.vessel_metadata = vessel_metadata
         self.base_feature_path = base_feature_path
@@ -63,8 +64,8 @@ class Trainer:
             readers.append(
                 utility.cropping_weight_replicating_feature_file_reader(
                     self.vessel_metadata[split], filename_queue,
-                    self.model.num_feature_dimensions + 1,
-                    self.model.max_window_duration_seconds, self.model.window_max_points,
+                    self.model.num_feature_dimensions + 1, self.model.
+                    max_window_duration_seconds, self.model.window_max_points,
                     self.model.min_viable_timeslice_length, max_replication))
 
         features, time_bounds, labels = tf.train.shuffle_batch_join(
@@ -73,20 +74,19 @@ class Trainer:
             capacity,
             min_size_after_deque,
             enqueue_many=True,
-            shapes=[[1, self.model.window_max_points, self.model.num_feature_dimensions],
-                    [2], []])
+            shapes=[[1, self.model.window_max_points,
+                     self.model.num_feature_dimensions], [2], []])
 
         return features, labels
-
 
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
-        features, labels = self._training_data_reader(
-            'Training', True)
+        features, labels = self._training_data_reader('Training', True)
 
-        loss, optimizer, logits = self.model.build_training_net(features, labels)
-        
+        loss, optimizer, logits = self.model.build_training_net(features,
+                                                                labels)
+
         predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
         tf.scalar_summary('Training loss', loss)
@@ -108,12 +108,10 @@ class Trainer:
             save_summaries_secs=30,
             save_interval_secs=60)
 
-
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
 
-        features, labels = self._training_data_reader('Test',
-                                                                      False)
+        features, labels = self._training_data_reader('Test', False)
 
         logits = self.model.build_inference_net(features)
 

@@ -31,8 +31,6 @@ class Model:
     batch_size = 32
     min_viable_timeslice_length = 500
 
-
-
     def zero_pad_features(self, features):
         """ Zero-pad features in the depth dimension to match requested feature depth. """
 
@@ -43,7 +41,6 @@ class Model:
         padded = tf.concat(3, [features, zero_padding])
 
         return padded
-
 
     def build_training_net(self, features, labels):
 
@@ -59,8 +56,6 @@ class Model:
         optimizer = tf.train.AdamOptimizer(2e-5)
 
         return loss, optimizer, logits
-
-
 
     def build_inference_net(self, features):
 

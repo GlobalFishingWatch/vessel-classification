@@ -12,8 +12,8 @@ import utility
 
 
 class ModelInference:
-
-    def __init__(self, model, model_checkpoint_path, unclassified_feature_path):
+    def __init__(self, model, model_checkpoint_path,
+                 unclassified_feature_path):
         utility.ModelConfiguration.__init__(self)
 
         self.model = model

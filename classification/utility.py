@@ -15,8 +15,6 @@ VESSEL_CLASS_INDICES = dict(
     zip(VESSEL_CLASS_NAMES, range(len(VESSEL_CLASS_NAMES))))
 
 
-
-
 class ClusterNodeConfig(object):
     """ Class that represent the configuration of this node in a cluster. """
 
