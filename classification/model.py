@@ -1,5 +1,5 @@
 import abc
-import namedtuple
+from collections import namedtuple
 
 TrainNetInfo = namedtuple("TrainNetInfo", ["loss", "optimizer", "logits"])
 
