@@ -23,7 +23,7 @@ object ModelFeatures extends LazyLogging {
   import AdditionalUnits._
   import Utility._
 
-   def buildSingleVesselFeatures(input: Seq[VesselLocationRecord]): Seq[Array[Double]] =
+  def buildSingleVesselFeatures(input: Seq[VesselLocationRecord]): Seq[Array[Double]] =
     input
       .sliding(3)
       .map {

@@ -55,23 +55,19 @@ case class VesselMetadata(
     mmsi: Int
 )
 
-case class StationaryPeriod(
-  location: LatLon,
-  duration: Duration)
+case class StationaryPeriod(location: LatLon, duration: Duration)
 
-case class ProcessedLocations(
-  locations: Seq[VesselLocationRecord],
-  stationaryPeriods: Seq[StationaryPeriod])
+case class ProcessedLocations(locations: Seq[VesselLocationRecord],
+                              stationaryPeriods: Seq[StationaryPeriod])
 
 // TODO(alexwilson): For now build simple coder for this class. :-(
-case class VesselLocationRecord(
-    timestamp: Instant,
-    location: LatLon,
-    distanceToShore: DoubleU[kilometer],
-    distanceToPort: DoubleU[kilometer],
-    speed: DoubleU[knots],
-    course: DoubleU[degrees],
-    heading: DoubleU[degrees])
+case class VesselLocationRecord(timestamp: Instant,
+                                location: LatLon,
+                                distanceToShore: DoubleU[kilometer],
+                                distanceToPort: DoubleU[kilometer],
+                                speed: DoubleU[knots],
+                                course: DoubleU[degrees],
+                                heading: DoubleU[degrees])
 
 object Utility {
   implicit class RichLogger(val logger: Logger) {
@@ -96,7 +92,6 @@ object Utility {
   // Normalize from -180 to + 180
   def angleNormalize(angle: DoubleU[degrees]) =
     MathUtils.normalizeAngle(angle.convert[radians].value, 0.0).of[radians].convert[degrees]
-
 
   // TODO(alexwilson): Rolling this ourselves isn't nice. Explore how to do this with existing cloud dataflow sinks.
   def oneFilePerTFRecordSink[T <: MessageLite](basePath: String,

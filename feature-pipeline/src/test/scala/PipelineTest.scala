@@ -148,15 +148,15 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
                            buildLocationRecord("2011-07-14T00:00:00Z", lat = 16, lon = 10))
 
     val expectedLocations = Seq(buildLocationRecord("2011-07-01T00:00:00Z", lat = 10, lon = 10),
-                       buildLocationRecord("2011-07-04T00:00:00Z", lat = 10, lon = 10),
-                       buildLocationRecord("2011-07-05T00:00:00Z", lat = 11, lon = 10),
-                       buildLocationRecord("2011-07-06T00:00:00Z", lat = 12, lon = 10),
-                       buildLocationRecord("2011-07-07T00:00:00Z", lat = 12, lon = 10),
-                       buildLocationRecord("2011-07-08T00:00:00Z", lat = 13, lon = 10),
-                       buildLocationRecord("2011-07-09T00:00:00Z", lat = 14, lon = 10),
-                       buildLocationRecord("2011-07-12T00:00:00Z", lat = 14, lon = 10),
-                       buildLocationRecord("2011-07-13T00:00:00Z", lat = 15, lon = 10),
-                       buildLocationRecord("2011-07-14T00:00:00Z", lat = 16, lon = 10))
+                                buildLocationRecord("2011-07-04T00:00:00Z", lat = 10, lon = 10),
+                                buildLocationRecord("2011-07-05T00:00:00Z", lat = 11, lon = 10),
+                                buildLocationRecord("2011-07-06T00:00:00Z", lat = 12, lon = 10),
+                                buildLocationRecord("2011-07-07T00:00:00Z", lat = 12, lon = 10),
+                                buildLocationRecord("2011-07-08T00:00:00Z", lat = 13, lon = 10),
+                                buildLocationRecord("2011-07-09T00:00:00Z", lat = 14, lon = 10),
+                                buildLocationRecord("2011-07-12T00:00:00Z", lat = 14, lon = 10),
+                                buildLocationRecord("2011-07-13T00:00:00Z", lat = 15, lon = 10),
+                                buildLocationRecord("2011-07-14T00:00:00Z", lat = 16, lon = 10))
 
     val expectedStationaryPeriods = Seq(
       StationaryPeriod(LatLon(10.0.of[degrees], 10.0.of[degrees]), Duration.standardHours(24 * 3)),

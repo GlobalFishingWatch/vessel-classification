@@ -29,7 +29,6 @@ import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
 import org.joda.time.format.ISODateTimeFormat
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
-
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConversions._
 import scala.math
@@ -66,9 +65,7 @@ object Parameters {
   val portsS2Scale = 23
 }
 
-
 import AdditionalUnits._
-
 
 case class RangeValidator(valid: Boolean) extends AnyVal {
   def inRange[T <: Ordered[T]](value: T, min: T, max: T) =
@@ -152,8 +149,7 @@ object Pipeline extends LazyLogging {
     thinnedPoints
   }
 
-  def removeStationaryPeriods(
-      records: Iterable[VesselLocationRecord]): ProcessedLocations = {
+  def removeStationaryPeriods(records: Iterable[VesselLocationRecord]): ProcessedLocations = {
     // Remove long stationary periods from the record: anything over the threshold
     // time will be reduced to just the start and end points of the period.
     // TODO(alexwilson): Tim points out that leaves vessels sitting around for t - delta looking
@@ -176,9 +172,10 @@ object Pipeline extends LazyLogging {
             }
             val numPoints = currentPeriod.length.toDouble
             val duration = new Duration(periodFirst.timestamp, currentPeriod.last.timestamp)
-            val aveLat = currentPeriod.map {_.location.lat.value}.sum / numPoints
-            val aveLon = currentPeriod.map {_.location.lon.value}.sum / numPoints
-            stationaryPeriods.append(StationaryPeriod(LatLon(aveLat.of[degrees], aveLon.of[degrees]), duration))
+            val aveLat = currentPeriod.map { _.location.lat.value }.sum / numPoints
+            val aveLon = currentPeriod.map { _.location.lon.value }.sum / numPoints
+            stationaryPeriods.append(
+              StationaryPeriod(LatLon(aveLat.of[degrees], aveLon.of[degrees]), duration))
           } else {
             withoutLongStationaryPeriods ++= currentPeriod
           }
@@ -212,7 +209,6 @@ object Pipeline extends LazyLogging {
         (metadata, processedLocations)
     }
   }
-
 
   def main(argArray: Array[String]) {
     val now = new DateTime(DateTimeZone.UTC)
