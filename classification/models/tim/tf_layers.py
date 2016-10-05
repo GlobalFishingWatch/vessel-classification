@@ -41,11 +41,11 @@ def conv1d_layer(inputs,
                  name='conv1d-layer'):
     with tf.variable_scope(name):
         h, w, n = [int(x) for x in inputs.get_shape().dims[1:]]
-        assert w == 1
-        W = weight_variable([filter_size, 1, n, filter_count])
+        assert h == 1
+        W = weight_variable([1, filter_size, n, filter_count])
         b = bias_variable([filter_count])
         return (tf.nn.conv2d(
-            inputs, W, strides=[1, stride, 1, 1], padding=padding) + b)
+            inputs, W, strides=[1, 1, stride, 1], padding=padding) + b)
 
 
 def batch_norm(inputs,
@@ -99,7 +99,7 @@ def misconception_layer(inputs,
         conv = conv1d_layer(inputs, filter_size, filter_count, padding=padding)
         #
         pool = tf.nn.max_pool(
-            inputs, [1, filter_size, 1, 1], [1, 1, 1, 1],
+            inputs, [1, 1, filter_size, 1], [1, 1, 1, 1],
             padding=padding,
             data_format='NHWC')
         #

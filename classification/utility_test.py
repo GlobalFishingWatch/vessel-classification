@@ -1,4 +1,4 @@
-import layers
+from models.alex import layers
 import numpy as np
 import utility
 import tensorflow as tf
@@ -61,6 +61,45 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
             res = utility.np_array_random_fixed_time_extract(
                 lambda _: 0, input_data, 20, 5, 50)
             self.assertAllEqual(res, expected_result)
+
+
+class VesselMetadataFileReader(tf.test.TestCase):
+    def test_metadata_file_reader(self):
+        lines = [
+            'mmsi,split,kind\n',
+            '100001,Training,Longliner\n',
+            '100002,Training,Longliner\n',
+            '100003,Training,Longliner\n',
+            '100004,Training,Longliner\n',
+            '100005,Training,Trawler\n',
+            '100006,Training,Trawler\n',
+            '100007,Training,Passenger\n',
+            '100008,Test,Trawler\n',
+            '100009,Test,Trawler\n',
+            '100010,Test,Trawler\n',
+            '100011,Test,Tug\n',
+            '100012,Test,Tug\n',
+            '100013,Test,Tug\n',
+        ]
+        available_vessels = set(range(100001, 100013))
+        result = utility.read_vessel_metadata_file_lines(available_vessels,
+                                                         lines)
+
+        self.assertTrue('Training' in result)
+        self.assertEquals(result['Training'][100001], ('Longliner', 1.0))
+        self.assertEquals(result['Training'][100002], ('Longliner', 1.0))
+        self.assertEquals(result['Training'][100003], ('Longliner', 1.0))
+        self.assertEquals(result['Training'][100004], ('Longliner', 1.0))
+        self.assertEquals(result['Training'][100005], ('Trawler', 2.0))
+        self.assertEquals(result['Training'][100006], ('Trawler', 2.0))
+        self.assertEquals(result['Training'][100007], ('Passenger', 4.0))
+
+        self.assertTrue('Test' in result)
+        self.assertEquals(result['Test'][100008], ('Trawler', 1.0))
+        self.assertEquals(result['Test'][100009], ('Trawler', 1.0))
+        self.assertEquals(result['Test'][100010], ('Trawler', 1.0))
+        self.assertEquals(result['Test'][100011], ('Tug', 3.0 / 2.0))
+        self.assertEquals(result['Test'][100012], ('Tug', 3.0 / 2.0))
 
 
 if __name__ == '__main__':
