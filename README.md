@@ -44,5 +44,5 @@ may take some time to download all the required libraries.
        - python -m classification.run_training alex.vessel_classification <...>
 * Cloud ML
    * Training:
-       - `./deploy_cloudml.py alex.amodel_1`
+       - `./deploy_cloudml.py alex.vessel_classification`
        - `./deploy_cloudml.py tim.tmodel_1`
