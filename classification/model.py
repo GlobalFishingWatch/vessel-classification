@@ -3,6 +3,7 @@ import namedtuple
 
 TrainNetInfo = namedtuple("TrainNetInfo", ["loss", "optimizer", "logits"])
 
+
 class ModelBase(object):
     __metaclass__ = abc.ABCMeta
 

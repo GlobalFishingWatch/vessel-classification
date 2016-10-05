@@ -30,7 +30,7 @@ class Trainer:
         return ['%s/%d.tfrecord' % (self.base_feature_path, mmsi)
                 for mmsi in self.vessel_metadata[split].keys()]
 
-   def _feature_data_reader(self, split, is_training):
+    def _feature_data_reader(self, split, is_training):
         """ Concurrent feature data reader.
 
         For a given data split (Training/Test) and a set of input files that
