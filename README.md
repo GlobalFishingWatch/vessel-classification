@@ -12,9 +12,16 @@ Vessel classification pipeline: feature generation and model training/inference.
 
 # Building
 
-The various projects are built using the Scala build tool 'sbt'. You need a JVM on your machine
-to get up and running. SBT has a repl, which can be entered using the checked-in 'sbt' script in
-the root directory. Some commands:
+## Requirements
+
+* A JVM.
+* A proto3-compatible version of protoc. See: [protocol buffers](https://developers.google.com/protocol-buffers/).
+* Python.
+* Tensorflow.
+* [Google Compute Engine](https://console.cloud.google.com) access and SDK installed locally.
+
+The various projects are built using the Scala build tool 'sbt'. SBT has a repl, which can be
+entered using the checked-in 'sbt' script in the root directory. Some commands:
 
 * To compile: 'compile'.
 * To run: 'run'.
@@ -32,6 +39,9 @@ may take some time to download all the required libraries.
   * Sign in: `gcloud auth application-default login`.
 * Cloud Dataflow
    * Run jobs, specifying the zone and max number of workers, e.g. `--zone=europe-west1-c  --maxNumWorkers=80`.
+* Running TF locally:
+   * Training:
+       - python -m classification.run_training alex.vessel_classification <...>
 * Cloud ML
    * Training:
        - `./deploy_cloudml.py alex.amodel_1`

@@ -1,9 +1,13 @@
+from __future__ import absolute_import
+
 import argparse
 import datetime
-import layers
+from models.alex import layers
 import logging
+import pytz
 import tensorflow.contrib.slim as slim
 import tensorflow as tf
+import time
 import utility
 
 
@@ -16,6 +20,24 @@ class ModelInference(utility.ModelConfiguration):
         self.batch_size = 64
         self.min_points_for_classification = 250
 
+        def _build_starts():
+            today = datetime.datetime.now(pytz.utc)
+            months = [1, 4, 7, 10]
+            year = 2012
+            time_starts = []
+            while True:
+                for month in months:
+                    dt = datetime.datetime(year, month, 1, tzinfo=pytz.utc)
+                    time_starts.append(int(time.mktime(dt.timetuple())))
+                    if dt > today:
+                        return time_starts
+                year += 1
+
+        time_starts = _build_starts()
+
+        self.time_ranges = [(s, e)
+                            for (s, e) in zip(time_starts, time_starts[2:])]
+
     def run_inference(self, inference_parallelism, inference_results_path):
         matching_files_i = tf.matching_files(self.unclassified_feature_path)
         matching_files = tf.Print(matching_files_i, [matching_files_i],
@@ -27,7 +49,7 @@ class ModelInference(utility.ModelConfiguration):
         for _ in range(inference_parallelism):
             reader = utility.cropping_all_slice_feature_file_reader(
                 filename_queue, self.num_feature_dimensions + 1,
-                self.max_window_duration_seconds, self.window_max_points,
+                self.time_ranges, self.window_max_points,
                 self.min_points_for_classification)
             readers.append(reader)
 
@@ -77,8 +99,10 @@ class ModelInference(utility.ModelConfiguration):
                     i += 1
                     result = sess.run(
                         [mmsis, time_ranges, predictions, max_probabilities])
-                    for mmsi, (start_time_seconds, end_time_seconds
-                               ), label, max_probability in zip(*result):
+                    for mmsi, (
+                            start_time_seconds,
+                            end_time_seconds), label, max_probability in zip(
+                                *result):
                         start_time = datetime.datetime.utcfromtimestamp(
                             start_time_seconds)
                         end_time = datetime.datetime.utcfromtimestamp(

@@ -19,6 +19,8 @@ TowerParams = namedtuple("TowerParams",
                          ["filter_count", "filter_widths", "pool_size",
                           "pool_stride", "keep_prob"])
 
+DenseParams = namedtuple("DenseParams", ["size", "keep_prob"])
+
 
 def make_summary(name, val):
     return summary_pb2.Summary(value=[summary_pb2.Summary.Value(
@@ -26,13 +28,45 @@ def make_summary(name, val):
 
 
 GraphData = namedtuple("GraphData", ["X", "y", "Y_", "logits", "is_training",
-                                     "batch_size", "optimizer"])
+                                     "sess", "batch_size", "optimizer"])
 
+
+# slim.evaluation #master
+def checkpoints_iterator(checkpoint_dir, min_interval_secs=0, timeout=None):
+    """Continuously yield new checkpoint files as they appear.
+  The iterator only checks for new checkpoints when control flow has been
+  reverted to it. This means it can miss checkpoints if your code takes longer
+  to run between iterations than `min_interval_secs` or the interval at which
+  new checkpoints are written.
+  Args:
+    checkpoint_dir: The directory in which checkpoints are saved.
+    min_interval_secs: The minimum number of seconds between yielding
+      checkpoints.
+    timeout: The maximum amount of time to wait between checkpoints. If left as
+      `None`, then the process will wait indefinitely.
+  Yields:
+    String paths to latest checkpoint files as they arrive. Stops yielding only
+    if/when waiting for a checkpoint times out.
+  """
+    checkpoint_path = None
+    while True:
+        checkpoint_path = slim.evaluation.wait_for_new_checkpoint(
+            checkpoint_dir, checkpoint_path, timeout=timeout)
+        if checkpoint_path is None:
+            # timed out
+            return
+        start = time.time()
+        yield checkpoint_path
+        time_to_next_eval = start + min_interval_secs - time.time()
+        if time_to_next_eval > 0:
+            time.sleep(time_to_next_eval)
 
 
 class Trainer:
-    DEFAULT_BATCH_SIZE = 32
-    DEFAULT_MAX_EXAMPLES = 30000 
+
+    # BASE_CHECKPOINT_DIR = "gs://world-fishing-827-ml/tah_vessel_classifier/"             #"./checkpoints/"
+    DEFAULT_BATCH_SIZE = 64
+    DEFAULT_EPOCHS = 400  # 1000?
     N_FEATURES = 9
     N_LOADED_FEATURES = 9
     INITIAL_LEARNING_RATE = 0.1
@@ -57,7 +91,9 @@ class Trainer:
 
     INIT_KEEP_PROB = 1.0
 
-    def __init__(self, root_feature_path, training_output_path):
+    def __init__(self, vessel_metadata, root_feature_path,
+                 training_output_path):
+        self.VESSEL_METADATA = vessel_metadata
         self.CHECKPOINT_DIR = training_output_path
         self.BASE_FEATURE_PATH = root_feature_path
 
@@ -70,9 +106,14 @@ class Trainer:
         return length
 
     # TODO: remove X, y (they are there for backwards compatibility during transisiton)
-    def build_model(self, is_training, X):
+    def build_model(self, is_training, X=None):
 
-        y = tf.placeholder(tf.int64, shape=(None, ), name="labels") # XXX GET RID OF?
+        if X is None:
+            X = tf.placeholder(
+                tf.float32,
+                shape=(None, self.SEQ_LENGTH, 1, self.N_FEATURES),
+                name="inputs")
+        y = tf.placeholder(tf.int64, shape=(None, ), name="labels")
 
         current = X
 
@@ -99,10 +140,10 @@ class Trainer:
                 with tf.variable_scope('shunt'):
                     # Trim current before making the skip layer so that it matches the dimensons of
                     # the mc stack
-                    W = int(current.get_shape().dims[2])
+                    H = int(current.get_shape().dims[1])
                     delta = sum(tp.filter_widths) - len(tp.filter_widths)
-                    shunt = tf.slice(current, [0, 0, delta // 2, 0],
-                                     [-1, -1, W - delta, -1])
+                    shunt = tf.slice(current, [0, delta // 2, 0, 0],
+                                     [-1, H - delta, -1, -1])
                     shunt = leaky_rectify(
                         batch_norm(
                             conv1d_layer(shunt, 1, tp.filter_count),
@@ -111,8 +152,8 @@ class Trainer:
                 current = shunt + mc
 
                 current = tf.nn.max_pool(
-                    current, [1, 1, tp.pool_size, 1],
-                    [1, 1, tp.pool_stride, 1],
+                    current, [1, tp.pool_size, 1, 1],
+                    [1, tp.pool_stride, 1, 1],
                     padding="VALID")
                 if tp.keep_prob < 1:
                     current = dropout_layer(current, is_training, tp.keep_prob)
@@ -149,7 +190,7 @@ class Trainer:
                     self._set_trainable_parameters()
         return self._trainable_parameters
 
-    def eval_in_batches(self, size, sess, gdata):
+    def eval_in_batches(self, size, gdata):
         """Get all predictions for a dataset by running it in small batches."""
         predictions = np.ndarray(shape=(size, self.N_CATS), dtype=np.float32)
         labels = np.ndarray(shape=(size, ), dtype=np.int32)
@@ -159,7 +200,7 @@ class Trainer:
             count = end - begin
             logging.debug("EVAL IN BATCHES %s, %s, %s", begin, end, count)
             sys.stdout.flush()
-            raw_preds, raw_labels = sess.run([gdata.Y_, gdata.y],
+            raw_preds, raw_labels = gdata.sess.run([gdata.Y_, gdata.y],
                                                    feed_dict=feed_dict)
             predictions[begin:end, :] = raw_preds[:count]
             labels[begin:end] = raw_labels[:count]
@@ -170,9 +211,10 @@ class Trainer:
         size = len(src)
         return self.predict_proba(X, size, trials, batch_size)
 
-    def build_test_graph(self, batch_size, X, y):
+    def build_test_graph(self, sess, batch_size, X, y):
 
         is_training = tf.placeholder(tf.bool)
+        X = tf.reshape(X, (-1, self.SEQ_LENGTH, 1, self.N_FEATURES))
 
         _, _, Y_, logits = self.build_model(is_training, X)
         self._set_trainable_parameters()
@@ -181,12 +223,13 @@ class Trainer:
             batch = tf.Variable(0, trainable=False, name="batch")
 
         return GraphData(
-            X, y, Y_, logits, is_training, batch_size,
+            X, y, Y_, logits, is_training, sess, batch_size,
             optimizer=None), batch
 
-    def build_train_graph(self, batch_size, X, y, train_size=20000):
+    def build_train_graph(self, sess, batch_size, X, y, train_size=20000):
 
         is_training = tf.placeholder(tf.bool)
+        X = tf.reshape(X, (-1, self.SEQ_LENGTH, 1, self.N_FEATURES))
         _, _, Y_, logits = self.build_model(is_training, X)
         #
         self._set_trainable_parameters()
@@ -222,17 +265,17 @@ class Trainer:
             tf.scalar_summary('Training accuracy', accuracy)
             tf.scalar_summary('Learning rate', learning_rate)
 
-        return GraphData(X, y, Y_, logits, is_training, batch_size,
+        return GraphData(X, y, Y_, logits, is_training, sess, batch_size,
                          optimizer), batch
 
-    def run_training(self, target="", is_chief=True):
+    def run_training(self, target="", is_chief=True, epochs=None):
+        features, labels = self.data_reader('Training')
 
-        input_file_pattern = self.BASE_FEATURE_PATH + '/Training/shard-*-of-*.tfrecord'
-        features, labels = self.data_reader(input_file_pattern, True)
-
+        epochs = epochs or self.DEFAULT_EPOCHS
         batch_size = self.DEFAULT_BATCH_SIZE
 
-        gdata, batch = self.build_train_graph(batch_size, features, labels)
+        gdata, batch = self.build_train_graph(None, batch_size, features,
+                                              labels)
 
         merged = tf.merge_all_summaries()
         writer = tf.train.SummaryWriter(self.CHECKPOINT_DIR)
@@ -249,39 +292,43 @@ class Trainer:
 
         with sv.managed_session(target) as sess:
 
+            gdata_list = list(gdata)
+            gdata_list[5] = sess
+            gdata = GraphData(
+                *gdata_list)  # XXX: Hacky! At a minimum pull sess out of gdata
 
-            for step in count():
+            try:
+                for step in count():
 
-                # XXX could now built this into train / test dics!
-                feed_dict = {
-                    gdata.is_training: True
-                }  
+                    feed_dict = {
+                        gdata.is_training: True
+                    }  # XXX could now built this into train / test dics!
 
-                summary, predicted, _ = sess.run(fetches=[merged, gdata.Y_,
-                                                          gdata.optimizer],
-                                                 feed_dict=feed_dict)
+                    summary, predicted, _ = sess.run(fetches=[merged, gdata.Y_,
+                                                              gdata.optimizer],
+                                                     feed_dict=feed_dict)
 
-                if is_chief:
-                    writer.add_summary(summary, step)
+                    if is_chief:
+                        writer.add_summary(summary, step)
 
-                if sv.should_stop(
-                ): 
-                    break
+                    if sv.should_stop(
+                    ):  # XXX need some way to stop (based on steps perhaps)
+                        break
 
+            except KeyboardInterrupt:
+                pass
 
             writer.flush()
             sv.stop()
 
         return self
 
-    def run_evaluation(self, target="", timeout=60 * 15):
-
-        input_file_pattern = self.BASE_FEATURE_PATH + '/Test/shard-*-of-*.tfrecord'
-        features, labels = self.data_reader(input_file_pattern, False)
+    def run_evaluation(self, target="", timeout=60 * 5):
+        features, labels = self.data_reader('Test')
 
         batch_size = self.DEFAULT_BATCH_SIZE
 
-        gdata, batch = self.build_test_graph(batch_size, features,
+        gdata, batch = self.build_test_graph(None, batch_size, features,
                                              labels)
 
         logdir = self.CHECKPOINT_DIR + "_logs"
@@ -299,8 +346,9 @@ class Trainer:
             saver=saver,
             save_summaries_secs=0)
 
-        for checkpoint_path in slim.evaluation.checkpoints_iterator(
-                    self.CHECKPOINT_DIR, timeout=timeout):
+        for step, checkpoint_path in enumerate(
+                checkpoints_iterator(
+                    self.CHECKPOINT_DIR, timeout=timeout)):
 
             logging.debug('Starting eval')
             sys.stdout.flush()
@@ -314,14 +362,19 @@ class Trainer:
                 except:
                     logging.warning("Could not restore from %s %s",
                                     checkpoint_path, "skipping")
+                    sys.stdout.flush()
                     continue
                 sv.start_queue_runners(sess)
 
                 batch_val = sess.run(batch)
 
+                gdata_list = list(gdata)
+                gdata_list[5] = sess
+                gdata = GraphData(
+                    *gdata_list)  # XXX: Hacky! At a minimum pull sess out of gdata
+
                 logging.debug("Eval step: %s", batch_val)
                 preds, labels = self.eval_in_batches(self.VALIDATION_POINTS,
-                                                     sess,
                                                      gdata)
                 accuracy = (labels == np.argmax(preds, axis=1)).mean()
                 writer.add_summary(
@@ -329,18 +382,29 @@ class Trainer:
                 #
                 writer.flush()
 
-                if batch_val * batch_size > self.DEFAULT_MAX_EXAMPLES or sv.should_stop():
+                if sv.should_stop():
                     logging.info("Ending: %s", sv.should_stop())
                     sys.stdout.flush()
                     break
 
+    @classmethod
+    def train(cls, server, is_chief):
+        target = "" if server is None else server.target
+        cls().fit(target=target, is_chief=is_chief)
 
+    @classmethod
+    def evaluate(cls, server):
+        # target = ""
+        target = "" if server is None else server.target
+        cls().eval(target=target)
 
-    def data_reader(self, input_file_pattern, is_training):
-        matching_files_i = tf.matching_files(input_file_pattern)
-        matching_files = tf.Print(matching_files_i, [matching_files_i],
-                                  "Files: ")
-        filename_queue = tf.train.input_producer(matching_files, shuffle=True)
+    def _feature_files(self, split):
+        return ['%s/%d.tfrecord' % (self.BASE_FEATURE_PATH, mmsi)
+                for mmsi in self.VESSEL_METADATA[split].keys()]
+
+    def data_reader(self, split):
+        input_files = self._feature_files(split)
+        filename_queue = tf.train.input_producer(input_files, shuffle=True)
         capacity = 600
         min_size_after_deque = capacity - self.DEFAULT_BATCH_SIZE * 4
 
@@ -350,9 +414,9 @@ class Trainer:
         for _ in range(self.NUM_PARALLEL_READERS):
             readers.append(
                 utility.cropping_weight_replicating_feature_file_reader(
-                    filename_queue, self.N_LOADED_FEATURES + 1,
-                    self.MAX_WINDOW_DURATION_SECONDS, self.SEQ_LENGTH, 500,
-                    max_replication))
+                    self.VESSEL_METADATA[split], filename_queue, self.
+                    N_LOADED_FEATURES + 1, self.MAX_WINDOW_DURATION_SECONDS,
+                    self.SEQ_LENGTH, 500, max_replication))
 
         features, time_bounds, labels = tf.train.shuffle_batch_join(
             readers,
