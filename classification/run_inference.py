@@ -11,10 +11,9 @@ import time
 import utility
 
 
-class ModelInference:
+class Inferer(object):
     def __init__(self, model, model_checkpoint_path,
                  unclassified_feature_path):
-        utility.ModelConfiguration.__init__(self)
 
         self.model = model
         self.model_checkpoint_path = model_checkpoint_path
@@ -122,15 +121,25 @@ def main(args):
     inference_results_path = args.inference_results_path
     inference_parallelism = args.inference_parallelism
 
-    inference = ModelInference(model_checkpoint_path,
-                               unclassified_feature_path)
-    inference.run_inference(inference_parallelism, inference_results_path)
+    module = "classification.models.{}".format(args.model_name)
+    try:
+        Model = importlib.import_module(module).Model
+    except:
+        logging.error("Could not load model: {}".format(module))
+        raise
+
+    model = Model()
+    infererer = Inferer(model, model_checkpoint_path,
+                        unclassified_feature_path)
+    infererer.run_inference(inference_parallelism, inference_results_path)
 
 
 def parse_args():
     """ Parses command-line arguments for training."""
     argparser = argparse.ArgumentParser(
         'Infer behavioural labels for a set of vessels.')
+
+    argparser.add_argument('model_name')
 
     argparser.add_argument(
         '--unclassified_feature_path',
