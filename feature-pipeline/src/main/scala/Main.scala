@@ -63,6 +63,7 @@ object Parameters {
 
   // Around 1km^2
   val portsS2Scale = 23
+  val minUniqueVesselsForPort = 50
 }
 
 import AdditionalUnits._
@@ -210,6 +211,23 @@ object Pipeline extends LazyLogging {
     }
   }
 
+  def findSuspectedPortCells(
+      input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[SuspectedPort] = {
+    input.flatMap {
+      case (md, processedLocations) =>
+        val s2Cells = processedLocations.stationaryPeriods
+          .map(_.location.getS2CellId(Parameters.portsS2Scale))
+          .distinct
+
+        s2Cells.map { cell =>
+          (cell, md)
+        }
+    }.groupByKey.map {
+      case (cell, mds) =>
+        SuspectedPort(LatLon.fromS2CellId(cell), mds.toIndexedSeq)
+    }.filter { _.vessels.size >= Parameters.minUniqueVesselsForPort }
+  }
+
   def main(argArray: Array[String]) {
     val now = new DateTime(DateTimeZone.UTC)
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
@@ -230,14 +248,24 @@ object Pipeline extends LazyLogging {
     val locationRecords = readJsonRecords(matches)
 
     val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
+
     val features = ModelFeatures.buildVesselFeatures(processed).map {
       case (md, feature) =>
         (s"${md.mmsi}", feature)
     }
-    val outputPath = Parameters.outputFeaturesPath + "/" +
+
+    val baseOutputPath = Parameters.outputFeaturesPath + "/" +
         ISODateTimeFormat.basicDateTimeNoMillis().print(now)
 
-    val res = Utility.oneFilePerTFRecordSink(outputPath, features)
+    val outputFeaturePath = baseOutputPath + "/features"
+    val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
+
+    val suspectedPortsPath = baseOutputPath + "/ports.csv"
+    val suspectedPorts = findSuspectedPortCells(processed)
+    val suspectedPortsAsString = suspectedPorts.map { sp =>
+      s"${sp.location.lat.value},${sp.location.lon.value},${sp.vessels.size}"
+    }
+    suspectedPortsAsString.saveAsTextFile(suspectedPortsPath)
 
     sc.close()
   }

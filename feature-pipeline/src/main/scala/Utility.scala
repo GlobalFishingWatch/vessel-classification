@@ -4,7 +4,7 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
-import com.google.common.geometry.{S2, S2LatLng}
+import com.google.common.geometry.{S2, S2CellId, S2LatLng}
 import com.google.protobuf.{ByteString, MessageLite}
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.io.{FileBasedSink, Write}
@@ -43,11 +43,21 @@ object AdditionalUnits {
 import AdditionalUnits._
 
 case class LatLon(lat: DoubleU[degrees], lon: DoubleU[degrees]) {
-  def getDistance(other: LatLon): DoubleU[meter] = {
-    val p1 = S2LatLng.fromDegrees(lat.value, lon.value)
-    val p2 = S2LatLng.fromDegrees(other.lat.value, other.lon.value)
+  private def getS2LatLng() = S2LatLng.fromDegrees(lat.value, lon.value)
 
-    p1.getEarthDistance(p2).of[meter]
+  def getDistance(other: LatLon): DoubleU[meter] =
+    getS2LatLng().getEarthDistance(other.getS2LatLng()).of[meter]
+
+  def getS2CellId(level: Int): S2CellId = {
+    val cell = S2CellId.fromLatLng(getS2LatLng())
+    cell.parent(level)
+  }
+}
+
+object LatLon {
+  def fromS2CellId(cell: S2CellId) = {
+    val loc = cell.toLatLng()
+    LatLon(loc.latDegrees().of[degrees], loc.lngDegrees().of[degrees])
   }
 }
 
@@ -68,6 +78,8 @@ case class VesselLocationRecord(timestamp: Instant,
                                 speed: DoubleU[knots],
                                 course: DoubleU[degrees],
                                 heading: DoubleU[degrees])
+
+case class SuspectedPort(location: LatLon, vessels: Seq[VesselMetadata])
 
 object Utility {
   implicit class RichLogger(val logger: Logger) {
