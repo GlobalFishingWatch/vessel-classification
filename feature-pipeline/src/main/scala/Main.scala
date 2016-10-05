@@ -42,7 +42,8 @@ object Parameters {
 
   // TODO(alexwilson): remove years list when cloud dataflow text source can
   // handle our volume of files.
-  val allDataYears = List("2012", "2013", "2014", "2015", "2016")
+  //val allDataYears = List("2012", "2013", "2014", "2015", "2016")
+  val allDataYears = List("2015")
   val inputMeasuresPath =
     "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment"
   val outputFeaturesPath =
@@ -63,7 +64,7 @@ object Parameters {
 
   // Around 1km^2
   val portsS2Scale = 23
-  val minUniqueVesselsForPort = 50
+  val minUniqueVesselsForPort = 10
 }
 
 import AdditionalUnits._
@@ -263,7 +264,10 @@ object Pipeline extends LazyLogging {
     val suspectedPortsPath = baseOutputPath + "/ports.csv"
     val suspectedPorts = findSuspectedPortCells(processed)
     val suspectedPortsAsString = suspectedPorts.map { sp =>
-      s"${sp.location.lat.value},${sp.location.lon.value},${sp.vessels.size}"
+      val mmsis = sp.vessels.map { md =>
+        s"${md.mmsi}"
+      }.mkString(";")
+      s"${sp.location.lat.value},${sp.location.lon.value},${sp.vessels.size},$mmsis"
     }
     suspectedPortsAsString.saveAsTextFile(suspectedPortsPath)
 
