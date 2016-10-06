@@ -14,23 +14,11 @@ import tensorflow.contrib.metrics as metrics
 
 class Model(ModelBase):
 
-    feature_duration_days = 180
-    num_classes = 9
-    num_feature_dimensions = 9
-    max_sample_frequency_seconds = 5 * 60
-    max_window_duration_seconds = feature_duration_days * 24 * 3600
 
-    # We allocate a much smaller buffer than would fit the specified time
-    # sampled at 5 mins intervals, on the basis that the sample is almost
-    # always much more sparse.
-    window_max_points = (max_window_duration_seconds /
-                         max_sample_frequency_seconds) / 4
     window_size = 3
     stride = 2
     feature_depth = 20
     levels = 10
-    batch_size = 32
-    min_viable_timeslice_length = 500
 
     def zero_pad_features(self, features):
         """ Zero-pad features in the depth dimension to match requested feature depth. """
