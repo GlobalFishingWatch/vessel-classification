@@ -164,8 +164,8 @@ object Utility extends LazyLogging {
   // For a given radius of cap on the sphere, a given location and a given S2 cell level, return
   // all the S2 cells required to cover the cap.
   def getCapCoveringCells(location: LatLon,
-                             radius: DoubleU[kilometer],
-                             level: Int): Seq[S2CellId] = {
+                          radius: DoubleU[kilometer],
+                          level: Int): Seq[S2CellId] = {
     val earthRadiusKm = S2LatLng.EARTH_RADIUS_METERS / 1000.0
     val capRadiusOnUnitSphere = radius.value / earthRadiusKm
     val coverer = new S2RegionCoverer()
