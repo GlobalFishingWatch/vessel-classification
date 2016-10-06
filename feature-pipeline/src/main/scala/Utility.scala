@@ -59,6 +59,18 @@ object LatLon {
     val loc = cell.toLatLng()
     LatLon(loc.latDegrees().of[degrees], loc.lngDegrees().of[degrees])
   }
+
+  def mean(locations: Iterable[LatLon]): LatLon = {
+    var lat = 0.0
+    var lon = 0.0
+    var count = 0
+    locations.foreach { l =>
+      lat += l.lat.value
+      lon += l.lon.value
+      count += 1
+    }
+    LatLon((lat / count.toDouble).of[degrees], (lon / count.toDouble).of[degrees])
+  }
 }
 
 case class VesselMetadata(

@@ -64,7 +64,7 @@ object Parameters {
 
   // Around 1km^2
   val portsS2Scale = 13
-  val minUniqueVesselsForPort = 50
+  val minUniqueVesselsForPort = 20
 }
 
 import AdditionalUnits._
@@ -216,16 +216,15 @@ object Pipeline extends LazyLogging {
       input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[SuspectedPort] = {
     input.flatMap {
       case (md, processedLocations) =>
-        val s2Cells = processedLocations.stationaryPeriods
-          .map(_.location.getS2CellId(Parameters.portsS2Scale))
-          .distinct
-
-        s2Cells.map { cell =>
-          (cell, md)
+        processedLocations.stationaryPeriods.map { pl =>
+          val cell = pl.location.getS2CellId(Parameters.portsS2Scale)
+          (cell, (md, pl))
         }
     }.groupByKey.map {
-      case (cell, mds) =>
-        SuspectedPort(LatLon.fromS2CellId(cell), mds.toIndexedSeq)
+      case (cell, visits) =>
+        val centralPoint = LatLon.mean(visits.map(_._2.location))
+        val uniqueVessels = visits.map(_._1).toIndexedSeq.distinct
+        SuspectedPort(centralPoint, uniqueVessels)
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForPort }
   }
 
