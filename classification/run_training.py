@@ -7,8 +7,8 @@ import os
 from pkg_resources import resource_filename
 import sys
 from . import utility
+from .trainer import Trainer
 import importlib
-
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
@@ -50,9 +50,9 @@ def main(args):
 
     module = "classification.models.{}".format(args.model_name)
     try:
-        Trainer = importlib.import_module(module).Trainer
+        Model = importlib.import_module(module).Model
     except:
-        logging.error("Could not load model: {}".format(module))
+        logging.fatal("Could not load model: {}".format(module))
         raise
     metadata_file = os.path.abspath(
         resource_filename('classification.data',
@@ -84,7 +84,8 @@ def main(args):
     vessel_metadata = utility.read_vessel_metadata(all_available_mmsis,
                                                    metadata_file)
 
-    trainer = Trainer(vessel_metadata, args.root_feature_path,
+    model = Model()
+    trainer = Trainer(model, vessel_metadata, args.root_feature_path,
                       args.training_output_path)
 
     config = json.loads(os.environ.get('TF_CONFIG', '{}'))
