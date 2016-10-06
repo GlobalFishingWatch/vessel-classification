@@ -35,7 +35,7 @@ def launch(model_name):
     with open("deploy_cloudml_config_template.txt") as f:
         config_template = f.read()
 
-    time_stamp = datetime.datetime.now().strftime('%y%m%d_%H%M%S')
+    time_stamp = datetime.datetime.utcnow().strftime('%y%m%d_%H%M%S')
     job_id = model_name.replace('.', '_') + '_' + time_stamp
 
     config_txt = config_template.format(model_name=model_name, job_id=job_id)
