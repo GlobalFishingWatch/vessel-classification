@@ -235,5 +235,4 @@ object Utility extends LazyLogging {
 
     interpolatedSeries.toIndexedSeq
   }
-
 }
