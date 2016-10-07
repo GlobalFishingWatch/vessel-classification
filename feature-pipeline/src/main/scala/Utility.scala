@@ -91,11 +91,22 @@ case class VesselLocationRecord(timestamp: Instant,
                                 course: DoubleU[degrees],
                                 heading: DoubleU[degrees])
 
-case class ResampledVesselLocation(timestamp: Instant, location: LatLon)
-case class ResampledVesselLocationWithAdjacency(timestamp: Instant,
-                                                location: LatLon,
-                                                closestNeighbour: DoubleU[kilometer],
-                                                numNeighbours: Int)
+case class ResampledVesselLocation(timestamp: Instant,
+                                   location: LatLon,
+                                   distanceToShore: DoubleU[kilometer])
+
+case class ResampledVesselLocationWithAdjacency(
+    timestamp: Instant,
+    location: LatLon,
+    distanceToShore: DoubleU[kilometer],
+    numNeighbours: Int,
+    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer])])
+
+case class VesselEncounter(vessel1: VesselMetadata,
+                           vessel2: VesselMetadata,
+                           startTime: Instant,
+                           endTime: Instant,
+                           meanLocation: LatLon)
 
 case class SuspectedPort(location: LatLon, vessels: Seq[VesselMetadata])
 
@@ -224,9 +235,13 @@ object Utility extends LazyLogging {
           val interpLon = currentLocationRecord.location.lon.value * mix +
               llr.location.lon.value * (1.0 - mix)
 
+          val interpDistFromShore = currentLocationRecord.distanceToShore.value * mix +
+              llr.distanceToShore.value * (1.0 - mix)
+
           interpolatedSeries.append(
             ResampledVesselLocation(new Instant(iterTime * 1000),
-                                    LatLon(interpLat.of[degrees], interpLon.of[degrees])))
+                                    LatLon(interpLat.of[degrees], interpLon.of[degrees]),
+                                    interpDistFromShore.of[kilometer]))
         }
       }
 

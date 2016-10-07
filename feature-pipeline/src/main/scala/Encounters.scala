@@ -5,11 +5,61 @@ import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
 import com.spotify.scio.values.SCollection
-import org.joda.time.{Instant}
+import org.joda.time.{Duration, Instant}
+
+import scala.collection.{mutable, immutable}
 
 import AdditionalUnits._
 
 object Encounters {
+  def calculateEncounters(
+      input: SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])])
+    : SCollection[VesselEncounter] = {
+
+    input.flatMap {
+      case (md, locationSeries) =>
+        val encounters = mutable.ArrayBuffer.empty[VesselEncounter]
+
+        var currentEncounterVessel: Option[VesselMetadata] = None
+        val currentRun = mutable.ArrayBuffer.empty[ResampledVesselLocationWithAdjacency]
+
+        def tryAddEncounter(newEncounterVessel: Option[VesselMetadata]) = {
+          if (currentEncounterVessel.isDefined) {
+            val startTime = currentRun.head.timestamp
+            val endTime = currentRun.last.timestamp
+            val encounterDuration = new Duration(startTime, endTime)
+            if (encounterDuration.isLongerThan(Parameters.minDurationForEncounter)) {
+              val meanLocation = LatLon.mean(currentRun.map(_.location))
+              encounters.append(
+                VesselEncounter(md, currentEncounterVessel.get, startTime, endTime, meanLocation))
+            }
+          }
+          currentEncounterVessel = newEncounterVessel
+          currentRun.clear
+        }
+
+        locationSeries.foreach { l =>
+          val possibleEncounterPoint =
+            l.distanceToShore > Parameters.minDistanceToShoreForEncounter &&
+              l.closestNeighbour.isDefined &&
+              l.closestNeighbour.get._2 < Parameters.maxDistanceForEncounter
+
+          if (possibleEncounterPoint) {
+            val closestNeighbour = l.closestNeighbour.get._1
+            if (currentEncounterVessel.get.mmsi == closestNeighbour.mmsi) {} else {
+              tryAddEncounter(Some(closestNeighbour))
+            }
+          } else {
+            tryAddEncounter(None)
+          }
+          currentRun.append(l)
+        }
+
+        tryAddEncounter(None)
+
+        encounters.toIndexedSeq
+    }
+  }
 
   def annotateAdjacency(vesselSeries: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
     : SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])] = {
@@ -67,10 +117,19 @@ object Encounters {
       case ((timestamp, md, vl), adjacencies) =>
         val closestN = adjacencies.toSeq.distinct.sortBy(_._2).take(maxClosestNeighbours)
 
-        val closest = closestN.head._2
+        val closestNeighbour = if (closestN.isEmpty) {
+          None
+        } else {
+          Some(closestN.head)
+        }
         val number = closestN.size
 
-        (md, ResampledVesselLocationWithAdjacency(vl.timestamp, vl.location, closest, number))
+        (md,
+         ResampledVesselLocationWithAdjacency(vl.timestamp,
+                                              vl.location,
+                                              vl.distanceToShore,
+                                              number,
+                                              closestNeighbour))
     }
 
     // Join by vessel and sort by time asc.

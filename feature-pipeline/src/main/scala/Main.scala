@@ -68,6 +68,10 @@ object Parameters {
 
   val levelForAdjacencySharding = 13
   val maxEncounterRadius = 1.0.of[kilometer]
+
+  val maxDistanceForEncounter = 500.0.of[kilometer]
+  val minDurationForEncounter = Duration.standardHours(5)
+  val minDistanceToShoreForEncounter = 20.0.of[kilometer]
 }
 
 import AdditionalUnits._
@@ -230,7 +234,6 @@ object Pipeline extends LazyLogging {
         SuspectedPort(centralPoint, uniqueVessels)
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForPort }
   }
-
 
   def main(argArray: Array[String]) {
     val now = new DateTime(DateTimeZone.UTC)
