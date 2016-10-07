@@ -2,13 +2,13 @@ from __future__ import absolute_import
 
 import argparse
 import datetime
-from models.alex import layers
+import importlib
 import logging
 import pytz
 import tensorflow.contrib.slim as slim
 import tensorflow as tf
 import time
-import utility
+from . import utility
 
 
 class Inferer(object):
@@ -18,7 +18,7 @@ class Inferer(object):
         self.model = model
         self.model_checkpoint_path = model_checkpoint_path
         self.unclassified_feature_path = unclassified_feature_path
-        self.batch_size = 64
+        self.batch_size = self.model.batch_size
         self.min_points_for_classification = 250
 
         def _build_starts():
@@ -49,8 +49,8 @@ class Inferer(object):
         readers = []
         for _ in range(inference_parallelism):
             reader = utility.cropping_all_slice_feature_file_reader(
-                filename_queue, self.num_feature_dimensions + 1,
-                self.time_ranges, self.window_max_points,
+                filename_queue, self.model.num_feature_dimensions + 1,
+                self.time_ranges, self.model.window_max_points,
                 self.min_points_for_classification)
             readers.append(reader)
 
@@ -59,8 +59,8 @@ class Inferer(object):
             self.batch_size,
             enqueue_many=True,
             capacity=1000,
-            shapes=[[1, self.window_max_points, self.num_feature_dimensions],
-                    [2], []])
+            shapes=[[1, self.model.window_max_points,
+                     self.model.num_feature_dimensions], [2], []])
 
         logits = self.model.build_inference_net(features)
 
