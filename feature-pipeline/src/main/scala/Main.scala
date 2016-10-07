@@ -65,6 +65,8 @@ object Parameters {
   // Around 1km^2
   val portsS2Scale = 13
   val minUniqueVesselsForPort = 20
+
+  val levelForAdjacencySharding = 13
 }
 
 import AdditionalUnits._
@@ -228,6 +230,35 @@ object Pipeline extends LazyLogging {
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForPort }
   }
 
+  def annotateAdjacency(vesselSeries: SCollection[(VesselMetadata, Seq[VesselLocationRecord])]) = {
+    val resampled: SCollection[(VesselMetadata, Seq[ResampledVesselLocation])] = vesselSeries.map {
+      case (md, locations) => (md, Utility.resampleVesselSeries(locations))
+    }
+
+    // Shard each vessel location by (timestamp, s2cell id) for relevant covering.
+    val keyForShardedJoin = resampled.flatMap { case (md, locations) =>
+      locations.flatMap { l =>
+        val cellIds = Utility.getCapCoveringCells(l.location, 1.0.of[kilometer],
+          Parameters.levelForAdjacencySharding)
+
+        cellIds.map { cid =>
+          val key = (l.timestamp, cid)
+
+          (key, (l, md))
+        }
+      }
+    }
+
+    // Join by cell and timestamp.
+    val adjacentVessels = keyForShardedJoin
+      .groupByKey
+      .map { case (_, vesselsAndLocations) =>
+        // Now we have all vessels and locations within the cell, do an N^2 comparison,
+        // (where N is the number of vessels in this grid cell at this time point, so should
+        // be at max a few thousand).
+      }
+  }
+
   def main(argArray: Array[String]) {
     val now = new DateTime(DateTimeZone.UTC)
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
@@ -245,8 +276,11 @@ object Pipeline extends LazyLogging {
       val path = s"${Parameters.inputMeasuresPath}/$year-*/*.json"
       sc.tableRowJsonFile(path)
     }
-    val locationRecords = readJsonRecords(matches)
 
+    val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
+      readJsonRecords(matches)
+
+    val adjacencyAnnotated = annotateAdjacency(locationRecords)
     val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 
     val features = ModelFeatures.buildVesselFeatures(processed).map {
