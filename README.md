@@ -44,9 +44,12 @@ To install pip:
 * sudo easy_install pip
 * sudo pip install --upgrade virtualenv
 
-To install the dependencies:
+To install TensorFlow, follow [these instructions](https://www.tensorflow.org/versions/r0.11/get_started/os_setup.html#using-pip). For example for Linux, call:
 
 * sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0rc0-cp27-none-linux_x86_64.whl
+
+To install the dependencies:
+
 * sudo pip install google-api-python-client pyyaml
 
 
