@@ -189,9 +189,11 @@ class LocationResamplerTests extends PipelineSpec with Matchers {
                            buildLocationRecord("2011-07-01T00:07:00Z", lat = 10.0, lon = 10.0),
                            buildLocationRecord("2011-07-01T00:08:00Z", lat = 10.0, lon = 10.0),
                            buildLocationRecord("2011-07-01T00:09:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:10:00Z", lat = 10.0, lon = 10.0))
+                           buildLocationRecord("2011-07-01T00:10:00Z", lat = 10.0, lon = 10.0),
+                           buildLocationRecord("2011-07-01T00:11:00Z", lat = 10.0, lon = 10.0))
 
-    val expected = Seq(rvl("2011-07-01T00:00:00Z", 10.0, 10.0))
+    val expected =
+      Seq(rvl("2011-07-01T00:00:00Z", 10.0, 10.0), rvl("2011-07-01T00:10:00Z", 10.0, 10.0))
 
     val result = Utility.resampleVesselSeries(inputRecords)
 

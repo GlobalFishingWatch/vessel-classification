@@ -225,7 +225,7 @@ object Utility extends LazyLogging {
               llr.location.lon.value * (1.0 - mix)
 
           interpolatedSeries.append(
-            ResampledVesselLocation(new Instant(iterTime),
+            ResampledVesselLocation(new Instant(iterTime * 1000),
                                     LatLon(interpLat.of[degrees], interpLon.of[degrees])))
         }
       }
