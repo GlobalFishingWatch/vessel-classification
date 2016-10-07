@@ -45,8 +45,8 @@ import AdditionalUnits._
 case class LatLon(lat: DoubleU[degrees], lon: DoubleU[degrees]) {
   def getS2LatLng() = S2LatLng.fromDegrees(lat.value, lon.value)
 
-  def getDistance(other: LatLon): DoubleU[meter] =
-    getS2LatLng().getEarthDistance(other.getS2LatLng()).of[meter]
+  def getDistance(other: LatLon): DoubleU[kilometer] =
+    getS2LatLng().getEarthDistance(other.getS2LatLng()).toDouble.of[meter].convert[kilometer]
 
   def getS2CellId(level: Int): S2CellId = {
     val cell = S2CellId.fromLatLng(getS2LatLng())
@@ -92,6 +92,10 @@ case class VesselLocationRecord(timestamp: Instant,
                                 heading: DoubleU[degrees])
 
 case class ResampledVesselLocation(timestamp: Instant, location: LatLon)
+case class ResampledVesselLocationWithAdjacency(timestamp: Instant,
+                                                location: LatLon,
+                                                closestNeighbour: DoubleU[kilometer],
+                                                numNeighbours: Int)
 
 case class SuspectedPort(location: LatLon, vessels: Seq[VesselMetadata])
 
