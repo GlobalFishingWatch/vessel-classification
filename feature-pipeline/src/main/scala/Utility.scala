@@ -198,8 +198,6 @@ object Utility extends LazyLogging {
 
     var iterLocation = input.iterator
 
-    logger.info(s"Running to ${new Instant(endTime * 1000)}")
-
     val interpolatedSeries = mutable.ListBuffer.empty[ResampledVesselLocation]
     var lastLocationRecord: Option[VesselLocationRecord] = None
     var currentLocationRecord = iterLocation.next()
@@ -208,8 +206,6 @@ object Utility extends LazyLogging {
         lastLocationRecord = Some(currentLocationRecord)
         currentLocationRecord = iterLocation.next()
       }
-      logger.info(
-        s"Running from ${new Instant(iterTime * 1000)} - ${currentLocationRecord.timestamp}")
 
       lastLocationRecord.foreach { llr =>
         val firstTimeSeconds = tsToUnixSeconds(llr.timestamp)
