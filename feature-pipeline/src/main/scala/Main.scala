@@ -257,6 +257,7 @@ object Pipeline extends LazyLogging {
       readJsonRecords(matches)
 
     val adjacencyAnnotated = Encounters.annotateAdjacency(locationRecords)
+
     val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 
     val features = ModelFeatures.buildVesselFeatures(processed).map {
@@ -267,9 +268,11 @@ object Pipeline extends LazyLogging {
     val baseOutputPath = Parameters.outputFeaturesPath + "/" +
         ISODateTimeFormat.basicDateTimeNoMillis().print(now)
 
+    // Output vessel classifier features.
     val outputFeaturePath = baseOutputPath + "/features"
     val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
 
+    // Build and output suspected ports.
     val suspectedPortsPath = baseOutputPath + "/ports.csv"
     val suspectedPorts = findSuspectedPortCells(processed)
     val suspectedPortsAsString = suspectedPorts.map { sp =>
@@ -279,6 +282,11 @@ object Pipeline extends LazyLogging {
       s"${sp.location.lat.value},${sp.location.lon.value},${sp.vessels.size},$mmsis"
     }
     suspectedPortsAsString.saveAsTextFile(suspectedPortsPath)
+
+    // Build and output suspected encounters.
+    val suspectedEncountersPath = baseOutputPath + "/encounters.csv"
+    val encounters = Encounters.calculateEncounters(adjacencyAnnotated)
+    encounters.map(_.toCsvLine).saveAsTextFile(suspectedEncountersPath)
 
     sc.close()
   }
