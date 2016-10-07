@@ -217,7 +217,7 @@ object Utility extends LazyLogging {
         val timeDeltaSeconds = secondTimeSeconds - firstTimeSeconds
         if (firstTimeSeconds <= iterTime && secondTimeSeconds >= iterTime &&
             timeDeltaSeconds < maxInterpolateGapSeconds) {
-          val mix = (secondTimeSeconds - iterTime).toDouble / (secondTimeSeconds - firstTimeSeconds).toDouble
+          val mix = (iterTime - firstTimeSeconds).toDouble / (secondTimeSeconds - firstTimeSeconds).toDouble
 
           val interpLat = currentLocationRecord.location.lat.value * mix +
               llr.location.lat.value * (1.0 - mix)
