@@ -180,19 +180,25 @@ class LocationResamplerTests extends PipelineSpec with Matchers {
 
   "The resampler" should "resample points, but not if they are too far apart" in {
     val inputRecords = Seq(buildLocationRecord("2011-06-30T23:58:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:00:00Z", lat = 10.0, lon = 10.0),
+                           // Pick up the exact value at 00:00:00
+                           buildLocationRecord("2011-07-01T00:00:00Z", lat = 10.3, lon = 10.0),
                            buildLocationRecord("2011-07-01T00:02:00Z", lat = 10.0, lon = 10.0),
                            buildLocationRecord("2011-07-01T00:04:00Z", lat = 10.0, lon = 10.0),
                            buildLocationRecord("2011-07-01T00:06:00Z", lat = 10.0, lon = 10.0),
                            buildLocationRecord("2011-07-01T00:08:00Z", lat = 10.0, lon = 10.0),
+                           // Interpolate time into 00:10:00, but no movement.
                            buildLocationRecord("2011-07-01T00:12:00Z", lat = 10.0, lon = 10.0),
                            buildLocationRecord("2011-07-01T00:18:00Z", lat = 10.0, lon = 10.0),
+                           // Interpolate into 00:20:00, closer to the 00:18:00 point.
                            buildLocationRecord("2011-07-01T00:26:00Z", lat = 10.0, lon = 11.0),
+                           // Do not generate samples where the surrounding points are more than
+                           // an hour apart.
                            buildLocationRecord("2011-07-01T01:38:00Z", lat = 10.0, lon = 11.0),
+                           // Interpolate into 01:40:00.
                            buildLocationRecord("2011-07-01T01:42:00Z", lat = 11.0, lon = 11.0))
 
     val expected =
-      Seq(rvl("2011-07-01T00:00:00Z", 10.0, 10.0),
+      Seq(rvl("2011-07-01T00:00:00Z", 10.3, 10.0),
           rvl("2011-07-01T00:10:00Z", 10.0, 10.0),
           rvl("2011-07-01T00:20:00Z", 10.0, 10.25),
           rvl("2011-07-01T01:40:00Z", 10.5, 11.0))
