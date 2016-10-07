@@ -40,14 +40,14 @@ Python programs have a few dependencies that can be installed using pip.
 
 To install pip:
 
-$ sudo apt-get install python-pip python-dev build-essential
-$ sudo easy_install pip
-$ sudo pip install --upgrade virtualenv
+* sudo apt-get install python-pip python-dev build-essential
+* sudo easy_install pip
+* sudo pip install --upgrade virtualenv
 
 To install the dependencies:
 
-$ sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0rc0-cp27-none-linux_x86_64.whl
-$ sudo pip install google-api-python-client pyyaml
+* sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0rc0-cp27-none-linux_x86_64.whl
+* sudo pip install google-api-python-client pyyaml
 
 
 # Running jobs
