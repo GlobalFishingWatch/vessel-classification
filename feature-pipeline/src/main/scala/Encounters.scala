@@ -4,6 +4,7 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
+import com.typesafe.scalalogging.LazyLogging
 import com.spotify.scio.values.SCollection
 import org.joda.time.{Duration, Instant}
 
@@ -11,7 +12,7 @@ import scala.collection.{mutable, immutable}
 
 import AdditionalUnits._
 
-object Encounters {
+object Encounters extends LazyLogging {
   def calculateEncounters(
       input: SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])])
     : SCollection[VesselEncounter] = {
@@ -46,7 +47,7 @@ object Encounters {
 
           if (possibleEncounterPoint) {
             val closestNeighbour = l.closestNeighbour.get._1
-            if (currentEncounterVessel.get.mmsi == closestNeighbour.mmsi) {} else {
+            if (currentEncounterVessel.isDefined && currentEncounterVessel.get.mmsi != closestNeighbour.mmsi) {
               tryAddEncounter(Some(closestNeighbour))
             }
           } else {
@@ -97,7 +98,7 @@ object Encounters {
           // For each vessel, find the closest neighbours.
           val encounters = vesselsAndLocations.flatMap {
             case (md1, vl1) =>
-              val closestEncounters = vesselsAndLocations.map {
+              val closestEncounters = vesselsAndLocations.collect {
                 case (md2, vl2) if md1 != md2 =>
                   ((timestamp, md1, vl1), (md2, vl1.location.getDistance(vl2.location)))
               }.filter(_._2._2 < Parameters.maxEncounterRadius)
@@ -124,12 +125,14 @@ object Encounters {
         }
         val number = closestN.size
 
-        (md,
+        val res = (md,
          ResampledVesselLocationWithAdjacency(vl.timestamp,
                                               vl.location,
                                               vl.distanceToShore,
                                               number,
                                               closestNeighbour))
+        logger.info(s"$res")
+        res
     }
 
     // Join by vessel and sort by time asc.
