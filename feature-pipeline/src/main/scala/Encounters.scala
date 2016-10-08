@@ -126,11 +126,11 @@ object Encounters extends LazyLogging {
         val number = closestN.size
 
         val res = (md,
-         ResampledVesselLocationWithAdjacency(vl.timestamp,
-                                              vl.location,
-                                              vl.distanceToShore,
-                                              number,
-                                              closestNeighbour))
+                   ResampledVesselLocationWithAdjacency(vl.timestamp,
+                                                        vl.location,
+                                                        vl.distanceToShore,
+                                                        number,
+                                                        closestNeighbour))
         logger.info(s"$res")
         res
     }
