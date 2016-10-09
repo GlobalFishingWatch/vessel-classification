@@ -90,7 +90,7 @@ object Encounters extends LazyLogging {
     val maxClosestNeighbours = 10
 
     // Join by cell and timestamp to find the top N adjacent vessels per vessel per timestamp per cell.
-    val vesselAdjacency: SCollection[((Instant, VesselMetadata, ResampledVesselLocation),
+    val vesselAdjacency: SCollection[((VesselMetadata, ResampledVesselLocation),
                                       (VesselMetadata, DoubleU[kilometer]))] =
       keyForShardedJoin.groupByKey.flatMap {
         case ((timestamp, _), vesselsAndLocations) =>
@@ -103,11 +103,13 @@ object Encounters extends LazyLogging {
             case (md1, vl1) =>
               val closestEncounters = vesselsAndLocations.map {
                 case (md2, vl2) =>
-                  ((timestamp, md1, vl1), (md2, vl1.location.getDistance(vl2.location)))
+                  ((md1, vl1), (md2, vl1.location.getDistance(vl2.location)))
               }.filter(_._2._2 < Parameters.maxEncounterRadius)
                 .toSeq
                 .sortBy(_._2._2.value)
-                .take(maxClosestNeighbours)
+                // Add one, to take into account that we're allowing self-comparison in order
+                // to not later discard points with no neighbours.
+                .take(maxClosestNeighbours+1)
                 .toSeq
 
               closestEncounters
@@ -118,7 +120,7 @@ object Encounters extends LazyLogging {
 
     // Join by timestamp and first vessel to get the top N adjacent vessels per vessel per timestamp
     val topNPerVesselPerTimestamp = vesselAdjacency.groupByKey.map {
-      case ((timestamp, md, vl), adjacencies) =>
+      case ((md, vl), adjacencies) =>
         val (identity, withoutIdentity) = adjacencies.partition(_._1 == md)
         val closestN = withoutIdentity.toSeq.distinct.sortBy(_._2).take(maxClosestNeighbours)
 
