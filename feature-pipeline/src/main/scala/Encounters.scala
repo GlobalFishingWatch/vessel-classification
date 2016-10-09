@@ -98,8 +98,8 @@ object Encounters extends LazyLogging {
           // For each vessel, find the closest neighbours.
           val encounters = vesselsAndLocations.flatMap {
             case (md1, vl1) =>
-              val closestEncounters = vesselsAndLocations.collect {
-                case (md2, vl2) if md1 != md2 =>
+              val closestEncounters = vesselsAndLocations.map {
+                case (md2, vl2) =>
                   ((timestamp, md1, vl1), (md2, vl1.location.getDistance(vl2.location)))
               }.filter(_._2._2 < Parameters.maxEncounterRadius)
                 .toSeq
@@ -116,7 +116,8 @@ object Encounters extends LazyLogging {
     // Join by timestamp and first vessel to get the top N adjacent vessels per vessel per timestamp
     val topNPerVesselPerTimestamp = vesselAdjacency.groupByKey.map {
       case ((timestamp, md, vl), adjacencies) =>
-        val closestN = adjacencies.toSeq.distinct.sortBy(_._2).take(maxClosestNeighbours)
+        val (identity, withoutIdentity) = adjacencies.partition(_._1 == md)
+        val closestN = withoutIdentity.toSeq.distinct.sortBy(_._2).take(maxClosestNeighbours)
 
         val closestNeighbour = if (closestN.isEmpty) {
           None
@@ -131,7 +132,7 @@ object Encounters extends LazyLogging {
                                                         vl.distanceToShore,
                                                         number,
                                                         closestNeighbour))
-        logger.info(s"$res")
+        println(s"$res")
         res
     }
 
