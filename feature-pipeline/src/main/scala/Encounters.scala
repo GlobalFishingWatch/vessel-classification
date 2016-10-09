@@ -14,6 +14,7 @@ import AdditionalUnits._
 
 object Encounters extends LazyLogging {
   def calculateEncounters(
+      minDurationForEncounter: Duration,
       input: SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])])
     : SCollection[VesselEncounter] = {
 
@@ -29,7 +30,7 @@ object Encounters extends LazyLogging {
             val startTime = currentRun.head.timestamp
             val endTime = currentRun.last.timestamp
             val encounterDuration = new Duration(startTime, endTime)
-            if (encounterDuration.isLongerThan(Parameters.minDurationForEncounter)) {
+            if (encounterDuration.isLongerThan(minDurationForEncounter)) {
               val meanLocation = LatLon.mean(currentRun.map(_.location))
               encounters.append(
                 VesselEncounter(md, currentEncounterVessel.get, startTime, endTime, meanLocation))
@@ -50,10 +51,12 @@ object Encounters extends LazyLogging {
             if (currentEncounterVessel.isDefined && currentEncounterVessel.get.mmsi != closestNeighbour.mmsi) {
               tryAddEncounter(Some(closestNeighbour))
             }
+            currentEncounterVessel = Some(closestNeighbour)
+            currentRun.append(l)
           } else {
             tryAddEncounter(None)
           }
-          currentRun.append(l)
+
         }
 
         tryAddEncounter(None)

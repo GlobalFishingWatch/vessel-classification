@@ -69,7 +69,7 @@ object Parameters {
   val levelForAdjacencySharding = 13
   val maxEncounterRadius = 1.0.of[kilometer]
 
-  val maxDistanceForEncounter = 500.0.of[kilometer]
+  val maxDistanceForEncounter = 0.5.of[kilometer]
   val minDurationForEncounter = Duration.standardHours(5)
   val minDistanceToShoreForEncounter = 20.0.of[kilometer]
 }
@@ -285,7 +285,8 @@ object Pipeline extends LazyLogging {
 
     // Build and output suspected encounters.
     val suspectedEncountersPath = baseOutputPath + "/encounters.csv"
-    val encounters = Encounters.calculateEncounters(adjacencyAnnotated)
+    val encounters =
+      Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
     encounters.map(_.toCsvLine).saveAsTextFile(suspectedEncountersPath)
 
     sc.close()
