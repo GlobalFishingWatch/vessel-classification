@@ -65,10 +65,12 @@ object Encounters extends LazyLogging {
     }
   }
 
-  def annotateAdjacency(vesselSeries: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
+  def annotateAdjacency(interpolateIncrementSeconds: Duration,
+                        vesselSeries: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
     : SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])] = {
     val resampled: SCollection[(VesselMetadata, Seq[ResampledVesselLocation])] = vesselSeries.map {
-      case (md, locations) => (md, Utility.resampleVesselSeries(locations))
+      case (md, locations) =>
+        (md, Utility.resampleVesselSeries(interpolateIncrementSeconds, locations))
     }
 
     // Shard each vessel location by (timestamp, s2cell id) for relevant covering.

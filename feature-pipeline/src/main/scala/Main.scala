@@ -66,7 +66,10 @@ object Parameters {
   val portsS2Scale = 13
   val minUniqueVesselsForPort = 20
 
-  val levelForAdjacencySharding = 13
+  val adjacencyResamplePeriod = Duration.standardMinutes(20)
+  val maxInterpolateGap = Duration.standardMinutes(60)
+
+  val levelForAdjacencySharding = 11
   val maxEncounterRadius = 1.0.of[kilometer]
 
   val maxDistanceForEncounter = 0.5.of[kilometer]
@@ -249,14 +252,15 @@ object Pipeline extends LazyLogging {
     // relevant years, as a single Cloud Dataflow text reader currently can't yet
     // handle the sheer volume of matching files.
     val matches = (Parameters.allDataYears).map { year =>
-      val path = s"${Parameters.inputMeasuresPath}/$year-*/*.json"
+      val path = s"${Parameters.inputMeasuresPath}/$year-05-*/*.json"
       sc.tableRowJsonFile(path)
     }
 
     val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
       readJsonRecords(matches)
 
-    val adjacencyAnnotated = Encounters.annotateAdjacency(locationRecords)
+    val adjacencyAnnotated =
+      Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
 
     val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 

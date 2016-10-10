@@ -205,7 +205,7 @@ class LocationResamplerTests extends PipelineSpec with Matchers {
           rvl("2011-07-01T00:20:00Z", 10.0, 10.25),
           rvl("2011-07-01T01:40:00Z", 10.5, 11.0))
 
-    val result = Utility.resampleVesselSeries(inputRecords)
+    val result = Utility.resampleVesselSeries(Duration.standardMinutes(10), inputRecords)
 
     result should contain theSameElementsAs expected
   }

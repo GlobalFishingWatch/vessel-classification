@@ -203,10 +203,10 @@ object Utility extends LazyLogging {
     coverCells.toList
   }
 
-  def resampleVesselSeries(input: Seq[VesselLocationRecord]): Seq[ResampledVesselLocation] = {
-    val incrementSeconds = Duration.standardMinutes(10).getStandardSeconds
-    val maxInterpolateGapSeconds = Duration.standardMinutes(60).getStandardSeconds
-
+  def resampleVesselSeries(increment: Duration,
+                           input: Seq[VesselLocationRecord]): Seq[ResampledVesselLocation] = {
+    val incrementSeconds = increment.getStandardSeconds()
+    val maxInterpolateGapSeconds = Parameters.maxInterpolateGap.getStandardSeconds()
     def tsToUnixSeconds(timestamp: Instant): Long = (timestamp.getMillis / 1000L)
     def roundToIncrement(timestamp: Instant): Long =
       (tsToUnixSeconds(timestamp) / incrementSeconds) * incrementSeconds
