@@ -8,7 +8,6 @@ from classification.model import ModelBase, TrainNetInfo
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm
 
-
 TowerParams = namedtuple("TowerParams",
                          ["filter_count", "filter_widths", "pool_size",
                           "pool_stride", "keep_prob"])
@@ -33,7 +32,6 @@ class Model(ModelBase):
             length = length * tp.pool_stride + (tp.pool_size - tp.pool_stride)
             length += sum(tp.filter_widths) - len(tp.filter_widths)
         return length
-
 
     def build_model(self, is_training, current):
 
@@ -96,17 +94,16 @@ class Model(ModelBase):
             # Decay the learning rate by `learning_decay_rate` every
             # `decay_examples`.
             learning_rate = tf.train.exponential_decay(
-              self.initial_learning_rate,
-              example, 
-              self.decay_examples,
-              self.learning_decay_rate)
+                self.initial_learning_rate, example, self.decay_examples,
+                self.learning_decay_rate)
 
-            # Compute loss and predicted probabilities 
+            # Compute loss and predicted probabilities
             with tf.name_scope('loss-function'):
                 loss = tf.reduce_mean(
                     tf.nn.sparse_softmax_cross_entropy_with_logits(logits,
                                                                    labels))
                 # Use simple momentum for the optimization.
-                optimizer = tf.train.MomentumOptimizer(learning_rate, self.momentum)
+                optimizer = tf.train.MomentumOptimizer(learning_rate,
+                                                       self.momentum)
 
         return TrainNetInfo(loss, optimizer, logits)
