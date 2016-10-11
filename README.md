@@ -18,7 +18,9 @@ Vessel classification pipeline: feature generation and model training/inference.
 * A proto3-compatible version of protoc. See: [protocol buffers](https://developers.google.com/protocol-buffers/).
 * Python.
 * Tensorflow.
-* [Google Compute Engine](https://console.cloud.google.com) access and SDK installed locally.
+* [Google Compute Engine](https://console.cloud.google.com) access and [SDK](https://cloud.google.com/sdk) installed locally.
+
+## Scala
 
 The various projects are built using the Scala build tool 'sbt'. SBT has a repl, which can be
 entered using the checked-in 'sbt' script in the root directory. Some commands:
@@ -31,6 +33,25 @@ entered using the checked-in 'sbt' script in the root directory. Some commands:
 
 SBT uses maven to handle it's dependencies. So the first time you attempt a build your machine
 may take some time to download all the required libraries.
+
+## Python
+
+Python programs have a few dependencies that can be installed using pip.
+
+To install pip:
+
+* sudo apt-get install python-pip python-dev build-essential
+* sudo easy_install pip
+* sudo pip install --upgrade virtualenv
+
+To install TensorFlow, follow [these instructions](https://www.tensorflow.org/versions/r0.11/get_started/os_setup.html#using-pip). For example for Linux, call:
+
+* sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0rc0-cp27-none-linux_x86_64.whl
+
+To install the dependencies:
+
+* sudo pip install google-api-python-client pyyaml
+
 
 # Running jobs
 

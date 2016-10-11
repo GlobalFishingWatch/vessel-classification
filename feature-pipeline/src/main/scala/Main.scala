@@ -116,8 +116,8 @@ object Pipeline extends LazyLogging {
           VesselLocationRecord(Instant.parse(json.getString("timestamp")),
                                LatLon(Utility.angleNormalize(json.getDouble("lat").of[degrees]),
                                       Utility.angleNormalize(json.getDouble("lon").of[degrees])),
-                               json.getDouble("distance_to_shore").of[kilometer],
-                               json.getDouble("distance_to_port").of[kilometer],
+                               (json.getDouble("distance_from_shore")/1000.0).of[kilometer],
+                               (json.getDouble("distance_from_port")/1000.0).of[kilometer],
                                json.getDouble("speed").of[knots],
                                Utility.angleNormalize(json.getDouble("course").of[degrees]),
                                Utility.angleNormalize(json.getDouble("heading").of[degrees]))
@@ -242,6 +242,8 @@ object Pipeline extends LazyLogging {
     val now = new DateTime(DateTimeZone.UTC)
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
 
+    val jobName = remaining_args.required("job-name")
+
     options.setRunner(classOf[DataflowPipelineRunner])
     options.setProject(Parameters.gceProject)
     options.setStagingLocation(Parameters.dataflowStaging)
@@ -269,7 +271,7 @@ object Pipeline extends LazyLogging {
         (s"${md.mmsi}", feature)
     }
 
-    val baseOutputPath = Parameters.outputFeaturesPath + "/" +
+    val baseOutputPath = Parameters.outputFeaturesPath + "/" + jobName + "/" +
         ISODateTimeFormat.basicDateTimeNoMillis().print(now)
 
     // Output vessel classifier features.

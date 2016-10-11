@@ -14,7 +14,6 @@ import tensorflow.contrib.metrics as metrics
 
 class Model(ModelBase):
 
-
     window_size = 3
     stride = 2
     feature_depth = 20
