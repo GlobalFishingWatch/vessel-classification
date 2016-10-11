@@ -37,7 +37,7 @@ object Parameters {
   val minRequiredPositions = 1000
   val minTimeBetweenPoints = Duration.standardMinutes(5)
 
-  val stationaryPeriodMaxDistance = 800.0.of[meter]
+  val stationaryPeriodMaxDistance = 0.8.of[kilometer]
   val stationaryPeriodMinDuration = Duration.standardHours(2 * 24)
 
   // TODO(alexwilson): remove years list when cloud dataflow text source can
@@ -65,6 +65,16 @@ object Parameters {
   // Around 1km^2
   val portsS2Scale = 13
   val minUniqueVesselsForPort = 20
+
+  val adjacencyResamplePeriod = Duration.standardMinutes(10)
+  val maxInterpolateGap = Duration.standardMinutes(60)
+
+  val maxClosestNeighbours = 10
+  val maxEncounterRadius = 1.0.of[kilometer]
+
+  val maxDistanceForEncounter = 0.5.of[kilometer]
+  val minDurationForEncounter = Duration.standardHours(3)
+  val minDistanceToShoreForEncounter = 20.0.of[kilometer]
 }
 
 import AdditionalUnits._
@@ -106,8 +116,8 @@ object Pipeline extends LazyLogging {
           VesselLocationRecord(Instant.parse(json.getString("timestamp")),
                                LatLon(Utility.angleNormalize(json.getDouble("lat").of[degrees]),
                                       Utility.angleNormalize(json.getDouble("lon").of[degrees])),
-                               (json.getDouble("distance_from_shore")/1000.0).of[kilometer],
-                               (json.getDouble("distance_from_port")/1000.0).of[kilometer],
+                               (json.getDouble("distance_from_shore") / 1000.0).of[kilometer],
+                               (json.getDouble("distance_from_port") / 1000.0).of[kilometer],
                                json.getDouble("speed").of[knots],
                                Utility.angleNormalize(json.getDouble("course").of[degrees]),
                                Utility.angleNormalize(json.getDouble("heading").of[degrees]))
@@ -244,10 +254,15 @@ object Pipeline extends LazyLogging {
     // relevant years, as a single Cloud Dataflow text reader currently can't yet
     // handle the sheer volume of matching files.
     val matches = (Parameters.allDataYears).map { year =>
-      val path = s"${Parameters.inputMeasuresPath}/$year-*/*.json"
+      val path = s"${Parameters.inputMeasuresPath}/$year-03-*/*.json"
       sc.tableRowJsonFile(path)
     }
-    val locationRecords = readJsonRecords(matches)
+
+    val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
+      readJsonRecords(matches)
+
+    val adjacencyAnnotated =
+      Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
 
     val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 
@@ -259,9 +274,11 @@ object Pipeline extends LazyLogging {
     val baseOutputPath = Parameters.outputFeaturesPath + "/" + jobName + "/" +
         ISODateTimeFormat.basicDateTimeNoMillis().print(now)
 
+    // Output vessel classifier features.
     val outputFeaturePath = baseOutputPath + "/features"
     val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
 
+    // Build and output suspected ports.
     val suspectedPortsPath = baseOutputPath + "/ports.csv"
     val suspectedPorts = findSuspectedPortCells(processed)
     val suspectedPortsAsString = suspectedPorts.map { sp =>
@@ -271,6 +288,12 @@ object Pipeline extends LazyLogging {
       s"${sp.location.lat.value},${sp.location.lon.value},${sp.vessels.size},$mmsis"
     }
     suspectedPortsAsString.saveAsTextFile(suspectedPortsPath)
+
+    // Build and output suspected encounters.
+    val suspectedEncountersPath = baseOutputPath + "/encounters.csv"
+    val encounters =
+      Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
+    encounters.map(_.toCsvLine).saveAsTextFile(suspectedEncountersPath)
 
     sc.close()
   }

@@ -4,7 +4,7 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
-import com.google.common.geometry.{S2, S2CellId, S2LatLng}
+import com.google.common.geometry.{S2, S2Cap, S2CellId, S2LatLng, S2RegionCoverer}
 import com.google.protobuf.{ByteString, MessageLite}
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.io.{FileBasedSink, Write}
@@ -43,10 +43,10 @@ object AdditionalUnits {
 import AdditionalUnits._
 
 case class LatLon(lat: DoubleU[degrees], lon: DoubleU[degrees]) {
-  private def getS2LatLng() = S2LatLng.fromDegrees(lat.value, lon.value)
+  def getS2LatLng() = S2LatLng.fromDegrees(lat.value, lon.value)
 
-  def getDistance(other: LatLon): DoubleU[meter] =
-    getS2LatLng().getEarthDistance(other.getS2LatLng()).of[meter]
+  def getDistance(other: LatLon): DoubleU[kilometer] =
+    getS2LatLng().getEarthDistance(other.getS2LatLng()).toDouble.of[meter].convert[kilometer]
 
   def getS2CellId(level: Int): S2CellId = {
     val cell = S2CellId.fromLatLng(getS2LatLng())
@@ -91,9 +91,32 @@ case class VesselLocationRecord(timestamp: Instant,
                                 course: DoubleU[degrees],
                                 heading: DoubleU[degrees])
 
+case class ResampledVesselLocation(timestamp: Instant,
+                                   location: LatLon,
+                                   distanceToShore: DoubleU[kilometer])
+
+case class ResampledVesselLocationWithAdjacency(
+    timestamp: Instant,
+    location: LatLon,
+    distanceToShore: DoubleU[kilometer],
+    numNeighbours: Int,
+    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer])])
+
+case class VesselEncounter(vessel1: VesselMetadata,
+                           vessel2: VesselMetadata,
+                           startTime: Instant,
+                           endTime: Instant,
+                           meanLocation: LatLon,
+                           medianDistance: DoubleU[kilometer],
+                           medianSpeed: DoubleU[knots]) {
+  def toCsvLine =
+    s"${vessel1.mmsi},${vessel2.mmsi},$startTime,$endTime,${meanLocation.lat}," +
+      s"${meanLocation.lon},${medianDistance},${medianSpeed}"
+}
+
 case class SuspectedPort(location: LatLon, vessels: Seq[VesselMetadata])
 
-object Utility {
+object Utility extends LazyLogging {
   implicit class RichLogger(val logger: Logger) {
     def fatal(message: String) = {
       logger.error(message)
@@ -111,6 +134,9 @@ object Utility {
       // Converts to immutable map.
       counts.toMap
     }
+
+    def medianBy[V <% Ordered[V]](fn: T => V): T =
+      iterable.toIndexedSeq.sortBy(fn).apply(iterable.size / 2)
   }
 
   // Normalize from -180 to + 180
@@ -152,5 +178,84 @@ object Utility {
 
         finalPath
     }
+  }
+
+  // For a given radius of cap on the sphere, a given location and a given S2 cell level, return
+  // all the S2 cells required to cover the cap.
+  def getCapCoveringCells(location: LatLon,
+                          radius: DoubleU[kilometer],
+                          level: Int): Seq[S2CellId] = {
+    val earthRadiusKm = S2LatLng.EARTH_RADIUS_METERS / 1000.0
+    val capRadiusOnUnitSphere = radius.value / earthRadiusKm
+    val coverer = new S2RegionCoverer()
+    coverer.setMinLevel(level)
+    coverer.setMaxLevel(level)
+
+    // S2 cap requires an axis (location on unit sphere) and the height of the cap (the cap is
+    // a planar cut on the unit sphere). The cap height is 1 - (sqrt(r^2 - a^2)/r) where r is
+    // the radius of the circle (1.0 after we've normalized) and a is the radius of the cap itself.
+    val axis = location.getS2LatLng().normalized().toPoint()
+    val capHeight = 1.0 - (math.sqrt(1.0 - capRadiusOnUnitSphere * capRadiusOnUnitSphere))
+    val cap = S2Cap.fromAxisHeight(axis, capHeight)
+
+    val coverCells = new java.util.ArrayList[S2CellId]()
+    coverer.getCovering(cap, coverCells)
+
+    coverCells.foreach { cc =>
+      assert(cc.level() == level)
+    }
+
+    coverCells.toList
+  }
+
+  def resampleVesselSeries(increment: Duration,
+                           input: Seq[VesselLocationRecord]): Seq[ResampledVesselLocation] = {
+    val incrementSeconds = increment.getStandardSeconds()
+    val maxInterpolateGapSeconds = Parameters.maxInterpolateGap.getStandardSeconds()
+    def tsToUnixSeconds(timestamp: Instant): Long = (timestamp.getMillis / 1000L)
+    def roundToIncrement(timestamp: Instant): Long =
+      (tsToUnixSeconds(timestamp) / incrementSeconds) * incrementSeconds
+
+    var iterTime = roundToIncrement(input.head.timestamp)
+    val endTime = roundToIncrement(input.last.timestamp)
+
+    var iterLocation = input.iterator
+
+    val interpolatedSeries = mutable.ListBuffer.empty[ResampledVesselLocation]
+    var lastLocationRecord: Option[VesselLocationRecord] = None
+    var currentLocationRecord = iterLocation.next()
+    while (iterTime <= endTime) {
+      while (tsToUnixSeconds(currentLocationRecord.timestamp) < iterTime && iterLocation.hasNext) {
+        lastLocationRecord = Some(currentLocationRecord)
+        currentLocationRecord = iterLocation.next()
+      }
+
+      lastLocationRecord.foreach { llr =>
+        val firstTimeSeconds = tsToUnixSeconds(llr.timestamp)
+        val secondTimeSeconds = tsToUnixSeconds(currentLocationRecord.timestamp)
+        val timeDeltaSeconds = secondTimeSeconds - firstTimeSeconds
+        if (firstTimeSeconds <= iterTime && secondTimeSeconds >= iterTime &&
+            timeDeltaSeconds < maxInterpolateGapSeconds) {
+          val mix = (iterTime - firstTimeSeconds).toDouble / (secondTimeSeconds - firstTimeSeconds).toDouble
+
+          val interpLat = currentLocationRecord.location.lat.value * mix +
+              llr.location.lat.value * (1.0 - mix)
+          val interpLon = currentLocationRecord.location.lon.value * mix +
+              llr.location.lon.value * (1.0 - mix)
+
+          val interpDistFromShore = currentLocationRecord.distanceToShore.value * mix +
+              llr.distanceToShore.value * (1.0 - mix)
+
+          interpolatedSeries.append(
+            ResampledVesselLocation(new Instant(iterTime * 1000),
+                                    LatLon(interpLat.of[degrees], interpLon.of[degrees]),
+                                    interpDistFromShore.of[kilometer]))
+        }
+      }
+
+      iterTime += incrementSeconds
+    }
+
+    interpolatedSeries.toIndexedSeq
   }
 }
