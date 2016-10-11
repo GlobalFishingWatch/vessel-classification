@@ -15,8 +15,8 @@ object TestHelper {
                    timestamp: String,
                    lat: Double = 0.0,
                    lon: Double = 0.0,
-                   distanceToShore: Double = 500.0,
-                   distanceToPort: Double = 500.0,
+                   distanceFromShore: Double = 500.0,
+                   distanceFromPort: Double = 500.0,
                    speed: Double = 0.0,
                    course: Double = 0.0,
                    heading: Double = 0.0) =
@@ -24,8 +24,8 @@ object TestHelper {
              "timestamp" -> timestamp,
              "lon" -> lon.toString,
              "lat" -> lat.toString,
-             "distance_to_shore" -> distanceToShore.toString,
-             "distance_to_port" -> distanceToPort.toString,
+             "distance_from_shore" -> (distanceFromShore*1000.0).toString,
+             "distance_from_port" -> (distanceFromPort*1000.0).toString,
              "speed" -> speed.toString,
              "course" -> course.toString,
              "heading" -> heading.toString)
