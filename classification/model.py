@@ -23,7 +23,6 @@ class ModelBase(object):
 
     min_viable_timeslice_length = 500
 
-
     @abc.abstractmethod
     def build_training_net(self, features, labels):
         """Build net suitable for training model
