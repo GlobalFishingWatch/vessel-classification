@@ -232,6 +232,8 @@ object Pipeline extends LazyLogging {
     val now = new DateTime(DateTimeZone.UTC)
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
 
+    val jobName = remaining_args.required("job-name")
+
     options.setRunner(classOf[DataflowPipelineRunner])
     options.setProject(Parameters.gceProject)
     options.setStagingLocation(Parameters.dataflowStaging)
@@ -254,7 +256,7 @@ object Pipeline extends LazyLogging {
         (s"${md.mmsi}", feature)
     }
 
-    val baseOutputPath = Parameters.outputFeaturesPath + "/" +
+    val baseOutputPath = Parameters.outputFeaturesPath + "/" + jobName + "/" +
         ISODateTimeFormat.basicDateTimeNoMillis().print(now)
 
     val outputFeaturePath = baseOutputPath + "/features"
