@@ -106,9 +106,10 @@ case class VesselEncounter(vessel1: VesselMetadata,
                            vessel2: VesselMetadata,
                            startTime: Instant,
                            endTime: Instant,
-                           meanLocation: LatLon) {
+                           meanLocation: LatLon,
+                           medianDistance: DoubleU[kilometer]) {
   def toCsvLine =
-    s"${vessel1.mmsi},${vessel2.mmsi},$startTime,$endTime,${meanLocation.lat},${meanLocation.lon}"
+    s"${vessel1.mmsi},${vessel2.mmsi},$startTime,$endTime,${meanLocation.lat},${meanLocation.lon},${medianDistance}"
 }
 
 case class SuspectedPort(location: LatLon, vessels: Seq[VesselMetadata])

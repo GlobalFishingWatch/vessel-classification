@@ -171,18 +171,6 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
   }
 }
 
-class CapCoveringTests extends PipelineSpec with Matchers {
-  import AdditionalUnits._
-
-  "A 1km radius cap" should "bring in the correct number of level 12 s2 cells" in {
-
-    val exampleLocation = LatLon(51.768202.of[degrees], -1.232083.of[degrees])
-    val cellIds = Utility.getCapCoveringCells(exampleLocation, 1.0.of[kilometer], 12)
-
-    cellIds should contain theSameElementsAs Seq()
-  }
-}
-
 class LocationResamplerTests extends PipelineSpec with Matchers {
   import TestHelper._
   import AdditionalUnits._
