@@ -200,6 +200,10 @@ object Utility extends LazyLogging {
     val coverCells = new java.util.ArrayList[S2CellId]()
     coverer.getCovering(cap, coverCells)
 
+    coverCells.foreach { cc =>
+      assert(cc.level() == level)
+    }
+
     coverCells.toList
   }
 

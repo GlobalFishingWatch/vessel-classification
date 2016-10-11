@@ -66,14 +66,15 @@ object Parameters {
   val portsS2Scale = 13
   val minUniqueVesselsForPort = 20
 
-  val adjacencyResamplePeriod = Duration.standardMinutes(20)
+  val adjacencyResamplePeriod = Duration.standardMinutes(10)
   val maxInterpolateGap = Duration.standardMinutes(60)
 
-  val levelForAdjacencySharding = 11
+  val levelForAdjacencySharding = 6
+  val maxClosestNeighbours = 10
   val maxEncounterRadius = 1.0.of[kilometer]
 
   val maxDistanceForEncounter = 0.5.of[kilometer]
-  val minDurationForEncounter = Duration.standardHours(5)
+  val minDurationForEncounter = Duration.standardHours(3)
   val minDistanceToShoreForEncounter = 20.0.of[kilometer]
 }
 
@@ -252,7 +253,7 @@ object Pipeline extends LazyLogging {
     // relevant years, as a single Cloud Dataflow text reader currently can't yet
     // handle the sheer volume of matching files.
     val matches = (Parameters.allDataYears).map { year =>
-      val path = s"${Parameters.inputMeasuresPath}/$year-05-*/*.json"
+      val path = s"${Parameters.inputMeasuresPath}/$year-*/*.json"
       sc.tableRowJsonFile(path)
     }
 
