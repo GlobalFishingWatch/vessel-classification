@@ -175,11 +175,6 @@ object Utility extends LazyLogging {
     }
   }
 
-  // TODO(alexwilson): For each resampled vessel point, send it out keyed against each constituent
-  // cell (a choice of level 13 seems reasonable) and the quantised time (in 10 minute buckets). Then
-  // for each cell and time point, do an N^2 comparison between all vessel points, re-broadcast, group
-  // by time and first mmsi and de-dupe. Then extract the count and the top 10 from each.
-
   // For a given radius of cap on the sphere, a given location and a given S2 cell level, return
   // all the S2 cells required to cover the cap.
   def getCapCoveringCells(location: LatLon,
