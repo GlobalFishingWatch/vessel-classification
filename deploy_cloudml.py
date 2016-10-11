@@ -39,26 +39,19 @@ def launch(model_name):
     job_id = model_name.replace('.', '_') + '_' + time_stamp
 
     config_txt = config_template.format(model_name=model_name, job_id=job_id)
-    config = yaml.load(config_txt)
 
-    # Create and upload disribution to CloudML
-    subprocess.check_call(['python', 'setup.py', 'sdist', '--format=gztar'])
-    train_uri = config["trainingInput"]["packageUris"]
-
-    # By convention package has same name here and uploaded
-    file_name = os.path.basename(train_uri)
-    source_uri = os.path.join(
-        'dist', "vessel_classification-1.0.tar.gz")  # XXX this is fragile
-    subprocess.check_call(['gsutil', 'cp', source_uri, train_uri])
-
-    print("Deployed", source_uri, "to", train_uri)
+    staging_path = "gs://world-fishing-827/scratch/classification/%s/%s" % (
+        model_name, job_id)
 
     # Kick off the job on CloudML
     with tempfile.NamedTemporaryFile() as temp:
         temp.write(config_txt)
         temp.flush()
-        subprocess.check_call(['gcloud', 'beta', 'ml', 'jobs', 'submit',
-                               'training', job_id, '--config', temp.name])
+        subprocess.check_call(
+            ['gcloud', 'beta', 'ml', 'jobs', 'submit', 'training', job_id,
+             '--config', temp.name, '--module-name',
+             'classification.run_training', '--staging-bucket',
+             'gs://world-fishing-827-ml', '--package-path', 'classification'])
 
     return job_id
 

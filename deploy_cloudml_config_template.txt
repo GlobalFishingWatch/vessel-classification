@@ -3,12 +3,10 @@ trainingInput:
     "{model_name}",
     "--root_feature_path", "gs://alex-dataflow-scratch/features-scratch/20161003T203417Z",
     "--training_output_path", "gs://world-fishing-827/scratch/classification/{model_name}/{job_id}"]
-  packageUris: gs://world-fishing-827/scratch/classification/{model_name}/{job_id}.tar.gz
-  pythonModule: classification.run_training
   scaleTier: CUSTOM
   masterType: "standard"
   parameterServerType: "standard"
   workerType: "large_model"
-  workerCount: 5
+  workerCount: 50
   parameterServerCount: 1
   region: us-central1
