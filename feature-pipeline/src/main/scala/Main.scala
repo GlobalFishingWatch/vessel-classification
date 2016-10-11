@@ -106,8 +106,8 @@ object Pipeline extends LazyLogging {
           VesselLocationRecord(Instant.parse(json.getString("timestamp")),
                                LatLon(Utility.angleNormalize(json.getDouble("lat").of[degrees]),
                                       Utility.angleNormalize(json.getDouble("lon").of[degrees])),
-                               json.getDouble("distance_to_shore").of[kilometer],
-                               json.getDouble("distance_to_port").of[kilometer],
+                               (json.getDouble("distance_from_shore")/1000.0).of[kilometer],
+                               (json.getDouble("distance_from_port")/1000.0).of[kilometer],
                                json.getDouble("speed").of[knots],
                                Utility.angleNormalize(json.getDouble("course").of[degrees]),
                                Utility.angleNormalize(json.getDouble("heading").of[degrees]))
