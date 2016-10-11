@@ -4,7 +4,7 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
-import com.google.common.geometry.{S2CellId}
+import com.google.common.geometry.S2CellId
 import com.typesafe.scalalogging.LazyLogging
 import com.spotify.scio.values.SCollection
 import org.joda.time.{Duration, Instant}
@@ -47,7 +47,7 @@ object Encounters extends LazyLogging {
             }
           }
           currentEncounterVessel = newEncounterVessel
-          currentRun.clear
+          currentRun.clear()
         }
 
         locationSeries.foreach { l =>
@@ -112,7 +112,9 @@ object Encounters extends LazyLogging {
             vesselLocationMap(md) = vl
         }
 
-        // Second, calculate all pair-wise distances per vessel per cell.
+        // Second, calculate all pair-wise distances per vessel per cell. We include self-distances
+        // because, although they're zero, it's simpler to keep them here to prevent filtering of
+        // points w/out adjacent vessels.
         val vesselDistances = mutable.HashMap
           .empty[VesselMetadata, mutable.ListBuffer[(VesselMetadata, DoubleU[kilometer])]]
         cellMap.foreach {
@@ -130,7 +132,7 @@ object Encounters extends LazyLogging {
                       }
                       vesselDistances(md1).append((md2, distance))
                     }
-                }
+                  }
             }
         }
 
