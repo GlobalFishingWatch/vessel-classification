@@ -10,6 +10,8 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 
+from tensorflow.python.framework import errors
+
 
 class Trainer:
     """ Handles the mechanics of training and evaluating a vessel behaviour
@@ -146,6 +148,6 @@ class Trainer:
                     eval_op=names_to_updates.values(),
                     summary_op=tf.merge_summary(summary_ops),
                     eval_interval_secs=120)
-            except ValueError as e:
+            except errors.NotFoundError as e:
                 logging.warning('Error in evaluation loop: (%s), retrying',
                                 str(e))
