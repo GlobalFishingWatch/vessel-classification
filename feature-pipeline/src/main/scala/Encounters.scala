@@ -14,6 +14,8 @@ import scala.collection.{mutable, immutable}
 import AdditionalUnits._
 
 object Encounters extends LazyLogging {
+  import Utility._
+
   def calculateEncounters(
       minDurationForEncounter: Duration,
       input: SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])])
@@ -27,23 +29,37 @@ object Encounters extends LazyLogging {
         val currentRun = mutable.ArrayBuffer.empty[ResampledVesselLocationWithAdjacency]
 
         def tryAddEncounter(newEncounterVessel: Option[VesselMetadata]) = {
-          if (currentEncounterVessel.isDefined) {
+          if (currentEncounterVessel.isDefined && currentRun.size >= 2) {
             val startTime = currentRun.head.timestamp
             val endTime = currentRun.last.timestamp
             val encounterDuration = new Duration(startTime, endTime)
-            val medianDistance = currentRun.map { _.closestNeighbour.get._2 }
-              .sortBy(Predef.identity)
-              .toIndexedSeq
-              .apply(currentRun.size / 2)
+
             if (encounterDuration.isLongerThan(minDurationForEncounter)) {
+              val impliedSpeeds = currentRun
+                .sliding(2)
+                .map {
+                  case Seq(first, second) =>
+                    val dist = first.location.getDistance(second.location)
+                    val timeDelta = new Duration(first.timestamp, second.timestamp)
+
+                    dist.convert[meter].value / timeDelta.getStandardSeconds
+                }
+                .toSeq
+
+              val medianDistance = currentRun.map { _.closestNeighbour.get._2 }.medianBy(_.value)
               val meanLocation = LatLon.mean(currentRun.map(_.location))
+
+              val medianSpeed =
+                impliedSpeeds.medianBy(Predef.identity).of[meters_per_second].convert[knots]
+
               encounters.append(
                 VesselEncounter(md,
                                 currentEncounterVessel.get,
                                 startTime,
                                 endTime,
                                 meanLocation,
-                                medianDistance))
+                                medianDistance,
+                                medianSpeed))
             }
           }
           currentEncounterVessel = newEncounterVessel
@@ -132,7 +148,7 @@ object Encounters extends LazyLogging {
                       }
                       vesselDistances(md1).append((md2, distance))
                     }
-                  }
+                }
             }
         }
 

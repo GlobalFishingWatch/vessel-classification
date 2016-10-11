@@ -107,13 +107,15 @@ class EncountersTest extends PipelineSpec with Matchers {
                         ts("2011-01-01T16:10:00Z"),
                         ts("2011-01-01T17:00:00Z"),
                         LatLon(-1.4719963.of[degrees], 55.21973783333333.of[degrees]),
-                        0.20804684747804683.of[kilometer]),
+                        0.20804684747804683.of[kilometer],
+                        0.6463265088064274.of[knots]),
         VesselEncounter(VesselMetadata(2),
                         VesselMetadata(1),
                         ts("2011-01-01T16:10:00Z"),
                         ts("2011-01-01T17:00:00Z"),
                         LatLon(-1.4709949666666666.of[degrees], 55.21932963333333.of[degrees]),
-                        0.20804684747804683.of[kilometer]))
+                        0.20804684747804683.of[kilometer],
+                        1.0941807727075668.of[knots]))
 
       encounters should containInAnyOrder(expected)
     }
@@ -136,13 +138,15 @@ class RealEncounterTest extends PipelineSpec with Matchers {
                           ts("2015-03-19T07:40:00.000Z"),
                           ts("2015-03-19T20:10:00.000Z"),
                           LatLon(-27.479094440423793.of[degrees], 38.533749458956926.of[degrees]),
-                          0.02919780629103159.of[kilometer]),
+                          0.02919780629103159.of[kilometer],
+                          0.20556704939649723.of[knots]),
           VesselEncounter(VesselMetadata(563418000),
                           VesselMetadata(441910000),
                           ts("2015-03-19T07:40:00.000Z"),
                           ts("2015-03-19T10:10:00.000Z"),
                           LatLon(-27.480823491781422.of[degrees], 38.53562707753466.of[degrees]),
-                          0.03146525092161599.of[kilometer]))
+                          0.03146525092161599.of[kilometer],
+                          0.17038552025487777.of[knots]))
 
         encounters should containInAnyOrder(expected)
     }

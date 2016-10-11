@@ -24,8 +24,8 @@ object TestHelper {
              "timestamp" -> timestamp,
              "lon" -> lon.toString,
              "lat" -> lat.toString,
-             "distance_from_shore" -> (distanceFromShore*1000.0).toString,
-             "distance_from_port" -> (distanceFromPort*1000.0).toString,
+             "distance_from_shore" -> (distanceFromShore * 1000.0).toString,
+             "distance_from_port" -> (distanceFromPort * 1000.0).toString,
              "speed" -> speed.toString,
              "course" -> course.toString,
              "heading" -> heading.toString)

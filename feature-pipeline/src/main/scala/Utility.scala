@@ -107,9 +107,11 @@ case class VesselEncounter(vessel1: VesselMetadata,
                            startTime: Instant,
                            endTime: Instant,
                            meanLocation: LatLon,
-                           medianDistance: DoubleU[kilometer]) {
+                           medianDistance: DoubleU[kilometer],
+                           medianSpeed: DoubleU[knots]) {
   def toCsvLine =
-    s"${vessel1.mmsi},${vessel2.mmsi},$startTime,$endTime,${meanLocation.lat},${meanLocation.lon},${medianDistance}"
+    s"${vessel1.mmsi},${vessel2.mmsi},$startTime,$endTime,${meanLocation.lat}," +
+      s"${meanLocation.lon},${medianDistance},${medianSpeed}"
 }
 
 case class SuspectedPort(location: LatLon, vessels: Seq[VesselMetadata])
@@ -132,6 +134,9 @@ object Utility extends LazyLogging {
       // Converts to immutable map.
       counts.toMap
     }
+
+    def medianBy[V <% Ordered[V]](fn: T => V): T =
+      iterable.toIndexedSeq.sortBy(fn).apply(iterable.size / 2)
   }
 
   // Normalize from -180 to + 180

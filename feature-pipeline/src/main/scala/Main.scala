@@ -116,8 +116,8 @@ object Pipeline extends LazyLogging {
           VesselLocationRecord(Instant.parse(json.getString("timestamp")),
                                LatLon(Utility.angleNormalize(json.getDouble("lat").of[degrees]),
                                       Utility.angleNormalize(json.getDouble("lon").of[degrees])),
-                               (json.getDouble("distance_from_shore")/1000.0).of[kilometer],
-                               (json.getDouble("distance_from_port")/1000.0).of[kilometer],
+                               (json.getDouble("distance_from_shore") / 1000.0).of[kilometer],
+                               (json.getDouble("distance_from_port") / 1000.0).of[kilometer],
                                json.getDouble("speed").of[knots],
                                Utility.angleNormalize(json.getDouble("course").of[degrees]),
                                Utility.angleNormalize(json.getDouble("heading").of[degrees]))
@@ -254,7 +254,7 @@ object Pipeline extends LazyLogging {
     // relevant years, as a single Cloud Dataflow text reader currently can't yet
     // handle the sheer volume of matching files.
     val matches = (Parameters.allDataYears).map { year =>
-      val path = s"${Parameters.inputMeasuresPath}/$year-*/*.json"
+      val path = s"${Parameters.inputMeasuresPath}/$year-03-*/*.json"
       sc.tableRowJsonFile(path)
     }
 
