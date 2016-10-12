@@ -13,5 +13,9 @@ before_script:
   - pip install google-api-python-client pyyaml
 
 script:
+  - pushd python
   - python classification/utility_test.py
+  - popd
+  - pushd scala
   - sbt test
+  - popd
