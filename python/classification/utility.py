@@ -1,5 +1,5 @@
-from collections import defaultdict
-import logging
+from collections import defaultdict, namedtuple
+import dateutil.parser
 import numpy as np
 import sys
 import tensorflow as tf
@@ -13,6 +13,9 @@ VESSEL_CLASS_NAMES = [
 
 VESSEL_CLASS_INDICES = dict(
     zip(VESSEL_CLASS_NAMES, range(len(VESSEL_CLASS_NAMES))))
+
+FishingRange = namedtuple('FishingRange',
+                          ['start_time', 'end_time', 'is_fishing'])
 
 
 class ClusterNodeConfig(object):
@@ -431,3 +434,18 @@ def read_vessel_metadata_file_lines(available_mmsis, lines):
 def read_vessel_metadata(available_mmsis, metadata_file):
     with open(metadata_file, 'r') as f:
         return read_vessel_metadata_file_lines(available_mmsis, f.readlines())
+
+
+def read_fishing_ranges(fishing_range_file):
+    fishing_range_dict = defaultdict(lambda: [])
+    with open(fishing_range_file, 'r') as f:
+        for l in f.readlines()[1:]:
+            els = l.split(',')
+            mmsi = int(els[0])
+            start_time = dateutil.parser.parse(els[1])
+            end_time = dateutil.parser.parse(els[2])
+            is_fishing = float(els[3])
+
+            fishing_range_dict[mmsi].append(
+                FishingRange(start_time, end_time, is_fishing))
+    return fishing_range_dict
