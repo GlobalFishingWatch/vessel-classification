@@ -177,6 +177,7 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
 
     # Drop the first (timestamp) column.
     features = features[:, 1:]
+    timeseries = features[:, 0].astype(np.int32)
 
     # Roll the features randomly to give different offsets.
     roll = random_state.randint(0, window_size)
@@ -185,7 +186,8 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
     if not np.isfinite(features).all():
         logging.fatal('Bad features: %s', features)
 
-    return features, np.array([start_time, end_time], dtype=np.int32)
+    return features, timeseries, np.array(
+        [start_time, end_time], dtype=np.int32)
 
 
 def np_array_extract_n_random_features(random_state, input, label, n,
@@ -213,10 +215,11 @@ def np_array_extract_n_random_features(random_state, input, label, n,
     int_n = int(n)
 
     def add_sample():
-        features, time_bounds = np_array_extract_features(
+        features, timeseries, time_bounds = np_array_extract_features(
             random_state, input, max_time_delta, window_size,
             min_timeslice_size)
-        samples.append((np.stack([features]), time_bounds, np.int32(label)))
+        samples.append(
+            (np.stack([features]), timeseries, time_bounds, np.int32(label)))
 
     for _ in range(int_n):
         add_sample()
@@ -265,11 +268,11 @@ def cropping_weight_replicating_feature_file_reader(
             random_state, input, label, n, max_time_delta, window_size,
             min_timeslice_size)
 
-    features_list, time_bounds_list, label_list = tf.py_func(
+    features_list, timeseries_list, time_bounds_list, label_list = tf.py_func(
         replicate_extract, [movement_features, mmsi],
-        [tf.float32, tf.int32, tf.int32])
+        [tf.float32, tf.int32, tf.int32, tf.int32])
 
-    return features_list, time_bounds_list, label_list
+    return features_list, timeseries_list, time_bounds_list, label_list
 
 
 def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
@@ -304,7 +307,7 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
         length = end_index - start_index
 
         # Slice out the time window, removing the timestamp.
-        cropped = input_series[start_index:end_index, 1:]
+        cropped = input_series[start_index:end_index]
 
         # If this window is too long, pick a random subwindow.
         if (length > window_size):
@@ -316,14 +319,19 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
             output_slice = np_pad_repeat_slice(cropped, window_size)
 
             time_bounds = np.array([start_time, end_time], dtype=np.int32)
-            slices.append((np.stack([output_slice]), time_bounds, mmsi))
+
+            without_timestamp = output_slice[:, 1:]
+            timeseries = output_slice[:, 0].astype(np.int32)
+            slices.append(
+                (np.stack([without_timestamp]), timeseries, time_bounds, mmsi))
 
     if slices == []:
         # Return an appropriately shaped empty numpy array.
         return (np.empty(
             [0, 1, window_size, 9], dtype=np.float32), np.empty(
-                shape=[0, 2], dtype=np.int32), np.empty(
-                    shape=[0], dtype=np.int32))
+                window_size, dtype=np.int32), np.empty(
+                    shape=[0, 2], dtype=np.int32), np.empty(
+                        shape=[0], dtype=np.int32))
 
     return zip(*slices)
 
@@ -361,11 +369,11 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
             random_state, input, mmsi, time_ranges, window_size,
             min_points_for_classification)
 
-    features_list, time_bounds_list, mmsis = tf.py_func(
+    features_list, timeseries, time_bounds_list, mmsis = tf.py_func(
         replicate_extract, [movement_features, mmsi],
-        [tf.float32, tf.int32, tf.int32])
+        [tf.float32, tf.int32, tf.int32, tf.int32])
 
-    return features_list, time_bounds_list, mmsis
+    return features_list, timeseries, time_bounds_list, mmsis
 
 
 def read_vessel_metadata_file_lines(available_mmsis, lines):

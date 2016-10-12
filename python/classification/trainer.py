@@ -71,14 +71,15 @@ class Trainer:
                     max_window_duration_seconds, self.model.window_max_points,
                     self.model.min_viable_timeslice_length, max_replication))
 
-        features, time_bounds, labels = tf.train.shuffle_batch_join(
+        features, timeseries, time_bounds, labels = tf.train.shuffle_batch_join(
             readers,
             self.model.batch_size,
             capacity,
             min_size_after_deque,
             enqueue_many=True,
             shapes=[[1, self.model.window_max_points,
-                     self.model.num_feature_dimensions], [2], []])
+                     self.model.num_feature_dimensions],
+                    [self.model.window_max_points], [2], []])
 
         return features, labels
 
