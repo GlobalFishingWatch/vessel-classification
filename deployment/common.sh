@@ -1,0 +1,2 @@
+export GCP_PROJECT_ID=world-fishing-827
+export INFERENCE_IMAGE_TAG=vessel-classification-inference

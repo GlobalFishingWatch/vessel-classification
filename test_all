@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e
+
+# Run scala dataflow pipeline tests.
+pushd pipeline
+./sbt test
+popd
+
+# Run python TF tests.
+pushd classification
+python src/utility_test.py
+popd
+
+# Build docker containers
+docker build -f deployment/inference/Dockerfile .
