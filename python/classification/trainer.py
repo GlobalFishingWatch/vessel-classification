@@ -151,6 +151,9 @@ class Trainer:
                     eval_op=names_to_updates.values(),
                     summary_op=tf.merge_summary(summary_ops),
                     eval_interval_secs=120)
+            except ValueError as e:
+                logging.warning('Error in evaluation loop: (%s), retrying',
+                                str(e))
             except errors.NotFoundError as e:
                 logging.warning('Error in evaluation loop: (%s), retrying',
                                 str(e))

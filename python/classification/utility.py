@@ -1,5 +1,6 @@
 from collections import defaultdict, namedtuple
 import dateutil.parser
+import time
 import logging
 import numpy as np
 import sys
@@ -226,10 +227,10 @@ def np_array_extract_n_random_features(
         fishing_timeseries = np.empty([window_size], dtype=np.float32)
         fishing_timeseries.fill(-1.0)
         for fr in vessel_fishing_ranges:
-            start_range = time.mktime(fr.start_time.time_tuple())
-            end_range = time.mktime(fr.end_time.time_tuple())
+            start_range = time.mktime(fr.start_time.timetuple())
+            end_range = time.mktime(fr.end_time.timetuple())
             fishing_timeseries[(fishing_timeseries >= start_range) & (
-                fishing_timeseries < end_range)] = is_fishing
+                fishing_timeseries < end_range)] = fr.is_fishing
 
         samples.append((np.stack([features]), fishing_timeseries, time_bounds,
                         np.int32(label)))
