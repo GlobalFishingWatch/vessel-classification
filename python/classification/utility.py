@@ -1,5 +1,6 @@
 from collections import defaultdict, namedtuple
 import dateutil.parser
+import logging
 import numpy as np
 import sys
 import tensorflow as tf
@@ -193,9 +194,9 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
         [start_time, end_time], dtype=np.int32)
 
 
-def np_array_extract_n_random_features(random_state, input, label, n,
-                                       max_time_delta, window_size,
-                                       min_timeslice_size):
+def np_array_extract_n_random_features(
+        random_state, input, label, n, max_time_delta, window_size,
+        min_timeslice_size, vessel_fishing_ranges):
     """ Extract and process multiple random timeslices from a vessel movement feature.
 
   Args:
@@ -221,8 +222,17 @@ def np_array_extract_n_random_features(random_state, input, label, n,
         features, timeseries, time_bounds = np_array_extract_features(
             random_state, input, max_time_delta, window_size,
             min_timeslice_size)
-        samples.append(
-            (np.stack([features]), timeseries, time_bounds, np.int32(label)))
+
+        fishing_timeseries = np.empty([window_size], dtype=np.float32)
+        fishing_timeseries.fill(-1.0)
+        for fr in vessel_fishing_ranges:
+            start_range = time.mktime(fr.start_time.time_tuple())
+            end_range = time.mktime(fr.end_time.time_tuple())
+            fishing_timeseries[(fishing_timeseries >= start_range) & (
+                fishing_timeseries < end_range)] = is_fishing
+
+        samples.append((np.stack([features]), fishing_timeseries, time_bounds,
+                        np.int32(label)))
 
     for _ in range(int_n):
         add_sample()
@@ -236,7 +246,8 @@ def np_array_extract_n_random_features(random_state, input, label, n,
 
 def cropping_weight_replicating_feature_file_reader(
         vessel_metadata, filename_queue, num_features, max_time_delta,
-        window_size, min_timeslice_size, max_replication_factor):
+        window_size, min_timeslice_size, max_replication_factor,
+        fishing_ranges):
     """ Set up a file reader and training feature extractor for the files in a queue.
 
     As a training feature extractor, this pulls sets of random timeslices from the
@@ -248,6 +259,7 @@ def cropping_weight_replicating_feature_file_reader(
         num_features: the dimensionality of the features.
         max_replication_factor: the maximum number of samples that can be drawn from a
           single vessel series, regardless of the weight specified.
+        fishing_ranges: a dictionary of fishing ranges per mmsi.
 
     Returns:
         A tuple comprising, for the n samples drawn for each vessel:
@@ -267,15 +279,16 @@ def cropping_weight_replicating_feature_file_reader(
         string_label, weight = vessel_metadata[mmsi]
         label = VESSEL_CLASS_INDICES[string_label]
         n = min(float(max_replication_factor), weight)
+        vessel_fishing_ranges = fishing_ranges[mmsi]
         return np_array_extract_n_random_features(
             random_state, input, label, n, max_time_delta, window_size,
-            min_timeslice_size)
+            min_timeslice_size, vessel_fishing_ranges)
 
-    features_list, timeseries_list, time_bounds_list, label_list = tf.py_func(
+    features_list, fishing_timeseries, time_bounds_list, label_list = tf.py_func(
         replicate_extract, [movement_features, mmsi],
-        [tf.float32, tf.int32, tf.int32, tf.int32])
+        [tf.float32, tf.float32, tf.int32, tf.int32])
 
-    return features_list, timeseries_list, time_bounds_list, label_list
+    return features_list, fishing_timeseries, time_bounds_list, label_list
 
 
 def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,

@@ -95,8 +95,8 @@ def main(args):
                                                    metadata_file)
 
     model = Model()
-    trainer = Trainer(model, vessel_metadata, args.root_feature_path,
-                      args.training_output_path)
+    trainer = Trainer(model, vessel_metadata, fishing_ranges,
+                      args.root_feature_path, args.training_output_path)
 
     config = json.loads(os.environ.get('TF_CONFIG', '{}'))
     if (config == {}):

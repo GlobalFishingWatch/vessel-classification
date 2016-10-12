@@ -18,10 +18,11 @@ class Trainer:
         model.
     """
 
-    def __init__(self, model, vessel_metadata, base_feature_path,
-                 train_scratch_path):
+    def __init__(self, model, vessel_metadata, fishing_ranges,
+                 base_feature_path, train_scratch_path):
         self.model = model
         self.vessel_metadata = vessel_metadata
+        self.fishing_ranges = fishing_ranges
         self.base_feature_path = base_feature_path
         self.train_scratch_path = train_scratch_path
         self.checkpoint_dir = self.train_scratch_path + '/train'
@@ -69,9 +70,10 @@ class Trainer:
                     self.vessel_metadata[split], filename_queue,
                     self.model.num_feature_dimensions + 1, self.model.
                     max_window_duration_seconds, self.model.window_max_points,
-                    self.model.min_viable_timeslice_length, max_replication))
+                    self.model.min_viable_timeslice_length, max_replication,
+                    self.fishing_ranges))
 
-        features, timeseries, time_bounds, labels = tf.train.shuffle_batch_join(
+        features, fishing_timeseries, time_bounds, labels = tf.train.shuffle_batch_join(
             readers,
             self.model.batch_size,
             capacity,
