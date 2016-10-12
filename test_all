@@ -2,15 +2,15 @@
 
 set -e
 
-# Run scala dataflow tests.
-pushd scala
+# Run scala dataflow pipeline tests.
+pushd pipeline
 ./sbt test
 popd
 
 # Run python TF tests.
-pushd python
-python classification/utility_test.py
+pushd classification
+python src/utility_test.py
 popd
 
 # Build docker containers
-docker build -f deploy/inference/Dockerfile .
+docker build -f deployment/inference/Dockerfile .
