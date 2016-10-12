@@ -22,8 +22,8 @@ Vessel classification pipeline: feature generation and model training/inference.
 
 ## Scala
 
-The various projects are built using the Scala build tool 'sbt'. SBT has a repl, which can be
-entered using the checked-in 'sbt' script in the root directory. Some commands:
+The various projects are built using the Scala build tool `sbt`. SBT has a repl, which can be
+entered using the checked-in `sbt` script in the root directory. Some commands:
 
 * To compile: 'compile'.
 * To run: 'run'.
@@ -40,17 +40,26 @@ Python programs have a few dependencies that can be installed using pip.
 
 To install pip:
 
-* sudo apt-get install python-pip python-dev build-essential
-* sudo easy_install pip
-* sudo pip install --upgrade virtualenv
+* `sudo apt-get install python-pip python-dev build-essential`
+* `sudo easy_install pip`
+* `sudo pip install --upgrade virtualenv`
 
 To install TensorFlow, follow [these instructions](https://www.tensorflow.org/versions/r0.11/get_started/os_setup.html#using-pip). For example for Linux, call:
 
-* sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0rc0-cp27-none-linux_x86_64.whl
+* `sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0rc0-cp27-none-linux_x86_64.whl`
 
 To install the dependencies:
 
-* sudo pip install google-api-python-client pyyaml
+* `sudo pip install google-api-python-client pyyaml`
+
+## Deployment
+
+Some of our jobs are run on managed services (for instance the feature pipeline on Cloud Dataflow, the
+tensor flow model training on Cloud ML). But other jobs are deployed to Compute Engine using Docker.
+
+To build and deploy inference, from the root directory:
+
+* `docker build -f deploy/inference/Dockerfile .`
 
 
 # Running jobs
@@ -59,10 +68,11 @@ To install the dependencies:
   * Install the SDK: https://cloud.google.com/sdk/docs/.
   * Sign in: `gcloud auth application-default login`.
 * Cloud Dataflow
-   * Run jobs, specifying the zone and max number of workers, e.g. `--zone=europe-west1-c  --maxNumWorkers=80`.
+   * From the sbt console:
+   * Run jobs, specifying the zone and max number of workers, e.g. `run --zone=europe-west1-c  --maxNumWorkers=80`.
 * Running TF locally:
    * Training:
-       - python -m classification.run_training alex.vessel_classification <...>
+       - `python -m classification.run_training alex.vessel_classification <...>`
 * Cloud ML
    * Training:
        - `./deploy_cloudml.py alex.vessel_classification`
