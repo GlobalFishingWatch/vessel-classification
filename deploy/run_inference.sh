@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-GCP_PROJECT_ID=world-fishing-827
+cd `dirname $0`
+source common.sh
+
 INFERENCE_IMAGE_TAG=vessel-classification-inference
 
 echo "Building Docker image."
