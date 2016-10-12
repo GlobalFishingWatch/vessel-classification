@@ -3,8 +3,12 @@
 set -e
 
 # Run scala dataflow tests.
+pushd scala
 ./sbt test
+popd
 
 # Run python TF tests.
-python models/utility_test.py
+pushd python
+python classification/utility_test.py
+popd
 
