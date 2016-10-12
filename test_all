@@ -12,3 +12,5 @@ pushd python
 python classification/utility_test.py
 popd
 
+# Build docker containers
+docker build -f deploy/inference/Dockerfile .

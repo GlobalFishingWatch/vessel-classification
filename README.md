@@ -19,7 +19,7 @@ Vessel classification pipeline: feature generation and model training/inference.
 * Python.
 * Tensorflow.
 * [Docker](https://docs.docker.com).
-  * For linux, follow the instructions, do not use the apt package.
+  * For linux, follow the installation instructions on the Docker site, do not use the apt package.
 * [Google Compute Engine](https://console.cloud.google.com) access and [SDK](https://cloud.google.com/sdk) installed locally.
 
 ## Scala
