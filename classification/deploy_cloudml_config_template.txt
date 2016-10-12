@@ -7,6 +7,6 @@ trainingInput:
   masterType: "standard"
   parameterServerType: "standard"
   workerType: "large_model"
-  workerCount: 40
+  workerCount: 10
   parameterServerCount: 1
   region: us-central1
