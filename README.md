@@ -18,9 +18,13 @@ Vessel classification pipeline: feature generation and model training/inference.
 * A proto3-compatible version of protoc. See: [protocol buffers](https://developers.google.com/protocol-buffers/).
 * Python.
 * Tensorflow.
+* [Docker](https://docs.docker.com).
+  * For linux, follow the instructions, do not use the apt package.
 * [Google Compute Engine](https://console.cloud.google.com) access and [SDK](https://cloud.google.com/sdk) installed locally.
 
 ## Scala
+
+In subdirectory `scala`, the feature/ports/encounter pipeline.
 
 The various projects are built using the Scala build tool `sbt`. SBT has a repl, which can be
 entered using the checked-in `sbt` script in the root directory. Some commands:
@@ -35,6 +39,8 @@ SBT uses maven to handle it's dependencies. So the first time you attempt a buil
 may take some time to download all the required libraries.
 
 ## Python
+
+In subdirectory `python`, everything related to TF and our NN models plus evaluation.
 
 Python programs have a few dependencies that can be installed using pip.
 
