@@ -74,9 +74,6 @@ def single_feature_file_reader(filename_queue, num_features):
         # Defaults are not specified since both keys are required.
         context_features={
             'mmsi': tf.FixedLenFeature([], tf.int64),
-            'weight': tf.FixedLenFeature([], tf.float32),
-            'vessel_type_index': tf.FixedLenFeature([], tf.int64),
-            'vessel_type_name': tf.FixedLenFeature([], tf.string)
         },
         sequence_features={
             'movement_features': tf.FixedLenSequenceFeature(
