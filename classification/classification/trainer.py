@@ -132,7 +132,7 @@ class Trainer:
             op = tf.Print(op, [metric_value], metric_name)
             summary_ops.append(op)
 
-        num_examples = 256
+        num_examples = 1024
         num_evals = math.ceil(num_examples / float(self.model.batch_size))
 
         # Setup the global step.
