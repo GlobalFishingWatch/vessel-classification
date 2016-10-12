@@ -58,8 +58,18 @@ def main(args):
         resource_filename('classification.data',
                           'combined_classification_list.csv'))
     if not os.path.exists(metadata_file):
-        logging.fatal("Could not find metadata file: %s.", args.metadata_file)
+        logging.fatal("Could not find metadata file: %s.", metadata_file) 
         sys.exit(-1)
+
+    # Determine the MMIS in the final test set and exclude them from the
+    # available MMSIs so that they aren't used for test or validation.
+    test_data_file = os.path.abspath(
+                resource_filename('classification.data',
+                          'test_list.csv'))
+    if not os.path.exists(test_data_file):
+        logging.fatal("Could not find test_data file: %s.", test_data_file)
+        sys.exit(-1)
+    test_mmsi = utility.read_test_data(test_data_file)
 
     # TODO(alexwilson): Using a temporary session to get the matching files on
     # GCS is far from ideal. However the alternative is to bring in additional
@@ -81,7 +91,9 @@ def main(args):
     all_available_mmsis = set(
         [int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files])
 
-    vessel_metadata = utility.read_vessel_metadata(all_available_mmsis,
+    nontest_mmsi = all_available_mmsis - test_mmsi
+
+    vessel_metadata = utility.read_vessel_metadata(nontest_mmsi,
                                                    metadata_file)
 
     model = Model()

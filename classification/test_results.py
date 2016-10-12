@@ -64,7 +64,7 @@ temp_dir = os.path.join(this_dir, "temp")
 if __name__ == "__main__":
     # TODO[bitsofbits]: add argparse and pass in parameters instead of hardcoding
     label_path = "gs://world-fishing-827/scratch/alex/infered_labels.txt"
-    test_path = "data/test_list.csv"
+    test_path = "classification/data/test_list.csv"
     THRESHOLD = 0.5
     # TODO:
     #    * Date range

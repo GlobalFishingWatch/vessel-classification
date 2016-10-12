@@ -368,6 +368,19 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
     return features_list, time_bounds_list, mmsis
 
 
+def read_test_data(path):
+    test_mmsi = set()
+    with open(path, 'r') as f:
+        header = next(f).strip()
+        if header != "mmsi,label":
+            logging.fatal("unexpected header {}".format(header))
+            sys.exit(-1)
+        for l in f:
+            mmsi_str, label = [x.strip() for x in l.split(',')]
+            mmsi = int(mmsi_str)
+            test_mmsi.add(mmsi)
+    return test_mmsi
+
 def read_vessel_metadata_file_lines(available_mmsis, lines):
     """ For a set of vessels, read metadata and calculate class weights.
 
@@ -388,7 +401,7 @@ def read_vessel_metadata_file_lines(available_mmsis, lines):
     dataset_kind_counts = defaultdict(lambda: defaultdict(lambda: 0))
     vessel_types = []
     for line in lines[1:]:
-        mmsi_str, split, vessel_type = line.strip().split(',')
+        mmsi_str, split, vessel_type = [x.strip() for x in line.split(',')]
         mmsi = int(mmsi_str)
         if mmsi in available_mmsis:
             vessel_types.append((mmsi, split, vessel_type))
