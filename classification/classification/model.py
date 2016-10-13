@@ -24,7 +24,7 @@ class ModelBase(object):
     min_viable_timeslice_length = 500
 
     @abc.abstractmethod
-    def build_training_net(self, features, labels):
+    def build_training_net(self, features, labels, fishing_timeseries_labels):
         """Build net suitable for training model
 
         Args:
@@ -32,6 +32,8 @@ class ModelBase(object):
                 features to feed into net
             labels : queue
                 groundtruth labels for training
+            fishing_timeseries_labels:
+                groundtruth localisation of fishing
 
         Returns:
             TrainNetInfo

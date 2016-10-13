@@ -30,7 +30,7 @@ class Model(ModelBase):
 
         return padded
 
-    def build_training_net(self, features, labels):
+    def build_training_net(self, features, labels, fishing_timeseries):
 
         features = self.zero_pad_features(features)
         one_hot_labels = slim.one_hot_encoding(labels, self.num_classes)

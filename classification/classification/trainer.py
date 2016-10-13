@@ -83,15 +83,16 @@ class Trainer:
                      self.model.num_feature_dimensions],
                     [self.model.window_max_points], [2], []])
 
-        return features, labels
+        return features, labels, fishing_timeseries
 
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
-        features, labels = self._feature_data_reader('Training', True)
+        features, labels, fishing_timeseries_labels = self._feature_data_reader(
+            'Training', True)
 
-        loss, optimizer, logits = self.model.build_training_net(features,
-                                                                labels)
+        loss, optimizer, logits = self.model.build_training_net(
+            features, labels, fishing_timeseries_labels)
 
         predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 

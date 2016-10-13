@@ -86,7 +86,7 @@ class Model(ModelBase):
     def build_inference_net(self, features):
         return self.build_model(tf.constant(False), features)
 
-    def build_training_net(self, features, labels):
+    def build_training_net(self, features, labels, fishing_timeseries_labels):
         logits = self.build_model(tf.constant(True), features)
         example = slim.get_or_create_global_step() * self.batch_size
         #
