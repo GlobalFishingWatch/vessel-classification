@@ -63,9 +63,10 @@ class Inferer(object):
                      self.model.num_feature_dimensions],
                     [self.model.window_max_points], [2], []])
 
-        logits = self.model.build_inference_net(features)
+        (vessel_class_logits, fishing_localisation_logits
+         ) = self.model.build_inference_net(features)
 
-        softmax = slim.softmax(logits)
+        softmax = slim.softmax(vessel_class_logits)
 
         predictions = tf.cast(tf.argmax(softmax, 1), tf.int32)
         max_probabilities = tf.reduce_max(softmax, [1])
