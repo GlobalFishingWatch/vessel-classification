@@ -91,15 +91,19 @@ class Trainer:
         features, labels, fishing_timeseries_labels = self._feature_data_reader(
             'Training', True)
 
-        loss, optimizer, logits = self.model.build_training_net(
-            features, labels, fishing_timeseries_labels)
+        (loss, optimizer, vessel_class_logits,
+         fishing_localisation_logits) = self.model.build_training_net(
+             features, labels, fishing_timeseries_labels)
 
-        predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
+        vessel_class_predictions = tf.cast(
+            tf.argmax(vessel_class_logits, 1), tf.int32)
 
         tf.scalar_summary('Training loss', loss)
 
-        accuracy = slim.metrics.accuracy(labels, predictions)
-        tf.scalar_summary('Training accuracy', accuracy)
+        vessel_class_accuracy = slim.metrics.accuracy(labels,
+                                                      vessel_class_predictions)
+        tf.scalar_summary('Vessel class training accuracy',
+                          vessel_class_accuracy)
 
         train_op = slim.learning.create_train_op(
             loss,
@@ -120,13 +124,15 @@ class Trainer:
 
         features, labels = self._feature_data_reader('Test', False)
 
-        logits = self.model.build_inference_net(features)
+        vessel_class_logits, fishing_localisation_logits = self.model.build_inference_net(
+            features)
 
-        predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
+        vessel_class_predictions = tf.cast(
+            tf.argmax(vessel_class_logits, 1), tf.int32)
 
         names_to_values, names_to_updates = metrics.aggregate_metric_map({
-            'Test accuracy': metrics.streaming_accuracy(predictions, labels),
-            'Test precision': metrics.streaming_precision(predictions, labels),
+            'Vessel class test accuracy':
+            metrics.streaming_accuracy(vessel_class_predictions, labels),
         })
 
         # Create the summary ops such that they also print out to std output.

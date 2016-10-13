@@ -1,7 +1,9 @@
 import abc
 from collections import namedtuple
 
-TrainNetInfo = namedtuple("TrainNetInfo", ["loss", "optimizer", "logits"])
+TrainNetInfo = namedtuple("TrainNetInfo",
+                          ["loss", "optimizer", "vessel_class_logits",
+                           "fishing_localisation_logits"])
 
 
 class ModelBase(object):
@@ -39,8 +41,8 @@ class ModelBase(object):
             TrainNetInfo
 
         """
-        loss = optimizer = logits = None
-        return loss, optimizer, logits
+        loss = optimizer = vessel_class_logits = fishing_localisation_logits = None
+        return loss, optimizer, vessel_class_logits, fishing_localisation_logits
 
     @abc.abstractmethod
     def build_inference_net(self, features):
@@ -51,8 +53,10 @@ class ModelBase(object):
                 queue of features to feed into net
 
         Returns:
-            logits : tensor
+            vessel_class_logits : tensor with vessel classes for the batch
+            fishing_localisation_logits: tensor with fishing localisation scores
+                                         for the batch
 
         """
-        logits = None
-        return logits
+        vessel_class_logits = fishing_localisation_logits = None
+        return vessel_class_logits, fishing_localisation_logits

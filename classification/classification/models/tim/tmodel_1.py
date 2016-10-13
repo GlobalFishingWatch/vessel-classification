@@ -84,10 +84,10 @@ class Model(ModelBase):
         return logits
 
     def build_inference_net(self, features):
-        return self.build_model(tf.constant(False), features)
+        return self.build_model(tf.constant(False), features), None
 
     def build_training_net(self, features, labels, fishing_timeseries_labels):
-        logits = self.build_model(tf.constant(True), features)
+        vessel_class_logits = self.build_model(tf.constant(True), features)
         example = slim.get_or_create_global_step() * self.batch_size
         #
         with tf.variable_scope('training'):
@@ -100,10 +100,10 @@ class Model(ModelBase):
             # Compute loss and predicted probabilities
             with tf.name_scope('loss-function'):
                 loss = tf.reduce_mean(
-                    tf.nn.sparse_softmax_cross_entropy_with_logits(logits,
-                                                                   labels))
+                    tf.nn.sparse_softmax_cross_entropy_with_logits(
+                        vessel_class_logits, labels))
                 # Use simple momentum for the optimization.
                 optimizer = tf.train.MomentumOptimizer(learning_rate,
                                                        self.momentum)
 
-        return TrainNetInfo(loss, optimizer, logits)
+        return TrainNetInfo(loss, optimizer, vessel_class_logits, None)
