@@ -57,6 +57,34 @@ class ClusterNodeConfig(object):
                                            "index": 0}})
 
 
+def fishing_localisation_loss(logits, targets):
+    """A loss function for fishing localisation, which takes into account the
+       fact that we frequently do not have information about when fishing is
+       happening. Thus targets can be in the range 0 (not fishing) - 1 (fishing)
+       or it can take the value -1 to indicate don't know.
+    """
+    cross_entropies = tf.nn.sigmoid_cross_entropy_with_logits(logits, targets)
+
+    mask = tf.select(
+        targets == -1,
+        tf.zeros_like(
+            targets, dtype=tf.float32),
+        tf.ones_like(
+            targets, dtype=tf.float32))
+    input_size = tf.cast(tf.gather(tf.shape(logits), 1), tf.float32)
+
+    # Scale the sum of the loss by the number of present points in the
+    # target data, or 10% of the window size: whichever is the larger. Do this
+    # per sample (not across the batches).
+    loss_scale = tf.maximum(
+        tf.reduce_sum(
+            mask, reduction_indices=[1]), 0.1 * input_size)
+
+    return tf.reduce_mean(
+        tf.reduce_sum(
+            cross_entropies * mask, reduction_indices=[1]) / loss_scale)
+
+
 def single_feature_file_reader(filename_queue, num_features):
     """ Read and interpret data from a set of TFRecord files.
 
