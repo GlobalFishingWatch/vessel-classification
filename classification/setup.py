@@ -6,4 +6,5 @@ setuptools.setup(
     author_email='alexwilson@google.com',
     package_data={'classification.data': ['combined_classification_list.csv']},
     packages=['classification', 'classification.data', 'classification.models',
-              'classification.models.alex', 'classification.models.tim'])
+              'classification.models.alex', 'classification.models.hernan',
+              'classification.models.tim'])
