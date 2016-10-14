@@ -395,7 +395,7 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
         # Return an appropriately shaped empty numpy array.
         return (np.empty(
             [0, 1, window_size, 9], dtype=np.float32), np.empty(
-                window_size, dtype=np.int32), np.empty(
+                shape=[0, window_size], dtype=np.int32), np.empty(
                     shape=[0, 2], dtype=np.int32), np.empty(
                         shape=[0], dtype=np.int32))
 
@@ -500,6 +500,9 @@ def read_vessel_metadata(available_mmsis, metadata_file):
 
 
 def read_fishing_ranges(fishing_range_file):
+    """ Read vessel fishing ranges, return a dict of mmsi to classified fishing
+        or non-fishing ranges for that vessel.
+    """
     fishing_range_dict = defaultdict(lambda: [])
     with open(fishing_range_file, 'r') as f:
         for l in f.readlines()[1:]:
