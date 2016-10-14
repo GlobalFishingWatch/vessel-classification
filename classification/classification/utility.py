@@ -1,6 +1,7 @@
 from collections import defaultdict
 import logging
 import numpy as np
+import os
 import sys
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
@@ -423,3 +424,25 @@ def read_vessel_metadata_file_lines(available_mmsis, lines):
 def read_vessel_metadata(available_mmsis, metadata_file):
     with open(metadata_file, 'r') as f:
         return read_vessel_metadata_file_lines(available_mmsis, f.readlines())
+
+
+def find_available_mmsis(feature_path):
+    # TODO(alexwilson): Using a temporary session to get the matching files on
+    # GCS is far from ideal. However the alternative is to bring in additional
+    # libraries with explicit auth that may or may not play nicely with CloudML.
+    # Improve later...
+    with tf.Session() as sess:
+        logging.info(
+            "Finding matching features files. May take a few minutes...")
+        matching_files = tf.train.match_filenames_once(feature_path +
+                                                       "/*.tfrecord")
+        sess.run(tf.initialize_all_variables())
+
+        all_feature_files = sess.run(matching_files)
+        if len(all_feature_files) == 0:
+            logging.fatal("Error: no feature files found.")
+            sys.exit(-1)
+        logging.info("Found %d feature files.", len(all_feature_files))
+
+    return set(
+        [int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files])
