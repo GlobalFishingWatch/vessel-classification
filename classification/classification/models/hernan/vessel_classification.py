@@ -6,11 +6,14 @@ import tensorflow.contrib.metrics as metrics
 
 
 class Model(ModelBase):
-
     def build_network(self, features):
 
-        net = slim.repeat(slim.flatten(features), 3, slim.fully_connected,
-            100, activation_fn=tf.nn.relu)
+        net = slim.repeat(
+            slim.flatten(features),
+            3,
+            slim.fully_connected,
+            100,
+            activation_fn=tf.nn.relu)
         return slim.fully_connected(net, self.num_classes)
 
     def build_training_net(self, features, labels):
