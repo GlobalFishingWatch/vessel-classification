@@ -56,7 +56,7 @@ To install TensorFlow, follow [these instructions](https://www.tensorflow.org/ve
 
 To install the dependencies:
 
-* `sudo pip install google-api-python-client pyyaml`
+* `sudo pip install google-api-python-client pyyaml yapf`
 
 ## Deployment
 
@@ -66,6 +66,12 @@ tensor flow model training on Cloud ML). But other jobs are deployed to Compute 
 To build and deploy inference, from the root directory:
 
 * `docker build -f deploy/inference/Dockerfile .`
+
+
+# Adding new models
+
+* Create a directory in classification/classification/models with the model name (usually the developer name)
+* Add the model to setup.py
 
 
 # Running jobs
