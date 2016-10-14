@@ -44,9 +44,9 @@ class Inferer(object):
                 for mmsi in self.mmsis]
 
     def run_inference(self, inference_parallelism, inference_results_path):
-        input_files = self._feature_files(self.mmsis)
+        matching_files = self._feature_files(self.mmsis)
         filename_queue = tf.train.input_producer(
-            input_files, shuffle=False, num_epochs=1)
+            matching_files, shuffle=False, num_epochs=1)
 
         readers = []
         for _ in range(inference_parallelism):
