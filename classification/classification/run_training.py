@@ -66,8 +66,9 @@ def main(args):
         resource_filename('classification.data',
                           'combined_fishing_ranges.csv'))
     if not os.path.exists(fishing_range_file):
-        logging.fatal("Could not find fishign range file: %s.",
+        logging.fatal("Could not find fishing range file: %s.",
                       fishing_range_file)
+        sys.exit(-1)
 
     fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
 

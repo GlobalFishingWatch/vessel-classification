@@ -372,7 +372,7 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
         end_index = np.searchsorted(times, end_time, side='left')
         length = end_index - start_index
 
-        # Slice out the time window, removing the timestamp.
+        # Slice out the time window.
         cropped = input_series[start_index:end_index]
 
         # If this window is too long, pick a random subwindow.
