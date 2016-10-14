@@ -85,6 +85,27 @@ def fishing_localisation_loss(logits, targets):
             cross_entropies * mask, reduction_indices=[1]) / loss_scale)
 
 
+def fishing_localisation_mse(predictions, targets):
+    """Mean squared error for fishing localisation, which takes into account the
+       fact that we frequently do not have information about when fishing is
+       happening. Thus targets can be in the range 0 (not fishing) - 1 (fishing)
+       or it can take the value -1 to indicate don't know.
+    """
+    mask = tf.select(
+        targets == -1,
+        tf.zeros_like(
+            targets, dtype=tf.float32),
+        tf.ones_like(
+            targets, dtype=tf.float32))
+    scale = tf.reduce_sum(mask)
+
+    error = (predictions - targets) * mask
+    mse_sum = tf.reduce_sum(error * error)
+
+    return tf.cond(
+        tf.equal(scale, 0.0), lambda: scale, lambda: mse_sum / scale)
+
+
 def single_feature_file_reader(filename_queue, num_features):
     """ Read and interpret data from a set of TFRecord files.
 

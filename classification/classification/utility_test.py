@@ -5,7 +5,7 @@ import tensorflow as tf
 
 
 class FishingLocalisationLossTest(tf.test.TestCase):
-    def test_loss(self):
+    def test_simple_loss(self):
         with self.test_session():
             logits = np.array([[1, 0, 0, 1, 0], [1, 0, 1, 1, 0]], np.float32)
             targets = np.array([[1, 0, -1, 0, -1], [1, 0, 0, -1, -1]],
@@ -42,6 +42,19 @@ class FishingLocalisationLossTest(tf.test.TestCase):
             loss = utility.fishing_localisation_loss(logits, targets)
 
             self.assertAlmostEqual(0.0, loss.eval())
+
+
+class FishingLocalisationMseTest(tf.test.TestCase):
+    def test_simple_mse(self):
+        with self.test_session():
+            predictions = np.array([[1, 0, 0, 1, 0], [1, 0, 1, 1, 0]],
+                                   np.float32)
+            targets = np.array([[1, 0, -1, 0, -1], [1, 0, 0, -1, -1]],
+                               np.float32)
+
+            mse = utility.fishing_localisation_mse(predictions, targets)
+
+            self.assertAlmostEqual(0.33333333, mse.eval())
 
 
 class InceptionLayerTest(tf.test.TestCase):

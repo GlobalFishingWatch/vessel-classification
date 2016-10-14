@@ -122,7 +122,8 @@ class Trainer:
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
 
-        features, labels = self._feature_data_reader('Test', False)
+        features, labels, fishing_timeseries_labels = self._feature_data_reader(
+            'Test', False)
 
         vessel_class_logits, fishing_localisation_logits = self.model.build_inference_net(
             features)
