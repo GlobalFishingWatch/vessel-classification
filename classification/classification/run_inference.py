@@ -126,17 +126,27 @@ def main(args):
     all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
 
     if args.dataset_split != '':
-        metadata_file = os.path.abspath(
-            resource_filename('classification.data',
-                              'combined_classification_list.csv'))
-        if not os.path.exists(metadata_file):
-            logging.fatal("Could not find metadata file: %s.",
-                          args.metadata_file)
-            sys.exit(-1)
+        if args.dataset_split in ['Training', 'Test']:
+            metadata_file = os.path.abspath(
+                resource_filename('classification.data',
+                                  'combined_classification_list.csv'))
+            if not os.path.exists(metadata_file):
+                logging.fatal("Could not find metadata file: %s.",
+                              args.metadata_file)
+                sys.exit(-1)
 
-        vessel_metadata = utility.read_vessel_metadata(all_available_mmsis,
-                                                       metadata_file)
-        mmsis = set(vessel_metadata[args.dataset_split].keys())
+            vessel_metadata = utility.read_vessel_metadata(all_available_mmsis,
+                                                           metadata_file)
+            mmsis = set(vessel_metadata[args.dataset_split].keys())
+        else:
+            mmsis_file = os.path.abspath(
+                resource_filename('classification.data', args.dataset_split))
+            if not os.path.exists(mmsis_file):
+                logging.fatal("Could not find mmsis file: %s.",
+                              args.dataset_split)
+                sys.exit(-1)
+            with open(mmsis_file, 'r') as f:
+                mmsis = set([int(m) for m in f])
     else:
         mmsis = all_available_mmsis
 
@@ -185,7 +195,8 @@ def parse_args():
         type=str,
         default='',
         help='Data split to classify. If unspecified, all vessels. Otherwise '
-        'Training or Test')
+        'if Training or Test, read from built-in training/test split, '
+        'otherwise the name of a single-column csv file of mmsis.')
 
     return argparser.parse_args()
 
