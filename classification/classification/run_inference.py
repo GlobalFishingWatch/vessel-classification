@@ -125,7 +125,7 @@ def main(args):
 
     all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
 
-    if args.dataset_split != '':
+    if args.dataset_split:
         if args.dataset_split in ['Training', 'Test']:
             metadata_file = os.path.abspath(
                 resource_filename('classification.data',
