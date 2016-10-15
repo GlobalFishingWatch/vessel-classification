@@ -20,7 +20,7 @@ class FishingLocalisationLossTest(tf.test.TestCase):
                 tf.nn.sigmoid_cross_entropy_with_logits(filtered_logits,
                                                         filtered_targets))
 
-            self.assertAlmostEqual(filtered_loss.eval(), loss.eval())
+            self.assertAlmostEqual(filtered_loss.eval(), loss.eval(), places=5)
 
     def test_loss_scaling_floor(self):
         with self.test_session():
