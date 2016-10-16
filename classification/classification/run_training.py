@@ -54,12 +54,23 @@ def main(args):
     except:
         logging.fatal("Could not load model: {}".format(module))
         raise
+
     metadata_file = os.path.abspath(
         resource_filename('classification.data',
                           'combined_classification_list.csv'))
     if not os.path.exists(metadata_file):
-        logging.fatal("Could not find metadata file: %s.", args.metadata_file)
+        logging.fatal("Could not find metadata file: %s.", metadata_file)
         sys.exit(-1)
+
+    fishing_range_file = os.path.abspath(
+        resource_filename('classification.data',
+                          'combined_fishing_ranges.csv'))
+    if not os.path.exists(fishing_range_file):
+        logging.fatal("Could not find fishing range file: %s.",
+                      fishing_range_file)
+        sys.exit(-1)
+
+    fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
 
     # TODO(alexwilson): Using a temporary session to get the matching files on
     # GCS is far from ideal. However the alternative is to bring in additional
@@ -85,8 +96,8 @@ def main(args):
                                                    metadata_file)
 
     model = Model()
-    trainer = Trainer(model, vessel_metadata, args.root_feature_path,
-                      args.training_output_path)
+    trainer = Trainer(model, vessel_metadata, fishing_ranges,
+                      args.root_feature_path, args.training_output_path)
 
     config = json.loads(os.environ.get('TF_CONFIG', '{}'))
     if (config == {}):

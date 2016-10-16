@@ -56,17 +56,19 @@ class Inferer(object):
                 self.min_points_for_classification)
             readers.append(reader)
 
-        features, time_ranges, mmsis = tf.train.batch_join(
+        features, timeseries, time_ranges, mmsis = tf.train.batch_join(
             readers,
             self.batch_size,
             enqueue_many=True,
             capacity=1000,
             shapes=[[1, self.model.window_max_points,
-                     self.model.num_feature_dimensions], [2], []])
+                     self.model.num_feature_dimensions],
+                    [self.model.window_max_points], [2], []])
 
-        logits = self.model.build_inference_net(features)
+        (vessel_class_logits, fishing_localisation_logits
+         ) = self.model.build_inference_net(features)
 
-        softmax = slim.softmax(logits)
+        softmax = slim.softmax(vessel_class_logits)
 
         predictions = tf.cast(tf.argmax(softmax, 1), tf.int32)
         max_probabilities = tf.reduce_max(softmax, [1])
