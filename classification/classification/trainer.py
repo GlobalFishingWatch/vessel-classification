@@ -125,8 +125,8 @@ class Trainer:
         features, labels, fishing_timeseries_labels = self._feature_data_reader(
             'Test', False)
 
-        vessel_class_logits, fishing_localisation_logits = self.model.build_inference_net(
-            features)
+        (vessel_class_logits, fishing_localisation_logits,
+         sample_counts) = self.model.build_inference_net(features)
 
         vessel_class_predictions = tf.cast(
             tf.argmax(vessel_class_logits, 1), tf.int32)
