@@ -96,7 +96,8 @@ case class VesselLocationRecord(timestamp: Instant,
 
 case class ResampledVesselLocation(timestamp: Instant,
                                    location: LatLon,
-                                   distanceToShore: DoubleU[kilometer])
+                                   distanceToShore: DoubleU[kilometer],
+                                   pointDensity: Double)
 
 case class ResampledVesselLocationWithAdjacency(
     timestamp: Instant,
@@ -247,6 +248,9 @@ object Utility extends LazyLogging {
         val firstTimeSeconds = tsToUnixSeconds(llr.timestamp)
         val secondTimeSeconds = tsToUnixSeconds(currentLocationRecord.timestamp)
         val timeDeltaSeconds = secondTimeSeconds - firstTimeSeconds
+
+        val pointDensity = math.min(1.0, incrementSeconds.toDouble / timeDeltaSeconds.toDouble)
+
         if (firstTimeSeconds <= iterTime && secondTimeSeconds >= iterTime &&
             timeDeltaSeconds < maxInterpolateGapSeconds) {
           val mix = (iterTime - firstTimeSeconds).toDouble / (secondTimeSeconds - firstTimeSeconds).toDouble
@@ -262,7 +266,8 @@ object Utility extends LazyLogging {
           interpolatedSeries.append(
             ResampledVesselLocation(new Instant(iterTime * 1000),
                                     LatLon(interpLat.of[degrees], interpLon.of[degrees]),
-                                    interpDistFromShore.of[kilometer]))
+                                    interpDistFromShore.of[kilometer],
+                                    pointDensity))
         }
       }
 
