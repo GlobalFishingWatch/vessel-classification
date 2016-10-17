@@ -99,14 +99,6 @@ object RangeValidator {
 
 object Pipeline extends LazyLogging {
 
-  case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
-    def toJson =
-      ("latitude" -> meanLocation.lat.value) ~
-        ("longitude" -> meanLocation.lon.value) ~
-        ("numUniqueVessels" -> vessels.size) ~
-        ("mmsis" -> vessels.map(_.mmsi))
-  }
-
   lazy val blacklistedMmsis = Set(0, 12345)
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
@@ -278,7 +270,9 @@ object Pipeline extends LazyLogging {
 
     val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 
-    val features = ModelFeatures.buildVesselFeatures(processed).map {
+    val anchorages: SCollection[Anchorage] = findAnchorageCells(processed)
+
+    val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
       case (md, feature) =>
         (s"${md.mmsi}", feature)
     }
@@ -290,9 +284,8 @@ object Pipeline extends LazyLogging {
     val outputFeaturePath = baseOutputPath + "/features"
     val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
 
-    // Build and output anchorages.
+    // Output anchorages.
     val anchoragesPath = baseOutputPath + "/anchorages"
-    val anchorages = findAnchorageCells(processed)
     val anchoragesAsString = anchorages.map { anchorage =>
       compact(render(anchorage.toJson))
     }
