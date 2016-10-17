@@ -210,3 +210,12 @@ class LocationResamplerTests extends PipelineSpec with Matchers {
     result should contain theSameElementsAs expected
   }
 }
+
+class CountryCodeTests extends PipelineSpec with Matchers {
+  "Country codes" should "be correctly parsed out from mmsis" in {
+    CountryCodes.fromMmsi(0) should equal("-")
+    CountryCodes.fromMmsi(10000) should equal("-")
+    CountryCodes.fromMmsi(233000000) should equal("-")
+    CountryCodes.fromMmsi(233453123) should equal("GB")
+  }
+}
