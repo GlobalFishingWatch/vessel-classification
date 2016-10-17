@@ -19,11 +19,12 @@ object Encounters extends LazyLogging {
   def calculateEncounters(
       minDurationForEncounter: Duration,
       input: SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])])
-    : SCollection[VesselEncounter] = {
+    : SCollection[VesselEncounters] = {
 
     input.flatMap {
       case (md, locationSeries) =>
-        val encounters = mutable.ArrayBuffer.empty[VesselEncounter]
+        val encounters =
+          mutable.Map.empty[(VesselMetadata, VesselMetadata), mutable.ArrayBuffer[SingleEncounter]]
 
         var currentEncounterVessel: Option[VesselMetadata] = None
         val currentRun = mutable.ArrayBuffer.empty[ResampledVesselLocationWithAdjacency]
@@ -52,14 +53,12 @@ object Encounters extends LazyLogging {
               val medianSpeed =
                 impliedSpeeds.medianBy(Predef.identity).of[meters_per_second].convert[knots]
 
-              encounters.append(
-                VesselEncounter(md,
-                                currentEncounterVessel.get,
-                                startTime,
-                                endTime,
-                                meanLocation,
-                                medianDistance,
-                                medianSpeed))
+              val key = (md, currentEncounterVessel.get)
+              if (!encounters.contains(key)) {
+                encounters(key) = mutable.ArrayBuffer.empty[SingleEncounter]
+              }
+              encounters(key).append(
+                SingleEncounter(startTime, endTime, meanLocation, medianDistance, medianSpeed))
             }
           }
           currentEncounterVessel = newEncounterVessel
@@ -87,7 +86,10 @@ object Encounters extends LazyLogging {
 
         tryAddEncounter(None)
 
-        encounters.toIndexedSeq
+        encounters.map {
+          case (key, encounters) =>
+            VesselEncounters(key._1, key._2, encounters.toSeq)
+        }.toIndexedSeq
     }
   }
 

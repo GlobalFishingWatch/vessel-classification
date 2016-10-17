@@ -100,15 +100,11 @@ object RangeValidator {
 object Pipeline extends LazyLogging {
 
   case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
-    def toJson: String = {
-      val json =
-        ("latitude" -> meanLocation.lat.value) ~
-          ("longitude" -> meanLocation.lon.value) ~
-          ("numUniqueVessels" -> vessels.size) ~
-          ("mmsis" -> vessels.map(_.mmsi))
-
-      compact(render(json))
-    }
+    def toJson =
+      ("latitude" -> meanLocation.lat.value) ~
+        ("longitude" -> meanLocation.lon.value) ~
+        ("numUniqueVessels" -> vessels.size) ~
+        ("mmsis" -> vessels.map(_.mmsi))
   }
 
   lazy val blacklistedMmsis = Set(0, 12345)
@@ -306,7 +302,7 @@ object Pipeline extends LazyLogging {
     val suspectedEncountersPath = baseOutputPath + "/encounters"
     val encounters =
       Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
-    encounters.map(_.toJson).saveAsTextFile(suspectedEncountersPath)
+    encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
 
     sc.close()
   }

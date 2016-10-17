@@ -105,25 +105,28 @@ case class ResampledVesselLocationWithAdjacency(
     numNeighbours: Int,
     closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer])])
 
-case class VesselEncounter(vessel1: VesselMetadata,
-                           vessel2: VesselMetadata,
-                           startTime: Instant,
+case class SingleEncounter(startTime: Instant,
                            endTime: Instant,
                            meanLocation: LatLon,
                            medianDistance: DoubleU[kilometer],
                            medianSpeed: DoubleU[knots]) {
-  def toJson = {
-    val json =
-      ("mmsi1" -> vessel1.mmsi) ~
-        ("mmsi2" -> vessel2.mmsi) ~
-        ("start_time" -> startTime.toString) ~
-        ("end_time" -> endTime.toString) ~
-        ("mean_latitude" -> meanLocation.lat.value) ~
-        ("mean_longitude" -> meanLocation.lon.value) ~
-        ("median_distance" -> medianDistance.value) ~
-        ("median_speed" -> medianSpeed.value)
-    compact(render(json))
-  }
+  def toJson =
+    ("start_time" -> startTime.toString) ~
+      ("end_time" -> endTime.toString) ~
+      ("mean_latitude" -> meanLocation.lat.value) ~
+      ("mean_longitude" -> meanLocation.lon.value) ~
+      ("median_distance" -> medianDistance.value) ~
+      ("median_speed" -> medianSpeed.value)
+}
+
+case class VesselEncounters(vessel1: VesselMetadata,
+                            vessel2: VesselMetadata,
+                            encounters: Seq[SingleEncounter]) {
+  def toJson =
+    ("mmsi1" -> vessel1.mmsi) ~
+      ("mmsi2" -> vessel2.mmsi) ~
+      ("encounters" -> encounters.map(_.toJson))
+
 }
 
 object Utility extends LazyLogging {
