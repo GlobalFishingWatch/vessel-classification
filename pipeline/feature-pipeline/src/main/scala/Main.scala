@@ -27,6 +27,9 @@ import java.nio.charset.StandardCharsets
 import org.apache.commons.math3.util.MathUtils
 import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
 import org.joda.time.format.ISODateTimeFormat
+import org.json4s._
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
@@ -95,6 +98,18 @@ object RangeValidator {
 }
 
 object Pipeline extends LazyLogging {
+
+  case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
+    def toJson: String = {
+      val json =
+        ("latitude" -> meanLocation.lat.value) ~
+          ("longitude" -> meanLocation.lon.value) ~
+          ("numUniqueVessels" -> vessels.size) ~
+          ("mmsis" -> vessels.map(_.mmsi))
+
+      compact(render(json))
+    }
+  }
 
   lazy val blacklistedMmsis = Set(0, 12345)
 
@@ -222,8 +237,8 @@ object Pipeline extends LazyLogging {
     }
   }
 
-  def findSuspectedPortCells(
-      input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[SuspectedPort] = {
+  def findAnchorageCells(
+      input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[Anchorage] = {
     input.flatMap {
       case (md, processedLocations) =>
         processedLocations.stationaryPeriods.map { pl =>
@@ -234,7 +249,8 @@ object Pipeline extends LazyLogging {
       case (cell, visits) =>
         val centralPoint = LatLon.mean(visits.map(_._2.location))
         val uniqueVessels = visits.map(_._1).toIndexedSeq.distinct
-        SuspectedPort(centralPoint, uniqueVessels)
+
+        Anchorage(centralPoint, uniqueVessels)
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForPort }
   }
 
@@ -278,22 +294,19 @@ object Pipeline extends LazyLogging {
     val outputFeaturePath = baseOutputPath + "/features"
     val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
 
-    // Build and output suspected ports.
-    val suspectedPortsPath = baseOutputPath + "/ports.csv"
-    val suspectedPorts = findSuspectedPortCells(processed)
-    val suspectedPortsAsString = suspectedPorts.map { sp =>
-      val mmsis = sp.vessels.map { md =>
-        s"${md.mmsi}"
-      }.mkString(";")
-      s"${sp.location.lat.value},${sp.location.lon.value},${sp.vessels.size},$mmsis"
+    // Build and output anchorages.
+    val anchoragesPath = baseOutputPath + "/anchorages"
+    val anchorages = findAnchorageCells(processed)
+    val anchoragesAsString = anchorages.map { anchorage =>
+      compact(render(anchorage.toJson))
     }
-    suspectedPortsAsString.saveAsTextFile(suspectedPortsPath)
+    anchoragesAsString.saveAsTextFile(anchoragesPath)
 
     // Build and output suspected encounters.
-    val suspectedEncountersPath = baseOutputPath + "/encounters.csv"
+    val suspectedEncountersPath = baseOutputPath + "/encounters"
     val encounters =
       Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
-    encounters.map(_.toCsvLine).saveAsTextFile(suspectedEncountersPath)
+    encounters.map(_.toJson).saveAsTextFile(suspectedEncountersPath)
 
     sc.close()
   }

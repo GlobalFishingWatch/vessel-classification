@@ -24,6 +24,9 @@ import java.nio.channels.Channels
 
 import org.apache.commons.math3.util.MathUtils
 import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
+import org.json4s._
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
@@ -109,12 +112,19 @@ case class VesselEncounter(vessel1: VesselMetadata,
                            meanLocation: LatLon,
                            medianDistance: DoubleU[kilometer],
                            medianSpeed: DoubleU[knots]) {
-  def toCsvLine =
-    s"${vessel1.mmsi},${vessel2.mmsi},$startTime,$endTime,${meanLocation.lat}," +
-      s"${meanLocation.lon},${medianDistance},${medianSpeed}"
+  def toJson = {
+    val json =
+      ("mmsi1" -> vessel1.mmsi) ~
+        ("mmsi2" -> vessel2.mmsi) ~
+        ("start_time" -> startTime.toString) ~
+        ("end_time" -> endTime.toString) ~
+        ("mean_latitude" -> meanLocation.lat.value) ~
+        ("mean_longitude" -> meanLocation.lon.value) ~
+        ("median_distance" -> medianDistance.value) ~
+        ("median_speed" -> medianSpeed.value)
+    compact(render(json))
+  }
 }
-
-case class SuspectedPort(location: LatLon, vessels: Seq[VesselMetadata])
 
 object Utility extends LazyLogging {
   implicit class RichLogger(val logger: Logger) {
