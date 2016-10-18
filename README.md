@@ -6,13 +6,12 @@ Vessel classification pipeline: feature generation and model training/inference.
 
 # Developing
 
-* Code is to be formatted using [YAPF](https://github.com/google/yapf) before submission. Use `yapf -r -i .` in top level
-  directory.
+* Code is to be formatted using [YAPF](https://github.com/google/yapf) before submission. See YAPF section below.
 
 
-# Building
+# Setup and building
 
-## Requirements
+## Summary of Requirements
 
 * A JVM.
 * A proto3-compatible version of protoc. See: [protocol buffers](https://developers.google.com/protocol-buffers/).
@@ -58,6 +57,15 @@ To install the dependencies:
 
 * `sudo pip install google-api-python-client pyyaml`
 
+## YAPF
+
+[YAPF](https://github.com/google/yapf) is a code formatter for Python. To install it, run:
+
+* `sudo pip install yapf`
+
+Run `yapf -r -i .` in top level directory to fix the format of the full project.
+
+
 ## Deployment
 
 Some of our jobs are run on managed services (for instance the feature pipeline on Cloud Dataflow, the
@@ -66,6 +74,12 @@ tensor flow model training on Cloud ML). But other jobs are deployed to Compute 
 To build and deploy inference, from the root directory:
 
 * `docker build -f deploy/inference/Dockerfile .`
+
+
+# Adding new models
+
+* Create a directory in classification/classification/models with the model name (usually the developer name)
+* Add the model to setup.py
 
 
 # Running jobs
