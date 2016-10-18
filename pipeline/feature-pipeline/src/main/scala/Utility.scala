@@ -126,7 +126,8 @@ case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
     val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(_._2)
     ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
-      ("numUniqueVessels" -> vessels.size) ~
+      ("unique-vessel-count" -> vessels.size) ~
+      ("flag-state-distribution" -> flagStateDistribution)
       ("mmsis" -> vessels.map(_.mmsi))
   }
 }
