@@ -85,11 +85,9 @@ case class StationaryPeriod(location: LatLon, duration: Duration)
 case class ProcessedLocations(locations: Seq[VesselLocationRecord],
                               stationaryPeriods: Seq[StationaryPeriod])
 
-// TODO(alexwilson): For now build simple coder for this class. :-(
 case class VesselLocationRecord(timestamp: Instant,
                                 location: LatLon,
                                 distanceToShore: DoubleU[kilometer],
-                                distanceToPort: DoubleU[kilometer],
                                 speed: DoubleU[knots],
                                 course: DoubleU[degrees],
                                 heading: DoubleU[degrees])
@@ -244,7 +242,7 @@ object Utility extends LazyLogging {
         cellMap.getOrElse(cellid, Seq())
       }
 
-      allValues.map(v => (locFn(v).getDistance(location), v)).toIndexedSeq.sortBy(_._1)
+      allValues.map(v => (locFn(v).getDistance(location), v)).toIndexedSeq.distinct.sortBy(_._1)
     }
   }
 

@@ -23,10 +23,10 @@ object ModelFeatures extends LazyLogging {
   import AdditionalUnits._
   import Utility._
 
-  case class BoundingAnchorage(startTime: Instant,
-                               endTime: Instant,
-                               startAnchorage: Anchorage,
-                               endAnchorage: Anchorage) {
+  private case class BoundingAnchorage(startTime: Instant,
+                                       endTime: Instant,
+                                       startAnchorage: Anchorage,
+                                       endAnchorage: Anchorage) {
     def minDistance(location: LatLon): DoubleU[kilometer] = {
       val d1 = startAnchorage.meanLocation.getDistance(location)
       val d2 = endAnchorage.meanLocation.getDistance(location)
@@ -64,7 +64,7 @@ object ModelFeatures extends LazyLogging {
           }
 
           while (boundingAnchoragesIterator.hasNext && (currentBoundingAnchorage.isEmpty ||
-                 !currentBoundingAnchorage.isEmpty && currentBoundingAnchorage.get.startTime
+                 !currentBoundingAnchorage.isEmpty && currentBoundingAnchorage.get.endTime
                    .isBefore(p1.timestamp))) {
             currentBoundingAnchorage = Some(boundingAnchoragesIterator.next)
           }

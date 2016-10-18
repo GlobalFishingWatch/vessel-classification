@@ -32,18 +32,16 @@ object TestHelper {
 
   def ts(timestamp: String) = Instant.parse(timestamp)
 
-  def buildLocationRecord(timestamp: String,
-                          lat: Double,
-                          lon: Double,
-                          distanceToShore: Double = 500.0,
-                          distanceToPort: Double = 500.0,
-                          speed: Double = 0.0,
-                          course: Double = 0.0,
-                          heading: Double = 0.0) =
+  def vlr(timestamp: String,
+          lat: Double,
+          lon: Double,
+          distanceToShore: Double = 500.0,
+          speed: Double = 0.0,
+          course: Double = 0.0,
+          heading: Double = 0.0) =
     VesselLocationRecord(ts(timestamp),
                          LatLon(lat.of[degrees], lon.of[degrees]),
                          distanceToShore.of[kilometer],
-                         distanceToPort.of[kilometer],
                          speed.of[knots],
                          course.of[degrees],
                          heading.of[degrees])
@@ -91,13 +89,11 @@ class PipelineTests extends PipelineSpec with Matchers {
             buildMessage(mmsi = 127, timestamp = "2016-01-01T00:03:00Z", lat = 68.4, lon = 32.0)))
 
       val correctRecords =
-        Map(VesselMetadata(45) -> Seq(
-              buildLocationRecord("2016-01-01T00:00:00Z", lat = 45.3, lon = 0.5),
-              buildLocationRecord("2016-01-01T00:02:00Z", lat = 45.3, lon = 0.5)),
-            VesselMetadata(127) -> Seq(
-              buildLocationRecord("2016-01-01T00:00:00Z", lat = 68.4, lon = 32.0),
-              buildLocationRecord("2016-01-01T00:01:30Z", lat = 68.4, lon = 32.0),
-              buildLocationRecord("2016-01-01T00:03:00Z", lat = 68.4, lon = 32.0)))
+        Map(VesselMetadata(45) -> Seq(vlr("2016-01-01T00:00:00Z", lat = 45.3, lon = 0.5),
+                                      vlr("2016-01-01T00:02:00Z", lat = 45.3, lon = 0.5)),
+            VesselMetadata(127) -> Seq(vlr("2016-01-01T00:00:00Z", lat = 68.4, lon = 32.0),
+                                       vlr("2016-01-01T00:01:30Z", lat = 68.4, lon = 32.0),
+                                       vlr("2016-01-01T00:03:00Z", lat = 68.4, lon = 32.0)))
 
       val locationRecords =
         Pipeline.readJsonRecords(Seq(input))
@@ -113,21 +109,21 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
   import AdditionalUnits._
 
   "The pipeline" should "successfully thin points down" in {
-    val inputRecords = Seq(buildLocationRecord("2011-07-01T00:00:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:02:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:03:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:05:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:07:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:15:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:19:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:30:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:40:00Z", lat = 10.0, lon = 10.0))
+    val inputRecords = Seq(vlr("2011-07-01T00:00:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:02:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:03:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:05:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:07:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:15:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:19:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:30:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:40:00Z", lat = 10.0, lon = 10.0))
 
-    val expected = Seq(buildLocationRecord("2011-07-01T00:00:00Z", lat = 10.0, lon = 10.0),
-                       buildLocationRecord("2011-07-01T00:05:00Z", lat = 10.0, lon = 10.0),
-                       buildLocationRecord("2011-07-01T00:15:00Z", lat = 10.0, lon = 10.0),
-                       buildLocationRecord("2011-07-01T00:30:00Z", lat = 10.0, lon = 10.0),
-                       buildLocationRecord("2011-07-01T00:40:00Z", lat = 10.0, lon = 10.0))
+    val expected = Seq(vlr("2011-07-01T00:00:00Z", lat = 10.0, lon = 10.0),
+                       vlr("2011-07-01T00:05:00Z", lat = 10.0, lon = 10.0),
+                       vlr("2011-07-01T00:15:00Z", lat = 10.0, lon = 10.0),
+                       vlr("2011-07-01T00:30:00Z", lat = 10.0, lon = 10.0),
+                       vlr("2011-07-01T00:40:00Z", lat = 10.0, lon = 10.0))
 
     val result = Pipeline.thinPoints(inputRecords)
 
@@ -135,30 +131,30 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
   }
 
   "The pipeline" should "remove long stationary periods" in {
-    val inputRecords = Seq(buildLocationRecord("2011-07-01T00:00:00Z", lat = 10, lon = 10),
-                           buildLocationRecord("2011-07-02T00:00:00Z", lat = 10, lon = 10),
-                           buildLocationRecord("2011-07-03T00:00:00Z", lat = 10, lon = 10),
-                           buildLocationRecord("2011-07-04T00:00:00Z", lat = 10, lon = 10),
-                           buildLocationRecord("2011-07-05T00:00:00Z", lat = 11, lon = 10),
-                           buildLocationRecord("2011-07-06T00:00:00Z", lat = 12, lon = 10),
-                           buildLocationRecord("2011-07-07T00:00:00Z", lat = 12, lon = 10),
-                           buildLocationRecord("2011-07-08T00:00:00Z", lat = 13, lon = 10),
-                           buildLocationRecord("2011-07-09T00:00:00Z", lat = 14, lon = 10),
-                           buildLocationRecord("2011-07-10T00:00:00Z", lat = 14, lon = 10),
-                           buildLocationRecord("2011-07-12T00:00:00Z", lat = 14, lon = 10),
-                           buildLocationRecord("2011-07-13T00:00:00Z", lat = 15, lon = 10),
-                           buildLocationRecord("2011-07-14T00:00:00Z", lat = 16, lon = 10))
+    val inputRecords = Seq(vlr("2011-07-01T00:00:00Z", lat = 10, lon = 10),
+                           vlr("2011-07-02T00:00:00Z", lat = 10, lon = 10),
+                           vlr("2011-07-03T00:00:00Z", lat = 10, lon = 10),
+                           vlr("2011-07-04T00:00:00Z", lat = 10, lon = 10),
+                           vlr("2011-07-05T00:00:00Z", lat = 11, lon = 10),
+                           vlr("2011-07-06T00:00:00Z", lat = 12, lon = 10),
+                           vlr("2011-07-07T00:00:00Z", lat = 12, lon = 10),
+                           vlr("2011-07-08T00:00:00Z", lat = 13, lon = 10),
+                           vlr("2011-07-09T00:00:00Z", lat = 14, lon = 10),
+                           vlr("2011-07-10T00:00:00Z", lat = 14, lon = 10),
+                           vlr("2011-07-12T00:00:00Z", lat = 14, lon = 10),
+                           vlr("2011-07-13T00:00:00Z", lat = 15, lon = 10),
+                           vlr("2011-07-14T00:00:00Z", lat = 16, lon = 10))
 
-    val expectedLocations = Seq(buildLocationRecord("2011-07-01T00:00:00Z", lat = 10, lon = 10),
-                                buildLocationRecord("2011-07-04T00:00:00Z", lat = 10, lon = 10),
-                                buildLocationRecord("2011-07-05T00:00:00Z", lat = 11, lon = 10),
-                                buildLocationRecord("2011-07-06T00:00:00Z", lat = 12, lon = 10),
-                                buildLocationRecord("2011-07-07T00:00:00Z", lat = 12, lon = 10),
-                                buildLocationRecord("2011-07-08T00:00:00Z", lat = 13, lon = 10),
-                                buildLocationRecord("2011-07-09T00:00:00Z", lat = 14, lon = 10),
-                                buildLocationRecord("2011-07-12T00:00:00Z", lat = 14, lon = 10),
-                                buildLocationRecord("2011-07-13T00:00:00Z", lat = 15, lon = 10),
-                                buildLocationRecord("2011-07-14T00:00:00Z", lat = 16, lon = 10))
+    val expectedLocations = Seq(vlr("2011-07-01T00:00:00Z", lat = 10, lon = 10),
+                                vlr("2011-07-04T00:00:00Z", lat = 10, lon = 10),
+                                vlr("2011-07-05T00:00:00Z", lat = 11, lon = 10),
+                                vlr("2011-07-06T00:00:00Z", lat = 12, lon = 10),
+                                vlr("2011-07-07T00:00:00Z", lat = 12, lon = 10),
+                                vlr("2011-07-08T00:00:00Z", lat = 13, lon = 10),
+                                vlr("2011-07-09T00:00:00Z", lat = 14, lon = 10),
+                                vlr("2011-07-12T00:00:00Z", lat = 14, lon = 10),
+                                vlr("2011-07-13T00:00:00Z", lat = 15, lon = 10),
+                                vlr("2011-07-14T00:00:00Z", lat = 16, lon = 10))
 
     val expectedStationaryPeriods = Seq(
       StationaryPeriod(LatLon(10.0.of[degrees], 10.0.of[degrees]), Duration.standardHours(24 * 3)),
@@ -168,6 +164,73 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
 
     result.locations should contain theSameElementsAs expectedLocations
     result.stationaryPeriods should contain theSameElementsAs expectedStationaryPeriods
+  }
+}
+
+class FeatureBuilderTests extends PipelineSpec with Matchers {
+  import TestHelper._
+  import AdditionalUnits._
+
+  val anchorageLocations = IndexedSeq(
+    Anchorage(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]), Seq()),
+    Anchorage(LatLon(-1.4686489.of[degrees], 55.2206029.of[degrees]), Seq()),
+    Anchorage(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), Seq()))
+
+  val vesselPath = Seq(vlr("2011-07-01T00:00:00Z", -1.4065933, 55.2350923, speed = 1.0),
+                       vlr("2011-07-01T00:05:00Z", -1.4218712, 55.2342113, speed = 1.0),
+                       vlr("2011-07-01T00:10:00Z", -1.4467621, 55.2334282, speed = 1.0),
+                       vlr("2011-07-01T00:15:00Z", -1.4623833, 55.2310789, speed = 1.0),
+                       vlr("2011-07-01T00:20:00Z", -1.469593, 55.2287294, speed = 1.0),
+                       vlr("2011-07-01T00:25:00Z", -1.471138, 55.2267713, speed = 1.0),
+                       vlr("2011-07-01T00:30:00Z", -1.470623, 55.2236383, speed = 1.0),
+                       vlr("2011-07-01T00:35:00Z", -1.4704514, 55.2206029, speed = 1.0),
+                       vlr("2011-07-01T00:40:00Z", -1.4704514, 55.218057, speed = 1.0),
+                       vlr("2011-07-01T00:45:00Z", -1.4704514, 55.215217, speed = 1.0),
+                       vlr("2011-07-01T00:50:00Z", -1.4728546, 55.2116913, speed = 1.0),
+                       vlr("2011-07-01T01:00:00Z", -1.4718246, 55.2088509, speed = 1.0),
+                       vlr("2011-07-01T01:10:00Z", -1.4474487, 55.2057165, speed = 1.0),
+                       vlr("2011-07-01T01:20:00Z", -1.4278793, 55.2040512, speed = 1.0),
+                       vlr("2011-07-01T01:30:00Z", -1.4084816, 55.2036594, speed = 1.0),
+                       vlr("2011-07-01T01:40:00Z", -1.3998985, 55.2037573, speed = 1.0))
+
+  "Adjacency lookup" should "correctly return the nearest locations" in {
+    val anchorageLookup = Utility
+      .AdjacencyLookup(anchorageLocations, (v: Anchorage) => v.meanLocation, 0.5.of[kilometer], 12)
+    val firstLoc = LatLon(-1.4065933.of[degrees], 55.2350923.of[degrees])
+    val secondLoc = LatLon(-1.4704514.of[degrees], 55.2206029.of[degrees])
+    val thirdLoc = LatLon(-1.3998985.of[degrees], 55.2037573.of[degrees])
+
+    anchorageLookup.nearby(firstLoc).head._2 should equal(anchorageLocations(0))
+    anchorageLookup.nearby(secondLoc).head._2 should equal(anchorageLocations(1))
+    anchorageLookup.nearby(thirdLoc).head._2 should equal(anchorageLocations(2))
+  }
+
+  "The pipeline" should "correctly build single vessel features" in {
+    val locations = Seq[VesselLocationRecord]()
+    val anchorages = Seq[Anchorage]()
+
+    val anchorageLookup = Utility
+      .AdjacencyLookup(anchorageLocations, (v: Anchorage) => v.meanLocation, 0.1.of[kilometer], 13)
+
+    val features = ModelFeatures.buildSingleVesselFeatures(vesselPath, anchorageLookup)
+
+    val expectedFeatures = Vector(
+      Array(1.3094787E9, 5.707110264748875, 0.9934654718911284, 0.4150483749018927, 0.005652584164039989, 0.0, -0.7569444444444443, -0.8333333333333334, 0.008321569619043047, 6.2166061010848646, 0.9878435975166979, 5.707110264748875),
+      Array(1.309479E9, 5.707110264748875, 1.3263776243488667, 0.4150483749018927, 0.009182286163263529, 0.0, -0.7569444444444443, -0.8333333333333334, -0.03749178728367031, 6.2166061010848646, 1.339924626974254, 6.398594934535208),
+      Array(1.3094793E9, 5.707110264748875, 1.0135685947460997, 0.4150483749018927, 0.005834335303245511, 0.0, -0.7569444444444443, -0.8333333333333334, -0.052745486205012515, 6.2166061010848646, 0.857027975842463, 6.398594934535208),
+      Array(1.3094796E9, 5.707110264748875, 0.6111889414513352, 0.4150483749018927, 0.0028047990885309423, 0.0, -0.7569444444444443, -0.8333333333333334, -0.18706674146856153, 6.2166061010848646, 0.6464942180906326, 5.707110264748875),
+      Array(1.3094799E9, 5.707110264748875, 0.24460385399507656, 0.4150483749018927, 9.2329126495125E-4, 0.0, -0.7569444444444443, -0.8333333333333334, -0.264563297490627, 6.2166061010848646, 0.5532866293775093, 0.0),
+      Array(1.3094802E9, 5.707110264748875, 0.3021130151441151, 0.4150483749018927, 0.001175023040790746, 0.0, -0.7569444444444443, -0.8333333333333334, 0.03389521907623849, 6.2166061010848646, 0.3380973113032052, 0.0),
+      Array(1.3094805E9, 5.707110264748875, 0.29097926079281866, 0.4150483749018927, 0.0011251562411156483, 0.0, -0.7569444444444443, -0.8333333333333334, 0.017982158365888096, 6.2166061010848646, 0.18257403911572168, 0.0),
+      Array(1.3094808E9, 5.707110264748875, 0.24906098287037828, 0.4150483749018927, 9.422901076859697E-4, 0.0, -0.7569444444444443, -0.8333333333333334, 3.839159005547539E-7, 6.2166061010848646, 0.2975583666680227, 0.0),
+      Array(1.3094811E9, 5.707110264748875, 0.2742102796368779, 0.4150483749018927, 0.0010510853968555757, 0.0, -0.7569444444444443, -0.8333333333333334, 0.19048967267865144, 6.2166061010848646, 0.4891629205486719, 0.0),
+      Array(1.3094814E9, 5.707110264748875, 0.38801126768384675, 0.4150483749018927, 0.0015789075135279392, 0.0, -0.7569444444444443, -0.8333333333333334, -0.30125528568059545, 6.2166061010848646, 0.7394341861932613, 5.707110264748875),
+      Array(1.309482E9, 6.398594934535208, 0.2894209655197388, 0.4150483749018927, 5.59266705260282E-4, 0.0, -0.7569444444444443, -0.8333333333333334, -0.3485392903918195, 6.2166061010848646, 0.8554227710976902, 6.803505257608338),
+      Array(1.3094826E9, 6.398594934535208, 1.3166930096431666, 0.4150483749018927, 0.004541442630185502, 0.0, -0.7569444444444443, -0.8333333333333334, -0.013679731647585533, 6.2166061010848646, 1.3554110312101684, 7.313886831633462),
+      Array(1.3094832E9, 6.398594934535208, 1.1576691094610287, 0.4150483749018927, 0.0036309111727990608, 0.0, -0.7569444444444443, -0.8333333333333334, -0.020587084732611758, 6.2166061010848646, 1.4550829636395497, 7.0909098220799835),
+      Array(1.3094838E9, 6.398594934535208, 1.1493088896567933, 0.4150483749018927, 0.003586911009577457, 0.0, -0.7569444444444443, -0.8333333333333334, -0.010055884439657917, 6.2166061010848646, 0.7567138786556233, 6.398594934535208))
+
+    features should contain theSameElementsAs expectedFeatures
   }
 }
 
@@ -181,23 +244,23 @@ class LocationResamplerTests extends PipelineSpec with Matchers {
                             500.0.of[kilometer])
 
   "The resampler" should "resample points, but not if they are too far apart" in {
-    val inputRecords = Seq(buildLocationRecord("2011-06-30T23:58:00Z", lat = 10.0, lon = 10.0),
+    val inputRecords = Seq(vlr("2011-06-30T23:58:00Z", lat = 10.0, lon = 10.0),
                            // Pick up the exact value at 00:00:00
-                           buildLocationRecord("2011-07-01T00:00:00Z", lat = 10.3, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:02:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:04:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:06:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:08:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:00:00Z", lat = 10.3, lon = 10.0),
+                           vlr("2011-07-01T00:02:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:04:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:06:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:08:00Z", lat = 10.0, lon = 10.0),
                            // Interpolate time into 00:10:00, but no movement.
-                           buildLocationRecord("2011-07-01T00:12:00Z", lat = 10.0, lon = 10.0),
-                           buildLocationRecord("2011-07-01T00:18:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:12:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:18:00Z", lat = 10.0, lon = 10.0),
                            // Interpolate into 00:20:00, closer to the 00:18:00 point.
-                           buildLocationRecord("2011-07-01T00:26:00Z", lat = 10.0, lon = 11.0),
+                           vlr("2011-07-01T00:26:00Z", lat = 10.0, lon = 11.0),
                            // Do not generate samples where the surrounding points are more than
                            // an hour apart.
-                           buildLocationRecord("2011-07-01T01:38:00Z", lat = 10.0, lon = 11.0),
+                           vlr("2011-07-01T01:38:00Z", lat = 10.0, lon = 11.0),
                            // Interpolate into 01:40:00.
-                           buildLocationRecord("2011-07-01T01:42:00Z", lat = 11.0, lon = 11.0))
+                           vlr("2011-07-01T01:42:00Z", lat = 11.0, lon = 11.0))
 
     val expected =
       Seq(rvl("2011-07-01T00:00:00Z", 10.3, 10.0),

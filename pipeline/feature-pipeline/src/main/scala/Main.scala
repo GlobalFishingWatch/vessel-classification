@@ -120,7 +120,6 @@ object Pipeline extends LazyLogging {
                                LatLon(Utility.angleNormalize(json.getDouble("lat").of[degrees]),
                                       Utility.angleNormalize(json.getDouble("lon").of[degrees])),
                                (json.getDouble("distance_from_shore") / 1000.0).of[kilometer],
-                               (json.getDouble("distance_from_port") / 1000.0).of[kilometer],
                                json.getDouble("speed").of[knots],
                                Utility.angleNormalize(json.getDouble("course").of[degrees]),
                                Utility.angleNormalize(json.getDouble("heading").of[degrees]))
@@ -134,7 +133,6 @@ object Pipeline extends LazyLogging {
             .inRange(record.location.lat, -90.0.of[degrees], 90.0.of[degrees])
             .inRange(record.location.lon, -180.0.of[degrees], 180.of[degrees])
             .inRange(record.distanceToShore, 0.0.of[kilometer], 20000.0.of[kilometer])
-            .inRange(record.distanceToPort, 0.0.of[kilometer], 20000.0.of[kilometer])
             .inRange(record.speed, 0.0.of[knots], 100.0.of[knots])
             .inRange(record.course, -180.0.of[degrees], 180.of[degrees])
             .inRange(record.heading, -180.0.of[degrees], 180.of[degrees])
