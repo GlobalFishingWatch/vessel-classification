@@ -99,14 +99,6 @@ object RangeValidator {
 
 object Pipeline extends LazyLogging {
 
-  case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
-    def toJson =
-      ("latitude" -> meanLocation.lat.value) ~
-        ("longitude" -> meanLocation.lon.value) ~
-        ("numUniqueVessels" -> vessels.size) ~
-        ("mmsis" -> vessels.map(_.mmsi))
-  }
-
   lazy val blacklistedMmsis = Set(0, 12345)
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
@@ -128,7 +120,6 @@ object Pipeline extends LazyLogging {
                                LatLon(Utility.angleNormalize(json.getDouble("lat").of[degrees]),
                                       Utility.angleNormalize(json.getDouble("lon").of[degrees])),
                                (json.getDouble("distance_from_shore") / 1000.0).of[kilometer],
-                               (json.getDouble("distance_from_port") / 1000.0).of[kilometer],
                                json.getDouble("speed").of[knots],
                                Utility.angleNormalize(json.getDouble("course").of[degrees]),
                                Utility.angleNormalize(json.getDouble("heading").of[degrees]))
@@ -142,7 +133,6 @@ object Pipeline extends LazyLogging {
             .inRange(record.location.lat, -90.0.of[degrees], 90.0.of[degrees])
             .inRange(record.location.lon, -180.0.of[degrees], 180.of[degrees])
             .inRange(record.distanceToShore, 0.0.of[kilometer], 20000.0.of[kilometer])
-            .inRange(record.distanceToPort, 0.0.of[kilometer], 20000.0.of[kilometer])
             .inRange(record.speed, 0.0.of[knots], 100.0.of[knots])
             .inRange(record.course, -180.0.of[degrees], 180.of[degrees])
             .inRange(record.heading, -180.0.of[degrees], 180.of[degrees])
@@ -278,7 +268,9 @@ object Pipeline extends LazyLogging {
 
     val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 
-    val features = ModelFeatures.buildVesselFeatures(processed).map {
+    val anchorages: SCollection[Anchorage] = findAnchorageCells(processed)
+
+    val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
       case (md, feature) =>
         (s"${md.mmsi}", feature)
     }
@@ -290,9 +282,8 @@ object Pipeline extends LazyLogging {
     val outputFeaturePath = baseOutputPath + "/features"
     val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
 
-    // Build and output anchorages.
+    // Output anchorages.
     val anchoragesPath = baseOutputPath + "/anchorages"
-    val anchorages = findAnchorageCells(processed)
     val anchoragesAsString = anchorages.map { anchorage =>
       compact(render(anchorage.toJson))
     }
