@@ -107,29 +107,30 @@ case class SingleEncounter(startTime: Instant,
                            meanLocation: LatLon,
                            medianDistance: DoubleU[kilometer],
                            medianSpeed: DoubleU[knots],
-                           vessel1Points: Int,
-                           vessel2Points: Int) {
+                           vessel1PointCount: Int,
+                           vessel2PointCount: Int) {
   def toJson =
-    ("start_time" -> startTime.toString) ~
+    ("duration_seconds" -> (new Duration(startTime, endTime)).getStandardSeconds)
+      ("start_time" -> startTime.toString) ~
       ("end_time" -> endTime.toString) ~
       ("mean_latitude" -> meanLocation.lat.value) ~
       ("mean_longitude" -> meanLocation.lon.value) ~
       ("median_distance" -> medianDistance.value) ~
       ("median_speed" -> medianSpeed.value) ~
-      ("vessel1_points" -> vessel1Points) ~
-      ("vessel2_points" -> vessel2Points)
+      ("vessel1_point_count" -> vessel1PointCount) ~
+      ("vessel2_point_count" -> vessel2PointCount)
 }
 
 case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
   import Utility._
 
   def toJson = {
-    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(_._2)
+    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
     ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
-      ("unique-vessel-count" -> vessels.size) ~
-      ("flag-state-distribution" -> flagStateDistribution)
-    ("mmsis" -> vessels.map(_.mmsi))
+      ("unique_vessel_count" -> vessels.size) ~
+      ("flag_state_distribution" -> flagStateDistribution) ~
+      ("mmsis" -> vessels.map(_.mmsi))
   }
 }
 

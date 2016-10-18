@@ -34,9 +34,16 @@ object ModelFeatures extends LazyLogging {
       if (d1 < d2) d1 else d2
     }
 
+    private def absDuration(time1: Instant, time2: Instant) =
+      if (time2.isAfter(time1)) {
+        new Duration(time1, time2)
+      } else {
+        new Duration(time2, time1)
+      }
+
     def minDuration(timestamp: Instant): Duration = {
-      val d1 = new Duration(startTime, timestamp)
-      val d2 = new Duration(timestamp, endTime)
+      val d1 = absDuration(startTime, timestamp)
+      val d2 = absDuration(timestamp, endTime)
       if (d1.isShorterThan(d2)) d1 else d2
     }
   }
@@ -49,7 +56,7 @@ object ModelFeatures extends LazyLogging {
       localAnchorages.headOption.map { la =>
         (vlr.timestamp, la)
       }
-    }.sliding(2).map {
+    }.sliding(2).filter(_.size == 2).map {
       case Seq((startTime, la1), (endTime, la2)) =>
         BoundingAnchorage(startTime, endTime, la1._2, la2._2)
     }
