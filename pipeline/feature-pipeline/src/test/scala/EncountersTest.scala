@@ -11,40 +11,40 @@ class EncountersTest extends PipelineSpec with Matchers {
   import AdditionalUnits._
   import TestHelper._
 
-  val path1 = Seq(buildLocationRecord("2011-01-01T15:40:00Z", -1.5032387, 55.2340155),
-                  buildLocationRecord("2011-01-01T15:50:00Z", -1.4869308, 55.232743),
-                  buildLocationRecord("2011-01-01T16:00:00Z", -1.4752579, 55.2292189),
+  val path1 = Seq(vlr("2011-01-01T15:40:00Z", -1.5032387, 55.2340155),
+                  vlr("2011-01-01T15:50:00Z", -1.4869308, 55.232743),
+                  vlr("2011-01-01T16:00:00Z", -1.4752579, 55.2292189),
                   // Encounter start.
-                  buildLocationRecord("2011-01-01T16:10:00Z", -1.4719963, 55.2251069),
-                  buildLocationRecord("2011-01-01T16:20:00Z", -1.471653, 55.2224633),
-                  buildLocationRecord("2011-01-01T16:30:00Z", -1.4718246, 55.21991750),
-                  buildLocationRecord("2011-01-01T16:40:00Z", -1.472168, 55.2185466),
-                  buildLocationRecord("2011-01-01T16:50:00Z", -1.4718246, 55.2167839),
-                  buildLocationRecord("2011-01-01T17:00:00Z", -1.4725113, 55.2156088),
-                  buildLocationRecord("2011-01-01T17:10:00Z", -1.4730263, 55.2139439),
+                  vlr("2011-01-01T16:10:00Z", -1.4719963, 55.2251069),
+                  vlr("2011-01-01T16:20:00Z", -1.471653, 55.2224633),
+                  vlr("2011-01-01T16:30:00Z", -1.4718246, 55.21991750),
+                  vlr("2011-01-01T16:40:00Z", -1.472168, 55.2185466),
+                  vlr("2011-01-01T16:50:00Z", -1.4718246, 55.2167839),
+                  vlr("2011-01-01T17:00:00Z", -1.4725113, 55.2156088),
+                  vlr("2011-01-01T17:10:00Z", -1.4730263, 55.2139439),
                   // Encounter end.
-                  buildLocationRecord("2011-01-01T17:20:00Z", -1.4859009, 55.2089489),
-                  buildLocationRecord("2011-01-01T17:30:00Z", -1.4974022, 55.2078715),
-                  buildLocationRecord("2011-01-01T17:40:00Z", -1.5140533, 55.2069899))
+                  vlr("2011-01-01T17:20:00Z", -1.4859009, 55.2089489),
+                  vlr("2011-01-01T17:30:00Z", -1.4974022, 55.2078715),
+                  vlr("2011-01-01T17:40:00Z", -1.5140533, 55.2069899))
 
-  val path2 = Seq(buildLocationRecord("2011-01-01T15:20:00Z", -1.4065933, 55.2350923),
-                  buildLocationRecord("2011-01-01T15:30:00Z", -1.4218712, 55.2342113),
-                  buildLocationRecord("2011-01-01T15:40:00Z", -1.4467621, 55.2334282),
-                  buildLocationRecord("2011-01-01T15:50:00Z", -1.4623833, 55.2310789),
-                  buildLocationRecord("2011-01-01T16:00:00Z", -1.469593, 55.2287294),
+  val path2 = Seq(vlr("2011-01-01T15:20:00Z", -1.4065933, 55.2350923),
+                  vlr("2011-01-01T15:30:00Z", -1.4218712, 55.2342113),
+                  vlr("2011-01-01T15:40:00Z", -1.4467621, 55.2334282),
+                  vlr("2011-01-01T15:50:00Z", -1.4623833, 55.2310789),
+                  vlr("2011-01-01T16:00:00Z", -1.469593, 55.2287294),
                   // Encounter start.
-                  buildLocationRecord("2011-01-01T16:10:00Z", -1.471138, 55.2267713),
-                  buildLocationRecord("2011-01-01T16:20:00Z", -1.470623, 55.2236383),
-                  buildLocationRecord("2011-01-01T16:30:00Z", -1.4704514, 55.2206029),
-                  buildLocationRecord("2011-01-01T16:40:00Z", -1.4704514, 55.218057),
-                  buildLocationRecord("2011-01-01T16:50:00Z", -1.4704514, 55.215217),
-                  buildLocationRecord("2011-01-01T17:00:00Z", -1.4728546, 55.2116913),
+                  vlr("2011-01-01T16:10:00Z", -1.471138, 55.2267713),
+                  vlr("2011-01-01T16:20:00Z", -1.470623, 55.2236383),
+                  vlr("2011-01-01T16:30:00Z", -1.4704514, 55.2206029),
+                  vlr("2011-01-01T16:40:00Z", -1.4704514, 55.218057),
+                  vlr("2011-01-01T16:50:00Z", -1.4704514, 55.215217),
+                  vlr("2011-01-01T17:00:00Z", -1.4728546, 55.2116913),
                   // Encounter end.
-                  buildLocationRecord("2011-01-01T17:10:00Z", -1.4718246, 55.2088509),
-                  buildLocationRecord("2011-01-01T17:20:00Z", -1.4474487, 55.2057165),
-                  buildLocationRecord("2011-01-01T17:30:00Z", -1.4278793, 55.2040512),
-                  buildLocationRecord("2011-01-01T17:40:00Z", -1.4084816, 55.2036594),
-                  buildLocationRecord("2011-01-01T17:50:00Z", -1.3998985, 55.2037574))
+                  vlr("2011-01-01T17:10:00Z", -1.4718246, 55.2088509),
+                  vlr("2011-01-01T17:20:00Z", -1.4474487, 55.2057165),
+                  vlr("2011-01-01T17:30:00Z", -1.4278793, 55.2040512),
+                  vlr("2011-01-01T17:40:00Z", -1.4084816, 55.2036594),
+                  vlr("2011-01-01T17:50:00Z", -1.3998985, 55.2037574))
 
   val pathData = Seq((VesselMetadata(1), path1), (VesselMetadata(2), path2))
 
@@ -102,20 +102,20 @@ class EncountersTest extends PipelineSpec with Matchers {
       val encounters = Encounters.calculateEncounters(Duration.standardMinutes(30), annotated)
 
       val expected = Seq(
-        VesselEncounter(VesselMetadata(1),
+        VesselEncounters(VesselMetadata(1),
                         VesselMetadata(2),
-                        ts("2011-01-01T16:10:00Z"),
+                        Seq(SingleEncounter(ts("2011-01-01T16:10:00Z"),
                         ts("2011-01-01T17:00:00Z"),
                         LatLon(-1.4719963.of[degrees], 55.21973783333333.of[degrees]),
                         0.20804684747804683.of[kilometer],
-                        0.6463265088064274.of[knots]),
-        VesselEncounter(VesselMetadata(2),
+                        0.6463265088064274.of[knots]))),
+        VesselEncounters(VesselMetadata(2),
                         VesselMetadata(1),
-                        ts("2011-01-01T16:10:00Z"),
+                        Seq(SingleEncounter(ts("2011-01-01T16:10:00Z"),
                         ts("2011-01-01T17:00:00Z"),
                         LatLon(-1.4709949666666666.of[degrees], 55.21932963333333.of[degrees]),
                         0.20804684747804683.of[kilometer],
-                        1.0941807727075668.of[knots]))
+                        1.0941807727075668.of[knots]))))
 
       encounters should containInAnyOrder(expected)
     }
@@ -133,20 +133,20 @@ class RealEncounterTest extends PipelineSpec with Matchers {
       val encounters = Encounters.calculateEncounters(Duration.standardHours(2), annotated)
 
         val expected = Seq(
-          VesselEncounter(VesselMetadata(441910000),
+          VesselEncounters(VesselMetadata(441910000),
                           VesselMetadata(563418000),
-                          ts("2015-03-19T07:40:00.000Z"),
+                          Seq(SingleEncounter(ts("2015-03-19T07:40:00.000Z"),
                           ts("2015-03-19T20:10:00.000Z"),
                           LatLon(-27.479094440423793.of[degrees], 38.533749458956926.of[degrees]),
                           0.02919780629103159.of[kilometer],
-                          0.20556704939649723.of[knots]),
-          VesselEncounter(VesselMetadata(563418000),
+                          0.20556704939649723.of[knots]))),
+          VesselEncounters(VesselMetadata(563418000),
                           VesselMetadata(441910000),
-                          ts("2015-03-19T07:40:00.000Z"),
+                          Seq(SingleEncounter(ts("2015-03-19T07:40:00.000Z"),
                           ts("2015-03-19T10:10:00.000Z"),
                           LatLon(-27.480823491781422.of[degrees], 38.53562707753466.of[degrees]),
                           0.03146525092161599.of[kilometer],
-                          0.17038552025487777.of[knots]))
+                          0.17038552025487777.of[knots]))))
 
         encounters should containInAnyOrder(expected)
     }
@@ -162,7 +162,6 @@ class RealEncounterTest extends PipelineSpec with Matchers {
       VesselLocationRecord(timestamp,
                          LatLon(lat, lon),
                          distanceToShore,
-                         0.0.of[kilometer],
                          0.0.of[knots],
                          0.0.of[degrees],
                          0.0.of[degrees])
