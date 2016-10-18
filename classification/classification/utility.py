@@ -380,6 +380,7 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
             max_offset = length - window_size
             start_offset = random_state.uniform(max_offset)
             cropped = cropped[max_offset:max_offset + window_size]
+            length = window_size
 
         if len(cropped) >= min_points_for_classification:
             output_slice = np_pad_repeat_slice(cropped, window_size)
@@ -388,8 +389,8 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
 
             without_timestamp = output_slice[:, 1:]
             timeseries = output_slice[:, 0].astype(np.int32)
-            slices.append(
-                (np.stack([without_timestamp]), timeseries, time_bounds, mmsi))
+            slices.append((np.stack([without_timestamp]), timeseries,
+                           time_bounds, mmsi, length.astype(np.int32)))
 
     if slices == []:
         # Return an appropriately shaped empty numpy array.
@@ -397,7 +398,8 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
             [0, 1, window_size, 9], dtype=np.float32), np.empty(
                 shape=[0, window_size], dtype=np.int32), np.empty(
                     shape=[0, 2], dtype=np.int32), np.empty(
-                        shape=[0], dtype=np.int32))
+                        shape=[0], dtype=np.int32), np.empty(
+                            shape=[0], dtype=np.int32))
 
     return zip(*slices)
 
@@ -420,6 +422,8 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
              [n, 1, window_size, num_features].
           2. A tensor of the timebounds for the timeslices, of dimension [n, 2].
           3. A tensor of the labels for each timeslice, of dimension [n].
+          4. A tensor of mmsis.
+          5. A tensor of the number of samples per window.
 
     """
     context_features, sequence_features = single_feature_file_reader(
@@ -435,11 +439,12 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
             random_state, input, mmsi, time_ranges, window_size,
             min_points_for_classification)
 
-    features_list, timeseries, time_bounds_list, mmsis = tf.py_func(
-        replicate_extract, [movement_features, mmsi],
-        [tf.float32, tf.int32, tf.int32, tf.int32])
+    (features_list, timeseries, time_bounds_list, mmsis,
+     sample_counts) = tf.py_func(
+         replicate_extract, [movement_features, mmsi],
+         [tf.float32, tf.int32, tf.int32, tf.int32, tf.int32])
 
-    return features_list, timeseries, time_bounds_list, mmsis
+    return features_list, timeseries, time_bounds_list, mmsis, sample_counts
 
 
 def read_vessel_metadata_file_lines(available_mmsis, lines):

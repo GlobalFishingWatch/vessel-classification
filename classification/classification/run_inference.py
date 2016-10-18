@@ -56,7 +56,7 @@ class Inferer(object):
                 self.min_points_for_classification)
             readers.append(reader)
 
-        features, timeseries, time_ranges, mmsis = tf.train.batch_join(
+        features, timeseries, time_ranges, mmsis, sample_counts = tf.train.batch_join(
             readers,
             self.batch_size,
             enqueue_many=True,
@@ -100,10 +100,11 @@ class Inferer(object):
                     logging.info("Inference step: %d", i)
                     i += 1
                     result = sess.run([mmsis, time_ranges, predictions,
-                                       max_probabilities, softmax])
+                                       max_probabilities, softmax,
+                                       sample_counts])
                     for mmsi, (
                             start_time_seconds, end_time_seconds
-                    ), label, max_probability, label_probabilities in zip(
+                    ), label, max_probability, label_probabilities, sample_count in zip(
                             *result):
                         start_time = datetime.datetime.utcfromtimestamp(
                             start_time_seconds)
@@ -118,6 +119,7 @@ class Inferer(object):
                             'mmsi': int(mmsi),
                             'start_time': start_time.isoformat(),
                             'end_time': end_time.isoformat(),
+                            'sample_count': sample_count,
                             'vessel_classification': {
                                 'max_label': utility.VESSEL_CLASS_NAMES[label],
                                 'max_label_probability':

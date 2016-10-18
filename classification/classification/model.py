@@ -27,15 +27,15 @@ class ModelBase(object):
 
     @abc.abstractmethod
     def build_training_net(self, features, labels, fishing_timeseries_labels):
-        """Build net suitable for training model
+        """Build net suitable for training model.
 
         Args:
             features : queue
-                features to feed into net
+                features to feed into net.
             labels : queue
-                groundtruth labels for training
+                groundtruth labels for training.
             fishing_timeseries_labels:
-                groundtruth localisation of fishing
+                groundtruth localisation of fishing.
 
         Returns:
             TrainNetInfo
@@ -46,16 +46,16 @@ class ModelBase(object):
 
     @abc.abstractmethod
     def build_inference_net(self, features):
-        """Build net suitable for running inference on model
+        """Build net suitable for running inference on model.
 
         Args:
             features : tensor
-                queue of features to feed into net
+                queue of features to feed into net.
 
         Returns:
-            vessel_class_logits : tensor with vessel classes for the batch
+            vessel_class_logits : tensor with vessel classes for the batch.
             fishing_localisation_logits: tensor with fishing localisation scores
-                                         for the batch
+                                         for the batch.
 
         """
         vessel_class_logits = fishing_localisation_logits = None
