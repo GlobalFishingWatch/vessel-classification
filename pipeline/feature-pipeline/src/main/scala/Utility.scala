@@ -120,11 +120,15 @@ case class SingleEncounter(startTime: Instant,
 }
 
 case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
-  def toJson =
+  import Utility._
+
+  def toJson = {
+    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(_._2)
     ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
       ("numUniqueVessels" -> vessels.size) ~
       ("mmsis" -> vessels.map(_.mmsi))
+  }
 }
 
 case class VesselEncounters(vessel1: VesselMetadata,
