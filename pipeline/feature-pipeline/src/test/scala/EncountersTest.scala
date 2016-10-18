@@ -56,9 +56,12 @@ class EncountersTest extends PipelineSpec with Matchers {
             (md, l)
           }
       }
+      
       def rvlwa(mmsi: Int, timestamp: String, lat: Double, lon: Double, count: Int, other: Option[(Int, Double)]) =
         (VesselMetadata(mmsi), ResampledVesselLocationWithAdjacency(
-          ts(timestamp), LatLon(lat.of[degrees], lon.of[degrees]), 500.0.of[kilometer], count, other.map { case(ommsi, dist) => (VesselMetadata(ommsi), dist.of[kilometer])}))
+          ts(timestamp), LatLon(lat.of[degrees], lon.of[degrees]), 500.0.of[kilometer], 1.0,
+          count, other.map { case(ommsi, dist) => (VesselMetadata(ommsi), dist.of[kilometer])}))
+
 
       val expected = Seq(
         rvlwa(1, "2011-01-01T15:50:00.000Z",-1.4869308,55.232743,0,None),

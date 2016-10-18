@@ -161,17 +161,15 @@ object Encounters extends LazyLogging {
             val closestN =
               withoutIdentity.toSeq.distinct.sortBy(_._2).take(Parameters.maxClosestNeighbours)
 
-            val closestNeighbour = if (closestN.isEmpty) {
-              None
-            } else {
-              Some(closestN.head)
-            }
+            val closestNeighbour = closestN.headOption //.map { case (md2, dist) => (md2, dist, vesselLocationMap(md2))}
+
             val number = closestN.size
 
             val res = (md,
                        ResampledVesselLocationWithAdjacency(vl.timestamp,
                                                             vl.location,
                                                             vl.distanceToShore,
+                                                            vl.pointDensity,
                                                             number,
                                                             closestNeighbour))
             res

@@ -76,9 +76,9 @@ object LatLon {
   }
 }
 
-case class VesselMetadata(
-    mmsi: Int
-)
+case class VesselMetadata(mmsi: Int) {
+  def flagState = CountryCodes.fromMmsi(mmsi)
+}
 
 case class StationaryPeriod(location: LatLon, duration: Duration)
 
@@ -103,6 +103,7 @@ case class ResampledVesselLocationWithAdjacency(
     timestamp: Instant,
     location: LatLon,
     distanceToShore: DoubleU[kilometer],
+    pointDensity: Double,
     numNeighbours: Int,
     closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer])])
 
@@ -126,6 +127,8 @@ case class VesselEncounters(vessel1: VesselMetadata,
   def toJson =
     ("mmsi1" -> vessel1.mmsi) ~
       ("mmsi2" -> vessel2.mmsi) ~
+      ("flag_state1" ~ vessel1.flagState) ~
+      ("flag_state2" ~ vessel2.flagState) ~
       ("encounters" -> encounters.map(_.toJson))
 
 }
