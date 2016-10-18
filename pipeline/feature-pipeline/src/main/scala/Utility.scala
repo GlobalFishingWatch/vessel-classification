@@ -110,7 +110,7 @@ case class SingleEncounter(startTime: Instant,
                            vessel1PointCount: Int,
                            vessel2PointCount: Int) {
   def toJson =
-    ("duration_seconds" -> (new Duration(startTime, endTime)).getStandardSeconds)
+    ("duration_seconds" -> (new Duration(startTime, endTime)).getStandardSeconds) ~
       ("start_time" -> startTime.toString) ~
       ("end_time" -> endTime.toString) ~
       ("mean_latitude" -> meanLocation.lat.value) ~
@@ -138,10 +138,10 @@ case class VesselEncounters(vessel1: VesselMetadata,
                             vessel2: VesselMetadata,
                             encounters: Seq[SingleEncounter]) {
   def toJson =
-    ("mmsi1" -> vessel1.mmsi) ~
-      ("mmsi2" -> vessel2.mmsi) ~
-      ("flag_state1" -> vessel1.flagState) ~
-      ("flag_state2" -> vessel2.flagState) ~
+    ("vessel1_mmsi" -> vessel1.mmsi) ~
+      ("vessel2_mmsi" -> vessel2.mmsi) ~
+      ("vessel1_flag_state" -> vessel1.flagState) ~
+      ("vessel2_flag_state" -> vessel2.flagState) ~
       ("encounters" -> encounters.map(_.toJson))
 
 }
