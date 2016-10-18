@@ -85,11 +85,9 @@ case class StationaryPeriod(location: LatLon, duration: Duration)
 case class ProcessedLocations(locations: Seq[VesselLocationRecord],
                               stationaryPeriods: Seq[StationaryPeriod])
 
-// TODO(alexwilson): For now build simple coder for this class. :-(
 case class VesselLocationRecord(timestamp: Instant,
                                 location: LatLon,
                                 distanceToShore: DoubleU[kilometer],
-                                distanceToPort: DoubleU[kilometer],
                                 speed: DoubleU[knots],
                                 course: DoubleU[degrees],
                                 heading: DoubleU[degrees])
@@ -117,6 +115,14 @@ case class SingleEncounter(startTime: Instant,
       ("mean_longitude" -> meanLocation.lon.value) ~
       ("median_distance" -> medianDistance.value) ~
       ("median_speed" -> medianSpeed.value)
+}
+
+case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
+  def toJson =
+    ("latitude" -> meanLocation.lat.value) ~
+      ("longitude" -> meanLocation.lon.value) ~
+      ("numUniqueVessels" -> vessels.size) ~
+      ("mmsis" -> vessels.map(_.mmsi))
 }
 
 case class VesselEncounters(vessel1: VesselMetadata,
@@ -219,6 +225,25 @@ object Utility extends LazyLogging {
     }
 
     coverCells.toList
+  }
+
+  case class AdjacencyLookup[T](values: Seq[T],
+                                locFn: T => LatLon,
+                                maxRadius: DoubleU[kilometer],
+                                level: Int) {
+    private val cellMap = values
+      .flatMap(v => getCapCoveringCells(locFn(v), maxRadius, level).map(cellid => (cellid, v)))
+      .groupBy(_._1)
+      .map { case (cellid, vs) => (cellid, vs.map(_._2)) }
+
+    def nearby(location: LatLon) = {
+      val queryCells = getCapCoveringCells(location, maxRadius, level)
+      val allValues = queryCells.flatMap { cellid =>
+        cellMap.getOrElse(cellid, Seq())
+      }
+
+      allValues.map(v => (locFn(v).getDistance(location), v)).toIndexedSeq.distinct.sortBy(_._1)
+    }
   }
 
   def resampleVesselSeries(increment: Duration,
