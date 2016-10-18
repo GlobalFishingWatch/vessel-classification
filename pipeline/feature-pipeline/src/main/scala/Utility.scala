@@ -98,25 +98,26 @@ case class ResampledVesselLocation(timestamp: Instant,
                                    pointDensity: Double)
 
 case class ResampledVesselLocationWithAdjacency(
-    timestamp: Instant,
-    location: LatLon,
-    distanceToShore: DoubleU[kilometer],
-    pointDensity: Double,
+    locationRecord: ResampledVesselLocation,
     numNeighbours: Int,
-    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer])])
+    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)])
 
 case class SingleEncounter(startTime: Instant,
                            endTime: Instant,
                            meanLocation: LatLon,
                            medianDistance: DoubleU[kilometer],
-                           medianSpeed: DoubleU[knots]) {
+                           medianSpeed: DoubleU[knots],
+                           vessel1Points: Int,
+                           vessel2Points: Int) {
   def toJson =
     ("start_time" -> startTime.toString) ~
       ("end_time" -> endTime.toString) ~
       ("mean_latitude" -> meanLocation.lat.value) ~
       ("mean_longitude" -> meanLocation.lon.value) ~
       ("median_distance" -> medianDistance.value) ~
-      ("median_speed" -> medianSpeed.value)
+      ("median_speed" -> medianSpeed.value) ~
+      ("vessel1_points" -> vessel1Points) ~
+      ("vessel2_points" -> vessel2Points)
 }
 
 case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
@@ -128,7 +129,7 @@ case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
       ("longitude" -> meanLocation.lon.value) ~
       ("unique-vessel-count" -> vessels.size) ~
       ("flag-state-distribution" -> flagStateDistribution)
-      ("mmsis" -> vessels.map(_.mmsi))
+    ("mmsis" -> vessels.map(_.mmsi))
   }
 }
 
