@@ -30,27 +30,28 @@ class Model(ModelBase):
 
         return padded
 
-    def build_training_net(self, features, labels):
+    def build_training_net(self, features, labels, fishing_timeseries):
 
         features = self.zero_pad_features(features)
         one_hot_labels = slim.one_hot_encoding(labels, self.num_classes)
 
-        logits = layers.misconception_model(
+        vessel_class_logits = layers.misconception_model(
             features, self.window_size, self.stride, self.feature_depth,
             self.levels, self.num_classes, True)
 
-        loss = slim.losses.softmax_cross_entropy(logits, one_hot_labels)
+        loss = slim.losses.softmax_cross_entropy(vessel_class_logits,
+                                                 one_hot_labels)
 
         optimizer = tf.train.AdamOptimizer(2e-5)
 
-        return TrainNetInfo(loss, optimizer, logits)
+        return TrainNetInfo(loss, optimizer, vessel_class_logits, None)
 
     def build_inference_net(self, features):
 
         features = self.zero_pad_features(features)
 
-        logits = layers.misconception_model(
+        vessel_class_logits = layers.misconception_model(
             features, self.window_size, self.stride, self.feature_depth,
             self.levels, self.num_classes, False)
 
-        return logits
+        return vessel_class_logits, None

@@ -4,6 +4,59 @@ import utility
 import tensorflow as tf
 
 
+class FishingLocalisationLossTest(tf.test.TestCase):
+    def test_simple_loss(self):
+        with self.test_session():
+            logits = np.array([[1, 0, 0, 1, 0], [1, 0, 1, 1, 0]], np.float32)
+            targets = np.array([[1, 0, -1, 0, -1], [1, 0, 0, -1, -1]],
+                               np.float32)
+
+            loss = utility.fishing_localisation_loss(logits, targets)
+
+            filtered_logits = logits[targets != -1]
+            filtered_targets = targets[targets != -1]
+
+            filtered_loss = tf.reduce_mean(
+                tf.nn.sigmoid_cross_entropy_with_logits(filtered_logits,
+                                                        filtered_targets))
+
+            self.assertAlmostEqual(filtered_loss.eval(), loss.eval(), places=5)
+
+    def test_loss_scaling_floor(self):
+        with self.test_session():
+            logits = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], np.float32)
+            targets = np.array([[0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+                                [0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1]],
+                               np.float32)
+
+            loss = utility.fishing_localisation_loss(logits, targets)
+
+            self.assertAlmostEqual(0.66164052, loss.eval())
+
+    def test_loss_no_targets(self):
+        with self.test_session():
+            logits = np.array([[0, 0, 0, 0, 0]], np.float32)
+            targets = np.array([[-1, -1, -1, -1, -1]], np.float32)
+
+            loss = utility.fishing_localisation_loss(logits, targets)
+
+            self.assertAlmostEqual(0.0, loss.eval())
+
+
+class FishingLocalisationMseTest(tf.test.TestCase):
+    def test_simple_mse(self):
+        with self.test_session():
+            predictions = np.array([[1, 0, 0, 1, 0], [1, 0, 1, 1, 0]],
+                                   np.float32)
+            targets = np.array([[1, 0, -1, 0, -1], [1, 0, 0, -1, -1]],
+                               np.float32)
+
+            mse = utility.fishing_localisation_mse(predictions, targets)
+
+            self.assertAlmostEqual(0.33333333, mse.eval())
+
+
 class InceptionLayerTest(tf.test.TestCase):
     def test_layer_shape(self):
         with self.test_session():

@@ -24,6 +24,9 @@ import java.nio.channels.Channels
 
 import org.apache.commons.math3.util.MathUtils
 import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
+import org.json4s._
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
@@ -73,48 +76,75 @@ object LatLon {
   }
 }
 
-case class VesselMetadata(
-    mmsi: Int
-)
+case class VesselMetadata(mmsi: Int) {
+  def flagState = CountryCodes.fromMmsi(mmsi)
+}
 
 case class StationaryPeriod(location: LatLon, duration: Duration)
 
 case class ProcessedLocations(locations: Seq[VesselLocationRecord],
                               stationaryPeriods: Seq[StationaryPeriod])
 
-// TODO(alexwilson): For now build simple coder for this class. :-(
 case class VesselLocationRecord(timestamp: Instant,
                                 location: LatLon,
                                 distanceToShore: DoubleU[kilometer],
-                                distanceToPort: DoubleU[kilometer],
                                 speed: DoubleU[knots],
                                 course: DoubleU[degrees],
                                 heading: DoubleU[degrees])
 
 case class ResampledVesselLocation(timestamp: Instant,
                                    location: LatLon,
-                                   distanceToShore: DoubleU[kilometer])
+                                   distanceToShore: DoubleU[kilometer],
+                                   pointDensity: Double)
 
 case class ResampledVesselLocationWithAdjacency(
-    timestamp: Instant,
-    location: LatLon,
-    distanceToShore: DoubleU[kilometer],
+    locationRecord: ResampledVesselLocation,
     numNeighbours: Int,
-    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer])])
+    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)])
 
-case class VesselEncounter(vessel1: VesselMetadata,
-                           vessel2: VesselMetadata,
-                           startTime: Instant,
+case class SingleEncounter(startTime: Instant,
                            endTime: Instant,
                            meanLocation: LatLon,
                            medianDistance: DoubleU[kilometer],
-                           medianSpeed: DoubleU[knots]) {
-  def toCsvLine =
-    s"${vessel1.mmsi},${vessel2.mmsi},$startTime,$endTime,${meanLocation.lat}," +
-      s"${meanLocation.lon},${medianDistance},${medianSpeed}"
+                           medianSpeed: DoubleU[knots],
+                           vessel1PointCount: Int,
+                           vessel2PointCount: Int) {
+  def toJson =
+    ("duration_seconds" -> (new Duration(startTime, endTime)).getStandardSeconds) ~
+      ("start_time" -> startTime.toString) ~
+      ("end_time" -> endTime.toString) ~
+      ("mean_latitude" -> meanLocation.lat.value) ~
+      ("mean_longitude" -> meanLocation.lon.value) ~
+      ("median_distance" -> medianDistance.value) ~
+      ("median_speed" -> medianSpeed.value) ~
+      ("vessel1_point_count" -> vessel1PointCount) ~
+      ("vessel2_point_count" -> vessel2PointCount)
 }
 
-case class SuspectedPort(location: LatLon, vessels: Seq[VesselMetadata])
+case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
+  import Utility._
+
+  def toJson = {
+    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
+    ("latitude" -> meanLocation.lat.value) ~
+      ("longitude" -> meanLocation.lon.value) ~
+      ("unique_vessel_count" -> vessels.size) ~
+      ("flag_state_distribution" -> flagStateDistribution) ~
+      ("mmsis" -> vessels.map(_.mmsi))
+  }
+}
+
+case class VesselEncounters(vessel1: VesselMetadata,
+                            vessel2: VesselMetadata,
+                            encounters: Seq[SingleEncounter]) {
+  def toJson =
+    ("vessel1_mmsi" -> vessel1.mmsi) ~
+      ("vessel2_mmsi" -> vessel2.mmsi) ~
+      ("vessel1_flag_state" -> vessel1.flagState) ~
+      ("vessel2_flag_state" -> vessel2.flagState) ~
+      ("encounters" -> encounters.map(_.toJson))
+
+}
 
 object Utility extends LazyLogging {
   implicit class RichLogger(val logger: Logger) {
@@ -208,6 +238,25 @@ object Utility extends LazyLogging {
     coverCells.toList
   }
 
+  case class AdjacencyLookup[T](values: Seq[T],
+                                locFn: T => LatLon,
+                                maxRadius: DoubleU[kilometer],
+                                level: Int) {
+    private val cellMap = values
+      .flatMap(v => getCapCoveringCells(locFn(v), maxRadius, level).map(cellid => (cellid, v)))
+      .groupBy(_._1)
+      .map { case (cellid, vs) => (cellid, vs.map(_._2)) }
+
+    def nearby(location: LatLon) = {
+      val queryCells = getCapCoveringCells(location, maxRadius, level)
+      val allValues = queryCells.flatMap { cellid =>
+        cellMap.getOrElse(cellid, Seq())
+      }
+
+      allValues.map(v => (locFn(v).getDistance(location), v)).toIndexedSeq.distinct.sortBy(_._1)
+    }
+  }
+
   def resampleVesselSeries(increment: Duration,
                            input: Seq[VesselLocationRecord]): Seq[ResampledVesselLocation] = {
     val incrementSeconds = increment.getStandardSeconds()
@@ -234,6 +283,9 @@ object Utility extends LazyLogging {
         val firstTimeSeconds = tsToUnixSeconds(llr.timestamp)
         val secondTimeSeconds = tsToUnixSeconds(currentLocationRecord.timestamp)
         val timeDeltaSeconds = secondTimeSeconds - firstTimeSeconds
+
+        val pointDensity = math.min(1.0, incrementSeconds.toDouble / timeDeltaSeconds.toDouble)
+
         if (firstTimeSeconds <= iterTime && secondTimeSeconds >= iterTime &&
             timeDeltaSeconds < maxInterpolateGapSeconds) {
           val mix = (iterTime - firstTimeSeconds).toDouble / (secondTimeSeconds - firstTimeSeconds).toDouble
@@ -249,7 +301,8 @@ object Utility extends LazyLogging {
           interpolatedSeries.append(
             ResampledVesselLocation(new Instant(iterTime * 1000),
                                     LatLon(interpLat.of[degrees], interpLon.of[degrees]),
-                                    interpDistFromShore.of[kilometer]))
+                                    interpDistFromShore.of[kilometer],
+                                    pointDensity))
         }
       }
 

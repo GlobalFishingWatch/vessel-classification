@@ -6,7 +6,7 @@ import io.github.karols.units.SI._
 import com.google.common.geometry.{S2, S2LatLng}
 import com.spotify.scio.values.SCollection
 import com.typesafe.scalalogging.{LazyLogging, Logger}
-import org.joda.time.{DateTimeZone, LocalDateTime}
+import org.joda.time.{DateTimeZone, Duration, Instant, LocalDateTime}
 import org.tensorflow.example.{
   Example,
   Feature,
@@ -23,7 +23,45 @@ object ModelFeatures extends LazyLogging {
   import AdditionalUnits._
   import Utility._
 
-  def buildSingleVesselFeatures(input: Seq[VesselLocationRecord]): Seq[Array[Double]] =
+  private case class BoundingAnchorage(startTime: Instant,
+                                       endTime: Instant,
+                                       startAnchorage: Anchorage,
+                                       endAnchorage: Anchorage) {
+    def minDistance(location: LatLon): DoubleU[kilometer] = {
+      val d1 = startAnchorage.meanLocation.getDistance(location)
+      val d2 = endAnchorage.meanLocation.getDistance(location)
+
+      if (d1 < d2) d1 else d2
+    }
+
+    private def absDuration(time1: Instant, time2: Instant) =
+      if (time2.isAfter(time1)) {
+        new Duration(time1, time2)
+      } else {
+        new Duration(time2, time1)
+      }
+
+    def minDuration(timestamp: Instant): Duration = {
+      val d1 = absDuration(startTime, timestamp)
+      val d2 = absDuration(timestamp, endTime)
+      if (d1.isShorterThan(d2)) d1 else d2
+    }
+  }
+
+  def buildSingleVesselFeatures(
+      input: Seq[VesselLocationRecord],
+      anchorageLookup: AdjacencyLookup[Anchorage]): Seq[Array[Double]] = {
+    val boundingAnchoragesIterator = input.flatMap { vlr =>
+      val localAnchorages = anchorageLookup.nearby(vlr.location)
+      localAnchorages.headOption.map { la =>
+        (vlr.timestamp, la)
+      }
+    }.sliding(2).filter(_.size == 2).map {
+      case Seq((startTime, la1), (endTime, la2)) =>
+        BoundingAnchorage(startTime, endTime, la1._2, la2._2)
+    }
+
+    var currentBoundingAnchorage: Option[BoundingAnchorage] = None
     input
       .sliding(3)
       .map {
@@ -31,6 +69,13 @@ object ModelFeatures extends LazyLogging {
           if (p0 == p1) {
             logger.fatal(s"p0 and p1 are the same: $p0, $p1")
           }
+
+          while (boundingAnchoragesIterator.hasNext && (currentBoundingAnchorage.isEmpty ||
+                 !currentBoundingAnchorage.isEmpty && currentBoundingAnchorage.get.endTime
+                   .isBefore(p1.timestamp))) {
+            currentBoundingAnchorage = Some(boundingAnchoragesIterator.next)
+          }
+
           val ll0 = S2LatLng.fromDegrees(p0.location.lat.value, p0.location.lon.value)
           val ll1 = S2LatLng.fromDegrees(p1.location.lat.value, p1.location.lon.value)
           val ll2 = S2LatLng.fromDegrees(p2.location.lat.value, p2.location.lon.value)
@@ -59,6 +104,20 @@ object ModelFeatures extends LazyLogging {
               .getHourOfDay() * (localTime.getMinuteOfHour() / 60.0)) - 12.0) / 12.0
           val localMonthOfYearFeature = (localTime.getMonthOfYear() - 6.0) / 6.0
 
+          val (distanceToBoundingAnchorageKm, timeToBoundingAnchorageS) =
+            if (!currentBoundingAnchorage.isEmpty) {
+              (currentBoundingAnchorage.get
+                 .minDistance(p1.location)
+                 .convert[kilometer]
+                 .value
+                 .toDouble,
+               currentBoundingAnchorage.get.minDuration(p1.timestamp).getMillis.toDouble / 1000.0)
+            } else {
+              // TODO(alexwilson): These are probably not good values for when we don't have a bounding
+              // anchorage. Tim: any suggestions?
+              (0.0, 0.0)
+            }
+
           // TODO(alexwilson): #neighbours, distance to closest neighbour, is_dark.
 
           // We include the absolute time not as a feature, but to make it easy
@@ -73,7 +132,9 @@ object ModelFeatures extends LazyLogging {
                                       localTodFeature,
                                       localMonthOfYearFeature,
                                       integratedCogDeltaDegrees / 180.0,
-                                      math.log(1.0 + distanceToShoreKm))
+                                      math.log(1.0 + distanceToShoreKm),
+                                      math.log(1.0 + distanceToBoundingAnchorageKm),
+                                      math.log(1.0 + timeToBoundingAnchorageS))
 
           feature.foreach { v =>
             if (v.isNaN || v.isInfinite) {
@@ -84,6 +145,7 @@ object ModelFeatures extends LazyLogging {
           feature
       }
       .toIndexedSeq
+  }
 
   def buildTFExampleProto(metadata: VesselMetadata, data: Seq[Array[Double]]): SequenceExample = {
     val example = SequenceExample.newBuilder()
@@ -110,12 +172,28 @@ object ModelFeatures extends LazyLogging {
     example.build()
   }
 
-  def buildVesselFeatures(input: SCollection[(VesselMetadata, ProcessedLocations)])
-    : SCollection[(VesselMetadata, SequenceExample)] =
-    input.filter { case (metadata, pl) => pl.locations.size >= 3 }.map {
-      case (metadata, processedLocations) =>
-        val features = buildSingleVesselFeatures(processedLocations.locations)
-        val featuresAsTFExample = buildTFExampleProto(metadata, features)
-        (metadata, featuresAsTFExample)
-    }
+  def buildVesselFeatures(
+      input: SCollection[(VesselMetadata, ProcessedLocations)],
+      anchorages: SCollection[Anchorage]): SCollection[(VesselMetadata, SequenceExample)] = {
+    val siAnchorages = anchorages.asListSideInput
+
+    input
+      .withSideInputs(siAnchorages)
+      .filter {
+        case ((metadata, processedLocations), _) => processedLocations.locations.size >= 3
+      }
+      .map {
+        case ((metadata, processedLocations), s) =>
+          // TODO(alexwilson): Building the lookup once per vessel is hideously inefficient. It
+          // should be once per mapper task.
+          val anchorageLookup = Utility.AdjacencyLookup(s(siAnchorages),
+                                                        (v: Anchorage) => v.meanLocation,
+                                                        0.5.of[kilometer],
+                                                        13)
+          val features = buildSingleVesselFeatures(processedLocations.locations, anchorageLookup)
+          val featuresAsTFExample = buildTFExampleProto(metadata, features)
+          (metadata, featuresAsTFExample)
+      }
+      .toSCollection
+  }
 }

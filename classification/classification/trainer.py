@@ -18,10 +18,11 @@ class Trainer:
         model.
     """
 
-    def __init__(self, model, vessel_metadata, base_feature_path,
-                 train_scratch_path):
+    def __init__(self, model, vessel_metadata, fishing_ranges,
+                 base_feature_path, train_scratch_path):
         self.model = model
         self.vessel_metadata = vessel_metadata
+        self.fishing_ranges = fishing_ranges
         self.base_feature_path = base_feature_path
         self.train_scratch_path = train_scratch_path
         self.checkpoint_dir = self.train_scratch_path + '/train'
@@ -69,33 +70,40 @@ class Trainer:
                     self.vessel_metadata[split], filename_queue,
                     self.model.num_feature_dimensions + 1, self.model.
                     max_window_duration_seconds, self.model.window_max_points,
-                    self.model.min_viable_timeslice_length, max_replication))
+                    self.model.min_viable_timeslice_length, max_replication,
+                    self.fishing_ranges))
 
-        features, time_bounds, labels = tf.train.shuffle_batch_join(
+        features, fishing_timeseries, time_bounds, labels = tf.train.shuffle_batch_join(
             readers,
             self.model.batch_size,
             capacity,
             min_size_after_deque,
             enqueue_many=True,
             shapes=[[1, self.model.window_max_points,
-                     self.model.num_feature_dimensions], [2], []])
+                     self.model.num_feature_dimensions],
+                    [self.model.window_max_points], [2], []])
 
-        return features, labels
+        return features, labels, fishing_timeseries
 
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
-        features, labels = self._feature_data_reader('Training', True)
+        features, labels, fishing_timeseries_labels = self._feature_data_reader(
+            'Training', True)
 
-        loss, optimizer, logits = self.model.build_training_net(features,
-                                                                labels)
+        (loss, optimizer, vessel_class_logits,
+         fishing_localisation_logits) = self.model.build_training_net(
+             features, labels, fishing_timeseries_labels)
 
-        predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
+        vessel_class_predictions = tf.cast(
+            tf.argmax(vessel_class_logits, 1), tf.int32)
 
         tf.scalar_summary('Training loss', loss)
 
-        accuracy = slim.metrics.accuracy(labels, predictions)
-        tf.scalar_summary('Training accuracy', accuracy)
+        vessel_class_accuracy = slim.metrics.accuracy(labels,
+                                                      vessel_class_predictions)
+        tf.scalar_summary('Vessel class training accuracy',
+                          vessel_class_accuracy)
 
         train_op = slim.learning.create_train_op(
             loss,
@@ -114,15 +122,18 @@ class Trainer:
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
 
-        features, labels = self._feature_data_reader('Test', False)
+        features, labels, fishing_timeseries_labels = self._feature_data_reader(
+            'Test', False)
 
-        logits = self.model.build_inference_net(features)
+        vessel_class_logits, fishing_localisation_logits = self.model.build_inference_net(
+            features)
 
-        predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
+        vessel_class_predictions = tf.cast(
+            tf.argmax(vessel_class_logits, 1), tf.int32)
 
         names_to_values, names_to_updates = metrics.aggregate_metric_map({
-            'Test accuracy': metrics.streaming_accuracy(predictions, labels),
-            'Test precision': metrics.streaming_precision(predictions, labels),
+            'Vessel class test accuracy':
+            metrics.streaming_accuracy(vessel_class_predictions, labels),
         })
 
         # Create the summary ops such that they also print out to std output.
@@ -148,6 +159,9 @@ class Trainer:
                     eval_op=names_to_updates.values(),
                     summary_op=tf.merge_summary(summary_ops),
                     eval_interval_secs=120)
+            except ValueError as e:
+                logging.warning('Error in evaluation loop: (%s), retrying',
+                                str(e))
             except errors.NotFoundError as e:
                 logging.warning('Error in evaluation loop: (%s), retrying',
                                 str(e))
