@@ -25,8 +25,6 @@ from oauth2client.client import GoogleCredentials
 from googleapiclient import discovery
 import tempfile
 
-project_id = 'world-fishing-827'
-
 
 def launch(model_name):
     # Read the configuration file so that we 
@@ -35,13 +33,12 @@ def launch(model_name):
     with open("deploy_cloudml_config_template.txt") as f:
         config_template = f.read()
 
+    user_name = os.environ['USER']
     time_stamp = datetime.datetime.utcnow().strftime('%y%m%d_%H%M%S')
     job_id = model_name.replace('.', '_') + '_' + time_stamp
 
-    config_txt = config_template.format(model_name=model_name, job_id=job_id)
-
-    staging_path = "gs://world-fishing-827/scratch/classification/%s/%s" % (
-        model_name, job_id)
+    config_txt = config_template.format(
+        model_name=model_name, job_id=job_id, user_name=user_name)
 
     # Kick off the job on CloudML
     with tempfile.NamedTemporaryFile() as temp:

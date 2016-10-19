@@ -82,9 +82,9 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
         with self.test_session():
             input_data = np.array([[1., 5.], [2., 4.], [3., 7.], [4., 9.],
                                    [5., 3.], [6., 8.], [7., 2.], [8., 9.]])
-            expected_result = np.array([[1., 5.], [2., 4.], [3., 7.],
-                                        [4., 9.], [5., 3.], [6., 8.],
-                                        [1., 5.], [2., 4.]])
+            expected_result = np.array([[1., 5.], [2., 4.], [3., 7.], [4., 9.],
+                                        [5., 3.], [6., 8.], [1., 5.],
+                                        [2., 4.]])
 
             class FakeRandomState(object):
                 def randint(self, min, max):

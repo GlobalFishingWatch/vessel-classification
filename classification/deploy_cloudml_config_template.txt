@@ -2,7 +2,7 @@ trainingInput:
   args: [
     "{model_name}",
     "--root_feature_path", "gs://alex-dataflow-scratch/features-scratch/encounters_test/20161011T202437Z/features",
-    "--training_output_path", "gs://world-fishing-827/scratch/classification/{model_name}/{job_id}"]
+    "--training_output_path", "gs://world-fishing-827-dev-ttl30d/data-production/classification/{user_name}/{model_name}/{job_id}"]
   scaleTier: CUSTOM
   masterType: "standard"
   parameterServerType: "standard"

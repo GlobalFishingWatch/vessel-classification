@@ -118,8 +118,8 @@ class Inferer(object):
                             end_time_seconds)
 
                         label_scores = dict(
-                            zip(utility.VESSEL_CLASS_NAMES,
-                                [float(v) for v in label_probabilities]))
+                            zip(utility.VESSEL_CLASS_NAMES, [float(
+                                v) for v in label_probabilities]))
 
                         output_nlj.write({
                             'mmsi': int(mmsi),
