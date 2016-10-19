@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
+from common import gcp_config
 import yaml
 import json
 import time
@@ -26,19 +27,19 @@ from googleapiclient import discovery
 import tempfile
 
 
-def launch(model_name):
+def launch(environment, model_name, job_name):
     # Read the configuration file so that we 
     # know the train path and don't need to
     # hardcode it here
     with open("deploy_cloudml_config_template.txt") as f:
         config_template = f.read()
 
-    user_name = os.environ['USER']
-    time_stamp = datetime.datetime.utcnow().strftime('%y%m%d_%H%M%S')
-    job_id = model_name.replace('.', '_') + '_' + time_stamp
+    gcp = gcp_config.makeConfig(environment, job_name)
 
     config_txt = config_template.format(
-        model_name=model_name, job_id=job_id, user_name=user_name)
+        output_path=gcp.model_path(), model_name=model_name)
+
+    job_id = ('%s_%s' % (job_name, model_name)).replace('.', '_')
 
     # Kick off the job on CloudML
     with tempfile.NamedTemporaryFile() as temp:
@@ -112,9 +113,11 @@ def print_logs(job_id, level="INFO"):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Deploy ML Training.')
-    parser.add_argument('model_name', help='module name of model')
+    parser.add_argument('--env', help='environment for run: prod/dev.')
+    parser.add_argument('--model_name', help='module name of model.')
+    parser.add_argument('--job_name', help='unique name for this job.')
 
     args = parser.parse_args()
 
-    job_id = launch(args.model_name)
+    job_id = launch(args.env, args.model_name, args.job_name)
     print_logs(job_id)

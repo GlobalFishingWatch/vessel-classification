@@ -29,35 +29,34 @@ object Implicits {
   }
 }
 
-object GCPConfig extends LazyLogging {
+object GcpConfig extends LazyLogging {
   import Implicits._
 
   private def projectId = "world-fishing-827"
 
-  def makeConfig(environment: String, jobName: Option[String]) = {
+  // TODO(alexwilson): No locally-generated date for prod. Needs to be sourced
+  // from outside so all prod stages share the same path.
+  def makeConfig(environment: String, jobId: String) = {
     val now = new DateTime(DateTimeZone.UTC)
     val rootPath = environment match {
       case "prod" => {
-        val datePart = ISODateTimeFormat.basicDateTimeNoMillis().print(now)
-        "gs://world-fishing-827/data-production/classification/$datePart"
+        "gs://world-fishing-827/data-production/classification/$jobId"
       }
       case "dev" => {
         val user = sys.env("USER")
         if (user.isEmpty) {
           logger.fatal("USER environment variable cannot be empty for dev runs.")
         }
-        if (jobName.isEmpty) {
-          logger.fatal("Job name must be provided for dev runs.")
-        }
-        s"gs://world-fishing-827-dev-ttl30d/data-production/classification/$user/${jobName.get}"
+        s"gs://world-fishing-827-dev-ttl30d/data-production/classification/$user/$jobId"
       }
+      case _ => logger.fatal(s"Invalid environment: $environment.")
     }
 
-    GCPConfig(now, projectId, rootPath)
+    GcpConfig(now, projectId, rootPath)
   }
 }
 
-case class GCPConfig(startTime: DateTime, projectId: String, private val rootPath: String) {
-  def dataflowStagingPath = s"$rootPath/dataflow-staging"
-  def pipelineOutputPath = s"$rootPath/pipeline-output"
+case class GcpConfig(startTime: DateTime, projectId: String, private val rootPath: String) {
+  def dataflowStagingPath = s"$rootPath/pipeline/staging"
+  def pipelineOutputPath = s"$rootPath/pipeline/output"
 }
