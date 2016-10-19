@@ -1,7 +1,9 @@
 from collections import defaultdict, namedtuple
 import dateutil.parser
+import hashlib
 import time
 import logging
+import newlinejson as nlj
 import numpy as np
 import os
 import sys
@@ -505,6 +507,14 @@ def find_available_mmsis(feature_path):
     # GCS is far from ideal. However the alternative is to bring in additional
     # libraries with explicit auth that may or may not play nicely with CloudML.
     # Improve later...
+    available_cache_filename = "available_mmsis.cache"
+    if os.path.exists(cache_filename):
+        with nlj.open(available_cache_filename, 'r') as cache:
+            for line in cache:
+                if line["path"] == feature_path:
+                    logging.info("Loading mmsis from cache.")
+                    return set(line['mmsis'])
+
     with tf.Session() as sess:
         logging.info(
             "Finding matching features files. May take a few minutes...")
@@ -518,8 +528,11 @@ def find_available_mmsis(feature_path):
             sys.exit(-1)
         logging.info("Found %d feature files.", len(all_feature_files))
 
-    return set(
-        [int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files])
+    mmsis = [int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files]
+    with nlj.open(available_cache_filename, 'a') as cache:
+        cache.write({"path": feature_path, "mmsis": mmsis})
+
+    return set(mmsis)
 
 
 def read_fishing_ranges(fishing_range_file):
