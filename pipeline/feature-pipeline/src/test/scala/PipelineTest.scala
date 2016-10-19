@@ -46,6 +46,11 @@ object TestHelper {
                          course.of[degrees],
                          heading.of[degrees])
 
+def rvl(timestamp: String, lat: Double, lon: Double, pointDensity: Double = 1.0) =
+    ResampledVesselLocation(ts(timestamp),
+                            LatLon(lat.of[degrees], lon.of[degrees]),
+                            500.0.of[kilometer],
+                            pointDensity)
 }
 
 class PipelineTests extends PipelineSpec with Matchers {
@@ -266,11 +271,6 @@ class LocationResamplerTests extends PipelineSpec with Matchers {
   import TestHelper._
   import AdditionalUnits._
 
-  def rvl(timestamp: String, lat: Double, lon: Double) =
-    ResampledVesselLocation(ts(timestamp),
-                            LatLon(lat.of[degrees], lon.of[degrees]),
-                            500.0.of[kilometer])
-
   "The resampler" should "resample points, but not if they are too far apart" in {
     val inputRecords = Seq(vlr("2011-06-30T23:58:00Z", lat = 10.0, lon = 10.0),
                            // Pick up the exact value at 00:00:00
@@ -288,13 +288,18 @@ class LocationResamplerTests extends PipelineSpec with Matchers {
                            // an hour apart.
                            vlr("2011-07-01T01:38:00Z", lat = 10.0, lon = 11.0),
                            // Interpolate into 01:40:00.
-                           vlr("2011-07-01T01:42:00Z", lat = 11.0, lon = 11.0))
+                           vlr("2011-07-01T01:42:00Z", lat = 11.0, lon = 11.0),
+                           vlr("2011-07-01T02:22:00Z", lat = 11.0, lon = 11.0))
 
     val expected =
-      Seq(rvl("2011-07-01T00:00:00Z", 10.3, 10.0),
-          rvl("2011-07-01T00:10:00Z", 10.0, 10.0),
-          rvl("2011-07-01T00:20:00Z", 10.0, 10.25),
-          rvl("2011-07-01T01:40:00Z", 10.5, 11.0))
+      Seq(rvl("2011-07-01T00:00:00Z", 10.3, 10.0, 1.0),
+          rvl("2011-07-01T00:10:00Z", 10.0, 10.0, 1.0),
+          rvl("2011-07-01T00:20:00Z", 10.0, 10.25, 1.0),
+          rvl("2011-07-01T01:40:00Z", 10.5, 11.0, 1.0),
+          rvl("2011-07-01T01:50:00Z", 11.0, 11.0, 0.25),
+          rvl("2011-07-01T02:00:00Z", 11.0, 11.0, 0.25),
+          rvl("2011-07-01T02:10:00Z", 11.0, 11.0, 0.25),
+          rvl("2011-07-01T02:20:00Z", 11.0, 11.0, 0.25))
 
     val result = Utility.resampleVesselSeries(Duration.standardMinutes(10), inputRecords)
 

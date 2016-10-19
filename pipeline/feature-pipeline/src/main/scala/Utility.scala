@@ -76,9 +76,9 @@ object LatLon {
   }
 }
 
-case class VesselMetadata(
-    mmsi: Int
-)
+case class VesselMetadata(mmsi: Int) {
+  def flagState = CountryCodes.fromMmsi(mmsi)
+}
 
 case class StationaryPeriod(location: LatLon, duration: Duration)
 
@@ -94,43 +94,54 @@ case class VesselLocationRecord(timestamp: Instant,
 
 case class ResampledVesselLocation(timestamp: Instant,
                                    location: LatLon,
-                                   distanceToShore: DoubleU[kilometer])
+                                   distanceToShore: DoubleU[kilometer],
+                                   pointDensity: Double)
 
 case class ResampledVesselLocationWithAdjacency(
-    timestamp: Instant,
-    location: LatLon,
-    distanceToShore: DoubleU[kilometer],
+    locationRecord: ResampledVesselLocation,
     numNeighbours: Int,
-    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer])])
+    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)])
 
 case class SingleEncounter(startTime: Instant,
                            endTime: Instant,
                            meanLocation: LatLon,
                            medianDistance: DoubleU[kilometer],
-                           medianSpeed: DoubleU[knots]) {
+                           medianSpeed: DoubleU[knots],
+                           vessel1PointCount: Int,
+                           vessel2PointCount: Int) {
   def toJson =
-    ("start_time" -> startTime.toString) ~
+    ("duration_seconds" -> (new Duration(startTime, endTime)).getStandardSeconds) ~
+      ("start_time" -> startTime.toString) ~
       ("end_time" -> endTime.toString) ~
       ("mean_latitude" -> meanLocation.lat.value) ~
       ("mean_longitude" -> meanLocation.lon.value) ~
       ("median_distance" -> medianDistance.value) ~
-      ("median_speed" -> medianSpeed.value)
+      ("median_speed" -> medianSpeed.value) ~
+      ("vessel1_point_count" -> vessel1PointCount) ~
+      ("vessel2_point_count" -> vessel2PointCount)
 }
 
 case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
-  def toJson =
+  import Utility._
+
+  def toJson = {
+    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
     ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
-      ("numUniqueVessels" -> vessels.size) ~
+      ("unique_vessel_count" -> vessels.size) ~
+      ("flag_state_distribution" -> flagStateDistribution) ~
       ("mmsis" -> vessels.map(_.mmsi))
+  }
 }
 
 case class VesselEncounters(vessel1: VesselMetadata,
                             vessel2: VesselMetadata,
                             encounters: Seq[SingleEncounter]) {
   def toJson =
-    ("mmsi1" -> vessel1.mmsi) ~
-      ("mmsi2" -> vessel2.mmsi) ~
+    ("vessel1_mmsi" -> vessel1.mmsi) ~
+      ("vessel2_mmsi" -> vessel2.mmsi) ~
+      ("vessel1_flag_state" -> vessel1.flagState) ~
+      ("vessel2_flag_state" -> vessel2.flagState) ~
       ("encounters" -> encounters.map(_.toJson))
 
 }
@@ -272,6 +283,9 @@ object Utility extends LazyLogging {
         val firstTimeSeconds = tsToUnixSeconds(llr.timestamp)
         val secondTimeSeconds = tsToUnixSeconds(currentLocationRecord.timestamp)
         val timeDeltaSeconds = secondTimeSeconds - firstTimeSeconds
+
+        val pointDensity = math.min(1.0, incrementSeconds.toDouble / timeDeltaSeconds.toDouble)
+
         if (firstTimeSeconds <= iterTime && secondTimeSeconds >= iterTime &&
             timeDeltaSeconds < maxInterpolateGapSeconds) {
           val mix = (iterTime - firstTimeSeconds).toDouble / (secondTimeSeconds - firstTimeSeconds).toDouble
@@ -287,7 +301,8 @@ object Utility extends LazyLogging {
           interpolatedSeries.append(
             ResampledVesselLocation(new Instant(iterTime * 1000),
                                     LatLon(interpLat.of[degrees], interpLon.of[degrees]),
-                                    interpDistFromShore.of[kilometer]))
+                                    interpDistFromShore.of[kilometer],
+                                    pointDensity))
         }
       }
 
