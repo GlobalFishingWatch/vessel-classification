@@ -8,13 +8,14 @@ import com.google.common.geometry.S2CellId
 import com.typesafe.scalalogging.LazyLogging
 import com.spotify.scio.values.SCollection
 import org.joda.time.{Duration, Instant}
+import org.skytruth.common.Implicits
 
 import scala.collection.{mutable, immutable}
 
 import AdditionalUnits._
 
 object Encounters extends LazyLogging {
-  import Utility._
+  import Implicits._
 
   def calculateEncounters(
       minDurationForEncounter: Duration,

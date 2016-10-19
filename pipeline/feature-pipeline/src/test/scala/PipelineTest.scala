@@ -199,8 +199,8 @@ class FeatureBuilderTests extends PipelineSpec with Matchers {
                        vlr("2011-07-01T01:40:00Z", -1.3998985, 55.2037573, speed = 1.0))
 
   "Adjacency lookup" should "correctly return the nearest locations" in {
-    val anchorageLookup = Utility
-      .AdjacencyLookup(anchorageLocations, (v: Anchorage) => v.meanLocation, 0.5.of[kilometer], 12)
+    val anchorageLookup =
+        AdjacencyLookup(anchorageLocations, (v: Anchorage) => v.meanLocation, 0.5.of[kilometer], 12)
     val firstLoc = LatLon(-1.4065933.of[degrees], 55.2350923.of[degrees])
     val secondLoc = LatLon(-1.4704514.of[degrees], 55.2206029.of[degrees])
     val thirdLoc = LatLon(-1.3998985.of[degrees], 55.2037573.of[degrees])
@@ -214,8 +214,8 @@ class FeatureBuilderTests extends PipelineSpec with Matchers {
     val locations = Seq[VesselLocationRecord]()
     val anchorages = Seq[Anchorage]()
 
-    val anchorageLookup = Utility
-      .AdjacencyLookup(anchorageLocations, (v: Anchorage) => v.meanLocation, 0.1.of[kilometer], 13)
+    val anchorageLookup =
+        AdjacencyLookup(anchorageLocations, (v: Anchorage) => v.meanLocation, 0.1.of[kilometer], 13)
 
     val features = ModelFeatures.buildSingleVesselFeatures(vesselPath, anchorageLookup)
 

@@ -53,11 +53,10 @@ lazy val featurePipeline =
     .settings(commonSettings: _*)
     .settings(
       Seq(
-        libraryDependencies ++= Seq(
-          "com.opencsv" % "opencsv" % "3.7",
-          "org.json4s" %% "json4s-native" % "3.3.0")
+        libraryDependencies ++= Seq("com.opencsv" % "opencsv" % "3.7",
+                                    "org.json4s" %% "json4s-native" % "3.3.0")
       ))
-    .dependsOn(tfExampleProtos)
+    .dependsOn(common, tfExampleProtos)
 
 // An aggregation of all projects.
 lazy val root = (project in file(".")).aggregate(common, featurePipeline)

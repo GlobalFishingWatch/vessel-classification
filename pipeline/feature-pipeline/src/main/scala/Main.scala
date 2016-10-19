@@ -30,6 +30,7 @@ import org.joda.time.format.ISODateTimeFormat
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
+import org.skytruth.common.GCPConfig
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
@@ -49,13 +50,6 @@ object Parameters {
   //val allDataYears = List("2015")
   val inputMeasuresPath =
     "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment"
-  val outputFeaturesPath =
-    "gs://alex-dataflow-scratch/features-scratch"
-  val gceProject = "world-fishing-827"
-  val dataflowStaging = "gs://alex-dataflow-scratch/dataflow-staging"
-
-  // Sourced from: https://github.com/GlobalFishingWatch
-  val vesselClassificationPath = "feature-pipeline/src/data/combined_classification_list.csv"
 
   val minValidTime = Instant.parse("2012-01-01T00:00:00Z")
   lazy val maxValidTime = Instant.now()
@@ -241,14 +235,16 @@ object Pipeline extends LazyLogging {
   }
 
   def main(argArray: Array[String]) {
-    val now = new DateTime(DateTimeZone.UTC)
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
 
-    val jobName = remaining_args.required("job-name")
+    val environment = remaining_args.required("env")
+    val jobName = remaining_args.optional("job-name")
+
+    val config = GCPConfig.makeConfig(environment, jobName)
 
     options.setRunner(classOf[DataflowPipelineRunner])
-    options.setProject(Parameters.gceProject)
-    options.setStagingLocation(Parameters.dataflowStaging)
+    options.setProject(config.projectId)
+    options.setStagingLocation(config.dataflowStagingPath)
 
     val sc = ScioContext(options)
 
@@ -275,22 +271,19 @@ object Pipeline extends LazyLogging {
         (s"${md.mmsi}", feature)
     }
 
-    val baseOutputPath = Parameters.outputFeaturesPath + "/" + jobName + "/" +
-        ISODateTimeFormat.basicDateTimeNoMillis().print(now)
-
     // Output vessel classifier features.
-    val outputFeaturePath = baseOutputPath + "/features"
+    val outputFeaturePath = config.pipelineOutputPath + "/features"
     val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
 
     // Output anchorages.
-    val anchoragesPath = baseOutputPath + "/anchorages"
+    val anchoragesPath = config.pipelineOutputPath + "/anchorages"
     val anchoragesAsString = anchorages.map { anchorage =>
       compact(render(anchorage.toJson))
     }
     anchoragesAsString.saveAsTextFile(anchoragesPath)
 
     // Build and output suspected encounters.
-    val suspectedEncountersPath = baseOutputPath + "/encounters"
+    val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
     val encounters =
       Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
     encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)

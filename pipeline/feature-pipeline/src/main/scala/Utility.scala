@@ -27,6 +27,7 @@ import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
+import org.skytruth.common.{Implicits => STImplicits}
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
@@ -122,7 +123,7 @@ case class SingleEncounter(startTime: Instant,
 }
 
 case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
-  import Utility._
+  import STImplicits._
 
   def toJson = {
     val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
@@ -146,29 +147,27 @@ case class VesselEncounters(vessel1: VesselMetadata,
 
 }
 
+case class AdjacencyLookup[T](values: Seq[T],
+                              locFn: T => LatLon,
+                              maxRadius: DoubleU[kilometer],
+                              level: Int) {
+  private val cellMap = values
+    .flatMap(v =>
+      Utility.getCapCoveringCells(locFn(v), maxRadius, level).map(cellid => (cellid, v)))
+    .groupBy(_._1)
+    .map { case (cellid, vs) => (cellid, vs.map(_._2)) }
+
+  def nearby(location: LatLon) = {
+    val queryCells = Utility.getCapCoveringCells(location, maxRadius, level)
+    val allValues = queryCells.flatMap { cellid =>
+      cellMap.getOrElse(cellid, Seq())
+    }
+
+    allValues.map(v => (locFn(v).getDistance(location), v)).toIndexedSeq.distinct.sortBy(_._1)
+  }
+}
+
 object Utility extends LazyLogging {
-  implicit class RichLogger(val logger: Logger) {
-    def fatal(message: String) = {
-      logger.error(message)
-      throw new RuntimeException(s"Fatal error: $message")
-    }
-  }
-
-  implicit class RicherIterable[T](val iterable: Iterable[T]) {
-    def countBy[K](fn: T => K): Map[K, Int] = {
-      val counts = mutable.Map[K, Int]()
-      iterable.foreach { el =>
-        val k = fn(el)
-        counts(k) = counts.getOrElse(k, 0) + 1
-      }
-      // Converts to immutable map.
-      counts.toMap
-    }
-
-    def medianBy[V <% Ordered[V]](fn: T => V): T =
-      iterable.toIndexedSeq.sortBy(fn).apply(iterable.size / 2)
-  }
-
   // Normalize from -180 to + 180
   def angleNormalize(angle: DoubleU[degrees]) =
     MathUtils.normalizeAngle(angle.convert[radians].value, 0.0).of[radians].convert[degrees]
@@ -236,25 +235,6 @@ object Utility extends LazyLogging {
     }
 
     coverCells.toList
-  }
-
-  case class AdjacencyLookup[T](values: Seq[T],
-                                locFn: T => LatLon,
-                                maxRadius: DoubleU[kilometer],
-                                level: Int) {
-    private val cellMap = values
-      .flatMap(v => getCapCoveringCells(locFn(v), maxRadius, level).map(cellid => (cellid, v)))
-      .groupBy(_._1)
-      .map { case (cellid, vs) => (cellid, vs.map(_._2)) }
-
-    def nearby(location: LatLon) = {
-      val queryCells = getCapCoveringCells(location, maxRadius, level)
-      val allValues = queryCells.flatMap { cellid =>
-        cellMap.getOrElse(cellid, Seq())
-      }
-
-      allValues.map(v => (locFn(v).getDistance(location), v)).toIndexedSeq.distinct.sortBy(_._1)
-    }
   }
 
   def resampleVesselSeries(increment: Duration,
