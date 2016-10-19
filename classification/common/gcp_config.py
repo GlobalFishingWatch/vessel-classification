@@ -12,10 +12,10 @@ class GcpConfig(object):
         return self.root_path + '/models'
 
 
-def makeConfig(environment, job_name):
+def makeConfig(environment, job_id):
     project_id = "world-fishing-827"
     if environment == 'prod':
-        root_path = 'gs://world-fishing-827/data-production/classification/%s' % job_name
+        root_path = 'gs://world-fishing-827/data-production/classification/%s' % job_id
     elif environment == 'dev':
         user_name = os.environ['USER']
         if not user_name:
@@ -23,7 +23,7 @@ def makeConfig(environment, job_name):
                 'USER environment variable cannot be empty for dev runs.')
             sys.exit(-1)
         root_path = 'gs://world-fishing-827-dev-ttl30d/data-production/classification/%s/%s' % (
-            user_name, job_name)
+            user_name, job_id)
     else:
         logging.fatal('Invalid environment: %s', env)
         sys.exit(-1)
