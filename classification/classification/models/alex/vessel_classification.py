@@ -24,8 +24,8 @@ class Model(ModelBase):
 
         feature_pad_size = self.feature_depth - self.num_feature_dimensions
         assert (feature_pad_size >= 0)
-        zero_padding = tf.zeros([self.batch_size, 1, self.window_max_points,
-                                 feature_pad_size])
+        zero_padding = tf.zeros(
+            [self.batch_size, 1, self.window_max_points, feature_pad_size])
         padded = tf.concat(3, [features, zero_padding])
 
         return padded

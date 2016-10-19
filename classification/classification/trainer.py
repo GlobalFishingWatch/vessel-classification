@@ -30,8 +30,10 @@ class Trainer:
         self.num_parallel_readers = 16
 
     def _feature_files(self, split):
-        return ['%s/%d.tfrecord' % (self.base_feature_path, mmsi)
-                for mmsi in self.vessel_metadata[split].keys()]
+        return [
+            '%s/%d.tfrecord' % (self.base_feature_path, mmsi)
+            for mmsi in self.vessel_metadata[split].keys()
+        ]
 
     def _feature_data_reader(self, split, is_training):
         """ Concurrent feature data reader.
@@ -79,9 +81,10 @@ class Trainer:
             capacity,
             min_size_after_deque,
             enqueue_many=True,
-            shapes=[[1, self.model.window_max_points,
-                     self.model.num_feature_dimensions],
-                    [self.model.window_max_points], [2], []])
+            shapes=[[
+                1, self.model.window_max_points,
+                self.model.num_feature_dimensions
+            ], [self.model.window_max_points], [2], []])
 
         return features, labels, fishing_timeseries
 
