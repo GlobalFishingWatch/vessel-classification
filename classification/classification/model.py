@@ -13,6 +13,7 @@ class ObjectiveBase(object):
         self.name = name
         self.loss_weight = loss_weight
 
+
 class ObjectiveTrainer(object):
     __metaclass__ = abc.ABCMeta
 
@@ -30,10 +31,9 @@ class ClassificationObjective(ObjectiveBase):
         class Trainer(ObjectiveTrainer):
             def __init__(self, name, num_classes, loss_weight, logits, labels):
                 super(self.__class__, self).__init__()
-                one_hot_labels = slim.one_hot_encoding(
-                    labels, num_classes)
+                one_hot_labels = slim.one_hot_encoding(labels, num_classes)
                 raw_loss = slim.losses.softmax_cross_entropy(logits,
-                                                              one_hot_labels)
+                                                             one_hot_labels)
                 self.loss = raw_loss * loss_weight
                 class_predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 

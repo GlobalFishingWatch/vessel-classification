@@ -83,6 +83,7 @@ def main(args):
 
     config = json.loads(os.environ.get('TF_CONFIG', '{}'))
     if (config == {}):
+        logging.info("Running locally, training only...")
         node_config = utility.ClusterNodeConfig.create_local_server_config()
         server = tf.train.Server.create_local_server()
         run_training(node_config, server, trainer)

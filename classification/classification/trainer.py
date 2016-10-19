@@ -95,15 +95,17 @@ class Trainer:
             'Training', True)
 
         (optimizer, objectives) = self.model.build_training_net(
-             features, labels, fishing_timeseries_labels)
+            features, labels, fishing_timeseries_labels)
 
-        loss = tf.reduce_sum([o.loss for o in objectives])
+        loss = tf.reduce_sum(
+            [o.loss for o in objectives], reduction_indices=[0])
 
         train_op = slim.learning.create_train_op(
             loss,
             optimizer,
             update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
 
+        logging.info("Starting slim training loop.")
         slim.learning.train(
             train_op,
             self.checkpoint_dir,
@@ -119,8 +121,7 @@ class Trainer:
         features, labels, fishing_timeseries_labels = self._feature_data_reader(
             'Test', False)
 
-        objectives = self.model.build_inference_net(
-            features)
+        objectives = self.model.build_inference_net(features)
 
         vessel_class_predictions = tf.cast(
             tf.argmax(vessel_class_logits, 1), tf.int32)
