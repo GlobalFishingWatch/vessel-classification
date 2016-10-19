@@ -2,6 +2,7 @@ import abc
 from collections import namedtuple
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
+import tensorflow.contrib.metrics as metrics
 
 TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 
@@ -9,9 +10,8 @@ TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 class ObjectiveBase(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, name, loss_weight):
+    def __init__(self, name):
         self.name = name
-        self.loss_weight = loss_weight
 
 
 class ObjectiveTrainer(object):
@@ -23,11 +23,11 @@ class ObjectiveTrainer(object):
 
 
 class ClassificationObjective(ObjectiveBase):
-    def __init__(self, name, num_classes, loss_weight=1.0):
-        super(self.__class__, self).__init__(name, loss_weight)
+    def __init__(self, name, num_classes):
+        super(self.__class__, self).__init__(name)
         self.num_classes = num_classes
 
-    def build_trainer(self, logits, labels):
+    def build_trainer(self, logits, labels, loss_weight=1.0):
         class Trainer(ObjectiveTrainer):
             def __init__(self, name, num_classes, loss_weight, logits, labels):
                 super(self.__class__, self).__init__()
@@ -44,8 +44,23 @@ class ClassificationObjective(ObjectiveBase):
                 self.update_ops.append(
                     tf.scalar_summary('%s training accuracy' % name, accuracy))
 
-        return Trainer(self.name, self.num_classes, self.loss_weight, logits,
+        return Trainer(self.name, self.num_classes, loss_weight, logits,
                        labels)
+
+    def build_evaluation(self, logits):
+        class Evaluation(object):
+            def __init__(self, name, num_classes, logits):
+                self.softmax = slim.softmax(logits)
+
+            def build_test_metrics(self, labels):
+                predictions = tf.cast(tf.argmax(self.softmax, 1), tf.int32)
+
+                return metrics.aggregate_metric_map({
+                    'Vessel class test accuracy':
+                    metrics.streaming_accuracy(predictions, labels),
+                })
+
+        return Evaluation(self.name, self.num_classes, logits)
 
 
 class RegressionObjective(ObjectiveBase):

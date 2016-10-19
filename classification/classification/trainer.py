@@ -123,20 +123,18 @@ class Trainer:
 
         objectives = self.model.build_inference_net(features)
 
-        vessel_class_predictions = tf.cast(
-            tf.argmax(vessel_class_logits, 1), tf.int32)
+        aggregate_metric_maps = [o.build_test_metrics(labels)
+                                 for o in objectives]
 
-        names_to_values, names_to_updates = metrics.aggregate_metric_map({
-            'Vessel class test accuracy':
-            metrics.streaming_accuracy(vessel_class_predictions, labels),
-        })
-
-        # Create the summary ops such that they also print out to std output.
         summary_ops = []
-        for metric_name, metric_value in names_to_values.iteritems():
-            op = tf.scalar_summary(metric_name, metric_value)
-            op = tf.Print(op, [metric_value], metric_name)
-            summary_ops.append(op)
+        update_ops = []
+        for names_to_values, names_to_updates in aggregate_metric_maps:
+            for metric_name, metric_value in names_to_values.iteritems():
+                op = tf.scalar_summary(metric_name, metric_value)
+                op = tf.Print(op, [metric_value], metric_name)
+                summary_ops.append(op)
+            for update_op in names_to_updates.values():
+                update_ops.append(update_op)
 
         num_examples = 1024
         num_evals = math.ceil(num_examples / float(self.model.batch_size))
@@ -151,8 +149,8 @@ class Trainer:
                     self.checkpoint_dir,
                     self.eval_dir,
                     num_evals=num_evals,
-                    #eval_op=names_to_updates.values(),
-                    #summary_op=tf.merge_summary(summary_ops),
+                    eval_op=update_ops,
+                    summary_op=tf.merge_summary(summary_ops),
                     eval_interval_secs=120)
             except ValueError as e:
                 logging.warning('Error in evaluation loop: (%s), retrying',

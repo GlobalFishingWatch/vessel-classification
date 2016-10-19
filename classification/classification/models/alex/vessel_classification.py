@@ -55,6 +55,6 @@ class Model(ModelBase):
 
         vessel_class_trainer = ClassificationObjective(
             "Vessel class",
-            self.num_classes).build_trainer(vessel_class_logits, labels)
+            self.num_classes).build_evaluation(vessel_class_logits)
 
         return [vessel_class_trainer]
