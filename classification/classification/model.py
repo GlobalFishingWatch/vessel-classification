@@ -1,5 +1,7 @@
 import abc
 from collections import namedtuple
+import tensorflow as tf
+import tensorflow.contrib.slim as slim
 
 TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 
@@ -11,34 +13,36 @@ class ObjectiveBase(object):
         self.name = name
         self.loss_weight = loss_weight
 
-    class Trainer(object):
-        __metaclass__ = abc.ABCMeta
+class ObjectiveTrainer(object):
+    __metaclass__ = abc.ABCMeta
 
-        def __init__(self):
-            self.loss = None
-            self.update_ops = []
+    def __init__(self):
+        self.loss = None
+        self.update_ops = []
 
 
 class ClassificationObjective(ObjectiveBase):
     def __init__(self, name, num_classes, loss_weight=1.0):
-        super(ClassificationObjective).__init__(self, name, loss_weight)
+        super(self.__class__, self).__init__(name, loss_weight)
         self.num_classes = num_classes
 
     def build_trainer(self, logits, labels):
         class Trainer(ObjectiveTrainer):
             def __init__(self, name, num_classes, loss_weight, logits, labels):
+                super(self.__class__, self).__init__()
                 one_hot_labels = slim.one_hot_encoding(
-                    labels, self.num_classes, weight=self.loss_weight)
-                self.loss = slim.losses.softmax_cross_entropy(logits,
+                    labels, num_classes)
+                raw_loss = slim.losses.softmax_cross_entropy(logits,
                                                               one_hot_labels)
+                self.loss = raw_loss * loss_weight
                 class_predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
                 self.update_ops.append(
-                    tf.scalar_summary('%s training loss' % name, self.loss))
+                    tf.scalar_summary('%s training loss' % name, raw_loss))
 
                 accuracy = slim.metrics.accuracy(labels, class_predictions)
                 self.update_ops.append(
-                    tf.scalar_summary('%s training accuracy' % self.name, accuracy))
+                    tf.scalar_summary('%s training accuracy' % name, accuracy))
 
         return Trainer(self.name, self.num_classes, self.loss_weight, logits,
                        labels)

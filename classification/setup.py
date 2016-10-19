@@ -8,6 +8,8 @@ setuptools.setup(
         'classification.data':
         ['combined_classification_list.csv', 'combined_fishing_ranges.csv']
     },
-    packages=['classification', 'classification.data', 'classification.models',
-              'classification.models.alex', 'classification.models.hernan',
-              'classification.models.tim'])
+    packages=[
+        'classification', 'classification.data', 'classification.models',
+        'classification.models.alex', 'classification.models.hernan',
+        'classification.models.tim'
+    ])

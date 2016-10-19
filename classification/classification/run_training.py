@@ -72,25 +72,7 @@ def main(args):
 
     fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
 
-    # TODO(alexwilson): Using a temporary session to get the matching files on
-    # GCS is far from ideal. However the alternative is to bring in additional
-    # libraries with explicit auth that may or may not play nicely with CloudML.
-    # Improve later...
-    with tf.Session() as sess:
-        logging.info(
-            "Finding matching features files. May take a few minutes...")
-        matching_files = tf.train.match_filenames_once(args.root_feature_path +
-                                                       "/*.tfrecord")
-        sess.run(tf.initialize_all_variables())
-
-        all_feature_files = sess.run(matching_files)
-        if len(all_feature_files) == 0:
-            logging.fatal("Error: no feature files found.")
-            sys.exit(-1)
-        logging.info("Found %d feature files.", len(all_feature_files))
-
-    all_available_mmsis = set(
-        [int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files])
+    all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
 
     vessel_metadata = utility.read_vessel_metadata(all_available_mmsis,
                                                    metadata_file)

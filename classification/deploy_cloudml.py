@@ -47,11 +47,12 @@ def launch(model_name):
     with tempfile.NamedTemporaryFile() as temp:
         temp.write(config_txt)
         temp.flush()
-        subprocess.check_call(
-            ['gcloud', 'beta', 'ml', 'jobs', 'submit', 'training', job_id,
-             '--config', temp.name, '--module-name',
-             'classification.run_training', '--staging-bucket',
-             'gs://world-fishing-827-ml', '--package-path', 'classification'])
+        subprocess.check_call([
+            'gcloud', 'beta', 'ml', 'jobs', 'submit', 'training', job_id,
+            '--config', temp.name, '--module-name',
+            'classification.run_training', '--staging-bucket',
+            'gs://world-fishing-827-ml', '--package-path', 'classification'
+        ])
 
     return job_id
 
@@ -73,8 +74,10 @@ def print_logs(job_id, level="INFO"):
     #                   discoveryServiceUrl='https://storage.googleapis.com/cloud-ml/discovery/ml_v1alpha3_discovery.json')
     # op_name = ('projects/%s/operations/%s' % (project_id, job_id))
 
-    tail = ['gcloud', 'beta', 'logging', 'read', '--format=json',
-            'labels."ml.googleapis.com/job_id"="%s"' % (job_id, )]
+    tail = [
+        'gcloud', 'beta', 'logging', 'read', '--format=json',
+        'labels."ml.googleapis.com/job_id"="%s"' % (job_id, )
+    ]
     while True:
         entries = json.loads(subprocess.check_output(tail))
 
@@ -99,8 +102,9 @@ def print_logs(job_id, level="INFO"):
                     print("Uninterpretable log entry:", entry)
                     continue
                 print(text)
-                if text.strip() in ["Job failed.",
-                                    "Job completed successfully."]:
+                if text.strip() in [
+                        "Job failed.", "Job completed successfully."
+                ]:
                     return
         last_timestamp = entries[-1]['timestamp']
 

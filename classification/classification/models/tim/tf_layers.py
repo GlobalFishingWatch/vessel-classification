@@ -33,6 +33,7 @@ def dense_layer(inputs, size, name='dense-layer'):
         b = bias_variable([size])
         return tf.matmul(inputs, W) + b
 
+
 # Batch, 1, Width, Depth
 
 
