@@ -55,9 +55,13 @@ class ClusterNodeConfig(object):
 
     @staticmethod
     def create_local_server_config():
-        return ClusterNodeConfig({"cluster": {},
-                                  "task": {"type": "worker",
-                                           "index": 0}})
+        return ClusterNodeConfig({
+            "cluster": {},
+            "task": {
+                "type": "worker",
+                "index": 0
+            }
+        })
 
 
 def fishing_localisation_loss(logits, targets):
@@ -129,9 +133,7 @@ def single_feature_file_reader(filename_queue, num_features):
     context_features, sequence_features = tf.parse_single_sequence_example(
         serialized_example,
         # Defaults are not specified since both keys are required.
-        context_features={
-            'mmsi': tf.FixedLenFeature([], tf.int64),
-        },
+        context_features={'mmsi': tf.FixedLenFeature([], tf.int64), },
         sequence_features={
             'movement_features': tf.FixedLenSequenceFeature(
                 shape=(num_features, ), dtype=tf.float32)
@@ -507,9 +509,9 @@ def find_available_mmsis(feature_path):
     # GCS is far from ideal. However the alternative is to bring in additional
     # libraries with explicit auth that may or may not play nicely with CloudML.
     # Improve later...
-    available_cache_filename = "available_mmsis.cache"
-    if os.path.exists(cache_filename):
-        with nlj.open(available_cache_filename, 'r') as cache:
+    mmsi_cache_filename = "available_mmsis.cache"
+    if os.path.exists(mmsi_cache_filename):
+        with nlj.open(mmsi_cache_filename, 'r') as cache:
             for line in cache:
                 if line["path"] == feature_path:
                     logging.info("Loading mmsis from cache.")
@@ -529,7 +531,7 @@ def find_available_mmsis(feature_path):
         logging.info("Found %d feature files.", len(all_feature_files))
 
     mmsis = [int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files]
-    with nlj.open(available_cache_filename, 'a') as cache:
+    with nlj.open(mmsi_cache_filename, 'a') as cache:
         cache.write({"path": feature_path, "mmsis": mmsis})
 
     return set(mmsis)

@@ -8,9 +8,9 @@ from classification.model import ModelBase, TrainNetInfo
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm
 
-TowerParams = namedtuple("TowerParams",
-                         ["filter_count", "filter_widths", "pool_size",
-                          "pool_stride", "keep_prob"])
+TowerParams = namedtuple("TowerParams", [
+    "filter_count", "filter_widths", "pool_size", "pool_stride", "keep_prob"
+])
 
 
 class Model(ModelBase):

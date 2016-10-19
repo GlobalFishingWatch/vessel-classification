@@ -42,8 +42,10 @@ class Inferer(object):
                             for (s, e) in zip(time_starts, time_starts[2:])]
 
     def _feature_files(self, split):
-        return ['%s/%d.tfrecord' % (self.root_feature_path, mmsi)
-                for mmsi in self.mmsis]
+        return [
+            '%s/%d.tfrecord' % (self.root_feature_path, mmsi)
+            for mmsi in self.mmsis
+        ]
 
     def run_inference(self, inference_parallelism, inference_results_path):
         matching_files = self._feature_files(self.mmsis)
@@ -63,9 +65,10 @@ class Inferer(object):
             self.batch_size,
             enqueue_many=True,
             capacity=1000,
-            shapes=[[1, self.model.window_max_points,
-                     self.model.num_feature_dimensions],
-                    [self.model.window_max_points], [2], []])
+            shapes=[[
+                1, self.model.window_max_points,
+                self.model.num_feature_dimensions
+            ], [self.model.window_max_points], [2], []])
 
         (vessel_class_logits, fishing_localisation_logits
          ) = self.model.build_inference_net(features)
@@ -101,8 +104,10 @@ class Inferer(object):
                 while True:
                     logging.info("Inference step: %d", i)
                     i += 1
-                    result = sess.run([mmsis, time_ranges, predictions,
-                                       max_probabilities, softmax])
+                    result = sess.run([
+                        mmsis, time_ranges, predictions, max_probabilities,
+                        softmax
+                    ])
                     for mmsi, (
                             start_time_seconds, end_time_seconds
                     ), label, max_probability, label_probabilities in zip(
@@ -113,8 +118,8 @@ class Inferer(object):
                             end_time_seconds)
 
                         label_scores = dict(
-                            zip(utility.VESSEL_CLASS_NAMES, [float(
-                                v) for v in label_probabilities]))
+                            zip(utility.VESSEL_CLASS_NAMES,
+                                [float(v) for v in label_probabilities]))
 
                         output_nlj.write({
                             'mmsi': int(mmsi),

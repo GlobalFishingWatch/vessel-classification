@@ -1,9 +1,9 @@
 import abc
 from collections import namedtuple
 
-TrainNetInfo = namedtuple("TrainNetInfo",
-                          ["loss", "optimizer", "vessel_class_logits",
-                           "fishing_localisation_logits"])
+TrainNetInfo = namedtuple("TrainNetInfo", [
+    "loss", "optimizer", "vessel_class_logits", "fishing_localisation_logits"
+])
 
 
 class ModelBase(object):
