@@ -91,19 +91,10 @@ class Trainer:
         features, labels, fishing_timeseries_labels = self._feature_data_reader(
             'Training', True)
 
-        (loss, optimizer, vessel_class_logits,
-         fishing_localisation_logits) = self.model.build_training_net(
+        (optimizer, objectives) = self.model.build_training_net(
              features, labels, fishing_timeseries_labels)
 
-        vessel_class_predictions = tf.cast(
-            tf.argmax(vessel_class_logits, 1), tf.int32)
-
-        tf.scalar_summary('Training loss', loss)
-
-        vessel_class_accuracy = slim.metrics.accuracy(labels,
-                                                      vessel_class_predictions)
-        tf.scalar_summary('Vessel class training accuracy',
-                          vessel_class_accuracy)
+        loss = tf.reduce_sum([o.loss for o in objectives])
 
         train_op = slim.learning.create_train_op(
             loss,
@@ -125,7 +116,7 @@ class Trainer:
         features, labels, fishing_timeseries_labels = self._feature_data_reader(
             'Test', False)
 
-        vessel_class_logits, fishing_localisation_logits = self.model.build_inference_net(
+        objectives = self.model.build_inference_net(
             features)
 
         vessel_class_predictions = tf.cast(
@@ -156,8 +147,8 @@ class Trainer:
                     self.checkpoint_dir,
                     self.eval_dir,
                     num_evals=num_evals,
-                    eval_op=names_to_updates.values(),
-                    summary_op=tf.merge_summary(summary_ops),
+                    #eval_op=names_to_updates.values(),
+                    #summary_op=tf.merge_summary(summary_ops),
                     eval_interval_secs=120)
             except ValueError as e:
                 logging.warning('Error in evaluation loop: (%s), retrying',
