@@ -31,8 +31,8 @@ object Encounters extends LazyLogging {
 
         def tryAddEncounter(newEncounterVessel: Option[VesselMetadata]) = {
           if (currentEncounterVessel.isDefined && currentRun.size >= 2) {
-            val startTime = currentRun.head.timestamp
-            val endTime = currentRun.last.timestamp
+            val startTime = currentRun.head.locationRecord.timestamp
+            val endTime = currentRun.last.locationRecord.timestamp
             val encounterDuration = new Duration(startTime, endTime)
 
             if (encounterDuration.isLongerThan(minDurationForEncounter)) {
@@ -40,25 +40,36 @@ object Encounters extends LazyLogging {
                 .sliding(2)
                 .map {
                   case Seq(first, second) =>
-                    val dist = first.location.getDistance(second.location)
-                    val timeDelta = new Duration(first.timestamp, second.timestamp)
+                    val dist =
+                      first.locationRecord.location.getDistance(second.locationRecord.location)
+                    val timeDelta =
+                      new Duration(first.locationRecord.timestamp, second.locationRecord.timestamp)
 
                     dist.convert[meter].value / timeDelta.getStandardSeconds
                 }
                 .toSeq
 
               val medianDistance = currentRun.map { _.closestNeighbour.get._2 }.medianBy(_.value)
-              val meanLocation = LatLon.mean(currentRun.map(_.location))
+              val meanLocation = LatLon.mean(currentRun.map(_.locationRecord.location))
 
               val medianSpeed =
                 impliedSpeeds.medianBy(Predef.identity).of[meters_per_second].convert[knots]
+
+              val vessel1Points = currentRun.map(_.locationRecord.pointDensity).sum.toInt
+              val vessel2Points = currentRun.map(_.closestNeighbour.get._3.pointDensity).sum.toInt
 
               val key = (md, currentEncounterVessel.get)
               if (!encounters.contains(key)) {
                 encounters(key) = mutable.ArrayBuffer.empty[SingleEncounter]
               }
               encounters(key).append(
-                SingleEncounter(startTime, endTime, meanLocation, medianDistance, medianSpeed))
+                SingleEncounter(startTime,
+                                endTime,
+                                meanLocation,
+                                medianDistance,
+                                medianSpeed,
+                                vessel1Points,
+                                vessel2Points))
             }
           }
           currentEncounterVessel = newEncounterVessel
@@ -67,7 +78,7 @@ object Encounters extends LazyLogging {
 
         locationSeries.foreach { l =>
           val possibleEncounterPoint =
-            l.distanceToShore > Parameters.minDistanceToShoreForEncounter &&
+            l.locationRecord.distanceToShore > Parameters.minDistanceToShoreForEncounter &&
               l.closestNeighbour.isDefined &&
               l.closestNeighbour.get._2 < Parameters.maxDistanceForEncounter
 
@@ -161,19 +172,13 @@ object Encounters extends LazyLogging {
             val closestN =
               withoutIdentity.toSeq.distinct.sortBy(_._2).take(Parameters.maxClosestNeighbours)
 
-            val closestNeighbour = if (closestN.isEmpty) {
-              None
-            } else {
-              Some(closestN.head)
+            val closestNeighbour = closestN.headOption.map {
+              case (md2, dist) => (md2, dist, vesselLocationMap(md2))
             }
+
             val number = closestN.size
 
-            val res = (md,
-                       ResampledVesselLocationWithAdjacency(vl.timestamp,
-                                                            vl.location,
-                                                            vl.distanceToShore,
-                                                            number,
-                                                            closestNeighbour))
+            val res = (md, ResampledVesselLocationWithAdjacency(vl, number, closestNeighbour))
             res
         }.toSeq
     }
@@ -181,7 +186,7 @@ object Encounters extends LazyLogging {
     // Join by vessel and sort by time asc.
     adjacencyAnnotated.groupByKey.map {
       case (md, locations) =>
-        (md, locations.toIndexedSeq.sortBy(_.timestamp.getMillis))
+        (md, locations.toIndexedSeq.sortBy(_.locationRecord.timestamp.getMillis))
     }
   }
 }
