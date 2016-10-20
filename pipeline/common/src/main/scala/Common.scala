@@ -24,8 +24,10 @@ object Implicits {
       counts.toMap
     }
 
-    def medianBy[V <% Ordered[V]](fn: T => V): T =
-      iterable.toIndexedSeq.sortBy(fn).apply(iterable.size / 2)
+    def medianBy[V <% Ordered[V]](fn: T => V): T = {
+      val asIndexedSeq = iterable.toIndexedSeq.sortBy(fn)
+      asIndexedSeq.apply(asIndexedSeq.size / 2)
+    }
   }
 }
 
@@ -40,14 +42,14 @@ object GcpConfig extends LazyLogging {
     val now = new DateTime(DateTimeZone.UTC)
     val rootPath = environment match {
       case "prod" => {
-        "gs://world-fishing-827/data-production/classification/$jobId"
+        s"gs://world-fishing-827/data-production/classification/$jobId"
       }
       case "dev" => {
-        val user = sys.env("USER")
-        if (user.isEmpty) {
-          logger.fatal("USER environment variable cannot be empty for dev runs.")
+        sys.env.get("USER") match {
+          case Some(user) =>
+            s"gs://world-fishing-827-dev-ttl30d/data-production/classification/$user/$jobId"
+          case _ => logger.fatal("USER environment variable cannot be empty for dev runs.")
         }
-        s"gs://world-fishing-827-dev-ttl30d/data-production/classification/$user/$jobId"
       }
       case _ => logger.fatal(s"Invalid environment: $environment.")
     }
