@@ -6,11 +6,11 @@ Vessel classification pipeline: feature generation and model training/inference.
 
 # Data layout
 
-The classifiction pipeline has multiple stages, computing: feature generation, port inference,
-encounters, model training, vessel type inference, fishing locality inference, accuracy evaluation.
-This is implemented in several stages, each requiring outputs to disk. In addition we run
-experiments of our own to improve or develop the pipeline further. We need the data to be laid out
-systematically on GCS. Currently we use the following structure:
+The production classification pipeline has multiple stages, computing: feature generation, port
+inference, encounters, model training, vessel type inference, fishing locality inference, accuracy
+evaluation. This is implemented in several stages, each requiring outputs to GCS. In addition we
+run experiments of our own to improve or develop the pipeline further. We need the data to be laid
+out systematically on GCS. Currently we use the following structure:
 
 * `world-fishing-827/data-production` (prod)
   * `classification`
@@ -28,15 +28,16 @@ systematically on GCS. Currently we use the following structure:
       * `tim`
       * etc...
 
-Here, we have a production pipeline running under (probably) cron, generating new results daily.
+Here, we have a production pipeline running under (probably) cron, generating new results daily to
+(`world-fishing-827/data-production`).
 We have tight control over the code that's pushed to run on production (probably via a Docker image
 registered on GCR).
 
-We then have a dev directory (`world-fishing-827-dev-ttl30d`). Anything we're trying that hasn't yet
-hit production will end up in a `dev/<username>` directory, mirroring the directories in prod but
-isolated from prod and from other developers experiments. This directory has a TTL set on all
-contents such that anything that is older than 30 days will be automatically deleted (to keep our
-GCS costs low and prevent infinite accumulation of experiments).
+We then have a dev directory (`world-fishing-827-dev-ttl30d/data-production`). Anything we're trying
+that hasn't yet hit production will end up in a `dev/<username>` directory, mirroring the
+directories in prod but isolated from prod and from other developer's experiments. This directory
+has a TTL set on all contents such that anything that is older than 30 days will be automatically
+deleted (to keep our GCS costs low and prevent infinite accumulation of experiments).
 
 I further propose we have also have a subdirectory under `dev`: `models` (or some other name) where
 we experiment with and train new models. Given our models are quite small, I would be inclined to
