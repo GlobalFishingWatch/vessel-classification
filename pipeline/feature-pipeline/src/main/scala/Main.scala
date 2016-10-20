@@ -30,7 +30,7 @@ import org.joda.time.format.ISODateTimeFormat
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
-import org.skytruth.common.GCPConfig
+import org.skytruth.common.GcpConfig
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
@@ -238,9 +238,9 @@ object Pipeline extends LazyLogging {
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
 
     val environment = remaining_args.required("env")
-    val jobName = remaining_args.optional("job-name")
+    val jobName = remaining_args.required("job-name")
 
-    val config = GCPConfig.makeConfig(environment, jobName)
+    val config = GcpConfig.makeConfig(environment, jobName)
 
     options.setRunner(classOf[DataflowPipelineRunner])
     options.setProject(config.projectId)
