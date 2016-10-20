@@ -85,6 +85,7 @@ class Trainer:
 
         return features, labels, fishing_timeseries
 
+
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
@@ -104,6 +105,20 @@ class Trainer:
                                                       vessel_class_predictions)
         tf.scalar_summary('Vessel class training accuracy',
                           vessel_class_accuracy)
+
+        fishing_timeseries_predictions = tf.nn.sigmoid(fishing_localisation_logits)
+        fishing_mask = tf.to_float(tf.not_equal(fishing_timeseries_labels, -1))
+
+        fishing_delta = fishing_mask * (fishing_timeseries_predictions - fishing_timeseries_labels)
+        unscaled_fishing_loss = tf.reduce_sum(fishing_delta ** 2)
+        fishing_loss_scale = tf.reduce_sum(tf.to_float(tf.not_equal(fishing_timeseries_labels, -1))) + 1e-6
+        fishing_loss = unscaled_fishing_loss / fishing_loss_scale
+
+        tf.scalar_summary('Fishing Score Count',
+                          fishing_loss_scale)
+
+        tf.scalar_summary('Fishing Score Error',
+                          fishing_loss)
 
         train_op = slim.learning.create_train_op(
             loss,
@@ -131,9 +146,20 @@ class Trainer:
         vessel_class_predictions = tf.cast(
             tf.argmax(vessel_class_logits, 1), tf.int32)
 
+
+        fishing_timeseries_predictions = tf.nn.sigmoid(fishing_localisation_logits)
+        fishing_mask = tf.to_float(tf.not_equal(fishing_timeseries_labels, -1))
+
+        fishing_delta = fishing_mask * (fishing_timeseries_predictions - fishing_timeseries_labels)
+        unscaled_fishing_loss = tf.reduce_sum(fishing_delta ** 2, 1)
+        fishing_loss_scale = tf.reduce_sum(tf.to_float(tf.not_equal(fishing_timeseries_labels, -1)))
+        fishing_loss = unscaled_fishing_loss / (fishing_loss_scale + 1e-6)
+
         names_to_values, names_to_updates = metrics.aggregate_metric_map({
             'Vessel class test accuracy':
             metrics.streaming_accuracy(vessel_class_predictions, labels),
+            'Fishing score test error':
+            slim.metrics.streaming_mean(fishing_loss, tf.not_equal(fishing_loss_scale, 0))
         })
 
         # Create the summary ops such that they also print out to std output.
