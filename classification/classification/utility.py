@@ -230,8 +230,8 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
     end_time = int(features[-1][0])
 
     # Drop the first (timestamp) column.
-    features = features[:, 1:]
     timeseries = features[:, 0].astype(np.int32)
+    features = features[:, 1:]
 
     # Roll the features randomly to give different offsets.
     roll = random_state.randint(0, window_size)
@@ -278,8 +278,8 @@ def np_array_extract_n_random_features(
         for fr in vessel_fishing_ranges:
             start_range = time.mktime(fr.start_time.timetuple())
             end_range = time.mktime(fr.end_time.timetuple())
-            fishing_timeseries[(fishing_timeseries >= start_range) & (
-                fishing_timeseries < end_range)] = fr.is_fishing
+            mask = (timeseries >= start_range) & (timeseries <= end_range)
+            fishing_timeseries[mask] = fr.is_fishing
 
         samples.append((np.stack([features]), fishing_timeseries, time_bounds,
                         np.int32(label)))
@@ -330,6 +330,7 @@ def cropping_weight_replicating_feature_file_reader(
         label = VESSEL_CLASS_INDICES[string_label]
         n = min(float(max_replication_factor), weight)
         vessel_fishing_ranges = fishing_ranges[mmsi]
+
         return np_array_extract_n_random_features(
             random_state, input, label, n, max_time_delta, window_size,
             min_timeslice_size, vessel_fishing_ranges)
@@ -514,4 +515,5 @@ def read_fishing_ranges(fishing_range_file):
 
             fishing_range_dict[mmsi].append(
                 FishingRange(start_time, end_time, is_fishing))
+
     return fishing_range_dict
