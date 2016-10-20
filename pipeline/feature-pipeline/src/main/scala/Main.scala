@@ -238,7 +238,7 @@ object Pipeline extends LazyLogging {
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
 
     val environment = remaining_args.required("env")
-    val jobName = remaining_args.required("job-name")
+    val jobName = remaining_args.requiredg("job-name")
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
