@@ -12,6 +12,9 @@ class GcpConfig(object):
         return self.root_path + '/models'
 
 
+# TODO(alexwilson): This config is too hard-coded to our current setup. Move
+# out to config files for greater flexibility. Note there is an equivalent to
+# this in Commmon.scala which should remain in-sync.
 def makeConfig(environment, job_id):
     project_id = "world-fishing-827"
     if environment == 'prod':

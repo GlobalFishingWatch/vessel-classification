@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
-from common import gcp_config
+from common.gcp_config import GcpConfig
 import yaml
 import json
 import time
@@ -34,7 +34,7 @@ def launch(environment, model_name, job_name):
     with open("deploy_cloudml_config_template.txt") as f:
         config_template = f.read()
 
-    gcp = gcp_config.makeConfig(environment, job_name)
+    gcp = GcpConfig.make_from_env_name(environment, job_name)
 
     config_txt = config_template.format(
         output_path=gcp.model_path(), model_name=model_name)
