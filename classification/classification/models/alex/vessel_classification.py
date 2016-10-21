@@ -33,20 +33,21 @@ class Model(ModelBase):
 
         return padded
 
-    def build_training_net(self, features, labels, fishing_timeseries):
+    def build_training_net(self, features, label_sets, fishing_timeseries):
 
         features = self.zero_pad_features(features)
+
         vessel_class_logits = layers.misconception_model(
             features, self.window_size, self.stride, self.feature_depth,
-            self.levels, self.num_classes, True)
+            self.levels, self.training_objectives, True)
 
-        vessel_class_trainer = ClassificationObjective(
-            "Vessel class",
-            self.num_classes).build_trainer(vessel_class_logits, labels)
+        trainers = []
+        for (logits, to, labels) in self.training_objectives:
+            trainers.append(to.build_trainer(logits, labels))
 
         optimizer = tf.train.AdamOptimizer(2e-5)
 
-        return TrainNetInfo(optimizer, [vessel_class_trainer])
+        return TrainNetInfo(optimizer, trainers)
 
     def build_inference_net(self, features):
 
@@ -54,10 +55,10 @@ class Model(ModelBase):
 
         vessel_class_logits = layers.misconception_model(
             features, self.window_size, self.stride, self.feature_depth,
-            self.levels, self.num_classes, False)
+            self.levels, self.training_objectives, False)
 
-        vessel_class_trainer = ClassificationObjective(
-            "Vessel class",
-            self.num_classes).build_evaluation(vessel_class_logits)
+        evaluations = []
+        for (logits, to) in self.training_objectives:
+            evaluations.append(to.build_evaluation(logits))
 
-        return [vessel_class_trainer]
+        return [evaluations]

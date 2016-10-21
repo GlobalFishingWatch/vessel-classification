@@ -23,6 +23,21 @@ VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
 
 VESSEL_CLASS_DETAILED_NAMES = VESSEL_CLASS_NAMES
 
+VESSEL_LENGTH_CLASSES = [
+    '0-12m', '12-18m', '18-24m', '24-36m', '36-50m', '50-75m', '75-100m',
+    '100-150m', '150m+'
+]
+
+
+def vessel_categorical_length_transformer(vessel_length_string):
+    ranges = [12.0, 18.0, 24.0, 36.0, 50.0, 75.0, 100.0, 150.0]
+    vessel_length = float(vessel_length_string)
+    for i in range(len(ranges)):
+        if vessel_length < ranges[i]:
+            return VESSEL_LENGTH_CLASSES[i]
+    return VESSEL_LENGTH_CLASSES[-1]
+
+
 FishingRange = namedtuple('FishingRange',
                           ['start_time', 'end_time', 'is_fishing'])
 
@@ -336,16 +351,17 @@ def cropping_weight_replicating_feature_file_reader(
 
     def replicate_extract(input, mmsi):
         row, weight = vessel_metadata[mmsi]
-        training_labels = [to.training_label(row) for to in training_objectives]
+        training_labels = [to.training_label(row)
+                           for to in training_objectives]
         n = min(float(max_replication_factor), weight)
         vessel_fishing_ranges = fishing_ranges[mmsi]
         return np_array_extract_n_random_features(
             random_state, input, label, n, max_time_delta, window_size,
             min_timeslice_size, vessel_fishing_ranges)
 
-    (features_list, fishing_timeseries, time_bounds_list, labels_list) = tf.py_func(
-        replicate_extract, [movement_features, mmsi],
-        [tf.float32, tf.float32, tf.int32, tf.int32])
+    (features_list, fishing_timeseries, time_bounds_list,
+     labels_list) = tf.py_func(replicate_extract, [movement_features, mmsi],
+                               [tf.float32, tf.float32, tf.int32, tf.int32])
 
     return features_list, fishing_timeseries, time_bounds_list, labels_list
 
@@ -479,7 +495,8 @@ def _hash_mmsi_to_double(mmsi, salt=''):
     return sample
 
 
-def read_vessel_multiclass_metadata_lines(available_mmsis, lines):
+def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
+                                          transformers):
     """ For a set of vessels, read metadata and calculate class weights.
 
     Args:
@@ -502,6 +519,9 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines):
     # the fly, but deterministically. Count the occurrence of each vessel type
     # per split.
     for row in lines:
+        for column_name, transformer in transformers:
+            row[column_name] = transformer(row[column_name])
+
         mmsi = int(row['mmsi'])
         coarse_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
         if mmsi in available_mmsis and coarse_vessel_type:
@@ -538,10 +558,13 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines):
     return metadata_dict
 
 
-def read_vessel_multiclass_metadata(available_mmsis, metadata_file):
+def read_vessel_multiclass_metadata(available_mmsis,
+                                    metadata_file,
+                                    transformers=[]):
     with open(metadata_file, 'r') as f:
         reader = csv.DictReader(f)
-        return read_vessel_multiclass_metadata_lines(available_mmsis, reader)
+        return read_vessel_multiclass_metadata_lines(available_mmsis, reader,
+                                                     transformers)
 
 
 def find_available_mmsis(feature_path):

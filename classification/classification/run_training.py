@@ -76,15 +76,18 @@ def main(args):
     vessel_metadata = utility.read_vessel_multiclass_metadata(
         all_available_mmsis, metadata_file)
 
-    coarse_label_objective = utility.ClassificationObjective('Vessel class', 'label', utility.VESSEL_CLASS_NAMES)
-    fine_label_objective = utility.ClassificationObjective('Vessel detailed class', 'sublabel', utility.VESSEL_CLASS_DETAILED_NAMES)
+    coarse_label_objective = utility.ClassificationObjective(
+        'Vessel class', 'label', utility.VESSEL_CLASS_NAMES)
+    fine_label_objective = utility.ClassificationObjective(
+        'Vessel detailed class', 'sublabel',
+        utility.VESSEL_CLASS_DETAILED_NAMES)
     training_objectives = [
         coarse_label_objective,
-        fine_label_objective
+        #fine_label_objective
     ]
     feature_dimensions = int(args.feature_dimensions)
     model = Model(feature_dimensions, training_objectives)
-    
+
     trainer = Trainer(model, vessel_metadata, fishing_ranges,
                       args.root_feature_path, args.training_output_path)
 
