@@ -177,9 +177,9 @@ class FeatureBuilderTests extends PipelineSpec with Matchers {
   import AdditionalUnits._
 
   val anchorageLocations = IndexedSeq(
-    Anchorage(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]), Seq()),
-    Anchorage(LatLon(-1.4686489.of[degrees], 55.2206029.of[degrees]), Seq()),
-    Anchorage(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), Seq()))
+    Anchorage(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]), Seq(), 0),
+    Anchorage(LatLon(-1.4686489.of[degrees], 55.2206029.of[degrees]), Seq(), 0),
+    Anchorage(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), Seq(), 0))
 
   val vesselPath = Seq(vlr("2011-07-01T00:00:00Z", -1.4065933, 55.2350923, speed = 1.0),
                        vlr("2011-07-01T00:05:00Z", -1.4218712, 55.2342113, speed = 1.0),

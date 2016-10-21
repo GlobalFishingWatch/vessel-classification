@@ -46,10 +46,12 @@ object Parameters {
 
   // TODO(alexwilson): remove years list when cloud dataflow text source can
   // handle our volume of files.
-  val allDataYears = List("2012", "2013", "2014", "2015", "2016")
-  //val allDataYears = List("2015")
+  //val allDataYears = List("2012", "2013", "2014", "2015", "2016")
+  val allDataYears = List("2015")
   val inputMeasuresPath =
     "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment"
+
+  val knownFishingMMSIs = "feature-pipeline/src/main/data/treniformis_known_fishing_mmsis_2016.txt"
 
   val minValidTime = Instant.parse("2012-01-01T00:00:00Z")
   lazy val maxValidTime = Instant.now()
@@ -217,8 +219,9 @@ object Pipeline extends LazyLogging {
     }
   }
 
-  def findAnchorageCells(
-      input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[Anchorage] = {
+  def findAnchorageCells(input: SCollection[(VesselMetadata, ProcessedLocations)],
+                         knownFishingMMSIs: Set[Int]): SCollection[Anchorage] = {
+
     input.flatMap {
       case (md, processedLocations) =>
         processedLocations.stationaryPeriods.map { pl =>
@@ -229,9 +232,22 @@ object Pipeline extends LazyLogging {
       case (cell, visits) =>
         val centralPoint = LatLon.mean(visits.map(_._2.location))
         val uniqueVessels = visits.map(_._1).toIndexedSeq.distinct
+        val fishingVesselCount = uniqueVessels.filter { md =>
+          knownFishingMMSIs.contains(md.mmsi)
+        }.size
 
-        Anchorage(centralPoint, uniqueVessels)
+        Anchorage(centralPoint, uniqueVessels, fishingVesselCount)
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForPort }
+  }
+
+  def loadFishingMMSIs(): Set[Int] = {
+    val fishingMMSIreader = new CSVReader(new FileReader(Parameters.knownFishingMMSIs))
+    fishingMMSIreader
+      .readAll()
+      .map { l =>
+        l(0).toInt
+      }
+      .toSet
   }
 
   def main(argArray: Array[String]) {
@@ -264,7 +280,8 @@ object Pipeline extends LazyLogging {
 
     val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 
-    val anchorages: SCollection[Anchorage] = findAnchorageCells(processed)
+    val knownFishingMMSIs = loadFishingMMSIs()
+    val anchorages: SCollection[Anchorage] = findAnchorageCells(processed, knownFishingMMSIs)
 
     val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
       case (md, feature) =>
