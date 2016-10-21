@@ -75,16 +75,17 @@ class Trainer:
                     self.model.min_viable_timeslice_length, max_replication,
                     self.fishing_ranges))
 
-        features, fishing_timeseries, time_bounds, labels = tf.train.shuffle_batch_join(
-            readers,
-            self.model.batch_size,
-            capacity,
-            min_size_after_deque,
-            enqueue_many=True,
-            shapes=[[
-                1, self.model.window_max_points,
-                self.model.num_feature_dimensions
-            ], [self.model.window_max_points], [2], []])
+        (features, fishing_timeseries, time_bounds,
+         labels) = tf.train.shuffle_batch_join(
+             readers,
+             self.model.batch_size,
+             capacity,
+             min_size_after_deque,
+             enqueue_many=True,
+             shapes=[[
+                 1, self.model.window_max_points,
+                 self.model.num_feature_dimensions
+             ], [self.model.window_max_points], [2], []])
 
         return features, labels, fishing_timeseries
 

@@ -56,8 +56,7 @@ def main(args):
         raise
 
     metadata_file = os.path.abspath(
-        resource_filename('classification.data',
-                          'combined_classification_list.csv'))
+        resource_filename('classification.data', 'net_training_20161016.csv'))
     if not os.path.exists(metadata_file):
         logging.fatal("Could not find metadata file: %s.", metadata_file)
         sys.exit(-1)
@@ -74,8 +73,8 @@ def main(args):
 
     all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
 
-    vessel_metadata = utility.read_vessel_metadata(all_available_mmsis,
-                                                   metadata_file)
+    vessel_metadata = utility.read_vessel_multiclass_metadata(
+        all_available_mmsis, metadata_file)
 
     model = Model()
     trainer = Trainer(model, vessel_metadata, fishing_ranges,

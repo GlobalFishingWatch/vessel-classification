@@ -1,20 +1,25 @@
 from collections import defaultdict, namedtuple
+import csv
 import dateutil.parser
 import hashlib
+import math
 import time
 import logging
 import newlinejson as nlj
 import numpy as np
 import os
+import struct
 import sys
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
 
-VESSEL_CLASS_NAMES = [
-    "Purse seine", "Longliner", "Trawler", "Pots and traps", "Squid fishing",
-    "Passenger", "Cargo/Tanker", "Seismic", "Tug/Pilot/Supply"
-]
+PRIMARY_VESSEL_CLASS_COLUMN = 'label'
+
+VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
+                      'Seismic vessel', 'Set gillnets', 'Longliners', 'Reefer',
+                      'Pole and Line', 'Purse seines', 'Pots and Traps',
+                      'Trollers', 'Tug/Pilot/Supply']
 
 VESSEL_CLASS_INDICES = dict(
     zip(VESSEL_CLASS_NAMES, range(len(VESSEL_CLASS_NAMES))))
@@ -331,7 +336,8 @@ def cropping_weight_replicating_feature_file_reader(
     random_state = np.random.RandomState()
 
     def replicate_extract(input, mmsi):
-        string_label, weight = vessel_metadata[mmsi]
+        row, weight = vessel_metadata[mmsi]
+        string_label = row[PRIMARY_VESSEL_CLASS_COLUMN]
         label = VESSEL_CLASS_INDICES[string_label]
         n = min(float(max_replication_factor), weight)
         vessel_fishing_ranges = fishing_ranges[mmsi]
@@ -447,32 +453,67 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
     return features_list, timeseries, time_bounds_list, mmsis
 
 
-def read_vessel_metadata_file_lines(available_mmsis, lines):
+def _hash_mmsi_to_double(mmsi, salt=''):
+    """Take a value and hash it to return a value in the range [0, 1.0).
+     To be used as a deterministic probability for vessel dataset
+     assignment: e.g. if we decide vessels should go in the training set at
+     probability 0.2, then we map from mmsi to a probability, then if the value
+     is <= 0.2 we assign this vessel to the training set.
+    Args:
+        mmsi: the input MMSI as an integer.
+        salt: a salt concatenated to the mmsi to allow more than one value to be
+                    generated per mmsi.
+    Returns:
+        A value in the range [0, 1.0).
+    """
+    hasher = hashlib.md5()
+    i = '%s_%s' % (mmsi, salt)
+    hasher.update(i)
+
+    # Pick a number of bytes from the bottom of the hash, and scale the value
+    # by the max value that an unsigned integer of that size can have, to get a
+    # value in the range [0, 1.0)
+    hash_bytes_for_value = 4
+    hash_value = struct.unpack('I', hasher.digest()[:hash_bytes_for_value])[0]
+    sample = float(hash_value) / math.pow(2.0, hash_bytes_for_value * 8)
+    assert sample >= 0.0
+    assert sample <= 1.0
+    return sample
+
+
+def read_vessel_multiclass_metadata_lines(available_mmsis, lines):
     """ For a set of vessels, read metadata and calculate class weights.
 
     Args:
         available_mmsis: a set of all mmsis for which we have feature data.
         lines: a list of comma-separated vessel metadata lines. Columns are
-            the mmsi, the split (train/test) and the vessel type
+            the mmsi and a set of vessel type columns, containing at least one
+            called 'label' being the primary/coarse type of the vessel e.g.
             (Longliner/Passenger etc.).
 
     Returns:
         A dictionary from data split (training/test) to a dictionary from
-        mmsi to the type and weight for a vessel.
+        mmsi to the types and weight for a vessel.
     """
 
-    # Build a list of vessels + split + and vessel type. Count the occurrence
-    # of each vessel type per split.
     vessel_type_set = set()
     dataset_kind_counts = defaultdict(lambda: defaultdict(lambda: 0))
     vessel_types = []
-    for line in lines[1:]:
-        mmsi_str, split, vessel_type = line.strip().split(',')
-        mmsi = int(mmsi_str)
-        if mmsi in available_mmsis:
-            vessel_types.append((mmsi, split, vessel_type))
-            dataset_kind_counts[split][vessel_type] += 1
-            vessel_type_set.add(vessel_type)
+
+    # Build a list of vessels + split + and vessel type. Calculate the split on
+    # the fly, but deterministically. Count the occurrence of each vessel type
+    # per split.
+    for row in lines:
+        mmsi = int(row['mmsi'])
+        coarse_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
+        if mmsi in available_mmsis and coarse_vessel_type:
+            if (_hash_mmsi_to_double(mmsi) >= 0.5):
+                split = 'Test'
+            else:
+                split = 'Training'
+            vessel_types.append((mmsi, split, coarse_vessel_type, row))
+            dataset_kind_counts[split][coarse_vessel_type] += 1
+            vessel_type_set.add(coarse_vessel_type)
 
     # Calculate weights for each vessel type per split: the weight is the count
     # of the most frequent vessel type divided by the count for the current
@@ -481,14 +522,14 @@ def read_vessel_metadata_file_lines(available_mmsis, lines):
     dataset_kind_weights = defaultdict(lambda: {})
     for split, counts in dataset_kind_counts.iteritems():
         max_count = max(counts.values())
-        for vessel_type, count in counts.iteritems():
-            dataset_kind_weights[split][vessel_type] = float(
+        for coarse_vessel_type, count in counts.iteritems():
+            dataset_kind_weights[split][coarse_vessel_type] = float(
                 max_count) / float(count)
 
     metadata_dict = defaultdict(lambda: {})
-    for mmsi, split, vessel_type in vessel_types:
-        metadata_dict[split][mmsi] = (vessel_type,
-                                      dataset_kind_weights[split][vessel_type])
+    for mmsi, split, coarse_vessel_type, row in vessel_types:
+        metadata_dict[split][mmsi] = (
+            row, dataset_kind_weights[split][coarse_vessel_type])
 
     if len(vessel_type_set) == 0:
         logging.fatal('No vessel types found for training.')
@@ -499,9 +540,10 @@ def read_vessel_metadata_file_lines(available_mmsis, lines):
     return metadata_dict
 
 
-def read_vessel_metadata(available_mmsis, metadata_file):
+def read_vessel_multiclass_metadata(available_mmsis, metadata_file):
     with open(metadata_file, 'r') as f:
-        return read_vessel_metadata_file_lines(available_mmsis, f.readlines())
+        reader = csv.DictReader(f)
+        return read_vessel_multiclass_metadata_lines(available_mmsis, reader)
 
 
 def find_available_mmsis(feature_path):

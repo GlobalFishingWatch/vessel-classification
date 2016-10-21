@@ -1,4 +1,5 @@
 from models.alex import layers
+import csv
 import numpy as np
 import utility
 import tensorflow as tf
@@ -119,41 +120,75 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
 
 class VesselMetadataFileReader(tf.test.TestCase):
     def test_metadata_file_reader(self):
-        lines = [
-            'mmsi,split,kind\n',
-            '100001,Training,Longliner\n',
-            '100002,Training,Longliner\n',
-            '100003,Training,Longliner\n',
-            '100004,Training,Longliner\n',
-            '100005,Training,Trawler\n',
-            '100006,Training,Trawler\n',
-            '100007,Training,Passenger\n',
-            '100008,Test,Trawler\n',
-            '100009,Test,Trawler\n',
-            '100010,Test,Trawler\n',
-            '100011,Test,Tug\n',
-            '100012,Test,Tug\n',
-            '100013,Test,Tug\n',
+        raw_lines = [
+            'mmsi,label,length\n',
+            '100001,Longliner,10.0\n',
+            '100002,Longliner,24.0\n',
+            '100003,Longliner,10.0\n',
+            '100004,Longliner,10.0\n',
+            '100005,Trawler,10.0\n',
+            '100006,Trawler,24.0\n',
+            '100007,Passenger,24.0\n',
+            '100008,Trawler,24.0\n',
+            '100009,Trawler,10.0\n',
+            '100010,Trawler,24.0\n',
+            '100011,Tug,24.0\n',
+            '100012,Tug,10.0\n',
+            '100013,Tug,24.0\n',
         ]
+        parsed_lines = csv.DictReader(raw_lines)
         available_vessels = set(range(100001, 100013))
-        result = utility.read_vessel_metadata_file_lines(available_vessels,
-                                                         lines)
+        result = utility.read_vessel_multiclass_metadata_lines(
+            available_vessels, parsed_lines)
 
         self.assertTrue('Training' in result)
-        self.assertEquals(result['Training'][100001], ('Longliner', 1.0))
-        self.assertEquals(result['Training'][100002], ('Longliner', 1.0))
-        self.assertEquals(result['Training'][100003], ('Longliner', 1.0))
-        self.assertEquals(result['Training'][100004], ('Longliner', 1.0))
-        self.assertEquals(result['Training'][100005], ('Trawler', 2.0))
-        self.assertEquals(result['Training'][100006], ('Trawler', 2.0))
-        self.assertEquals(result['Training'][100007], ('Passenger', 4.0))
-
         self.assertTrue('Test' in result)
-        self.assertEquals(result['Test'][100008], ('Trawler', 1.0))
-        self.assertEquals(result['Test'][100009], ('Trawler', 1.0))
-        self.assertEquals(result['Test'][100010], ('Trawler', 1.0))
-        self.assertEquals(result['Test'][100011], ('Tug', 3.0 / 2.0))
-        self.assertEquals(result['Test'][100012], ('Tug', 3.0 / 2.0))
+
+        self.assertEquals(result['Test'][100001], ({'label': 'Longliner',
+                                                    'length': '10.0',
+                                                    'mmsi': '100001'}, 3.0))
+        self.assertEquals(result['Test'][100005], ({'label': 'Trawler',
+                                                    'length': '10.0',
+                                                    'mmsi': '100005'}, 1.0))
+        self.assertEquals(result['Test'][100006], ({'label': 'Trawler',
+                                                    'length': '24.0',
+                                                    'mmsi': '100006'}, 1.0))
+        self.assertEquals(result['Test'][100010], ({'label': 'Trawler',
+                                                    'length': '24.0',
+                                                    'mmsi': '100010'}, 1.0))
+
+        self.assertEquals(result['Training'][100002], ({'label': 'Longliner',
+                                                        'length': '24.0',
+                                                        'mmsi': '100002'},
+                                                       1.0))
+        self.assertEquals(result['Training'][100003], ({'label': 'Longliner',
+                                                        'length': '10.0',
+                                                        'mmsi': '100003'},
+                                                       1.0))
+        self.assertEquals(result['Training'][100004], ({'label': 'Longliner',
+                                                        'length': '10.0',
+                                                        'mmsi': '100004'},
+                                                       1.0))
+        self.assertEquals(result['Training'][100007], ({'label': 'Passenger',
+                                                        'length': '24.0',
+                                                        'mmsi': '100007'},
+                                                       3.0))
+        self.assertEquals(result['Training'][100008], ({'label': 'Trawler',
+                                                        'length': '24.0',
+                                                        'mmsi': '100008'},
+                                                       1.5))
+        self.assertEquals(result['Training'][100009], ({'label': 'Trawler',
+                                                        'length': '10.0',
+                                                        'mmsi': '100009'},
+                                                       1.5))
+        self.assertEquals(result['Training'][100011], ({'label': 'Tug',
+                                                        'length': '24.0',
+                                                        'mmsi': '100011'},
+                                                       1.5))
+        self.assertEquals(result['Training'][100012], ({'label': 'Tug',
+                                                        'length': '10.0',
+                                                        'mmsi': '100012'},
+                                                       1.5))
 
 
 if __name__ == '__main__':
