@@ -24,6 +24,10 @@ object Implicits {
       counts.toMap
     }
 
+    // TODO(alexwilson): this is not a true median atm, because for an even
+    // number of elements it does not average the two central values but picks
+    // the lower arbitrarily. This is just to avoid having to have addition
+    // and division also defined for T.
     def medianBy[V <% Ordered[V]](fn: T => V): T = {
       val asIndexedSeq = iterable.toIndexedSeq.sortBy(fn)
       asIndexedSeq.apply(asIndexedSeq.size / 2)
@@ -31,6 +35,9 @@ object Implicits {
   }
 }
 
+// TODO(alexwilson): This config is too hard-coded to our current setup. Move
+// out to config files for greater flexibility. Note there is an equivalent to
+// this in gcp_config.py which should remain in-sync.
 object GcpConfig extends LazyLogging {
   import Implicits._
 
