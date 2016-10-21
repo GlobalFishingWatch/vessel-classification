@@ -12,4 +12,5 @@ setuptools.setup(
         'classification', 'classification.data', 'classification.models',
         'classification.models.alex', 'classification.models.hernan',
         'classification.models.tim'
-    ])
+    ],
+    install_requires=['NewlineJSON'])
