@@ -76,14 +76,16 @@ def main(args):
     vessel_metadata = utility.read_vessel_multiclass_metadata(
         all_available_mmsis, metadata_file)
 
-    model = Model()
-    coarse_label_objective = utility.ClassificationObjective('label', utility.VESSEL_CLASS_NAMES)
-    fine_label_objective = utility.ClassificationObjective('sublabel', utility.VESSEL_CLASS_DETAILED_NAMES)
+    coarse_label_objective = utility.ClassificationObjective('Vessel class', 'label', utility.VESSEL_CLASS_NAMES)
+    fine_label_objective = utility.ClassificationObjective('Vessel detailed class', 'sublabel', utility.VESSEL_CLASS_DETAILED_NAMES)
     training_objectives = [
         coarse_label_objective,
         fine_label_objective
     ]
-    trainer = Trainer(model, vessel_metadata, training_objectives, fishing_ranges,
+    feature_dimensions = int(args.feature_dimensions)
+    model = Model(feature_dimensions, training_objectives)
+    
+    trainer = Trainer(model, vessel_metadata, fishing_ranges,
                       args.root_feature_path, args.training_output_path)
 
     config = json.loads(os.environ.get('TF_CONFIG', '{}'))
@@ -116,6 +118,11 @@ def parse_args():
         '--training_output_path',
         required=True,
         help='The working path for model statistics and checkpoints.')
+
+    argparser.add_argument(
+        '--feature_dimensions',
+        required=True,
+        help='The number of dimensions of a classification feature.')
 
     return argparser.parse_args()
 

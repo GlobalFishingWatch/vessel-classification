@@ -19,6 +19,9 @@ class Model(ModelBase):
     feature_depth = 20
     levels = 10
 
+    def __init__(self, num_feature_dimensions):
+        super(self.__class__, self).__init__(num_feature_dimensions)
+
     def zero_pad_features(self, features):
         """ Zero-pad features in the depth dimension to match requested feature depth. """
 

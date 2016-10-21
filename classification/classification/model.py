@@ -23,14 +23,15 @@ class ObjectiveTrainer(object):
 
 
 class ClassificationObjective(ObjectiveBase):
-    def __init__(self, name, classes):
+    def __init__(self, name, metadata_label, classes):
         super(self.__class__, self).__init__(name)
+        self.metadata_label = metadata_label
         self.classes = classes
         self.class_indices = dict(zip(classes, range(len(classes))))
         self.num_classes = len(classes)
 
     def training_label(self, data_row):
-        return self.class_indices[data_row[self.name]]
+        return self.class_indices[data_row[self.metadata_label]]
 
     def build_trainer(self, logits, labels, loss_weight=1.0):
         class Trainer(ObjectiveTrainer):
@@ -87,7 +88,6 @@ class ModelBase(object):
 
     feature_duration_days = 180
     num_classes = 9
-    num_feature_dimensions = 9
     max_sample_frequency_seconds = 5 * 60
     max_window_duration_seconds = feature_duration_days * 24 * 3600
 
@@ -98,6 +98,10 @@ class ModelBase(object):
                          max_sample_frequency_seconds) / 4
 
     min_viable_timeslice_length = 500
+
+    def __init__(self, num_feature_dimensions, training_objectives):
+        self.num_feature_dimensions = num_feature_dimensions
+        self.training_objectives = training_objectives
 
     @abc.abstractmethod
     def build_training_net(self, features, labels):

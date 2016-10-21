@@ -18,11 +18,11 @@ class Trainer:
         model.
     """
 
-    def __init__(self, model, vessel_metadata, training_objectives, fishing_ranges,
+    def __init__(self, model, vessel_metadata, fishing_ranges,
                  base_feature_path, train_scratch_path):
         self.model = model
         self.vessel_metadata = vessel_metadata
-        self.training_objectives = training_objectives
+        self.training_objectives = model.training_objectives
         self.fishing_ranges = fishing_ranges
         self.base_feature_path = base_feature_path
         self.train_scratch_path = train_scratch_path
