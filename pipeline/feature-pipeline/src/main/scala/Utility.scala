@@ -121,7 +121,9 @@ case class SingleEncounter(startTime: Instant,
       ("vessel2_point_count" -> vessel2PointCount)
 }
 
-case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
+case class Anchorage(meanLocation: LatLon,
+                     vessels: Seq[VesselMetadata],
+                     knownFishingVesselCount: Int) {
   import Utility._
 
   def toJson = {
@@ -129,6 +131,7 @@ case class Anchorage(meanLocation: LatLon, vessels: Seq[VesselMetadata]) {
     ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
       ("unique_vessel_count" -> vessels.size) ~
+      ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
       ("flag_state_distribution" -> flagStateDistribution) ~
       ("mmsis" -> vessels.map(_.mmsi))
   }
