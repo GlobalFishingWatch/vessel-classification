@@ -13,7 +13,6 @@ class ModelBase(object):
 
     feature_duration_days = 180
     num_classes = 9
-    num_feature_dimensions = 9
     max_sample_frequency_seconds = 5 * 60
     max_window_duration_seconds = feature_duration_days * 24 * 3600
 
@@ -24,6 +23,9 @@ class ModelBase(object):
                          max_sample_frequency_seconds) / 4
 
     min_viable_timeslice_length = 500
+
+    def __init__(self, num_feature_dimensions):
+        self.num_feature_dimensions = num_feature_dimensions
 
     @abc.abstractmethod
     def build_training_net(self, features, labels, fishing_timeseries_labels):
