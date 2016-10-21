@@ -21,8 +21,7 @@ VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
                       'Pole and Line', 'Purse seines', 'Pots and Traps',
                       'Trollers', 'Tug/Pilot/Supply']
 
-VESSEL_CLASS_INDICES = dict(
-    zip(VESSEL_CLASS_NAMES, range(len(VESSEL_CLASS_NAMES))))
+VESSEL_CLASS_DETAILED_NAMES = VESSEL_CLASS_NAMES
 
 FishingRange = namedtuple('FishingRange',
                           ['start_time', 'end_time', 'is_fishing'])
@@ -307,7 +306,7 @@ def np_array_extract_n_random_features(
 def cropping_weight_replicating_feature_file_reader(
         vessel_metadata, filename_queue, num_features, max_time_delta,
         window_size, min_timeslice_size, max_replication_factor,
-        fishing_ranges):
+        training_objectives, fishing_ranges):
     """ Set up a file reader and training feature extractor for the files in a queue.
 
     As a training feature extractor, this pulls sets of random timeslices from the
@@ -337,19 +336,18 @@ def cropping_weight_replicating_feature_file_reader(
 
     def replicate_extract(input, mmsi):
         row, weight = vessel_metadata[mmsi]
-        string_label = row[PRIMARY_VESSEL_CLASS_COLUMN]
-        label = VESSEL_CLASS_INDICES[string_label]
+        training_labels = [to.training_label(row) for to in training_objectives]
         n = min(float(max_replication_factor), weight)
         vessel_fishing_ranges = fishing_ranges[mmsi]
         return np_array_extract_n_random_features(
             random_state, input, label, n, max_time_delta, window_size,
             min_timeslice_size, vessel_fishing_ranges)
 
-    features_list, fishing_timeseries, time_bounds_list, label_list = tf.py_func(
+    (features_list, fishing_timeseries, time_bounds_list, labels_list) = tf.py_func(
         replicate_extract, [movement_features, mmsi],
         [tf.float32, tf.float32, tf.int32, tf.int32])
 
-    return features_list, fishing_timeseries, time_bounds_list, label_list
+    return features_list, fishing_timeseries, time_bounds_list, labels_list
 
 
 def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,

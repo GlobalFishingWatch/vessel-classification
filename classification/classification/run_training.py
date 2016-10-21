@@ -77,7 +77,13 @@ def main(args):
         all_available_mmsis, metadata_file)
 
     model = Model()
-    trainer = Trainer(model, vessel_metadata, fishing_ranges,
+    coarse_label_objective = utility.ClassificationObjective('label', utility.VESSEL_CLASS_NAMES)
+    fine_label_objective = utility.ClassificationObjective('sublabel', utility.VESSEL_CLASS_DETAILED_NAMES)
+    training_objectives = [
+        coarse_label_objective,
+        fine_label_objective
+    ]
+    trainer = Trainer(model, vessel_metadata, training_objectives, fishing_ranges,
                       args.root_feature_path, args.training_output_path)
 
     config = json.loads(os.environ.get('TF_CONFIG', '{}'))

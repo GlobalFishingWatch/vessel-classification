@@ -23,9 +23,14 @@ class ObjectiveTrainer(object):
 
 
 class ClassificationObjective(ObjectiveBase):
-    def __init__(self, name, num_classes):
+    def __init__(self, name, classes):
         super(self.__class__, self).__init__(name)
-        self.num_classes = num_classes
+        self.classes = classes
+        self.class_indices = dict(zip(classes, range(len(classes))))
+        self.num_classes = len(classes)
+
+    def training_label(self, data_row):
+        return self.class_indices[data_row[self.name]]
 
     def build_trainer(self, logits, labels, loss_weight=1.0):
         class Trainer(ObjectiveTrainer):
