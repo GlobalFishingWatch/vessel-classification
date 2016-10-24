@@ -16,7 +16,7 @@ class Model(ModelBase):
 
     window_size = 3
     stride = 2
-    feature_depth = 20
+    feature_depth = 30
     levels = 10
 
     def __init__(self, num_feature_dimensions, training_objectives):
@@ -45,7 +45,9 @@ class Model(ModelBase):
         num_labels_sets = len(self.training_objectives)
         trainers = []
         for i in range(len(self.training_objectives)):
-            labels = tf.cast(tf.squeeze(tf.split(1, num_labels_sets, label_sets)[i]), tf.int32)
+            labels = tf.cast(
+                tf.squeeze(tf.split(1, num_labels_sets, label_sets)[i]),
+                tf.int32)
             trainers.append(self.training_objectives[i].build_trainer(
                 logits_set[i], labels))
 

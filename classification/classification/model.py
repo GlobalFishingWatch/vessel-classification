@@ -65,8 +65,6 @@ class ClassificationObjective(ObjectiveBase):
                 self.update_ops.append(
                     tf.scalar_summary('%s training loss' % name, raw_loss))
 
-                
-
                 accuracy = slim.metrics.accuracy(
                     labels, class_predictions, weights=label_weights)
                 self.update_ops.append(

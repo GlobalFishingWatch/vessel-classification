@@ -130,7 +130,9 @@ class Trainer:
         num_objectives = len(objectives)
         for i in range(len(objectives)):
             o = objectives[i]
-            labels = tf.cast(tf.squeeze(tf.split(1, num_objectives, label_sets)[i]), tf.int32)
+            labels = tf.cast(
+                tf.squeeze(tf.split(1, num_objectives, label_sets)[i]),
+                tf.int32)
             aggregate_metric_maps.append(o.build_test_metrics(labels))
 
         summary_ops = []

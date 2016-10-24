@@ -22,7 +22,9 @@ VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
                       'Trollers', 'Tug/Pilot/Supply']
 
 VESSEL_CLASS_DETAILED_NAMES = [
-    'Cargo', 'Sailing', 'Supply', 'Set longlines', 'Motor Passenger',
+    'Squid', 'Trawlers', 'Seismic vessel', 'Set gillnets', 'Reefer',
+    'Pole and Line', 'Purse seines', 'Pots and Traps', 'Trollers', 'Cargo',
+    'Sailing', 'Supply', 'Set longlines', 'Motor Passenger',
     'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
 ]
 
@@ -361,8 +363,9 @@ def cropping_weight_replicating_feature_file_reader(
 
     def replicate_extract(input, mmsi):
         row, weight = vessel_metadata[mmsi]
-        training_labels = np.array([to.training_label(row)
-                           for to in training_objectives], dtype=np.int32)
+        training_labels = np.array(
+            [to.training_label(row) for to in training_objectives],
+            dtype=np.int32)
         n = min(float(max_replication_factor), weight)
         vessel_fishing_ranges = fishing_ranges[mmsi]
         return np_array_extract_n_random_features(
