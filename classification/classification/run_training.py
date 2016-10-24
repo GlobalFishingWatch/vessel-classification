@@ -73,25 +73,22 @@ def main(args):
 
     all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
 
-    column_transformers = [
-        ('length', vessel_categorical_length_transformer)
-    ]
+    column_transformers = [('length', vessel_categorical_length_transformer)]
     vessel_metadata = utility.read_vessel_multiclass_metadata(
         all_available_mmsis, metadata_file, column_transformers)
 
-    # TODO(alexwilson): Also add fishing/non label.
+    fishing_or_not_objective = utility.ClassificationObjective(
+        'Fishing/Non', 'is_fishing', set(['Fishing', 'Non-fishing']))
     coarse_label_objective = utility.ClassificationObjective(
         'Vessel class', 'label', utility.VESSEL_CLASS_NAMES)
     fine_label_objective = utility.ClassificationObjective(
         'Vessel detailed class', 'sublabel',
         utility.VESSEL_CLASS_DETAILED_NAMES)
     length_objective = utility.ClassificationObjective(
-        'Vessel length', 'length',
-        utility.VESSEL_LENGTH_CLASSES)
+        'Vessel length', 'length', utility.VESSEL_LENGTH_CLASSES)
     training_objectives = [
-        coarse_label_objective,
-        #fine_label_objective,
-        #length_objective
+        fishing_or_not_objective, coarse_label_objective, fine_label_objective,
+        length_objective
     ]
     feature_dimensions = int(args.feature_dimensions)
     model = Model(feature_dimensions, training_objectives)

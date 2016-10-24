@@ -31,24 +31,36 @@ class ClassificationObjective(ObjectiveBase):
         self.num_classes = len(classes)
 
     def training_label(self, data_row):
-        return self.class_indices[data_row[self.metadata_label]]
+        """ Return the index of this training label, or if it's unset, return
+            -1 so the loss function can ignore the example.
+        """
+        label_name = data_row[self.metadata_label]
+        if label_name:
+            return self.class_indices[data_row[self.metadata_label]]
+        else:
+            return -1
 
-    # TODO(alexwilson): loss and accuracy functions need to be able to handle
-    # missing labels.
     def build_trainer(self, logits, labels, loss_weight=1.0):
         class Trainer(ObjectiveTrainer):
             def __init__(self, name, num_classes, loss_weight, logits, labels):
                 super(self.__class__, self).__init__()
+                # Labels outside the one-hot num_classes range are just encoded
+                # to all-zeros, so the use of -1 for unknown works fine here
+                # when combined with a mask below.
                 one_hot_labels = slim.one_hot_encoding(labels, num_classes)
-                raw_loss = slim.losses.softmax_cross_entropy(logits,
-                                                             one_hot_labels)
+                label_mask = tf.select(
+                    tf.equal(labels, -1), tf.zeros_like(labels),
+                    tf.ones_like(labels))
+                raw_loss = label_mask * slim.losses.softmax_cross_entropy(
+                    logits, one_hot_labels)
                 self.loss = raw_loss * loss_weight
                 class_predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
                 self.update_ops.append(
                     tf.scalar_summary('%s training loss' % name, raw_loss))
 
-                accuracy = slim.metrics.accuracy(labels, class_predictions)
+                accuracy = slim.metrics.accuracy(
+                    labels, class_predictions, weights=label_mask)
                 self.update_ops.append(
                     tf.scalar_summary('%s training accuracy' % name, accuracy))
 
@@ -63,9 +75,13 @@ class ClassificationObjective(ObjectiveBase):
             def build_test_metrics(self, labels):
                 predictions = tf.cast(tf.argmax(self.softmax, 1), tf.int32)
 
+                label_mask = tf.select(
+                    tf.equal(labels, -1), tf.zeros_like(labels),
+                    tf.ones_like(labels))
+
                 return metrics.aggregate_metric_map({
-                    'Vessel class test accuracy':
-                    metrics.streaming_accuracy(predictions, labels),
+                    'Vessel class test accuracy': metrics.streaming_accuracy(
+                        predictions, labels, weights=label_mask),
                 })
 
         return Evaluation(self.name, self.num_classes, logits)
