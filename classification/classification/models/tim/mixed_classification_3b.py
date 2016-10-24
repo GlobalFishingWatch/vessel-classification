@@ -8,21 +8,26 @@ from classification.model import MixedFishingModelBase, TrainNetInfo
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm
 
+
 TowerParams = namedtuple("TowerParams",
-                         ["filter_count", "filter_widths", "pool_size",
-                          "pool_stride", "keep_prob"])
+                         ["filter_count", "filter_widths", "pool_size", "pool_stride",
+                          "keep_prob", "shunt"])
+
 
 
 class Model(MixedFishingModelBase):
 
-    initial_learning_rate = 0.0001
+    initial_learning_rate = 0.01
     learning_decay_rate = 0.99
     decay_examples = 10000
     momentum = 0.9
 
     tower_params = [
         TowerParams(*x)
-        for x in [(16, [3], 2, 2, 1.0)] * 9 + [(16, [3], 2, 2, 0.8)]
+        for x in 
+        [(24, [(3, 1), (3, 2), (3, 4), (3, 8)], 3, 2, 1.0, False)] * 1 + 
+                 [(16, [(3, 1)],                 3, 2, 1.0, True)] * 8 + 
+                 [(16, [(3, 1)],                 3, 2, 0.8, True)]
     ]
 
     @property
@@ -42,24 +47,29 @@ class Model(MixedFishingModelBase):
 
                 # Misconception stack
                 mc = current
-                for j, w in enumerate(tp.filter_widths):
+                for j, (w, r) in enumerate(tp.filter_widths):
                     mc = misconception_layer(
                         mc,
                         tp.filter_count,
                         is_training,
                         filter_size=w,
+                        filter_rate=r, 
                         padding="SAME",
                         name='misconception-{}'.format(j))
 
-                # Build a shunt layer (resnet) to help convergence
-                with tf.variable_scope('shunt'):
-                    # Trim current before making the skip layer so that it matches the dimensons of
-                    # the mc stack
-                    shunt = tf.nn.elu(
-                        batch_norm(
-                            conv1d_layer(current, 1, tp.filter_count),
-                            is_training))
-                current = shunt + mc
+                if tp.shunt:
+                    # Build a shunt layer (resnet) to help convergence
+                    with tf.variable_scope('shunt'):
+                        # Trim current before making the skip layer so that it matches the dimensons of
+                        # the mc stack
+                        shunt = tf.nn.elu(
+                            batch_norm(
+                                conv1d_layer(current, 1, tp.filter_count),
+                                is_training))
+                    current = shunt + mc
+                else:
+                    current = mc
+
                 if i == 0:
                     # Stash first layer away as input fishing classifier
                     fishing_classifier_input = current
@@ -113,10 +123,12 @@ class Model(MixedFishingModelBase):
                     tf.nn.sparse_softmax_cross_entropy_with_logits(
                         vessel_class_logits, labels))
                 fishing_mask = tf.to_float(tf.not_equal(fishing_timeseries_labels, -1))
-                fishing_loss = tf.nn.l2_loss(fishing_mask * 
-                        (tf.sigmoid(fishing_logits) - fishing_timeseries_labels)) / self.window_max_points
+                fishing_targets = tf.to_float(fishing_timeseries_labels > 0.5)
+                fishing_loss = (tf.reduce_sum(fishing_mask * tf.nn.sigmoid_cross_entropy_with_logits(
+                    fishing_logits, fishing_targets)) /
+                         (100 + tf.reduce_sum(fishing_mask))) # TODO: no magic numbers
 
-                loss  = class_loss + fishing_loss
+                loss  = 0.01 * class_loss + fishing_loss
                 # Use simple momentum for the optimization.
                 optimizer = tf.train.MomentumOptimizer(learning_rate,
                                                        self.momentum)

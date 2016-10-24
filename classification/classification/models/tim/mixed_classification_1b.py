@@ -113,8 +113,13 @@ class Model(MixedFishingModelBase):
                     tf.nn.sparse_softmax_cross_entropy_with_logits(
                         vessel_class_logits, labels))
                 fishing_mask = tf.to_float(tf.not_equal(fishing_timeseries_labels, -1))
-                fishing_loss = tf.nn.l2_loss(fishing_mask * 
-                        (tf.sigmoid(fishing_logits) - fishing_timeseries_labels)) / self.window_max_points
+                fishing_targets = tf.to_float(fishing_timeseries_labels > 0.5)
+                fishing_loss = (tf.reduce_sum(fishing_mask * tf.nn.sigmoid_cross_entropy_with_logits(fishing_logits, fishing_targets)) /
+                         (100 + tf.reduce_sum(fishing_mask))) # TODO: no magic numbers
+
+
+                # tf.nn.l2_loss(fishing_mask * 
+                #         (tf.sigmoid(fishing_logits) - fishing_timeseries_labels)) / self.window_max_points
 
                 loss  = class_loss + fishing_loss
                 # Use simple momentum for the optimization.

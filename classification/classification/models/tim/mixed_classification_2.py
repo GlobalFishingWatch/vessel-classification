@@ -3,7 +3,7 @@ import tensorflow as tf
 from collections import namedtuple
 import tensorflow.contrib.slim as slim
 
-from classification.model import ModelBase, TrainNetInfo
+from classification.model import MixedFishingModelBase, TrainNetInfo
 
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm
@@ -15,7 +15,7 @@ TowerParams = namedtuple("TowerParams",
 
 
 
-class Model(ModelBase):
+class Model(MixedFishingModelBase):
 
     initial_learning_rate = 0.0001
     learning_decay_rate = 0.99
