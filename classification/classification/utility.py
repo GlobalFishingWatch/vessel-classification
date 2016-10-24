@@ -10,6 +10,7 @@ import sys
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
+import calendar
 
 VESSEL_CLASS_NAMES = [
     "Purse seine", "Longliner", "Trawler", "Pots and traps", "Squid fishing",
@@ -18,6 +19,9 @@ VESSEL_CLASS_NAMES = [
 
 VESSEL_CLASS_INDICES = dict(
     zip(VESSEL_CLASS_NAMES, range(len(VESSEL_CLASS_NAMES))))
+
+# Include vessels with fishing more than other vessels by this much
+FISHING_AUGMENTATION_FACTOR = 4
 
 FishingRange = namedtuple('FishingRange',
                           ['start_time', 'end_time', 'is_fishing'])
@@ -194,6 +198,8 @@ def np_array_random_fixed_time_extract(random_state, input_series,
         time_offset = 0
     else:
         time_offset = random_state.randint(0, max_time_offset)
+
+
     start_index = np.searchsorted(
         input_series[:, 0], start_time + time_offset, side='left')
 
@@ -281,8 +287,8 @@ def np_array_extract_n_random_features(
         fishing_timeseries = np.empty([window_size], dtype=np.float32)
         fishing_timeseries.fill(-1.0)
         for fr in vessel_fishing_ranges:
-            start_range = time.mktime(fr.start_time.timetuple())
-            end_range = time.mktime(fr.end_time.timetuple())
+            start_range = calendar.timegm(fr.start_time.utctimetuple())
+            end_range = calendar.timegm(fr.end_time.utctimetuple())
             mask = (timeseries >= start_range) & (timeseries <= end_range)
             fishing_timeseries[mask] = fr.is_fishing
 
@@ -333,6 +339,8 @@ def cropping_weight_replicating_feature_file_reader(
     def replicate_extract(input, mmsi):
         string_label, weight = vessel_metadata[mmsi]
         label = VESSEL_CLASS_INDICES[string_label]
+        if fishing_ranges:
+            weight = weight * FISHING_AUGMENTATION_FACTOR
         n = min(float(max_replication_factor), weight)
         vessel_fishing_ranges = fishing_ranges[mmsi]
 
@@ -392,8 +400,8 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
 
             time_bounds = np.array([start_time, end_time], dtype=np.int32)
 
-            without_timestamp = output_slice[:, 1:]
             timeseries = output_slice[:, 0].astype(np.int32)
+            without_timestamp = output_slice[:, 1:]
             slices.append(
                 (np.stack([without_timestamp]), timeseries, time_bounds, mmsi))
 
