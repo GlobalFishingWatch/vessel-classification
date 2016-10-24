@@ -79,6 +79,7 @@ def main(args):
     vessel_metadata = utility.read_vessel_multiclass_metadata(
         all_available_mmsis, metadata_file, column_transformers)
 
+    # TODO(alexwilson): Also add fishing/non label.
     coarse_label_objective = utility.ClassificationObjective(
         'Vessel class', 'label', utility.VESSEL_CLASS_NAMES)
     fine_label_objective = utility.ClassificationObjective(

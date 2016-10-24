@@ -33,6 +33,8 @@ class ClassificationObjective(ObjectiveBase):
     def training_label(self, data_row):
         return self.class_indices[data_row[self.metadata_label]]
 
+    # TODO(alexwilson): loss and accuracy functions need to be able to handle
+    # missing labels.
     def build_trainer(self, logits, labels, loss_weight=1.0):
         class Trainer(ObjectiveTrainer):
             def __init__(self, name, num_classes, loss_weight, logits, labels):
