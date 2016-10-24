@@ -6,6 +6,7 @@ import math
 import os
 from pkg_resources import resource_filename
 import sys
+from . import model
 from . import utility
 from .trainer import Trainer
 import importlib
@@ -73,27 +74,28 @@ def main(args):
 
     all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
 
-    column_transformers = [('length', vessel_categorical_length_transformer)]
+    column_transformers = [('length',
+                            utility.vessel_categorical_length_transformer)]
     vessel_metadata = utility.read_vessel_multiclass_metadata(
         all_available_mmsis, metadata_file, column_transformers)
 
-    fishing_or_not_objective = utility.ClassificationObjective(
+    fishing_or_not_objective = model.ClassificationObjective(
         'Fishing/Non', 'is_fishing', set(['Fishing', 'Non-fishing']))
-    coarse_label_objective = utility.ClassificationObjective(
+    coarse_label_objective = model.ClassificationObjective(
         'Vessel class', 'label', utility.VESSEL_CLASS_NAMES)
-    fine_label_objective = utility.ClassificationObjective(
+    fine_label_objective = model.ClassificationObjective(
         'Vessel detailed class', 'sublabel',
         utility.VESSEL_CLASS_DETAILED_NAMES)
-    length_objective = utility.ClassificationObjective(
+    length_objective = model.ClassificationObjective(
         'Vessel length', 'length', utility.VESSEL_LENGTH_CLASSES)
     training_objectives = [
         fishing_or_not_objective, coarse_label_objective, fine_label_objective,
         length_objective
     ]
     feature_dimensions = int(args.feature_dimensions)
-    model = Model(feature_dimensions, training_objectives)
+    chosen_model = Model(feature_dimensions, training_objectives)
 
-    trainer = Trainer(model, vessel_metadata, fishing_ranges,
+    trainer = Trainer(chosen_model, vessel_metadata, fishing_ranges,
                       args.root_feature_path, args.training_output_path)
 
     config = json.loads(os.environ.get('TF_CONFIG', '{}'))

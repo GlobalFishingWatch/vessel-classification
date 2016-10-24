@@ -21,7 +21,10 @@ VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
                       'Pole and Line', 'Purse seines', 'Pots and Traps',
                       'Trollers', 'Tug/Pilot/Supply']
 
-VESSEL_CLASS_DETAILED_NAMES = VESSEL_CLASS_NAMES
+VESSEL_CLASS_DETAILED_NAMES = [
+    'Cargo', 'Sailing', 'Supply', 'Set longlines', 'Motor Passenger',
+    'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
+]
 
 VESSEL_LENGTH_CLASSES = [
     '0-12m', '12-18m', '18-24m', '24-36m', '36-50m', '50-75m', '75-100m',
@@ -31,6 +34,10 @@ VESSEL_LENGTH_CLASSES = [
 
 def vessel_categorical_length_transformer(vessel_length_string):
     ranges = [12.0, 18.0, 24.0, 36.0, 50.0, 75.0, 100.0, 150.0]
+
+    if vessel_length_string == '':
+        return ''
+
     vessel_length = float(vessel_length_string)
     for i in range(len(ranges)):
         if vessel_length < ranges[i]:
@@ -77,7 +84,7 @@ class ClusterNodeConfig(object):
         return ClusterNodeConfig({
             "cluster": {},
             "task": {
-                "type": "worker",
+                "type": "master",
                 "index": 0
             }
         })
@@ -269,13 +276,13 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
 
 
 def np_array_extract_n_random_features(
-        random_state, input, label, n, max_time_delta, window_size,
+        random_state, input, training_labels, n, max_time_delta, window_size,
         min_timeslice_size, vessel_fishing_ranges):
     """ Extract and process multiple random timeslices from a vessel movement feature.
 
   Args:
     input: the input data as a 2d numpy array.
-    label: the label for the vessel which made this series.
+    training_labels: the label for the vessel which made this series.
     n: the (floating-point) number of times to extract a feature timeslice from
        this series.
 
@@ -286,6 +293,9 @@ def np_array_extract_n_random_features(
       2. A numpy array comprising timebounds for each slice, of dimension
           [n, 2].
       3. A numpy array with an int32 label for each slice, of dimension [n].
+      4. A numpy array indicating, when known, when fishing is happening with
+         an int per input point, -1 indicating don't know, 1 indicating fishing
+         and 0 indicating non-fishing.
 
   """
 
@@ -305,8 +315,8 @@ def np_array_extract_n_random_features(
             fishing_timeseries[(fishing_timeseries >= start_range) & (
                 fishing_timeseries < end_range)] = fr.is_fishing
 
-        samples.append((np.stack([features]), fishing_timeseries, time_bounds,
-                        np.int32(label)))
+        samples.append((np.stack([features]), time_bounds, training_labels,
+                        fishing_timeseries))
 
     for _ in range(int_n):
         add_sample()
@@ -351,19 +361,20 @@ def cropping_weight_replicating_feature_file_reader(
 
     def replicate_extract(input, mmsi):
         row, weight = vessel_metadata[mmsi]
-        training_labels = [to.training_label(row)
-                           for to in training_objectives]
+        training_labels = np.array([to.training_label(row)
+                           for to in training_objectives], dtype=np.int32)
         n = min(float(max_replication_factor), weight)
         vessel_fishing_ranges = fishing_ranges[mmsi]
         return np_array_extract_n_random_features(
-            random_state, input, label, n, max_time_delta, window_size,
-            min_timeslice_size, vessel_fishing_ranges)
+            random_state, input, training_labels, n, max_time_delta,
+            window_size, min_timeslice_size, vessel_fishing_ranges)
 
-    (features_list, fishing_timeseries, time_bounds_list,
-     labels_list) = tf.py_func(replicate_extract, [movement_features, mmsi],
-                               [tf.float32, tf.float32, tf.int32, tf.int32])
+    (features_list, time_bounds_list, labels_list,
+     fishing_timeseries_labels) = tf.py_func(
+         replicate_extract, [movement_features, mmsi],
+         [tf.float32, tf.int32, tf.int32, tf.float32])
 
-    return features_list, fishing_timeseries, time_bounds_list, labels_list
+    return features_list, time_bounds_list, labels_list, fishing_timeseries_labels
 
 
 def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
@@ -563,6 +574,7 @@ def read_vessel_multiclass_metadata(available_mmsis,
                                     transformers=[]):
     with open(metadata_file, 'r') as f:
         reader = csv.DictReader(f)
+        logging.info("Metadata columns: %s", reader.fieldnames)
         return read_vessel_multiclass_metadata_lines(available_mmsis, reader,
                                                      transformers)
 

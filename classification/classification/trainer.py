@@ -54,9 +54,9 @@ class Trainer:
         Returns:
             A tuple of tensors:
                 1. A tensor of features of dimension [batch_size, 1, width, depth]
-                2. A tensor of int32 labels of dimension [batch_size]
-                3. A tensor of one-hot encodings of the labels of dimension
-                    batch_size, num_classes]
+                2. A tensor of int32 labels of dimension [batch_size, num_label_sets]
+                3. A tensor of dimension [batch_size, width] indicating where
+                   fishing occurred in the original input timeseries.
 
         """
         input_files = self._feature_files(split)
@@ -66,6 +66,7 @@ class Trainer:
 
         max_replication = 8.0
 
+        num_label_sets = len(training_objectives)
         readers = []
         for _ in range(self.num_parallel_readers):
             readers.append(
@@ -76,8 +77,8 @@ class Trainer:
                     self.model.min_viable_timeslice_length, max_replication,
                     training_objectives, self.fishing_ranges))
 
-        (features, fishing_timeseries, time_bounds,
-         labels) = tf.train.shuffle_batch_join(
+        (features, time_bounds, labels,
+         fishing_timeseries_labels) = tf.train.shuffle_batch_join(
              readers,
              self.model.batch_size,
              capacity,
@@ -86,18 +87,18 @@ class Trainer:
              shapes=[[
                  1, self.model.window_max_points,
                  self.model.num_feature_dimensions
-             ], [self.model.window_max_points], [2], []])
+             ], [2], [num_label_sets], [self.model.window_max_points]])
 
-        return features, labels, fishing_timeseries
+        return features, labels, fishing_timeseries_labels
 
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
-        features, labels, fishing_timeseries_labels = self._feature_data_reader(
+        features, label_sets, fishing_timeseries_labels = self._feature_data_reader(
             'Training', self.training_objectives, True)
 
         (optimizer, objectives) = self.model.build_training_net(
-            features, labels, fishing_timeseries_labels)
+            features, label_sets, fishing_timeseries_labels)
 
         loss = tf.reduce_sum(
             [o.loss for o in objectives], reduction_indices=[0])
@@ -120,13 +121,17 @@ class Trainer:
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
 
-        features, labels, fishing_timeseries_labels = self._feature_data_reader(
+        features, label_sets, fishing_timeseries_labels = self._feature_data_reader(
             'Test', self.training_objectives, False)
 
         objectives = self.model.build_inference_net(features)
 
-        aggregate_metric_maps = [o.build_test_metrics(labels)
-                                 for o in objectives]
+        aggregate_metric_maps = []
+        num_objectives = len(objectives)
+        for i in range(len(objectives)):
+            o = objectives[i]
+            labels = tf.cast(tf.squeeze(tf.split(1, num_objectives, label_sets)[i]), tf.int32)
+            aggregate_metric_maps.append(o.build_test_metrics(labels))
 
         summary_ops = []
         update_ops = []
