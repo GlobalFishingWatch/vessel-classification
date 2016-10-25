@@ -18,7 +18,7 @@ lazy val commonSettings = Seq(
   ),
   // Main project dependencies.
   libraryDependencies ++= Seq(
-    "com.google.protobuf" % "protobuf-java" % "3.0.0-beta-1",
+
     "com.spotify" % "scio-core_2.11" % "0.2.1",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
     "io.github.karols" %% "units" % "0.2.1",
@@ -44,8 +44,7 @@ lazy val tfExampleProtos = project
   .settings(PB.protobufSettings: _*)
   .settings(
     Seq(
-      includePaths in PB.protobufConfig += (sourceDirectory in PB.protobufConfig).value,
-      version in PB.protobufConfig := "3.0.0-beta-1"
+      includePaths in PB.protobufConfig += (sourceDirectory in PB.protobufConfig).value
     ))
 
 
@@ -57,7 +56,8 @@ lazy val featurePipeline =
     .settings(
       Seq(
         libraryDependencies ++= Seq("com.opencsv" % "opencsv" % "3.7",
-                                    "org.json4s" %% "json4s-native" % "3.3.0")
+                                    "org.json4s" %% "json4s-native" % "3.3.0"),
+        dependencyOverrides += "com.google.protobuf" % "protobuf-java" % "3.0.0-beta-1"
       ))
     .dependsOn(tfExampleProtos, common)
 
