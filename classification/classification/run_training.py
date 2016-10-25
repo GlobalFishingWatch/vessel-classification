@@ -74,7 +74,6 @@ def main(args):
 
     all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
 
-<<<<<<< HEAD
     column_transformers = [('length',
                             utility.vessel_categorical_length_transformer)]
     vessel_metadata = utility.read_vessel_multiclass_metadata(
