@@ -26,7 +26,8 @@ class ClassificationObjective(ObjectiveBase):
     def __init__(self, name, metadata_label, classes):
         super(self.__class__, self).__init__(name)
         self.metadata_label = metadata_label
-        self.classes = classes
+        #self.classes = sorted(list(classes))
+        self.classes = list(classes)
         self.class_indices = dict(zip(classes, range(len(classes))))
         self.num_classes = len(classes)
 
@@ -75,8 +76,9 @@ class ClassificationObjective(ObjectiveBase):
 
     def build_evaluation(self, logits):
         class Evaluation(object):
-            def __init__(self, name, num_classes, logits):
+            def __init__(self, name, classes, num_classes, logits):
                 self.name = name
+                self.classes = classes
                 self.num_classes = num_classes
                 self.softmax = slim.softmax(logits)
 
@@ -92,19 +94,11 @@ class ClassificationObjective(ObjectiveBase):
                         predictions, labels, weights=label_mask),
                 })
 
-        return Evaluation(self.name, self.num_classes, logits)
+        return Evaluation(self.name, self.classes, self.num_classes, logits)
 
 
 class RegressionObjective(ObjectiveBase):
-    def __init__(self, name):
-        super(RegressionObjective).__init__(self, name)
-
-    class Trainer(ObjectiveTrainer):
-        def __init__(self, name, predictions, targets):
-            self.loss = slim.losses.mean_squared_error(
-                predictions, targets, weight=self.loss_weight)
-
-            tf.scalar_summary('%s training MSE' % self.name, self.loss)
+    pass
 
 
 class ModelBase(object):

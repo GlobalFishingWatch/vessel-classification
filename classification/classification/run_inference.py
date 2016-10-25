@@ -6,10 +6,14 @@ import gzip
 import importlib
 import logging
 import newlinejson as nlj
+import numpy as np
+import os
+from pkg_resources import resource_filename
 import pytz
 import tensorflow.contrib.slim as slim
 import tensorflow as tf
 import time
+from . import model
 from . import utility
 
 
@@ -70,13 +74,9 @@ class Inferer(object):
                 self.model.num_feature_dimensions
             ], [self.model.window_max_points], [2], []])
 
-        (vessel_class_logits, fishing_localisation_logits
-         ) = self.model.build_inference_net(features)
+        objectives = self.model.build_inference_net(features)
 
-        softmax = slim.softmax(vessel_class_logits)
-
-        predictions = tf.cast(tf.argmax(softmax, 1), tf.int32)
-        max_probabilities = tf.reduce_max(softmax, [1])
+        all_predictions = [o.softmax for o in objectives]
 
         # Open output file, on cloud storage - so what file api?
         config = tf.ConfigProto(
@@ -104,33 +104,39 @@ class Inferer(object):
                 while True:
                     logging.info("Inference step: %d", i)
                     i += 1
-                    result = sess.run([
-                        mmsis, time_ranges, predictions, max_probabilities,
-                        softmax
-                    ])
-                    for mmsi, (
-                            start_time_seconds, end_time_seconds
-                    ), label, max_probability, label_probabilities in zip(
-                            *result):
+                    batch_results = sess.run([mmsis, time_ranges] +
+                                             all_predictions)
+                    for result in zip(*batch_results):
+                        mmsi = result[0]
+                        (start_time_seconds, end_time_seconds) = result[1]
+
+                        softmaxes = result[2:]
+
                         start_time = datetime.datetime.utcfromtimestamp(
                             start_time_seconds)
                         end_time = datetime.datetime.utcfromtimestamp(
                             end_time_seconds)
 
-                        label_scores = dict(
-                            zip(utility.VESSEL_CLASS_NAMES, [float(
-                                v) for v in label_probabilities]))
+                        labels = {}
+                        for (objective, softmax) in zip(objectives, softmaxes):
+                            max_prob_index = np.argmax(softmax)
+                            max_probability = float(softmax[max_prob_index])
+                            max_label = objective.classes[max_prob_index]
+                            full_scores = dict(
+                                zip(objective.classes, [float(v)
+                                                        for v in softmax]))
+
+                            labels[objective.name] = {
+                                'max_label': max_label,
+                                'max_label_probability': max_probability,
+                                'label_scores': full_scores
+                            }
 
                         output_nlj.write({
                             'mmsi': int(mmsi),
                             'start_time': start_time.isoformat(),
                             'end_time': end_time.isoformat(),
-                            'vessel_classification': {
-                                'max_label': utility.VESSEL_CLASS_NAMES[label],
-                                'max_label_probability':
-                                float(max_probability),
-                                'label_scores': label_scores
-                            }
+                            'labels': labels
                         })
 
 
@@ -149,14 +155,17 @@ def main(args):
         if args.dataset_split in ['Training', 'Test']:
             metadata_file = os.path.abspath(
                 resource_filename('classification.data',
-                                  'combined_classification_list.csv'))
+                                  'net_training_20161016.csv'))
             if not os.path.exists(metadata_file):
                 logging.fatal("Could not find metadata file: %s.",
-                              args.metadata_file)
+                              metadata_file)
                 sys.exit(-1)
 
-            vessel_metadata = utility.read_vessel_metadata(all_available_mmsis,
-                                                           metadata_file)
+            column_transformers = [(
+                'length', utility.vessel_categorical_length_transformer)]
+            vessel_metadata = utility.read_vessel_multiclass_metadata(
+                all_available_mmsis, metadata_file, column_transformers)
+
             mmsis = set(vessel_metadata[args.dataset_split].keys())
         else:
             mmsis_file = os.path.abspath(
@@ -170,6 +179,20 @@ def main(args):
     else:
         mmsis = all_available_mmsis
 
+    fishing_or_not_objective = model.ClassificationObjective(
+        'Fishing/Non', 'is_fishing', set(['Fishing', 'Non-fishing']))
+    coarse_label_objective = model.ClassificationObjective(
+        'Vessel class', 'label', utility.VESSEL_CLASS_NAMES)
+    fine_label_objective = model.ClassificationObjective(
+        'Vessel detailed class', 'sublabel',
+        utility.VESSEL_CLASS_DETAILED_NAMES)
+    length_objective = model.ClassificationObjective(
+        'Vessel length', 'length', utility.VESSEL_LENGTH_CLASSES)
+    training_objectives = [
+        fishing_or_not_objective, coarse_label_objective, fine_label_objective,
+        length_objective
+    ]
+
     module = "classification.models.{}".format(args.model_name)
     try:
         Model = importlib.import_module(module).Model
@@ -177,8 +200,11 @@ def main(args):
         logging.error("Could not load model: {}".format(module))
         raise
 
-    model = Model()
-    infererer = Inferer(model, model_checkpoint_path, root_feature_path, mmsis)
+    feature_dimensions = int(args.feature_dimensions)
+    chosen_model = Model(feature_dimensions, training_objectives)
+
+    infererer = Inferer(chosen_model, model_checkpoint_path, root_feature_path,
+                        mmsis)
     infererer.run_inference(inference_parallelism, inference_results_path)
 
 
@@ -217,6 +243,11 @@ def parse_args():
         help='Data split to classify. If unspecified, all vessels. Otherwise '
         'if Training or Test, read from built-in training/test split, '
         'otherwise the name of a single-column csv file of mmsis.')
+
+    argparser.add_argument(
+        '--feature_dimensions',
+        required=True,
+        help='The number of dimensions of a classification feature.')
 
     return argparser.parse_args()
 
