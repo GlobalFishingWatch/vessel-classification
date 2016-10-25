@@ -34,9 +34,6 @@ lazy val commonSettings = Seq(
   )
 )
 
-// All common code for pipeline and modelling.
-lazy val common = project.in(file("common")).settings(commonSettings: _*)
-
 // TODO(alexwilson): Download these files from github TF repo rather than having our own copy.
 lazy val tfExampleProtos = project
   .in(file("tf-example-protos"))
@@ -56,10 +53,9 @@ lazy val featurePipeline =
     .settings(
       Seq(
         libraryDependencies ++= Seq("com.opencsv" % "opencsv" % "3.7",
-                                    "org.json4s" %% "json4s-native" % "3.3.0"),
-        dependencyOverrides += "com.google.protobuf" % "protobuf-java" % "3.0.0-beta-1"
+                                    "org.json4s" %% "json4s-native" % "3.3.0")
       ))
-    .dependsOn(tfExampleProtos, common)
+    .dependsOn(tfExampleProtos)
 
 // An aggregation of all projects.
-lazy val root = (project in file(".")).aggregate(common, featurePipeline)
+lazy val root = (project in file(".")).aggregate(featurePipeline)
