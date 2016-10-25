@@ -1,7 +1,8 @@
 trainingInput:
   args: [
     "{model_name}",
-    "--root_feature_path", "gs://alex-dataflow-scratch/features-scratch/encounters_test/20161011T202437Z/features",
+    "--feature_dimensions", "11",
+    "--root_feature_path", "gs://alex-dataflow-scratch/features-scratch/new_features_ports_anchorage/20161018T153546Z/features",
     "--training_output_path", "{output_path}/{model_name}"]
   scaleTier: CUSTOM
   masterType: "standard"
