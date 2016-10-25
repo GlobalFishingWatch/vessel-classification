@@ -18,6 +18,7 @@ lazy val commonSettings = Seq(
   ),
   // Main project dependencies.
   libraryDependencies ++= Seq(
+    "com.google.protobuf" % "protobuf-java" % "3.0.0-beta-1",
     "com.spotify" % "scio-core_2.11" % "0.2.1",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
     "io.github.karols" %% "units" % "0.2.1",
@@ -33,6 +34,9 @@ lazy val commonSettings = Seq(
   )
 )
 
+// All common code for pipeline and modelling.
+lazy val common = project.in(file("common")).settings(commonSettings: _*)
+
 // TODO(alexwilson): Download these files from github TF repo rather than having our own copy.
 lazy val tfExampleProtos = project
   .in(file("tf-example-protos"))
@@ -40,11 +44,10 @@ lazy val tfExampleProtos = project
   .settings(PB.protobufSettings: _*)
   .settings(
     Seq(
-      includePaths in PB.protobufConfig += (sourceDirectory in PB.protobufConfig).value
+      includePaths in PB.protobufConfig += (sourceDirectory in PB.protobufConfig).value,
+      version in PB.protobufConfig := "3.0.0-beta-1"
     ))
 
-// All common code for pipeline and modelling.
-lazy val common = project.in(file("common")).settings(commonSettings: _*)
 
 // The dataflow feature generation pipeline.
 lazy val featurePipeline =
@@ -56,7 +59,7 @@ lazy val featurePipeline =
         libraryDependencies ++= Seq("com.opencsv" % "opencsv" % "3.7",
                                     "org.json4s" %% "json4s-native" % "3.3.0")
       ))
-    .dependsOn(common, tfExampleProtos)
+    .dependsOn(tfExampleProtos, common)
 
 // An aggregation of all projects.
 lazy val root = (project in file(".")).aggregate(common, featurePipeline)

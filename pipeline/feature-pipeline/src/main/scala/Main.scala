@@ -258,6 +258,8 @@ object Pipeline extends LazyLogging {
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
+    logger.info(s"Pipeline output path: ${config.pipelineOutputPath}")
+
     options.setRunner(classOf[DataflowPipelineRunner])
     options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
@@ -268,7 +270,7 @@ object Pipeline extends LazyLogging {
     // relevant years, as a single Cloud Dataflow text reader currently can't yet
     // handle the sheer volume of matching files.
     val matches = (Parameters.allDataYears).map { year =>
-      val path = s"${Parameters.inputMeasuresPath}/$year-*/*.json"
+      val path = s"${Parameters.inputMeasuresPath}/$year-03-03*/*.json"
       sc.tableRowJsonFile(path)
     }
 
