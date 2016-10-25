@@ -7,6 +7,7 @@ import com.google.common.geometry.{S2, S2LatLng}
 import com.spotify.scio.values.SCollection
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.joda.time.{DateTimeZone, Duration, Instant, LocalDateTime}
+import org.skytruth.common.Implicits
 import org.tensorflow.example.{
   Example,
   Feature,
@@ -21,7 +22,7 @@ import org.tensorflow.example.{
 
 object ModelFeatures extends LazyLogging {
   import AdditionalUnits._
-  import Utility._
+  import Implicits._
 
   private case class BoundingAnchorage(startTime: Instant,
                                        endTime: Instant,
@@ -186,10 +187,10 @@ object ModelFeatures extends LazyLogging {
         case ((metadata, processedLocations), s) =>
           // TODO(alexwilson): Building the lookup once per vessel is hideously inefficient. It
           // should be once per mapper task.
-          val anchorageLookup = Utility.AdjacencyLookup(s(siAnchorages),
-                                                        (v: Anchorage) => v.meanLocation,
-                                                        0.5.of[kilometer],
-                                                        13)
+          val anchorageLookup = AdjacencyLookup(s(siAnchorages),
+                                                (v: Anchorage) => v.meanLocation,
+                                                0.5.of[kilometer],
+                                                13)
           val features = buildSingleVesselFeatures(processedLocations.locations, anchorageLookup)
           val featuresAsTFExample = buildTFExampleProto(metadata, features)
           (metadata, featuresAsTFExample)
