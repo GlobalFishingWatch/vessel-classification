@@ -16,7 +16,7 @@ class Model(ModelBase):
 
     window_size = 3
     stride = 2
-    feature_depth = 30
+    feature_depth = 50
     levels = 10
 
     def __init__(self, num_feature_dimensions, training_objectives):
