@@ -18,16 +18,15 @@ TowerParams = namedtuple("TowerParams",
 class Model(MixedFishingModelBase):
 
     initial_learning_rate = 0.01
-    learning_decay_rate = 0.9
+    learning_decay_rate = 0.99
     decay_examples = 10000
     momentum = 0.9
 
     tower_params = [
         TowerParams(*x)
         for x in 
-        [(24, [(3, 1), (3, 2), (3, 4), (3, 8)], 3, 2, 1.0, False)] * 1 + 
-                 [(16, [(3, 1)],                 3, 2, 1.0, True)] * 8 + 
-                 [(16, [(3, 1)],                 3, 2, 0.8, True)]
+        [(16, [(3, 1)],                         3, 2, 1.0, True) ] * 9 + 
+        [(16, [(3, 1)],                         3, 2, 0.8, True) ]
     ]
 
     @property
@@ -41,6 +40,15 @@ class Model(MixedFishingModelBase):
 
         # Build a tower consisting of stacks of misconception layers in parallel
         # with size 1 convolutional shortcuts to help train.
+
+        with tf.variable_scope('fishing_segment'):
+            fishing_classifier_input = misconception_layer(
+                        current,
+                        8,
+                        is_training,
+                        filter_size=32,
+                        padding="SAME",
+                        name='fishing-0')
 
         for i, tp in enumerate(self.tower_params):
             with tf.variable_scope('tower-segment-{}'.format(i + 1)):
@@ -70,10 +78,6 @@ class Model(MixedFishingModelBase):
                 else:
                     current = mc
 
-                if i == 0:
-                    # Stash first layer away as input fishing classifier
-                    fishing_classifier_input = current
-
                 current = tf.nn.max_pool(
                     current, [1, 1, tp.pool_size, 1],
                     [1, 1, tp.pool_stride, 1],
@@ -96,7 +100,7 @@ class Model(MixedFishingModelBase):
         current = tf.concat(3, [fishing_classifier_input, embedding])
         current = tf.nn.elu(
                         batch_norm(
-                            conv1d_layer(current, 1, 1024, name="fishing1"),
+                            conv1d_layer(current, 1, 8, name="fishing1"),
                             is_training))
         current = conv1d_layer(current, 1, 1, name="fishing_logits")
         fishing_logits = tf.reshape(current, (-1, self.window_max_points))
