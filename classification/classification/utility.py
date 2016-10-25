@@ -21,7 +21,7 @@ VESSEL_CLASS_INDICES = dict(
     zip(VESSEL_CLASS_NAMES, range(len(VESSEL_CLASS_NAMES))))
 
 # Include vessels with fishing more than other vessels by this much
-FISHING_AUGMENTATION_FACTOR = 4
+FISHING_AUGMENTATION_FACTOR = 10
 
 FishingRange = namedtuple('FishingRange',
                           ['start_time', 'end_time', 'is_fishing'])
@@ -339,10 +339,10 @@ def cropping_weight_replicating_feature_file_reader(
     def replicate_extract(input, mmsi):
         string_label, weight = vessel_metadata[mmsi]
         label = VESSEL_CLASS_INDICES[string_label]
-        if fishing_ranges:
+        vessel_fishing_ranges = fishing_ranges[mmsi]
+        if vessel_fishing_ranges:
             weight = weight * FISHING_AUGMENTATION_FACTOR
         n = min(float(max_replication_factor), weight)
-        vessel_fishing_ranges = fishing_ranges[mmsi]
 
         return np_array_extract_n_random_features(
             random_state, input, label, n, max_time_delta, window_size,
