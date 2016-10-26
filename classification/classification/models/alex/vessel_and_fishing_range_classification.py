@@ -2,7 +2,8 @@ from __future__ import absolute_import
 import argparse
 import json
 from . import layers
-from classification.model import ModelBase, TrainNetInfo
+from classification import utility
+from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective
 import logging
 import math
 import os
@@ -19,23 +20,27 @@ class Model(ModelBase):
     feature_depth = 50
     levels = 10
 
-    classification_training_objectives = [
-        make_vessel_label_objective(vessel_metadata, 'is_fishing', 'Fishing',
-                                    ['Fishing', 'Non-fishing']),
-        make_vessel_label_objective(vessel_metadata, 'label', 'Vessel class',
-                                    utility.VESSEL_CLASS_NAMES),
-        make_vessel_label_objective(
-            vessel_metadata, 'sublabel', 'Vessel detailedclass',
-            utility.VESSEL_CLASS_DETAILED_NAMES), make_vessel_label_objective(
+    def __init__(self, num_feature_dimensions, vessel_metadata):
+        super(self.__class__, self).__init__(num_feature_dimensions,
+                                             vessel_metadata)
+
+        self.classification_training_objectives = [
+            make_vessel_label_objective(vessel_metadata, 'is_fishing',
+                                        'Fishing', ['Fishing', 'Non-fishing']),
+            make_vessel_label_objective(
+                vessel_metadata, 'label', 'Vessel class',
+                utility.VESSEL_CLASS_NAMES), make_vessel_label_objective(
+                    vessel_metadata, 'sublabel', 'Vessel detailedclass',
+                    utility.VESSEL_CLASS_DETAILED_NAMES),
+            make_vessel_label_objective(
                 vessel_metadata,
                 'length',
                 'Vessel length',
                 utility.VESSEL_LENGTH_CLASSES,
                 transformer=utility.vessel_categorical_length_transformer)
-    ]
+        ]
 
-    def misconception_with_fishing_ranges(self, input, num_classes,
-                                          is_training):
+    def misconception_with_fishing_ranges(self, input, mmsis, is_training):
         """ A misconception tower with additional fishing range classiication.
 
         Args:
@@ -51,32 +56,25 @@ class Model(ModelBase):
         with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu):
             net = input
             # Three levels of misconception w/out narrowing for fishing prediction.
-            net = slim.repeat(net, 3, misconception_with_bypass,
+            net = slim.repeat(net, 3, layers.misconception_with_bypass,
                               self.window_size, 1, self.feature_depth,
                               is_training)
 
             fishing_prediction = net
 
             # Then a tower for classification.
-            net = slim.repeat(net, self.levels, misconception_with_bypass,
-                              self.window_size, self.stride,
-                              self.feature_depth, is_training)
+            net = slim.repeat(
+                net, self.levels, layers.misconception_with_bypass,
+                self.window_size, self.stride, self.feature_depth, is_training)
             net = slim.flatten(net)
             net = slim.dropout(net, 0.5, is_training=is_training)
             net = slim.fully_connected(net, 100)
             net = slim.dropout(net, 0.5, is_training=is_training)
 
-            logits = []
-            for of in objective_functions:
-                # TODO(alexwilson): The objective function should have a
-                # function to build this last layer.
-                logits.append(slim.fully_connected(net, of.num_classes))
+            logits = [slim.fully_connected(net, of.num_classes)
+                      for of in self.classification_training_objectives]
 
-            # TODO(alexwilson): Should the last layer have a sigmoid activation
-            # function?
-            logits.append(fishing_prediction)
-
-            return logits
+            return logits, fishing_prediction
 
     def zero_pad_features(self, features):
         """ Zero-pad features in the depth dimension to match requested feature depth. """
@@ -89,34 +87,32 @@ class Model(ModelBase):
 
         return padded
 
-    def build_training_net(self, features, labels, fishing_timeseries_labels):
-
+    def build_training_net(self, features, timestamps, mmsis):
         features = self.zero_pad_features(features)
-        one_hot_labels = slim.one_hot_encoding(labels, self.num_classes)
 
-        vessel_class_logits, fishing_prediction_logits = layers.misconception_model(
-            features, self.window_size, self.stride, self.feature_depth,
-            self.levels, self.num_classes, True)
+        logits_list, fishing_prediction = self.misconception_with_fishing_ranges(
+            features, mmsis, True)
 
-        vessel_classification_loss = slim.losses.softmax_cross_entropy(
-            vessel_class_logits, one_hot_labels)
+        trainers = []
+        for i in range(len(self.classification_training_objectives)):
+            trainers.append(self.classification_training_objectives[i]
+                            .build_trainer(logits_list[i], mmsis))
 
-        fishing_timeseries_loss = utility.fishing_localisation_loss(
-            fishing_prediction_logits, fishing_timeseries_labels)
+        optimizer = tf.train.AdamOptimizer(1e-5)
 
-        total_loss = vessel_classification_loss + fishing_timeseries_loss
+        return TrainNetInfo(optimizer, trainers)
 
-        optimizer = tf.train.AdamOptimizer(2e-5)
-
-        return TrainNetInfo(total_loss, optimizer, vessel_class_logits,
-                            fishing_prediction_logits)
-
-    def build_inference_net(self, features):
+    def build_inference_net(self, features, timestamps, mmsis):
 
         features = self.zero_pad_features(features)
 
-        vessel_class_logits, fishing_prediction_logits = layers.misconception_model(
-            features, self.window_size, self.stride, self.feature_depth,
-            self.levels, self.num_classes, False)
+        logits_list, fishing_prediction = self.misconception_with_fishing_ranges(
+            features, mmsis, False)
 
-        return vessel_class_logits, fishing_prediction_logits
+        evaluations = []
+        for i in range(len(self.classification_training_objectives)):
+            to = self.classification_training_objectives[i]
+            logits = logits_list[i]
+            evaluations.append(to.build_evaluation(logits))
+
+        return evaluations

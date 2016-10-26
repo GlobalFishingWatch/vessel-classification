@@ -65,7 +65,6 @@ class Trainer:
 
         max_replication = 8.0
 
-        num_label_sets = len(training_objectives)
         readers = []
         for _ in range(self.num_parallel_readers):
             readers.append(

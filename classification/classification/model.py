@@ -24,6 +24,10 @@ class ObjectiveTrainer(object):
         self.update_ops = []
 
 
+class FishingLocalisationObjective(ObjectiveTrainer):
+    pass
+
+
 class ClassificationObjective(ObjectiveBase):
     def __init__(self,
                  label_from_mmsi,
