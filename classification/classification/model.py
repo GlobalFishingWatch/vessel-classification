@@ -11,8 +11,9 @@ TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 class ObjectiveBase(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, name):
+    def __init__(self, name, metadata_label):
         self.name = name
+        self.metadata_label = metadata_label
 
 
 class ObjectiveTrainer(object):
@@ -30,9 +31,8 @@ class ClassificationObjective(ObjectiveBase):
                  metadata_label,
                  classes,
                  transformer=None):
-        super(self.__class__, self).__init__(name)
+        super(self.__class__, self).__init__(name, metadata_label)
         self.label_from_mmsi = label_from_mmsi
-        self.metadata_label = metadata_label
         self.classes = list(classes)
         self.class_indices = dict(zip(classes, range(len(classes))))
         self.num_classes = len(classes)
@@ -135,13 +135,25 @@ class RegressionObjective(ObjectiveBase):
     pass
 
 
+def make_vessel_label_objective(vessel_metadata,
+                                label,
+                                name,
+                                classes,
+                                transformer=None):
+    return ClassificationObjective(
+        lambda mmsi: vessel_metadata.vessel_label(label, mmsi),
+        name,
+        label,
+        classes,
+        transformer=transformer)
+
+
 class ModelBase(object):
     __metaclass__ = abc.ABCMeta
 
     batch_size = 32
 
     feature_duration_days = 180
-    num_classes = 9
     max_sample_frequency_seconds = 5 * 60
     max_window_duration_seconds = feature_duration_days * 24 * 3600
 

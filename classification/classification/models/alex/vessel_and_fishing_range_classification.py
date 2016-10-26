@@ -19,6 +19,21 @@ class Model(ModelBase):
     feature_depth = 50
     levels = 10
 
+    classification_training_objectives = [
+        make_vessel_label_objective(vessel_metadata, 'is_fishing', 'Fishing',
+                                    ['Fishing', 'Non-fishing']),
+        make_vessel_label_objective(vessel_metadata, 'label', 'Vessel class',
+                                    utility.VESSEL_CLASS_NAMES),
+        make_vessel_label_objective(
+            vessel_metadata, 'sublabel', 'Vessel detailedclass',
+            utility.VESSEL_CLASS_DETAILED_NAMES), make_vessel_label_objective(
+                vessel_metadata,
+                'length',
+                'Vessel length',
+                utility.VESSEL_LENGTH_CLASSES,
+                transformer=utility.vessel_categorical_length_transformer)
+    ]
+
     def misconception_with_fishing_ranges(self, input, num_classes,
                                           is_training):
         """ A misconception tower with additional fishing range classiication.

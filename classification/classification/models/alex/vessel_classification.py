@@ -3,7 +3,7 @@ import argparse
 import json
 from . import layers
 from classification import utility
-from classification.model import ModelBase, TrainNetInfo, ClassificationObjective
+from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective
 import logging
 import math
 import os
@@ -11,19 +11,6 @@ import os
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
-
-
-def make_vessel_label_objective(vessel_metadata,
-                                label,
-                                name,
-                                classes,
-                                transformer=None):
-    return ClassificationObjective(
-        lambda mmsi: vessel_metadata.vessel_label(label, mmsi),
-        name,
-        label,
-        classes,
-        transformer=transformer)
 
 
 class Model(ModelBase):

@@ -3,7 +3,8 @@ import tensorflow as tf
 from collections import namedtuple
 import tensorflow.contrib.slim as slim
 
-from classification.model import ModelBase, TrainNetInfo
+from classification import utility
+from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective
 
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm
@@ -32,6 +33,14 @@ class Model(ModelBase):
             length = length * tp.pool_stride + (tp.pool_size - tp.pool_stride)
             length += sum(tp.filter_widths) - len(tp.filter_widths)
         return length
+
+    def __init__(self, num_feature_dimensions, vessel_metadata):
+        super(self.__class__, self).__init__(num_feature_dimensions,
+                                             vessel_metadata)
+
+        self.training_objectives = [make_vessel_label_objective(
+            vessel_metadata, 'label', 'Vessel class',
+            utility.VESSEL_CLASS_NAMES)]
 
     def build_model(self, is_training, current):
 
@@ -79,17 +88,19 @@ class Model(ModelBase):
 
         # Determine fishing estimate
         with tf.variable_scope("prediction-layer"):
-            logits = dense_layer(current, self.num_classes)
+            logits = dense_layer(current,
+                                 self.training_objectives[0].num_classes)
 
         return logits
 
-    def build_inference_net(self, features):
-        return self.build_model(tf.constant(False), features), None
+    def build_inference_net(self, features, timestamps, mmsis):
+        logits = self.build_model(tf.constant(False), features)
+        return [self.training_objectives[0].build_evaluation(logits)]
 
-    def build_training_net(self, features, labels, fishing_timeseries_labels):
+    def build_training_net(self, features, timestamps, mmsis):
         vessel_class_logits = self.build_model(tf.constant(True), features)
         example = slim.get_or_create_global_step() * self.batch_size
-        #
+
         with tf.variable_scope('training'):
             # Decay the learning rate by `learning_decay_rate` every
             # `decay_examples`.
@@ -97,13 +108,11 @@ class Model(ModelBase):
                 self.initial_learning_rate, example, self.decay_examples,
                 self.learning_decay_rate)
 
-            # Compute loss and predicted probabilities
-            with tf.name_scope('loss-function'):
-                loss = tf.reduce_mean(
-                    tf.nn.sparse_softmax_cross_entropy_with_logits(
-                        vessel_class_logits, labels))
-                # Use simple momentum for the optimization.
-                optimizer = tf.train.MomentumOptimizer(learning_rate,
-                                                       self.momentum)
+            # Use simple momentum for the optimization.
+            optimizer = tf.train.MomentumOptimizer(learning_rate,
+                                                   self.momentum)
 
-        return TrainNetInfo(loss, optimizer, vessel_class_logits, None)
+            trainer = self.training_objectives[0].build_trainer(
+                vessel_class_logits, mmsis)
+
+            return TrainNetInfo(optimizer, [trainer])
