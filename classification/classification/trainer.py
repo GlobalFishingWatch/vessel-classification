@@ -63,7 +63,7 @@ class Trainer:
         capacity = 1000
         min_size_after_deque = capacity - self.model.batch_size * 4
 
-        max_replication = 8.0
+        max_replication = 100.0
 
         readers = []
         for _ in range(self.num_parallel_readers):
@@ -88,6 +88,7 @@ class Trainer:
 
         return features, labels, fishing_timeseries
 
+
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
@@ -98,15 +99,7 @@ class Trainer:
          fishing_localisation_logits) = self.model.build_training_net(
              features, labels, fishing_timeseries_labels)
 
-        vessel_class_predictions = tf.cast(
-            tf.argmax(vessel_class_logits, 1), tf.int32)
-
-        tf.scalar_summary('Training loss', loss)
-
-        vessel_class_accuracy = slim.metrics.accuracy(labels,
-                                                      vessel_class_predictions)
-        tf.scalar_summary('Vessel class training accuracy',
-                          vessel_class_accuracy)
+        self.model.add_training_summaries(loss, vessel_class_logits, labels, fishing_localisation_logits, fishing_timeseries_labels)
 
         train_op = slim.learning.create_train_op(
             loss,
@@ -122,6 +115,7 @@ class Trainer:
             save_summaries_secs=30,
             save_interval_secs=60)
 
+
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
 
@@ -131,13 +125,9 @@ class Trainer:
         vessel_class_logits, fishing_localisation_logits = self.model.build_inference_net(
             features)
 
-        vessel_class_predictions = tf.cast(
-            tf.argmax(vessel_class_logits, 1), tf.int32)
-
-        names_to_values, names_to_updates = metrics.aggregate_metric_map({
-            'Vessel class test accuracy':
-            metrics.streaming_accuracy(vessel_class_predictions, labels),
-        })
+        names_to_values, names_to_updates = metrics.aggregate_metric_map(
+            self.model.create_evaluate_metric_map(vessel_class_logits, labels, 
+                fishing_localisation_logits, fishing_timeseries_labels))
 
         # Create the summary ops such that they also print out to std output.
         summary_ops = []
@@ -146,7 +136,7 @@ class Trainer:
             op = tf.Print(op, [metric_value], metric_name)
             summary_ops.append(op)
 
-        num_examples = 1024
+        num_examples = 4096
         num_evals = math.ceil(num_examples / float(self.model.batch_size))
 
         # Setup the global step.
