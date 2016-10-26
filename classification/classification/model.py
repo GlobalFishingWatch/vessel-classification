@@ -23,19 +23,25 @@ class ObjectiveTrainer(object):
 
 
 class ClassificationObjective(ObjectiveBase):
-    def __init__(self, name, metadata_label, classes, transformer=None):
+    def __init__(self,
+                 label_from_mmsi,
+                 name,
+                 metadata_label,
+                 classes,
+                 transformer=None):
         super(self.__class__, self).__init__(name)
+        self.label_from_mmsi = label_from_mmsi
         self.metadata_label = metadata_label
         self.classes = list(classes)
         self.class_indices = dict(zip(classes, range(len(classes))))
         self.num_classes = len(classes)
         self.transformer = transformer
 
-    def training_label(self, data_row):
+    def training_label(self, mmsi):
         """ Return the index of this training label, or if it's unset, return
             -1 so the loss function can ignore the example.
         """
-        label_value = data_row[self.metadata_label]
+        label_value = self.label_from_mmsi(mmsi)
         if self.transformer:
             label_value = self.transformer(label_value)
         if label_value:

@@ -19,11 +19,25 @@ class Model(ModelBase):
     feature_depth = 50
     levels = 10
 
-    def __init__(self, num_feature_dimensions):
+    def __init__(self, num_feature_dimensions, vessel_metadata):
         super(self.__class__, self).__init__(num_feature_dimensions)
+
         self.training_objectives = [
-            utility.fishing_or_not_objective, utility.coarse_label_objective,
-            utility.fine_label_objective, utility.length_objective
+            model.ClassificationObjective(
+                lambda mmsi: vessel_metadata.vessel('is_fishing', mmsi),
+                'Fishing/Non', 'is_fishing', set(['Fishing', 'Non-fishing'])),
+            model.ClassificationObjective(
+                lambda mmsi: vessel_metadata.vessel('label', mmsi),
+                'Vessel class', 'label', VESSEL_CLASS_NAMES),
+            model.ClassificationObjective(
+                lambda mmsi: vessel_metadata.vessel('sublabel', mmsi),
+                'Vessel detailed class', 'sublabel',
+                VESSEL_CLASS_DETAILED_NAMES), model.ClassificationObjective(
+                    lambda mmsi: vessel_metadata.vessel('length', mmsi),
+                    'Vessel length',
+                    'length',
+                    VESSEL_LENGTH_CLASSES,
+                    transformer=vessel_categorical_length_transformer)
         ]
 
     def zero_pad_features(self, features):

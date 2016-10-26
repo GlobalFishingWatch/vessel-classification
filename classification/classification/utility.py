@@ -51,21 +51,6 @@ def vessel_categorical_length_transformer(vessel_length_string):
 
 FishingRange = namedtuple('FishingRange',
                           ['start_time', 'end_time', 'is_fishing'])
-""" Classification objective for distinguishing fishing vessels from non. """
-fishing_or_not_objective = model.ClassificationObjective(
-    'Fishing/Non', 'is_fishing', set(['Fishing', 'Non-fishing']))
-""" Classification objective for coarse vessel labels. """
-coarse_label_objective = model.ClassificationObjective('Vessel class', 'label',
-                                                       VESSEL_CLASS_NAMES)
-""" Classification objective for detailed vessel labels. """
-detailed_label_objective = model.ClassificationObjective(
-    'Vessel detailed class', 'sublabel', VESSEL_CLASS_DETAILED_NAMES)
-""" Classification objective for vessel lengths. """
-length_objective = model.ClassificationObjective(
-    'Vessel length',
-    'length',
-    VESSEL_LENGTH_CLASSES,
-    transformer=vessel_categorical_length_transformer)
 
 
 class ClusterNodeConfig(object):
@@ -379,9 +364,9 @@ def cropping_weight_replicating_feature_file_reader(
     random_state = np.random.RandomState()
 
     def replicate_extract(input, mmsi):
-        row, weight = vessel_metadata[mmsi]
+        vessel_weight = vessel_metadata.vessel_weight(mmsi)
         training_labels = np.array(
-            [to.training_label(row) for to in training_objectives],
+            [to.training_label(mmsi) for to in training_objectives],
             dtype=np.int32)
         n = min(float(max_replication_factor), weight)
         vessel_fishing_ranges = fishing_ranges[mmsi]
@@ -394,6 +379,9 @@ def cropping_weight_replicating_feature_file_reader(
          replicate_extract, [movement_features, mmsi],
          [tf.float32, tf.int32, tf.int32, tf.float32])
 
+    # TODO(alexwilson): Remove the labels altogether, and instead return:
+    # return features_list, timeseries, time_bounds_list, mmsis
+    # Labels can be added later in the trainer.
     return features_list, time_bounds_list, labels_list, fishing_timeseries_labels
 
 
@@ -474,8 +462,10 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
         A tuple comprising, for the n slices comprising each vessel:
           1. A tensor of the feature timeslices drawn, of dimension
              [n, 1, window_size, num_features].
-          2. A tensor of the timebounds for the timeslices, of dimension [n, 2].
-          3. A tensor of the labels for each timeslice, of dimension [n].
+          2. A tensor of the timestamps for each feature point of dimension
+             [n, window_size].
+          3. A tensor of the timebounds for the timeslices, of dimension [n, 2].
+          4. A tensor of the mmsis of each vessel of dimension [n].
 
     """
     context_features, sequence_features = single_feature_file_reader(
