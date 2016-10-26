@@ -13,6 +13,20 @@ import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 
 
+# TODO: need to add the tensor input that the objective will read from.
+def make_vessel_label_objective(vessel_metadata,
+                                label,
+                                name,
+                                classes,
+                                transformer=None):
+    return ClassificationObjective(
+        lambda mmsi: vessel_metadata.vessel_label(label, mmsi),
+        name,
+        label,
+        classes,
+        transformer=transformer)
+
+
 class Model(ModelBase):
 
     window_size = 3
@@ -25,21 +39,19 @@ class Model(ModelBase):
                                              vessel_metadata)
 
         self.training_objectives = [
-            ClassificationObjective(
-                lambda mmsi: vessel_metadata.vessel('is_fishing', mmsi),
-                'Fishing', 'is_fishing', set(['Fishing', 'Non-fishing'])),
-            ClassificationObjective(
-                lambda mmsi: vessel_metadata.vessel('label', mmsi),
-                'Vessel class', 'label', utility.VESSEL_CLASS_NAMES),
-            ClassificationObjective(
-                lambda mmsi: vessel_metadata.vessel('sublabel', mmsi),
-                'Vessel detailed class', 'sublabel',
-                utility.VESSEL_CLASS_DETAILED_NAMES), ClassificationObjective(
-                    lambda mmsi: vessel_metadata.vessel('length', mmsi),
-                    'Vessel length',
-                    'length',
-                    utility.VESSEL_LENGTH_CLASSES,
-                    transformer=utility.vessel_categorical_length_transformer)
+            make_vessel_label_objective(vessel_metadata, 'is_fishing',
+                                        'Fishing', ['Fishing', 'Non-fishing']),
+            make_vessel_label_objective(
+                vessel_metadata, 'label', 'Vessel class',
+                utility.VESSEL_CLASS_NAMES), make_vessel_label_objective(
+                    vessel_metadata, 'sublabel', 'Vessel detailedclass',
+                    utility.VESSEL_CLASS_DETAILED_NAMES),
+            make_vessel_label_objective(
+                vessel_metadata,
+                'length',
+                'Vessel length',
+                utility.VESSEL_LENGTH_CLASSES,
+                transformer=utility.vessel_categorical_length_transformer)
         ]
 
     def zero_pad_features(self, features):
@@ -53,28 +65,24 @@ class Model(ModelBase):
 
         return padded
 
-    def build_training_net(self, features, label_sets, fishing_timeseries):
+    def build_training_net(self, features, timestamps, mmsis):
 
         features = self.zero_pad_features(features)
 
-        logits_set = layers.misconception_model(
+        logits_list = layers.misconception_model(
             features, self.window_size, self.stride, self.feature_depth,
             self.levels, self.training_objectives, True)
 
-        num_labels_sets = len(self.training_objectives)
         trainers = []
         for i in range(len(self.training_objectives)):
-            labels = tf.cast(
-                tf.squeeze(tf.split(1, num_labels_sets, label_sets)[i]),
-                tf.int32)
             trainers.append(self.training_objectives[i].build_trainer(
-                logits_set[i], labels))
+                logits_list[i], mmsis))
 
         optimizer = tf.train.AdamOptimizer(1e-5)
 
         return TrainNetInfo(optimizer, trainers)
 
-    def build_inference_net(self, features):
+    def build_inference_net(self, features, timestamps, mmsis):
 
         features = self.zero_pad_features(features)
 

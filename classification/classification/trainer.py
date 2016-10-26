@@ -73,11 +73,10 @@ class Trainer:
                     self.model.vessel_metadata, filename_queue,
                     self.model.num_feature_dimensions + 1, self.model.
                     max_window_duration_seconds, self.model.window_max_points,
-                    self.model.min_viable_timeslice_length, max_replication,
-                    training_objectives, self.fishing_ranges))
+                    self.model.min_viable_timeslice_length, max_replication))
 
-        (features, time_bounds, labels,
-         fishing_timeseries_labels) = tf.train.shuffle_batch_join(
+        (features, timestamps, time_bounds,
+         mmsis) = tf.train.shuffle_batch_join(
              readers,
              self.model.batch_size,
              capacity,
@@ -86,18 +85,18 @@ class Trainer:
              shapes=[[
                  1, self.model.window_max_points,
                  self.model.num_feature_dimensions
-             ], [2], [num_label_sets], [self.model.window_max_points]])
+             ], [self.model.window_max_points], [2], []])
 
-        return features, labels, fishing_timeseries_labels
+        return features, timestamps, time_bounds, mmsis
 
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
-        features, label_sets, fishing_timeseries_labels = self._feature_data_reader(
+        features, timestamps, time_bounds, mmsis = self._feature_data_reader(
             'Training', self.training_objectives, True)
 
         (optimizer, objectives) = self.model.build_training_net(
-            features, label_sets, fishing_timeseries_labels)
+            features, timestamps, mmsis)
 
         loss = tf.reduce_sum(
             [o.loss for o in objectives], reduction_indices=[0])
@@ -120,19 +119,14 @@ class Trainer:
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
 
-        features, label_sets, fishing_timeseries_labels = self._feature_data_reader(
+        features, timestamps, time_bounds, mmsis = self._feature_data_reader(
             'Test', self.training_objectives, False)
 
-        objectives = self.model.build_inference_net(features)
+        objectives = self.model.build_inference_net(features, timestamps,
+                                                    mmsis)
 
-        aggregate_metric_maps = []
-        num_objectives = len(objectives)
-        for i in range(len(objectives)):
-            o = objectives[i]
-            labels = tf.cast(
-                tf.squeeze(tf.split(1, num_objectives, label_sets)[i]),
-                tf.int32)
-            aggregate_metric_maps.append(o.build_test_metrics(labels))
+        aggregate_metric_maps = [o.build_test_metrics(mmsis)
+                                 for o in objectives]
 
         summary_ops = []
         update_ops = []

@@ -1,5 +1,6 @@
 import abc
 from collections import namedtuple
+import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
@@ -49,10 +50,21 @@ class ClassificationObjective(ObjectiveBase):
         else:
             return -1
 
-    def build_trainer(self, logits, labels, loss_weight=1.0):
+    def build_trainer(self, logits, mmsis, loss_weight=1.0):
         class Trainer(ObjectiveTrainer):
-            def __init__(self, name, num_classes, loss_weight, logits, labels):
+            def __init__(self, name, training_label_lookup, num_classes,
+                         loss_weight, logits):
                 super(self.__class__, self).__init__()
+
+                def labels_from_mmsis(mmsis_array):
+                    return np.vectorize(
+                        training_label_lookup, otypes=[np.int32])(mmsis_array)
+
+                # Look up the labels for each mmsi.
+                labels = tf.reshape(
+                    tf.py_func(labels_from_mmsis, [mmsis], [tf.int32]),
+                    shape=tf.shape(mmsis))
+
                 # Labels outside the one-hot num_classes range are just encoded
                 # to all-zeros, so the use of -1 for unknown works fine here
                 # when combined with a mask below.
@@ -79,19 +91,31 @@ class ClassificationObjective(ObjectiveBase):
                 self.update_ops.append(
                     tf.scalar_summary('%s training accuracy' % name, accuracy))
 
-        return Trainer(self.name, self.num_classes, loss_weight, logits,
-                       labels)
+        return Trainer(self.name, self.training_label, self.num_classes,
+                       loss_weight, logits)
 
     def build_evaluation(self, logits):
         class Evaluation(object):
-            def __init__(self, name, classes, num_classes, logits):
+            def __init__(self, name, training_label_lookup, classes,
+                         num_classes, logits):
+                self.training_label_lookup = training_label_lookup
                 self.name = name
                 self.classes = classes
                 self.num_classes = num_classes
                 self.softmax = slim.softmax(logits)
 
-            def build_test_metrics(self, labels):
+            def build_test_metrics(self, mmsis):
+                def labels_from_mmsis(mmsis_array):
+                    return np.vectorize(
+                        self.training_label_lookup,
+                        otypes=[np.int32])(mmsis_array)
+
                 predictions = tf.cast(tf.argmax(self.softmax, 1), tf.int32)
+
+                # Look up the labels for each mmsi.
+                labels = tf.reshape(
+                    tf.py_func(labels_from_mmsis, [mmsis], [tf.int32]),
+                    shape=tf.shape(mmsis))
 
                 label_mask = tf.select(
                     tf.equal(labels, -1), tf.zeros_like(labels),
@@ -102,7 +126,8 @@ class ClassificationObjective(ObjectiveBase):
                         predictions, labels, weights=label_mask),
                 })
 
-        return Evaluation(self.name, self.classes, self.num_classes, logits)
+        return Evaluation(self.name, self.training_label, self.classes,
+                          self.num_classes, logits)
 
 
 class RegressionObjective(ObjectiveBase):
@@ -133,15 +158,13 @@ class ModelBase(object):
         self.training_objectives = None
 
     @abc.abstractmethod
-    def build_training_net(self, features, labels):
+    def build_training_net(self, features, timestamps, mmsis):
         """Build net suitable for training model
 
         Args:
-            features : queue
-                features to feed into net
-            labels : a dictionary of groundtruth labels for training
-            fishing_timeseries_labels:
-                groundtruth localisation of fishing
+            features : features to feed into net
+            timestamps: a list of timestamps, one for each feature point.
+            mmsis: a list of mmsis, one for each batch element.
 
         Returns:
             TrainNetInfo
@@ -151,17 +174,16 @@ class ModelBase(object):
         return loss, trainers
 
     @abc.abstractmethod
-    def build_inference_net(self, features):
+    def build_inference_net(self, features, timestamps, mmsis):
         """Build net suitable for running inference on model
 
         Args:
-            features : tensor
-                queue of features to feed into net
+            features : features to feed into net
+            timestamps: a list of timestamps, one for each feature point.
+            mmsis: a list of mmsis, one for each batch element.
 
         Returns:
-            vessel_class_logits : tensor with vessel classes for the batch
-            fishing_localisation_logits: tensor with fishing localisation scores
-                                         for the batch
+            ?
 
         """
         vessel_class_logits = fishing_localisation_logits = None
