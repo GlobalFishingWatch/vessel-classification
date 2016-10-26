@@ -11,9 +11,81 @@ import logging
 import argparse
 from collections import namedtuple
 import sys
+import yattag
 
 InferenceResults = namedtuple("InferenceResults", ["mmsi", "inferred_labels", "true_labels", "start_dates", "scores", "label_set"])
+ConfusionMatrix = namedtuple("ConfusionMatrix", ["raw", "scaled"])
 
+
+
+
+# Helper function formatting as HTML (using yattage)
+
+
+def repr_confusion_matrix(doc, cm, labels, **kwargs):
+    doc, tag, text, line = doc.ttl()
+    with tag('table', **kwargs):
+        with tag('tr'):
+            line('th', "")
+            for x in labels:
+                with tag('th', style="height: 140px; white-space: nowrap;"):
+                    with tag('div', style="transform: translate(25px, 51px) rotate(315deg); width: 30px;"):
+                        with tag('span', style="border-bottom: 1px solid #ccc; padding: 5px 10px;"):
+                            text(x)
+        for i, (l, row) in enumerate(zip(labels, cm)):
+            with tag('tr'):
+                line('th', str(l))
+                for j, x in enumerate(row):
+                    cval = int(round(255 * x))
+                    hexcode = "{:02x}".format(cval)
+                    invhexcode = "{:02x}".format(255-cval)
+                    if i == j:
+                        color = "#{}FF{}".format(invhexcode, invhexcode)                    
+                    else:
+                        color = "#FF{}{}".format(invhexcode, invhexcode)     
+                    with tag('td', bgcolor=color):
+                        line('font', "{0:.2f}".format(x), color="#000000")
+
+def repr_table(doc, headings, rows, **kwargs):
+    doc, tag, text, line = doc.ttl()
+    with tag('table', **kwargs):
+        with tag('tr'):
+            for x in headings:
+                line('th', str(x))
+        for row in rows:
+            with tag('tr'):
+                for x in row:
+                    line('td', str(x))
+
+
+def repr_metrics(doc, results):
+    doc, tag, text, line = doc.ttl()
+
+    rows = [(x, accuracy_for_date(x, results.true_labels, results.inferred_labels, results.scores, results.start_dates, THRESHOLD))
+                for x in np.unique(results.start_dates)]
+
+    line('h2', "Accuracy by Date")
+    repr_table(doc, ["Start Date", "Accuracy"], [(a.date(), "{:.2f}".format(b)) for (a, b) in rows],
+        border=1)
+
+    consolidated = consolidate_across_dates(results)
+
+    line('h2', 'Overall Accuracy')
+    text(str(accuracy(consolidated.true_labels, consolidated.inferred_labels)))#, consolidated.scores, THRESHOLD)))
+
+    cm = confusion_matrix(results)
+
+    line('h2', "Confusion Matrix")
+    repr_confusion_matrix(doc, cm.scaled, results.label_set)
+
+    line('h2', 'Metrics by Gear Type')
+    results.inferred_labels[results.scores < THRESHOLD] = "Unknown"
+    repr_table(doc, ["Label","Precision","Recall"],precision_recall(results.label_set, results.true_labels, results.inferred_labels))
+
+
+#
+# Process the tests
+#
 
 def fix_label(x):
     x = x.strip()
@@ -28,33 +100,6 @@ def fix_label(x):
     return {'Dredger' : 'Trawler',
             'Pleasure Craft' : "Passenger",
             'Sail' : 'Passenger'}.get(x, x)
-
-
-def plot_confusion_matrix(cm, labels, title, cmap=None):
-    import matplotlib.pyplot as plt
-    if cmap is None:
-        cmap = plt.cm.Blues
-    plt.figure()
-    plt.imshow(cm, interpolation='nearest', cmap=cmap, vmin=0, vmax=1)
-    plt.title(title)
-    plt.colorbar()
-    tick_marks = np.arange(len(labels))
-    plt.xticks(tick_marks, labels, rotation=90)
-    plt.yticks(tick_marks, labels)
-    plt.tight_layout()
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-    fig = plt.gcf()
-    fig.subplots_adjust(bottom=0.3)
-    plt.show()
-
-
-def repr_confusion_matrix(cm, labels):
-    lines = [","+",".join(labels)]
-    for l, row in zip(labels, cm):
-        lines.append("{},".format(l) + ",".join([str(x) for x in row]))
-    return("\n".join(lines))
-
 
 def precision_recall(labels, y_true, y_pred):
     results = []
@@ -98,60 +143,14 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 temp_dir = os.path.join(this_dir, "temp")
 
 
-ConfusionMatrix = namedtuple("ConfusionMatrix", ["raw", "scaled"])
 
 def confusion_matrix(results):
-    cm_raw = metrics.confusion_matrix(results.true_labels, results.inferred_labels, label_set)
+    cm_raw = metrics.confusion_matrix(results.true_labels, results.inferred_labels, results.label_set)
     cm_normalized = cm_raw.astype('float') / (cm_raw.sum(axis=1) + 1e-10)[:, np.newaxis]
     return ConfusionMatrix(cm_raw, cm_normalized)
 
-# TODO:
-#    * Date range
 
-# Pass in field_name
-# Pass in date_range
-# pass in --confusion_matrix [PATH | --] defaults to --
-# pass in --metrics [PATH | --] defaults to --
-# pass 
-
-if __name__ == "__main__":
-    logging.getLogger().setLevel("WARNING")
-    #
-    parser = argparse.ArgumentParser(
-        description="Test inference results and output metrics")
-    parser.add_argument(
-        '--inferrence-path',
-        help='path to inferrence results',
-        default="gs://world-fishing-827/scratch/alex/infered_labels.txt") # TODO: there is more recent data path (in JSON so will need adjusting)
-    parser.add_argument(
-        '--test-path',
-        help='path to test data',
-        default='classification/data/test_list.csv'
-        )
-    parser.add_argument(
-        '--dest-path', help="path to write results to",
-        default = None
-        )
-    parser.add_argument(
-        '--plot-confusion', help='plot confusion matrix (run with pythonw)',
-        action='store_true'
-        )
-    args = parser.parse_args()
-    #
-    THRESHOLD = 0.5
-
-
-
-    #
-    inferrence_path = os.path.join(temp_dir, os.path.basename(args.inferrence_path))
-    # Download labels if they don't already exist
-    if not os.path.exists(inferrence_path):
-        subprocess.check_call(["gsutil", "cp", label_path, inferrence_path])
-    #
-    # Load the test_labels
-    with open(args.test_path) as f:
-        label_map = {x['mmsi'].strip(): fix_label(x['label']) for x in csv.DictReader(f)}
-
+def load_inferred(inferrence_path, label_map):
     # load inferred_labels and generate comparison data
     start_dates = []
     inferred_labels = []
@@ -170,46 +169,68 @@ if __name__ == "__main__":
                 true_labels.append(label_map[mmsi])
                 inferred_labels.append(label)
                 scores.append(float(score))
-    starts = sorted(set(start_dates))
     inferred_labels = np.array(inferred_labels)
     true_labels = np.array(true_labels)
     start_dates = np.array(start_dates)
     scores = np.array(scores)
     label_set = sorted(set(true_labels) | set(inferred_labels))
     mmsi_list = np.array(mmsi_list)
-    results = InferenceResults(mmsi_list, inferred_labels, true_labels, start_dates, scores, label_set)
+    return InferenceResults(mmsi_list, inferred_labels, true_labels, start_dates, scores, label_set)
+
+
+
+
+# TODO:
+#    * Date range
+
+
+if __name__ == "__main__":
+    logging.getLogger().setLevel("WARNING")
     #
-    output = sys.stdout if (args.dest_path is None) else open(args.dest_path)
-    def write(*args):
-        for x in args:
-            output.write(str(x) + " ")
-        output.write("\n")
+    parser = argparse.ArgumentParser(
+        description="Test inference results and output metrics")
+    parser.add_argument(
+        '--inferrence-path',
+        help='path to inferrence results',
+        default="gs://world-fishing-827/scratch/alex/infered_labels.txt") # TODO: there is more recent data path (in JSON so will need adjusting)
+    parser.add_argument(
+        '--test-path',
+        help='path to test data',
+        default='classification/data/test_list.csv'
+        )
+    parser.add_argument(
+        '--dest-path', help="path to write results to",
+        required=True
+        )
+    parser.add_argument(
+        '--plot-confusion', help='plot confusion matrix (run with pythonw)',
+        action='store_true'
+        )
+    args = parser.parse_args()
+    #
+    THRESHOLD = 0.5
 
-    try:
-        # Find scoring values
-        for x in starts:
-            write("Accuracy for",
-                x, accuracy_for_date(x, results.true_labels, results.inferred_labels, results.scores, results.start_dates, THRESHOLD))
-        write()
-
-        consolidated = consolidate_across_dates(results)
-
-        write("Overall Accuracy", accuracy(consolidated.true_labels, consolidated.inferred_labels))#, consolidated.scores, THRESHOLD))
-        write()
-        # 
-        cm = confusion_matrix(results)
-        
-        if args.plot_confusion:
-            plot_confusion_matrix(cm.scaled, results.label_set, "Confusion Matrix")
 
 
-        inferred_labels[scores < THRESHOLD] = "Unknown"
-        write("Label,Precision,Recall")
-        for lbl, prec, rec in precision_recall(results.label_set, results.true_labels, results.inferred_labels):
-            write(lbl, prec, rec)
-        write()
+    #
+    inferrence_path = os.path.join(temp_dir, os.path.basename(args.inferrence_path))
+    # Download labels if they don't already exist
+    if not os.path.exists(inferrence_path):
+        subprocess.check_call(["gsutil", "cp", label_path, inferrence_path])
+    #
+    # Load stuff
+    with open(args.test_path) as f:
+        label_map = {x['mmsi'].strip(): fix_label(x['label']) for x in csv.DictReader(f)}
 
-        write(repr_confusion_matrix(cm.scaled, results.label_set))
-    finally:
-        if output is not sys.stdout:        
-            output.close()
+    results = load_inferred(inferrence_path, label_map)
+
+    # Dump out as HTML
+    doc= yattag.Doc()
+
+    repr_metrics(doc, results)
+
+    doc.line('br', '')
+
+    with open(args.dest_path, 'w') as f:
+        f.write(yattag.indent(doc.getvalue(), indent_text = True))
+
