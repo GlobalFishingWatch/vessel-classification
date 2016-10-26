@@ -19,9 +19,12 @@ class Model(ModelBase):
     feature_depth = 50
     levels = 10
 
-    def __init__(self, num_feature_dimensions, training_objectives):
-        super(self.__class__, self).__init__(num_feature_dimensions,
-                                             training_objectives)
+    def __init__(self, num_feature_dimensions):
+        super(self.__class__, self).__init__(num_feature_dimensions)
+        self.training_objectives = [
+            utility.fishing_or_not_objective, utility.coarse_label_objective,
+            utility.fine_label_objective, utility.length_objective
+        ]
 
     def zero_pad_features(self, features):
         """ Zero-pad features in the depth dimension to match requested feature depth. """

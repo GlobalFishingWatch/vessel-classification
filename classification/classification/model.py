@@ -23,19 +23,21 @@ class ObjectiveTrainer(object):
 
 
 class ClassificationObjective(ObjectiveBase):
-    def __init__(self, name, metadata_label, classes):
+    def __init__(self, name, metadata_label, classes, transformer=None):
         super(self.__class__, self).__init__(name)
         self.metadata_label = metadata_label
-        #self.classes = sorted(list(classes))
         self.classes = list(classes)
         self.class_indices = dict(zip(classes, range(len(classes))))
         self.num_classes = len(classes)
+        self.transformer = transformer
 
     def training_label(self, data_row):
         """ Return the index of this training label, or if it's unset, return
             -1 so the loss function can ignore the example.
         """
         label_value = data_row[self.metadata_label]
+        if self.transformer:
+            label_value = self.transformer(label_value)
         if label_value:
             return self.class_indices[label_value]
         else:
@@ -119,9 +121,9 @@ class ModelBase(object):
 
     min_viable_timeslice_length = 500
 
-    def __init__(self, num_feature_dimensions, training_objectives):
+    def __init__(self, num_feature_dimensions):
         self.num_feature_dimensions = num_feature_dimensions
-        self.training_objectives = training_objectives
+        self.training_objectives = None
 
     @abc.abstractmethod
     def build_training_net(self, features, labels):

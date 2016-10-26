@@ -126,7 +126,8 @@ class Inferer(object):
                                 zip(objective.classes, [float(v)
                                                         for v in softmax]))
 
-                            labels[objective.name] = {
+                            labels[objective.metadata_label] = {
+                                'name': objective.name,
                                 'max_label': max_label,
                                 'max_label_probability': max_probability,
                                 'label_scores': full_scores
