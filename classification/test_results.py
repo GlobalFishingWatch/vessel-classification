@@ -30,11 +30,11 @@ def repr_confusion_matrix(doc, cm, labels, **kwargs):
             for x in labels:
                 with tag('th', style="height: 140px; white-space: nowrap;"):
                     with tag('div', style="transform: translate(25px, 51px) rotate(315deg); width: 30px;"):
-                        with tag('span', style="border-bottom: 1px solid #ccc; padding: 5px 10px;"):
+                        with tag('span', style="border-bottom: 1px solid #ccc; padding: 5px 10px; text-align: left;"):
                             text(x)
         for i, (l, row) in enumerate(zip(labels, cm)):
             with tag('tr'):
-                line('th', str(l))
+                line('th', str(l), style="text-align: right;")
                 for j, x in enumerate(row):
                     cval = int(round(255 * x))
                     hexcode = "{:02x}".format(cval)
