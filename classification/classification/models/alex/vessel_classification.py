@@ -13,7 +13,6 @@ import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 
 
-# TODO: need to add the tensor input that the objective will read from.
 def make_vessel_label_objective(vessel_metadata,
                                 label,
                                 name,

@@ -96,10 +96,11 @@ class ClassificationObjective(ObjectiveBase):
 
     def build_evaluation(self, logits):
         class Evaluation(object):
-            def __init__(self, name, training_label_lookup, classes,
-                         num_classes, logits):
-                self.training_label_lookup = training_label_lookup
+            def __init__(self, name, metadata_label, training_label_lookup,
+                         classes, num_classes, logits):
                 self.name = name
+                self.metadata_label = metadata_label
+                self.training_label_lookup = training_label_lookup
                 self.classes = classes
                 self.num_classes = num_classes
                 self.softmax = slim.softmax(logits)
@@ -126,8 +127,8 @@ class ClassificationObjective(ObjectiveBase):
                         predictions, labels, weights=label_mask),
                 })
 
-        return Evaluation(self.name, self.training_label, self.classes,
-                          self.num_classes, logits)
+        return Evaluation(self.name, self.metadata_label, self.training_label,
+                          self.classes, self.num_classes, logits)
 
 
 class RegressionObjective(ObjectiveBase):

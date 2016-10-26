@@ -64,7 +64,7 @@ class Inferer(object):
                 self.min_points_for_classification)
             readers.append(reader)
 
-        features, timeseries, time_ranges, mmsis = tf.train.batch_join(
+        features, timestamps, time_ranges, mmsis = tf.train.batch_join(
             readers,
             self.batch_size,
             enqueue_many=True,
@@ -74,7 +74,8 @@ class Inferer(object):
                 self.model.num_feature_dimensions
             ], [self.model.window_max_points], [2], []])
 
-        objectives = self.model.build_inference_net(features)
+        objectives = self.model.build_inference_net(features, timestamps,
+                                                    mmsis)
 
         all_predictions = [o.softmax for o in objectives]
 
@@ -162,12 +163,10 @@ def main(args):
                               metadata_file)
                 sys.exit(-1)
 
-            column_transformers = [(
-                'length', utility.vessel_categorical_length_transformer)]
             vessel_metadata = utility.read_vessel_multiclass_metadata(
-                all_available_mmsis, metadata_file, column_transformers)
+                all_available_mmsis, metadata_file)
 
-            mmsis = set(vessel_metadata[args.dataset_split].keys())
+            mmsis = set(vessel_metadata.mmsis_for_split(args.dataset_split))
         else:
             mmsis_file = os.path.abspath(
                 resource_filename('classification.data', args.dataset_split))
@@ -180,20 +179,6 @@ def main(args):
     else:
         mmsis = all_available_mmsis
 
-    fishing_or_not_objective = model.ClassificationObjective(
-        'Fishing/Non', 'is_fishing', set(['Fishing', 'Non-fishing']))
-    coarse_label_objective = model.ClassificationObjective(
-        'Vessel class', 'label', utility.VESSEL_CLASS_NAMES)
-    fine_label_objective = model.ClassificationObjective(
-        'Vessel detailed class', 'sublabel',
-        utility.VESSEL_CLASS_DETAILED_NAMES)
-    length_objective = model.ClassificationObjective(
-        'Vessel length', 'length', utility.VESSEL_LENGTH_CLASSES)
-    training_objectives = [
-        fishing_or_not_objective, coarse_label_objective, fine_label_objective,
-        length_objective
-    ]
-
     module = "classification.models.{}".format(args.model_name)
     try:
         Model = importlib.import_module(module).Model
@@ -202,7 +187,7 @@ def main(args):
         raise
 
     feature_dimensions = int(args.feature_dimensions)
-    chosen_model = Model(feature_dimensions, training_objectives)
+    chosen_model = Model(feature_dimensions, vessel_metadata)
 
     infererer = Inferer(chosen_model, model_checkpoint_path, root_feature_path,
                         mmsis)
