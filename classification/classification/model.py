@@ -127,8 +127,9 @@ class ModelBase(object):
 
     min_viable_timeslice_length = 500
 
-    def __init__(self, num_feature_dimensions):
+    def __init__(self, num_feature_dimensions, vessel_metadata):
         self.num_feature_dimensions = num_feature_dimensions
+        self.vessel_metadata = vessel_metadata
         self.training_objectives = None
 
     @abc.abstractmethod
