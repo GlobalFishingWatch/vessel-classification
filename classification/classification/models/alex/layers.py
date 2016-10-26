@@ -58,7 +58,10 @@ def misconception_model(input, window_size, stride, depth, levels,
     window_size: the width of the conv and pooling filters to apply.
     stride: the downsampling to apply when filtering.
     depth: the depth of the output tensor.
-    levels: The height of the tower in misconception layers.
+    levels: the height of the tower in misconception layers.
+    objective_functions: a list of objective functions to add to the top of
+                         the network.
+    is_training: whether the network is training.
 
   Returns:
     a tensor of size [batch_size, num_classes].

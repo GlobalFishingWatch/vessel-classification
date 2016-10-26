@@ -3,6 +3,7 @@ import csv
 import dateutil.parser
 import hashlib
 import math
+import model
 import time
 import logging
 import newlinejson as nlj
@@ -54,17 +55,17 @@ FishingRange = namedtuple('FishingRange',
 fishing_or_not_objective = model.ClassificationObjective(
     'Fishing/Non', 'is_fishing', set(['Fishing', 'Non-fishing']))
 """ Classification objective for coarse vessel labels. """
-coarse_label_objective = model.ClassificationObjective(
-    'Vessel class', 'label', utility.VESSEL_CLASS_NAMES)
+coarse_label_objective = model.ClassificationObjective('Vessel class', 'label',
+                                                       VESSEL_CLASS_NAMES)
 """ Classification objective for detailed vessel labels. """
 detailed_label_objective = model.ClassificationObjective(
-    'Vessel detailed class', 'sublabel', utility.VESSEL_CLASS_DETAILED_NAMES)
+    'Vessel detailed class', 'sublabel', VESSEL_CLASS_DETAILED_NAMES)
 """ Classification objective for vessel lengths. """
 length_objective = model.ClassificationObjective(
     'Vessel length',
     'length',
-    utility.VESSEL_LENGTH_CLASSES,
-    transformer=utility.vessel_categorical_length_transformer)
+    VESSEL_LENGTH_CLASSES,
+    transformer=vessel_categorical_length_transformer)
 
 
 class ClusterNodeConfig(object):
@@ -525,6 +526,21 @@ def _hash_mmsi_to_double(mmsi, salt=''):
     return sample
 
 
+class VesselMetadata(object):
+    def __init__(self, metadata_dict):
+        self.metadata_by_split = metadata_dict
+        self.metadata_by_mmsi = {}
+        for split, vessels in metadata_dict.iteritems():
+            for mmsi, data in vessels.iteritems():
+                self.metadata_by_mmsi[mmsi] = data
+
+    def vessel_weight(self, mmsi):
+        return self.metadata_by_mmsi[mmsi][1]
+
+    def vessel_label(self, label_name, mmsi):
+        return self.metadata_by_mmsi[mmsi][0][label_name]
+
+
 def read_vessel_multiclass_metadata_lines(available_mmsis, lines):
     """ For a set of vessels, read metadata and calculate class weights.
 
@@ -536,8 +552,7 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines):
             (Longliner/Passenger etc.).
 
     Returns:
-        A dictionary from data split (training/test) to a dictionary from
-        mmsi to the types and weight for a vessel.
+        A VesselMetadata object with weights and labels for each vessel.
     """
 
     vessel_type_set = set()
@@ -581,7 +596,7 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines):
 
     logging.info("Vessel types: %s", list(vessel_type_set))
 
-    return metadata_dict
+    return VesselMetadata(metadata_dict)
 
 
 def read_vessel_multiclass_metadata(available_mmsis, metadata_file):
