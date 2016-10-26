@@ -21,7 +21,6 @@ class Trainer:
     def __init__(self, model, vessel_metadata, fishing_ranges,
                  base_feature_path, train_scratch_path):
         self.model = model
-        self.vessel_metadata = vessel_metadata
         self.training_objectives = model.training_objectives
         self.fishing_ranges = fishing_ranges
         self.base_feature_path = base_feature_path
@@ -33,7 +32,7 @@ class Trainer:
     def _feature_files(self, split):
         return [
             '%s/%d.tfrecord' % (self.base_feature_path, mmsi)
-            for mmsi in self.vessel_metadata[split].keys()
+            for mmsi in self.model.vessel_metadata.mmsis_for_split(split)
         ]
 
     def _feature_data_reader(self, split, training_objectives, is_training):
@@ -71,7 +70,7 @@ class Trainer:
         for _ in range(self.num_parallel_readers):
             readers.append(
                 utility.cropping_weight_replicating_feature_file_reader(
-                    self.vessel_metadata, filename_queue,
+                    self.model.vessel_metadata, filename_queue,
                     self.model.num_feature_dimensions + 1, self.model.
                     max_window_duration_seconds, self.model.window_max_points,
                     self.model.min_viable_timeslice_length, max_replication,

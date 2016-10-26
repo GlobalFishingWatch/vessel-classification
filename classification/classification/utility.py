@@ -530,6 +530,9 @@ class VesselMetadata(object):
     def vessel_label(self, label_name, mmsi):
         return self.metadata_by_mmsi[mmsi][0][label_name]
 
+    def mmsis_for_split(self, split):
+        return self.metadata_by_split[split].keys()
+
 
 def read_vessel_multiclass_metadata_lines(available_mmsis, lines):
     """ For a set of vessels, read metadata and calculate class weights.

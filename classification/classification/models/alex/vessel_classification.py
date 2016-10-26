@@ -2,6 +2,7 @@ from __future__ import absolute_import
 import argparse
 import json
 from . import layers
+from classification import utility
 from classification.model import ModelBase, TrainNetInfo, ClassificationObjective
 import logging
 import math
@@ -23,21 +24,21 @@ class Model(ModelBase):
         super(self.__class__, self).__init__(num_feature_dimensions)
 
         self.training_objectives = [
-            model.ClassificationObjective(
+            ClassificationObjective(
                 lambda mmsi: vessel_metadata.vessel('is_fishing', mmsi),
-                'Fishing/Non', 'is_fishing', set(['Fishing', 'Non-fishing'])),
-            model.ClassificationObjective(
+                'Fishing', 'is_fishing', set(['Fishing', 'Non-fishing'])),
+            ClassificationObjective(
                 lambda mmsi: vessel_metadata.vessel('label', mmsi),
-                'Vessel class', 'label', VESSEL_CLASS_NAMES),
-            model.ClassificationObjective(
+                'Vessel class', 'label', utility.VESSEL_CLASS_NAMES),
+            ClassificationObjective(
                 lambda mmsi: vessel_metadata.vessel('sublabel', mmsi),
                 'Vessel detailed class', 'sublabel',
-                VESSEL_CLASS_DETAILED_NAMES), model.ClassificationObjective(
+                utility.VESSEL_CLASS_DETAILED_NAMES), ClassificationObjective(
                     lambda mmsi: vessel_metadata.vessel('length', mmsi),
                     'Vessel length',
                     'length',
-                    VESSEL_LENGTH_CLASSES,
-                    transformer=vessel_categorical_length_transformer)
+                    utility.VESSEL_LENGTH_CLASSES,
+                    transformer=utility.vessel_categorical_length_transformer)
         ]
 
     def zero_pad_features(self, features):
