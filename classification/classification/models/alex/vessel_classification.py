@@ -20,9 +20,10 @@ class Model(ModelBase):
     feature_depth = 50
     levels = 10
 
-    def __init__(self, num_feature_dimensions, vessel_metadata):
-        super(self.__class__, self).__init__(num_feature_dimensions,
-                                             vessel_metadata)
+    def __init__(self, num_feature_dimensions, vessel_metadata,
+                 fishing_ranges_map):
+        super(self.__class__, self).__init__(
+            num_feature_dimensions, vessel_metadata, fishing_ranges_map)
 
         self.training_objectives = [
             make_vessel_label_objective(vessel_metadata, 'is_fishing',

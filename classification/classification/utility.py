@@ -310,14 +310,6 @@ def np_array_extract_n_random_features(random_state, input, n, max_time_delta,
             random_state, input, max_time_delta, window_size,
             min_timeslice_size)
 
-        #fishing_timeseries = np.empty([window_size], dtype=np.float32)
-        #fishing_timeseries.fill(-1.0)
-        #for fr in vessel_fishing_ranges:
-        #    start_range = time.mktime(fr.start_time.timetuple())
-        #    end_range = time.mktime(fr.end_time.timetuple())
-        #    fishing_timeseries[(fishing_timeseries >= start_range) & (
-        #        fishing_timeseries < end_range)] = fr.is_fishing
-
         samples.append((np.stack([features]), timestamps, time_bounds, mmsi))
 
     for _ in range(int_n):
@@ -639,4 +631,5 @@ def read_fishing_ranges(fishing_range_file):
 
             fishing_range_dict[mmsi].append(
                 FishingRange(start_time, end_time, is_fishing))
+
     return fishing_range_dict

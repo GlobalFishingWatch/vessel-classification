@@ -25,14 +25,22 @@ class ObjectiveTrainer(object):
 
 
 class FishingLocalisationObjective(ObjectiveTrainer):
-    pass
+    def __init__(self, name, metadata_label, fishing_ranges):
+        super(self.__class__, self).__init__(name, metadata_label)
+        self.fishing_ranges_from_mmsi = fishing_ranges_from_mmsi
+
+    def build_trainer(self, predictions, mmsis, loss_weight=1.0):
+        pass
+
+    def build_evaluation(self, predictions):
+        pass
 
 
 class ClassificationObjective(ObjectiveBase):
     def __init__(self,
-                 label_from_mmsi,
                  name,
                  metadata_label,
+                 label_from_mmsi,
                  classes,
                  transformer=None):
         super(self.__class__, self).__init__(name, metadata_label)
@@ -135,19 +143,15 @@ class ClassificationObjective(ObjectiveBase):
                           self.classes, self.num_classes, logits)
 
 
-class RegressionObjective(ObjectiveBase):
-    pass
-
-
 def make_vessel_label_objective(vessel_metadata,
                                 label,
                                 name,
                                 classes,
                                 transformer=None):
     return ClassificationObjective(
-        lambda mmsi: vessel_metadata.vessel_label(label, mmsi),
         name,
         label,
+        lambda mmsi: vessel_metadata.vessel_label(label, mmsi),
         classes,
         transformer=transformer)
 
@@ -169,9 +173,11 @@ class ModelBase(object):
 
     min_viable_timeslice_length = 500
 
-    def __init__(self, num_feature_dimensions, vessel_metadata):
+    def __init__(self, num_feature_dimensions, vessel_metadata,
+                 fishing_ranges_map):
         self.num_feature_dimensions = num_feature_dimensions
         self.vessel_metadata = vessel_metadata
+        self.fishing_ranges_map = fishing_ranges_map
         self.training_objectives = None
 
     @abc.abstractmethod

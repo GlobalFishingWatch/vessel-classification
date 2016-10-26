@@ -35,7 +35,7 @@ class Trainer:
             for mmsi in self.model.vessel_metadata.mmsis_for_split(split)
         ]
 
-    def _feature_data_reader(self, split, training_objectives, is_training):
+    def _feature_data_reader(self, split, is_training):
         """ Concurrent feature data reader.
 
         For a given data split (Training/Test) and a set of input files that
@@ -92,7 +92,7 @@ class Trainer:
         """ The function for running a training replica on a worker. """
 
         features, timestamps, time_bounds, mmsis = self._feature_data_reader(
-            'Training', self.training_objectives, True)
+            'Training', True)
 
         (optimizer, objectives) = self.model.build_training_net(
             features, timestamps, mmsis)
@@ -119,7 +119,7 @@ class Trainer:
         """ The function for running model evaluation on the master. """
 
         features, timestamps, time_bounds, mmsis = self._feature_data_reader(
-            'Test', self.training_objectives, False)
+            'Test', False)
 
         objectives = self.model.build_inference_net(features, timestamps,
                                                     mmsis)

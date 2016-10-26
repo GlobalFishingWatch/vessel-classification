@@ -20,9 +20,10 @@ class Model(ModelBase):
     feature_depth = 50
     levels = 10
 
-    def __init__(self, num_feature_dimensions, vessel_metadata):
-        super(self.__class__, self).__init__(num_feature_dimensions,
-                                             vessel_metadata)
+    def __init__(self, num_feature_dimensions, vessel_metadata,
+                 fishing_ranges_map):
+        super(self.__class__, self).__init__(
+            num_feature_dimensions, vessel_metadata, fishing_ranges_map)
 
         self.classification_training_objectives = [
             make_vessel_label_objective(vessel_metadata, 'is_fishing',
@@ -39,6 +40,9 @@ class Model(ModelBase):
                 utility.VESSEL_LENGTH_CLASSES,
                 transformer=utility.vessel_categorical_length_transformer)
         ]
+
+        self.fishing_localisation_objective = FishingLocalisationObjective(
+            vessel_metadata, 'fishing_localisation', 'Fishing localisation')
 
     def misconception_with_fishing_ranges(self, input, mmsis, is_training):
         """ A misconception tower with additional fishing range classiication.
@@ -98,6 +102,10 @@ class Model(ModelBase):
             trainers.append(self.classification_training_objectives[i]
                             .build_trainer(logits_list[i], mmsis))
 
+        trainers.append(
+            self.fishing_localisation_objective.build_trainer(
+                fishing_prediction, mmsis))
+
         optimizer = tf.train.AdamOptimizer(1e-5)
 
         return TrainNetInfo(optimizer, trainers)
@@ -114,5 +122,9 @@ class Model(ModelBase):
             to = self.classification_training_objectives[i]
             logits = logits_list[i]
             evaluations.append(to.build_evaluation(logits))
+
+        evaluations.append(
+            self.fishing_localisation_objective.build_evaluation(
+                fishing_prediction))
 
         return evaluations
