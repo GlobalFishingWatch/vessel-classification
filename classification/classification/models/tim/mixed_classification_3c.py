@@ -132,7 +132,7 @@ class Model(MixedFishingModelBase):
                     fishing_logits, fishing_targets)) /
                          (100 + tf.reduce_sum(fishing_mask))) # TODO: no magic numbers
 
-                loss  = 0.01 * class_loss + fishing_loss
+                loss  = class_loss + fishing_loss
                 # Use simple momentum for the optimization.
                 optimizer = tf.train.MomentumOptimizer(learning_rate,
                                                        self.momentum)

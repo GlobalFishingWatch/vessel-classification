@@ -138,8 +138,8 @@ class MixedFishingModelBase(ModelBase):
             slim.metrics.streaming_recall(fishing_timeseries_predictions, fishing_timeseries_ones, 
                             weights=fishing_weights),
             'Fishing score test fishing fraction':
-                [tf.reduce_sum((fishing_weights * tf.to_float(fishing_timeseries_ones))) / tf.reduce_sum(fishing_weights)] * 2,
-         
+            slim.metrics.streaming_accuracy(fishing_timeseries_ones, tf.to_int32(fishing_weights), 
+                            weights=fishing_weights)
         })
 
 
