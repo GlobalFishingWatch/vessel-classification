@@ -36,12 +36,19 @@ def repr_confusion_matrix(doc, cm, labels, **kwargs):
             with tag('tr'):
                 line('th', str(l), style="text-align: right;")
                 for j, x in enumerate(row):
-                    cval = int(round(255 * x))
-                    hexcode = "{:02x}".format(cval)
-                    invhexcode = "{:02x}".format(255-cval)
                     if i == j:
-                        color = "#{}FF{}".format(invhexcode, invhexcode)                    
+                        if x > 0.5:
+                            cval = np.clip(int(round(512 * (x - 0.5))), 0, 255)
+                            invhexcode = "{:02x}".format(255 - cval)
+                            color = "#{}FF00".format(invhexcode)     
+                        else:
+                            cval = np.clip(int(round(512 * x)), 0, 255)
+                            hexcode = "{:02x}".format(cval)
+                            color = "#FF{}00".format(hexcode)    
                     else:
+                        cval = np.clip(int(round(255 * x)), 0, 255)
+                        hexcode = "{:02x}".format(cval)
+                        invhexcode = "{:02x}".format(255 - cval)
                         color = "#FF{}{}".format(invhexcode, invhexcode)     
                     with tag('td', bgcolor=color):
                         line('font', "{0:.2f}".format(x), color="#000000")
