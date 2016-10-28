@@ -35,9 +35,9 @@ class EvaluationBase(object):
 
 
 class FishingLocalisationObjective(ObjectiveBase):
-    def __init__(self, name, metadata_label, fishing_ranges_map):
+    def __init__(self, name, metadata_label, vessel_metadata):
         super(self.__class__, self).__init__(name, metadata_label)
-        self.fishing_ranges_map = fishing_ranges_map
+        self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
 
     def build_trainer(self, predictions, timestamps, mmsis, loss_weight=1.0):
         update_ops = []
@@ -48,14 +48,16 @@ class FishingLocalisationObjective(ObjectiveBase):
             for mmsi, timestamps in zip(mmsis_array, timestamps_array):
                 dense_labels = np.zeros_like(timestamps, dtype=np.float32)
                 dense_labels.fill(-1.0)
-                for (start_time, end_time,
-                     is_fishing) in fishing_ranges_map[mmsi]:
-                    start_range = calendar.timegm(start_time.utctimetuple())
-                    end_range = calendar.timegm(end_time.utctimetuple())
-                    mask = (timestamps >= start_range) & (
-                        timestamps < end_range)
-                    dense_labels[mask] = is_fishing
-                dense_labels_list.append(dense_labels)
+                mmsi = int(mmsi)
+                if mmsi in self.fishing_ranges_map:
+                    for (start_time, end_time,
+                         is_fishing) in self.fishing_ranges_map[mmsi]:
+                        start_range = calendar.timegm(start_time.utctimetuple())
+                        end_range = calendar.timegm(end_time.utctimetuple())
+                        mask = (timestamps >= start_range) & (
+                            timestamps < end_range)
+                        dense_labels[mask] = is_fishing
+                    dense_labels_list.append(dense_labels)
             return dense_labels_list
 
         dense_labels = tf.reshape(
@@ -67,7 +69,7 @@ class FishingLocalisationObjective(ObjectiveBase):
         raw_loss = utility.fishing_localisation_loss(predictions, dense_labels)
 
         update_ops.append(
-            tf.scalar_summary('%s training loss' % self.name, raw_loss))
+            tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
 
         loss = loss_weight * raw_loss
 

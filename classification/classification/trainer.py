@@ -59,7 +59,8 @@ class Trainer:
         """
         input_files = self._feature_files(split)
         filename_queue = tf.train.input_producer(input_files, shuffle=True)
-        capacity = 1000
+        #capacity = 1000
+        capacity = 200
         min_size_after_deque = capacity - self.model.batch_size * 4
 
         max_replication = 100.0

@@ -139,7 +139,7 @@ class VesselMetadataFileReader(tf.test.TestCase):
         parsed_lines = csv.DictReader(raw_lines)
         available_vessels = set(range(100001, 100013))
         result = utility.read_vessel_multiclass_metadata_lines(
-            available_vessels, parsed_lines)
+            available_vessels, parsed_lines, {}, 1)
 
         self.assertEquals(3.0, result.vessel_weight(100001))
         self.assertEquals(1.0, result.vessel_weight(100002))

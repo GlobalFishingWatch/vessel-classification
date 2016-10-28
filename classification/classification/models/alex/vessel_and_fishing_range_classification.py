@@ -43,7 +43,7 @@ class Model(ModelBase):
         ]
 
         self.fishing_localisation_objective = FishingLocalisationObjective(
-            vessel_metadata, 'fishing_localisation', 'Fishing localisation')
+            'fishing_localisation', 'Fishing localisation', vessel_metadata)
 
     def misconception_with_fishing_ranges(self, input, mmsis, is_training):
         """ A misconception tower with additional fishing range classiication.
