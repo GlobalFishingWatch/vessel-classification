@@ -6,6 +6,7 @@ import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 import utility
 
+Trainer = namedtuple("Trainer", ["loss", "update_ops"])
 TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 
 
@@ -17,12 +18,20 @@ class ObjectiveBase(object):
         self.metadata_label = metadata_label
 
 
-class ObjectiveTrainer(object):
+class EvaluationBase(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
-        self.loss = None
-        self.update_ops = []
+    def __init__(self, name, metadata_label):
+        self.name = name
+        self.metadata_label = metadata_label
+
+    @abc.abstractmethod
+    def build_test_metrics(self, mmsis):
+        pass
+
+    @abc.abstractmethod
+    def build_json_results(self):
+        pass
 
 
 class FishingLocalisationObjective(ObjectiveBase):
@@ -31,43 +40,56 @@ class FishingLocalisationObjective(ObjectiveBase):
         self.fishing_ranges_map = fishing_ranges_map
 
     def build_trainer(self, predictions, timestamps, mmsis, loss_weight=1.0):
-        class Trainer(ObjectiveTrainer):
-            def __init__(self, name, predictions, timestamps, mmsis,
-                         loss_weight):
-                super(self.__class__, self).__init__()
+        update_ops = []
 
-                # Convert fishing range labels to per-point labels.
-                def dense_fishing_labels(mmsis_array, timestamps_array):
-                    dense_labels_list = []
-                    for mmsi, timestamps in zip(mmsis_array, timestamps_array):
-                        dense_labels = np.zeros_like(
-                            timestamps, dtype=np.float32)
-                        dense_labels.fill(-1.0)
-                        for (start_time, end_time,
-                             is_fishing) in fishing_ranges_map[mmsi]:
-                            start_range = time.mktime(start_time.time_tuple())
-                            end_range = time.mktime(end_time.time_tuple())
-                            dense_labels[(timestamps >= start_range) & (
-                                timestamps < end_range)] = is_fishing
-                        dense_labels_list.append(dense_labels)
-                    return dense_labels_list
+        # Convert fishing range labels to per-point labels.
+        def dense_fishing_labels(mmsis_array, timestamps_array):
+            dense_labels_list = []
+            for mmsi, timestamps in zip(mmsis_array, timestamps_array):
+                dense_labels = np.zeros_like(timestamps, dtype=np.float32)
+                dense_labels.fill(-1.0)
+                for (start_time, end_time,
+                     is_fishing) in fishing_ranges_map[mmsi]:
+                    start_range = time.mktime(start_time.time_tuple())
+                    end_range = time.mktime(end_time.time_tuple())
+                    dense_labels[(timestamps >= start_range) & (
+                        timestamps < end_range)] = is_fishing
+                dense_labels_list.append(dense_labels)
+            return dense_labels_list
 
-                dense_labels = tf.reshape(
-                    tf.py_func(dense_fishing_labels, [mmsis, timestamps],
-                               [tf.float32]),
-                    shape=tf.shape(predictions))
+        dense_labels = tf.reshape(
+            tf.py_func(dense_fishing_labels, [mmsis, timestamps],
+                       [tf.float32]),
+            shape=tf.shape(predictions))
 
-                # TODO(alexwilson): Add training loss and accuracy.
+        # TODO(alexwilson): Add training loss and accuracy.
+        raw_loss = utility.fishing_localisation_loss(predictions, dense_labels)
 
-                #self.loss = loss_weight * utility.fishing_localisation_loss(predictions, dense_labels)
-                #self.loss = loss_weight * utility.fishing_localisation_loss(predictions, predictions)
-                self.loss = utility.fishing_localisation_loss(predictions,
-                                                              predictions)
+        update_ops.append(
+            tf.scalar_summary('%s training loss' % self.name, raw_loss))
 
-        return Trainer(self.name, predictions, timestamps, mmsis, loss_weight)
+        loss = loss_weight * raw_loss
+
+        return Trainer(loss, update_ops)
 
     def build_evaluation(self, predictions, timestamps):
-        pass
+        class Evaluation(EvaluationBase):
+            def __init__(self, name, predictions):
+                self.name = name
+                self.classes = classes
+                self.num_classes = num_classes
+                self.predictions = predictions
+
+            def build_test_metrics(self, mmsis):
+                return metrics.aggregate_metric_map({})
+
+            def build_json_results(self):
+                return {
+                    'name': self.name,
+                    'fishing_scores': self.predictions
+                }
+
+        return Evaluation(self.name, predictions)
 
 
 class ClassificationObjective(ObjectiveBase):
@@ -97,53 +119,48 @@ class ClassificationObjective(ObjectiveBase):
             return -1
 
     def build_trainer(self, logits, timestamps, mmsis, loss_weight=1.0):
-        class Trainer(ObjectiveTrainer):
-            def __init__(self, name, logits, training_label_lookup,
-                         num_classes, loss_weight):
-                super(self.__class__, self).__init__()
+        def labels_from_mmsis(mmsis_array):
+            return np.vectorize(
+                self.training_label, otypes=[np.int32])(mmsis_array)
 
-                def labels_from_mmsis(mmsis_array):
-                    return np.vectorize(
-                        training_label_lookup, otypes=[np.int32])(mmsis_array)
+        # Look up the labels for each mmsi.
+        labels = tf.reshape(
+            tf.py_func(labels_from_mmsis, [mmsis], [tf.int32]),
+            shape=tf.shape(mmsis))
 
-                # Look up the labels for each mmsi.
-                labels = tf.reshape(
-                    tf.py_func(labels_from_mmsis, [mmsis], [tf.int32]),
-                    shape=tf.shape(mmsis))
+        # Labels outside the one-hot num_classes range are just encoded
+        # to all-zeros, so the use of -1 for unknown works fine here
+        # when combined with a mask below.
+        one_hot_labels = slim.one_hot_encoding(labels, self.num_classes)
 
-                # Labels outside the one-hot num_classes range are just encoded
-                # to all-zeros, so the use of -1 for unknown works fine here
-                # when combined with a mask below.
-                one_hot_labels = slim.one_hot_encoding(labels, num_classes)
+        # Set the label weights to zero when we don't know the class.
+        label_weights = tf.select(
+            tf.equal(labels, -1),
+            tf.zeros_like(
+                labels, dtype=tf.float32),
+            tf.ones_like(
+                labels, dtype=tf.float32))
 
-                # Set the label weights to zero when we don't know the class.
-                label_weights = tf.select(
-                    tf.equal(labels, -1),
-                    tf.zeros_like(
-                        labels, dtype=tf.float32),
-                    tf.ones_like(
-                        labels, dtype=tf.float32))
+        raw_loss = slim.losses.softmax_cross_entropy(
+            logits, one_hot_labels, weight=label_weights)
+        loss = raw_loss * loss_weight
+        class_predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
-                raw_loss = slim.losses.softmax_cross_entropy(
-                    logits, one_hot_labels, weight=label_weights)
-                self.loss = raw_loss * loss_weight
-                class_predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
+        update_ops = []
+        update_ops.append(
+            tf.scalar_summary('%s training loss' % self.name, raw_loss))
 
-                self.update_ops.append(
-                    tf.scalar_summary('%s training loss' % name, raw_loss))
+        accuracy = slim.metrics.accuracy(
+            labels, class_predictions, weights=label_weights)
+        update_ops.append(
+            tf.scalar_summary('%s training accuracy' % self.name, accuracy))
 
-                accuracy = slim.metrics.accuracy(
-                    labels, class_predictions, weights=label_weights)
-                self.update_ops.append(
-                    tf.scalar_summary('%s training accuracy' % name, accuracy))
-
-        return Trainer(self.name, logits, self.training_label,
-                       self.num_classes, loss_weight)
+        return Trainer(loss, update_ops)
 
     def build_evaluation(self, logits, timestamps):
         # TODO(alexwilson): Do we actually need a class for this and for Trainer
         # or could we just used named tuples instead?
-        class Evaluation(object):
+        class Evaluation(EvaluationBase):
             def __init__(self, name, metadata_label, training_label_lookup,
                          classes, num_classes, logits):
                 self.name = name
@@ -174,6 +191,20 @@ class ClassificationObjective(ObjectiveBase):
                     '%s test accuracy' % self.name: metrics.streaming_accuracy(
                         predictions, labels, weights=label_mask),
                 })
+
+            def build_json_results(self):
+                max_prob_index = np.argmax(self.softmax)
+                max_probability = float(self.softmax[max_prob_index])
+                max_label = self.classes[max_prob_index]
+                full_scores = dict(
+                    zip(self.classes, [float(v) for v in softmax]))
+
+                return {
+                    'name': self.name,
+                    'max_label': max_label,
+                    'max_label_probability': max_probability,
+                    'label_scores': full_scores
+                }
 
         return Evaluation(self.name, self.metadata_label, self.training_label,
                           self.classes, self.num_classes, logits)

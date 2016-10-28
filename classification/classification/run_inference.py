@@ -111,28 +111,13 @@ class Inferer(object):
                         mmsi = result[0]
                         (start_time_seconds, end_time_seconds) = result[1]
 
-                        softmaxes = result[2:]
-
                         start_time = datetime.datetime.utcfromtimestamp(
                             start_time_seconds)
                         end_time = datetime.datetime.utcfromtimestamp(
                             end_time_seconds)
 
-                        labels = {}
-                        for (objective, softmax) in zip(objectives, softmaxes):
-                            max_prob_index = np.argmax(softmax)
-                            max_probability = float(softmax[max_prob_index])
-                            max_label = objective.classes[max_prob_index]
-                            full_scores = dict(
-                                zip(objective.classes, [float(v)
-                                                        for v in softmax]))
-
-                            labels[objective.metadata_label] = {
-                                'name': objective.name,
-                                'max_label': max_label,
-                                'max_label_probability': max_probability,
-                                'label_scores': full_scores
-                            }
+                        labels = dict([(o.metadata_label, o.build_json_results(
+                        )) for o in objectives])
 
                         output_nlj.write({
                             'mmsi': int(mmsi),

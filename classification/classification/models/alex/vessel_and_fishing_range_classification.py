@@ -65,7 +65,9 @@ class Model(ModelBase):
                               is_training)
 
             fishing_prediction = tf.squeeze(
-                slim.conv2d(net, 1, [1, 20]), squeeze_dims=[1, 3])
+                slim.conv2d(
+                    net, 1, [1, 20], activation_fn=tf.nn.sigmoid),
+                squeeze_dims=[1, 3])
 
             # Then a tower for classification.
             net = slim.repeat(
