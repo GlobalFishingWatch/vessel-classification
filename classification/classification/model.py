@@ -74,20 +74,19 @@ class FishingLocalisationObjective(ObjectiveBase):
 
     def build_evaluation(self, predictions, timestamps):
         class Evaluation(EvaluationBase):
-            def __init__(self, name, predictions):
+            def __init__(self, name, predictions, timestamps):
                 self.name = name
-                self.classes = classes
-                self.num_classes = num_classes
+                self.timestamps = timestamps
                 self.predictions = predictions
 
             def build_test_metrics(self, mmsis):
                 # TODO(alexwilson): Add streaming weighted MSE here.
-                return metrics.aggregate_metric_map({})
+                return {}, {}
 
             def build_json_results(self):
-                return {'name': self.name, 'fishing_scores': self.predictions}
+                return {'name': self.name, 'fishing_scores': zip(self.timestamps, self.predictions)}
 
-        return Evaluation(self.name, predictions)
+        return Evaluation(self.name, predictions, timestamps)
 
 
 class ClassificationObjective(ObjectiveBase):
@@ -155,7 +154,7 @@ class ClassificationObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-    def build_evaluation(self, logits, timestamps):
+    def build_evaluation(self, logits):
         # TODO(alexwilson): Do we actually need a class for this and for Trainer
         # or could we just used named tuples instead?
         class Evaluation(EvaluationBase):

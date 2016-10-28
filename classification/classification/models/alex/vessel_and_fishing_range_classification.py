@@ -128,6 +128,6 @@ class Model(ModelBase):
 
         evaluations.append(
             self.fishing_localisation_objective.build_evaluation(
-                fishing_prediction))
+                fishing_prediction, timestamps))
 
         return evaluations
