@@ -81,13 +81,11 @@ class FishingLocalisationObjective(ObjectiveBase):
                 self.predictions = predictions
 
             def build_test_metrics(self, mmsis):
+                # TODO(alexwilson): Add streaming weighted MSE here.
                 return metrics.aggregate_metric_map({})
 
             def build_json_results(self):
-                return {
-                    'name': self.name,
-                    'fishing_scores': self.predictions
-                }
+                return {'name': self.name, 'fishing_scores': self.predictions}
 
         return Evaluation(self.name, predictions)
 

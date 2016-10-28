@@ -116,8 +116,9 @@ class Inferer(object):
                         end_time = datetime.datetime.utcfromtimestamp(
                             end_time_seconds)
 
-                        labels = dict([(o.metadata_label, o.build_json_results(
-                        )) for o in objectives])
+                        labels = dict([(o.metadata_label,
+                                        o.build_json_results())
+                                       for o in objectives])
 
                         output_nlj.write({
                             'mmsi': int(mmsi),
