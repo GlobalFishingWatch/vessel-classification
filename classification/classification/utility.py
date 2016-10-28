@@ -88,7 +88,7 @@ class ClusterNodeConfig(object):
         return ClusterNodeConfig({
             "cluster": {},
             "task": {
-                "type": "worker",
+                "type": "master",
                 "index": 0
             }
         })
@@ -501,15 +501,25 @@ def _hash_mmsi_to_double(mmsi, salt=''):
 
 
 class VesselMetadata(object):
-    def __init__(self, metadata_dict):
+    def __init__(self,
+                 metadata_dict,
+                 fishing_range_dict,
+                 fishing_range_training_upweight=1.0):
         self.metadata_by_split = metadata_dict
         self.metadata_by_mmsi = {}
+        self.fishing_range_dict = fishing_range_dict
+        self.fishing_range_training_upweight = fishing_range_training_upweight
         for split, vessels in metadata_dict.iteritems():
             for mmsi, data in vessels.iteritems():
                 self.metadata_by_mmsi[mmsi] = data
 
     def vessel_weight(self, mmsi):
-        return self.metadata_by_mmsi[mmsi][1]
+        if mmsi in self.fishing_range_dict:
+            fishing_range_multiplier = self.fishing_range_training_upweight
+        else:
+            fishing_range_multiplier = 1.0
+
+        return self.metadata_by_mmsi[mmsi][1] * fishing_range_multiplier
 
     def vessel_label(self, label_name, mmsi):
         return self.metadata_by_mmsi[mmsi][0][label_name]
@@ -518,7 +528,9 @@ class VesselMetadata(object):
         return self.metadata_by_split[split].keys()
 
 
-def read_vessel_multiclass_metadata_lines(available_mmsis, lines):
+def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
+                                          fishing_range_dict,
+                                          fishing_range_training_upweight):
     """ For a set of vessels, read metadata and calculate class weights.
 
     Args:
@@ -573,14 +585,19 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines):
 
     logging.info("Vessel types: %s", list(vessel_type_set))
 
-    return VesselMetadata(metadata_dict)
+    return VesselMetadata(metadata_dict, fishing_range_dict,
+                          fishing_range_training_upweight)
 
 
-def read_vessel_multiclass_metadata(available_mmsis, metadata_file):
+def read_vessel_multiclass_metadata(available_mmsis, metadata_file,
+                                    fishing_range_dict,
+                                    fishing_range_training_upweight):
     with open(metadata_file, 'r') as f:
         reader = csv.DictReader(f)
         logging.info("Metadata columns: %s", reader.fieldnames)
-        return read_vessel_multiclass_metadata_lines(available_mmsis, reader)
+        return read_vessel_multiclass_metadata_lines(
+            available_mmsis, reader, fishing_range_dict,
+            fishing_range_training_upweight)
 
 
 def find_available_mmsis(feature_path):

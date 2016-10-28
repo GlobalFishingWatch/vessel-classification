@@ -84,7 +84,9 @@ class FishingLocalisationObjective(ObjectiveBase):
                 return {}, {}
 
             def build_json_results(self):
-                return {'name': self.name, 'fishing_scores': zip(self.timestamps, self.predictions)}
+                return {'name': self.name,
+                        'fishing_scores': zip(self.timestamps,
+                                              self.predictions)}
 
         return Evaluation(self.name, predictions, timestamps)
 
