@@ -18,11 +18,10 @@ class Trainer:
         model.
     """
 
-    def __init__(self, model, vessel_metadata, fishing_ranges,
-                 base_feature_path, train_scratch_path):
+    def __init__(self, model, vessel_metadata, base_feature_path,
+                 train_scratch_path):
         self.model = model
         self.training_objectives = model.training_objectives
-        self.fishing_ranges = fishing_ranges
         self.base_feature_path = base_feature_path
         self.train_scratch_path = train_scratch_path
         self.checkpoint_dir = self.train_scratch_path + '/train'

@@ -63,7 +63,7 @@ class Model(ModelBase):
         trainers = []
         for i in range(len(self.training_objectives)):
             trainers.append(self.training_objectives[i].build_trainer(
-                logits_list[i], mmsis))
+                logits_list[i], timestamps, mmsis))
 
         optimizer = tf.train.AdamOptimizer(1e-5)
 
@@ -81,6 +81,6 @@ class Model(ModelBase):
         for i in range(len(self.training_objectives)):
             to = self.training_objectives[i]
             logits = logits_list[i]
-            evaluations.append(to.build_evaluation(logits))
+            evaluations.append(to.build_evaluation(logits, timestamps))
 
         return evaluations

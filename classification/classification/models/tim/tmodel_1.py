@@ -96,7 +96,8 @@ class Model(ModelBase):
 
     def build_inference_net(self, features, timestamps, mmsis):
         logits = self.build_model(tf.constant(False), features)
-        return [self.training_objectives[0].build_evaluation(logits)]
+        return [self.training_objectives[0].build_evaluation(logits,
+                                                             timestamps)]
 
     def build_training_net(self, features, timestamps, mmsis):
         vessel_class_logits = self.build_model(tf.constant(True), features)
@@ -114,6 +115,6 @@ class Model(ModelBase):
                                                    self.momentum)
 
             trainer = self.training_objectives[0].build_trainer(
-                vessel_class_logits, mmsis)
+                vessel_class_logits, timestamps, mmsis)
 
             return TrainNetInfo(optimizer, [trainer])

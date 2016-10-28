@@ -78,10 +78,10 @@ def main(args):
         all_available_mmsis, metadata_file)
 
     feature_dimensions = int(args.feature_dimensions)
-    chosen_model = Model(feature_dimensions, vessel_metadata)
+    chosen_model = Model(feature_dimensions, vessel_metadata, fishing_ranges)
 
-    trainer = Trainer(chosen_model, vessel_metadata, fishing_ranges,
-                      args.root_feature_path, args.training_output_path)
+    trainer = Trainer(chosen_model, vessel_metadata, args.root_feature_path,
+                      args.training_output_path)
 
     config = json.loads(os.environ.get('TF_CONFIG', '{}'))
     if (config == {}):

@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
+import utility
 
 TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 
@@ -24,15 +25,48 @@ class ObjectiveTrainer(object):
         self.update_ops = []
 
 
-class FishingLocalisationObjective(ObjectiveTrainer):
-    def __init__(self, name, metadata_label, fishing_ranges):
+class FishingLocalisationObjective(ObjectiveBase):
+    def __init__(self, name, metadata_label, fishing_ranges_map):
         super(self.__class__, self).__init__(name, metadata_label)
-        self.fishing_ranges_from_mmsi = fishing_ranges_from_mmsi
+        self.fishing_ranges_map = fishing_ranges_map
 
-    def build_trainer(self, predictions, mmsis, loss_weight=1.0):
-        pass
+    def build_trainer(self, predictions, timestamps, mmsis, loss_weight=1.0):
+        class Trainer(ObjectiveTrainer):
+            def __init__(self, name, predictions, timestamps, mmsis,
+                         loss_weight):
+                super(self.__class__, self).__init__()
 
-    def build_evaluation(self, predictions):
+                # Convert fishing range labels to per-point labels.
+                def dense_fishing_labels(mmsis_array, timestamps_array):
+                    dense_labels_list = []
+                    for mmsi, timestamps in zip(mmsis_array, timestamps_array):
+                        dense_labels = np.zeros_like(
+                            timestamps, dtype=np.float32)
+                        dense_labels.fill(-1.0)
+                        for (start_time, end_time,
+                             is_fishing) in fishing_ranges_map[mmsi]:
+                            start_range = time.mktime(start_time.time_tuple())
+                            end_range = time.mktime(end_time.time_tuple())
+                            dense_labels[(timestamps >= start_range) & (
+                                timestamps < end_range)] = is_fishing
+                        dense_labels_list.append(dense_labels)
+                    return dense_labels_list
+
+                dense_labels = tf.reshape(
+                    tf.py_func(dense_fishing_labels, [mmsis, timestamps],
+                               [tf.float32]),
+                    shape=tf.shape(predictions))
+
+                # TODO(alexwilson): Add training loss and accuracy.
+
+                #self.loss = loss_weight * utility.fishing_localisation_loss(predictions, dense_labels)
+                #self.loss = loss_weight * utility.fishing_localisation_loss(predictions, predictions)
+                self.loss = utility.fishing_localisation_loss(predictions,
+                                                              predictions)
+
+        return Trainer(self.name, predictions, timestamps, mmsis, loss_weight)
+
+    def build_evaluation(self, predictions, timestamps):
         pass
 
 
@@ -62,10 +96,10 @@ class ClassificationObjective(ObjectiveBase):
         else:
             return -1
 
-    def build_trainer(self, logits, mmsis, loss_weight=1.0):
+    def build_trainer(self, logits, timestamps, mmsis, loss_weight=1.0):
         class Trainer(ObjectiveTrainer):
-            def __init__(self, name, training_label_lookup, num_classes,
-                         loss_weight, logits):
+            def __init__(self, name, logits, training_label_lookup,
+                         num_classes, loss_weight):
                 super(self.__class__, self).__init__()
 
                 def labels_from_mmsis(mmsis_array):
@@ -103,10 +137,12 @@ class ClassificationObjective(ObjectiveBase):
                 self.update_ops.append(
                     tf.scalar_summary('%s training accuracy' % name, accuracy))
 
-        return Trainer(self.name, self.training_label, self.num_classes,
-                       loss_weight, logits)
+        return Trainer(self.name, logits, self.training_label,
+                       self.num_classes, loss_weight)
 
-    def build_evaluation(self, logits):
+    def build_evaluation(self, logits, timestamps):
+        # TODO(alexwilson): Do we actually need a class for this and for Trainer
+        # or could we just used named tuples instead?
         class Evaluation(object):
             def __init__(self, name, metadata_label, training_label_lookup,
                          classes, num_classes, logits):

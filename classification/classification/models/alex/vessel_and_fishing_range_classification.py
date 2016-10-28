@@ -3,7 +3,7 @@ import argparse
 import json
 from . import layers
 from classification import utility
-from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective
+from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective, FishingLocalisationObjective
 import logging
 import math
 import os
@@ -64,7 +64,8 @@ class Model(ModelBase):
                               self.window_size, 1, self.feature_depth,
                               is_training)
 
-            fishing_prediction = net
+            fishing_prediction = tf.squeeze(
+                slim.conv2d(net, 1, [1, 20]), squeeze_dims=[1, 3])
 
             # Then a tower for classification.
             net = slim.repeat(
@@ -100,11 +101,11 @@ class Model(ModelBase):
         trainers = []
         for i in range(len(self.classification_training_objectives)):
             trainers.append(self.classification_training_objectives[i]
-                            .build_trainer(logits_list[i], mmsis))
+                            .build_trainer(logits_list[i], timestamps, mmsis))
 
         trainers.append(
             self.fishing_localisation_objective.build_trainer(
-                fishing_prediction, mmsis))
+                fishing_prediction, timestamps, mmsis))
 
         optimizer = tf.train.AdamOptimizer(1e-5)
 
