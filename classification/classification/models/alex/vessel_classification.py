@@ -20,10 +20,9 @@ class Model(ModelBase):
     feature_depth = 50
     levels = 10
 
-    def __init__(self, num_feature_dimensions, vessel_metadata,
-                 fishing_ranges_map):
-        super(self.__class__, self).__init__(
-            num_feature_dimensions, vessel_metadata, fishing_ranges_map)
+    def __init__(self, num_feature_dimensions, vessel_metadata):
+        super(self.__class__, self).__init__(num_feature_dimensions,
+                                             vessel_metadata)
 
         self.training_objectives = [
             make_vessel_label_objective(vessel_metadata, 'is_fishing',
@@ -31,7 +30,7 @@ class Model(ModelBase):
             make_vessel_label_objective(
                 vessel_metadata, 'label', 'Vessel class',
                 utility.VESSEL_CLASS_NAMES), make_vessel_label_objective(
-                    vessel_metadata, 'sublabel', 'Vessel detailedclass',
+                    vessel_metadata, 'sublabel', 'Vessel detailed class',
                     utility.VESSEL_CLASS_DETAILED_NAMES),
             make_vessel_label_objective(
                 vessel_metadata,
@@ -81,6 +80,6 @@ class Model(ModelBase):
         for i in range(len(self.training_objectives)):
             to = self.training_objectives[i]
             logits = logits_list[i]
-            evaluations.append(to.build_evaluation(logits, timestamps))
+            evaluations.append(to.build_evaluation(logits))
 
         return evaluations

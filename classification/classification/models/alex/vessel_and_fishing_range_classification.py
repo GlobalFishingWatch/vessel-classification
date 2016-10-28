@@ -20,10 +20,11 @@ class Model(ModelBase):
     feature_depth = 50
     levels = 10
 
-    def __init__(self, num_feature_dimensions, vessel_metadata,
-                 fishing_ranges_map):
-        super(self.__class__, self).__init__(
-            num_feature_dimensions, vessel_metadata, fishing_ranges_map)
+    fishing_vessel_type_embedding_depth = 8
+
+    def __init__(self, num_feature_dimensions, vessel_metadata):
+        super(self.__class__, self).__init__(num_feature_dimensions,
+                                             vessel_metadata)
 
         self.classification_training_objectives = [
             make_vessel_label_objective(vessel_metadata, 'is_fishing',
@@ -64,10 +65,7 @@ class Model(ModelBase):
                               self.window_size, 1, self.feature_depth,
                               is_training)
 
-            fishing_prediction = tf.squeeze(
-                slim.conv2d(
-                    net, 1, [1, 20], activation_fn=tf.nn.sigmoid),
-                squeeze_dims=[1, 3])
+            fishing_prediction_layer = net
 
             # Then a tower for classification.
             net = slim.repeat(
@@ -77,6 +75,23 @@ class Model(ModelBase):
             net = slim.dropout(net, 0.5, is_training=is_training)
             net = slim.fully_connected(net, 100)
             net = slim.dropout(net, 0.5, is_training=is_training)
+
+            vessel_class_embedding = slim.fully_connected(
+                net, self.fishing_vessel_type_embedding_depth)
+            reshaped_embedding = tf.reshape(
+                vessel_class_embedding, [self.batch_size, 1, 1, self.
+                                         fishing_vessel_type_embedding_depth])
+            tiled_embedding = tf.tile(reshaped_embedding,
+                                      [1, 1, self.window_max_points, 1])
+
+            fishing_prediction_input = tf.concat(
+                3, [fishing_prediction_layer, tiled_embedding])
+            fishing_prediction = tf.squeeze(
+                slim.conv2d(
+                    fishing_prediction_input,
+                    1, [1, 20],
+                    activation_fn=tf.nn.sigmoid),
+                squeeze_dims=[1, 3])
 
             logits = [slim.fully_connected(net, of.num_classes)
                       for of in self.classification_training_objectives]

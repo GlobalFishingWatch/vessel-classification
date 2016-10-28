@@ -503,18 +503,18 @@ def _hash_mmsi_to_double(mmsi, salt=''):
 class VesselMetadata(object):
     def __init__(self,
                  metadata_dict,
-                 fishing_range_dict,
+                 fishing_ranges_map,
                  fishing_range_training_upweight=1.0):
         self.metadata_by_split = metadata_dict
         self.metadata_by_mmsi = {}
-        self.fishing_range_dict = fishing_range_dict
+        self.fishing_ranges_map = fishing_ranges_map
         self.fishing_range_training_upweight = fishing_range_training_upweight
         for split, vessels in metadata_dict.iteritems():
             for mmsi, data in vessels.iteritems():
                 self.metadata_by_mmsi[mmsi] = data
 
     def vessel_weight(self, mmsi):
-        if mmsi in self.fishing_range_dict:
+        if mmsi in self.fishing_ranges_map:
             fishing_range_multiplier = self.fishing_range_training_upweight
         else:
             fishing_range_multiplier = 1.0
@@ -589,9 +589,10 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
                           fishing_range_training_upweight)
 
 
-def read_vessel_multiclass_metadata(available_mmsis, metadata_file,
-                                    fishing_range_dict,
-                                    fishing_range_training_upweight):
+def read_vessel_multiclass_metadata(available_mmsis,
+                                    metadata_file,
+                                    fishing_range_dict={},
+                                    fishing_range_training_upweight=1.0):
     with open(metadata_file, 'r') as f:
         reader = csv.DictReader(f)
         logging.info("Metadata columns: %s", reader.fieldnames)

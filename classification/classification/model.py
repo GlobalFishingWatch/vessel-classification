@@ -148,12 +148,12 @@ class ClassificationObjective(ObjectiveBase):
 
         update_ops = []
         update_ops.append(
-            tf.scalar_summary('%s training loss' % self.name, raw_loss))
+            tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
 
         accuracy = slim.metrics.accuracy(
             labels, class_predictions, weights=label_weights)
         update_ops.append(
-            tf.scalar_summary('%s training accuracy' % self.name, accuracy))
+            tf.scalar_summary('%s/Training accuracy' % self.name, accuracy))
 
         return Trainer(loss, update_ops)
 
@@ -168,7 +168,7 @@ class ClassificationObjective(ObjectiveBase):
                 self.training_label_lookup = training_label_lookup
                 self.classes = classes
                 self.num_classes = num_classes
-                self.softmax = slim.softmax(logits)
+                self.prediction = slim.softmax(logits)
 
             def build_test_metrics(self, mmsis):
                 def labels_from_mmsis(mmsis_array):
@@ -176,7 +176,7 @@ class ClassificationObjective(ObjectiveBase):
                         self.training_label_lookup,
                         otypes=[np.int32])(mmsis_array)
 
-                predictions = tf.cast(tf.argmax(self.softmax, 1), tf.int32)
+                predictions = tf.cast(tf.argmax(self.prediction, 1), tf.int32)
 
                 # Look up the labels for each mmsi.
                 labels = tf.reshape(
@@ -188,16 +188,16 @@ class ClassificationObjective(ObjectiveBase):
                     tf.ones_like(labels))
 
                 return metrics.aggregate_metric_map({
-                    '%s test accuracy' % self.name: metrics.streaming_accuracy(
+                    '%s/Test accuracy' % self.name: metrics.streaming_accuracy(
                         predictions, labels, weights=label_mask),
                 })
 
-            def build_json_results(self):
-                max_prob_index = np.argmax(self.softmax)
-                max_probability = float(self.softmax[max_prob_index])
+            def build_json_results(self, class_probabilities):
+                max_prob_index = np.argmax(class_probabilities)
+                max_probability = float(class_probabilities[max_prob_index])
                 max_label = self.classes[max_prob_index]
                 full_scores = dict(
-                    zip(self.classes, [float(v) for v in softmax]))
+                    zip(self.classes, [float(v) for v in class_probabilities]))
 
                 return {
                     'name': self.name,
@@ -240,11 +240,10 @@ class ModelBase(object):
 
     min_viable_timeslice_length = 500
 
-    def __init__(self, num_feature_dimensions, vessel_metadata,
-                 fishing_ranges_map):
+    def __init__(self, num_feature_dimensions, vessel_metadata):
         self.num_feature_dimensions = num_feature_dimensions
         self.vessel_metadata = vessel_metadata
-        self.fishing_ranges_map = fishing_ranges_map
+        self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
         self.training_objectives = None
 
     @abc.abstractmethod

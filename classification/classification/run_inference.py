@@ -77,7 +77,7 @@ class Inferer(object):
         objectives = self.model.build_inference_net(features, timestamps,
                                                     mmsis)
 
-        all_predictions = [o.softmax for o in objectives]
+        all_predictions = [o.prediction for o in objectives]
 
         # Open output file, on cloud storage - so what file api?
         config = tf.ConfigProto(
@@ -110,15 +110,16 @@ class Inferer(object):
                     for result in zip(*batch_results):
                         mmsi = result[0]
                         (start_time_seconds, end_time_seconds) = result[1]
+                        predictions = result[2:]
 
                         start_time = datetime.datetime.utcfromtimestamp(
                             start_time_seconds)
                         end_time = datetime.datetime.utcfromtimestamp(
                             end_time_seconds)
 
-                        labels = dict([(o.metadata_label,
-                                        o.build_json_results())
-                                       for o in objectives])
+                        labels = dict(
+                            [(o.metadata_label, o.build_json_results(p))
+                             for (o, p) in zip(objectives, predictions)])
 
                         output_nlj.write({
                             'mmsi': int(mmsi),
