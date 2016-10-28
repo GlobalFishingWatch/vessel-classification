@@ -62,7 +62,7 @@ class Trainer:
         capacity = 1000
         min_size_after_deque = capacity - self.model.batch_size * 4
 
-        max_replication = 8.0
+        max_replication = 100.0
 
         readers = []
         for _ in range(self.num_parallel_readers):

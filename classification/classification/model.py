@@ -50,10 +50,11 @@ class FishingLocalisationObjective(ObjectiveBase):
                 dense_labels.fill(-1.0)
                 for (start_time, end_time,
                      is_fishing) in fishing_ranges_map[mmsi]:
-                    start_range = time.mktime(start_time.time_tuple())
-                    end_range = time.mktime(end_time.time_tuple())
-                    dense_labels[(timestamps >= start_range) & (
-                        timestamps < end_range)] = is_fishing
+                    start_range = calendar.timegm(start_time.utctimetuple())
+                    end_range = calendar.timegm(end_time.utctimetuple())
+                    mask = (timestamps >= start_range) & (
+                        timestamps < end_range)
+                    dense_labels[mask] = is_fishing
                 dense_labels_list.append(dense_labels)
             return dense_labels_list
 
