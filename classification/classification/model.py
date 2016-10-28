@@ -1,4 +1,5 @@
 import abc
+import calendar
 from collections import namedtuple
 import numpy as np
 import tensorflow as tf
@@ -57,8 +58,8 @@ class FishingLocalisationObjective(ObjectiveBase):
                         mask = (timestamps >= start_range) & (
                             timestamps < end_range)
                         dense_labels[mask] = is_fishing
-                    dense_labels_list.append(dense_labels)
-            return dense_labels_list
+                dense_labels_list.append(dense_labels)
+            return np.array(dense_labels_list)
 
         dense_labels = tf.reshape(
             tf.py_func(dense_fishing_labels, [mmsis, timestamps],
