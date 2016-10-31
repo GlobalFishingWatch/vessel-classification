@@ -18,11 +18,9 @@ class Trainer:
         model.
     """
 
-    def __init__(self, model, vessel_metadata, fishing_ranges,
-                 base_feature_path, train_scratch_path):
+    def __init__(self, model, base_feature_path, train_scratch_path):
         self.model = model
-        self.vessel_metadata = vessel_metadata
-        self.fishing_ranges = fishing_ranges
+        self.training_objectives = model.training_objectives
         self.base_feature_path = base_feature_path
         self.train_scratch_path = train_scratch_path
         self.checkpoint_dir = self.train_scratch_path + '/train'
@@ -32,7 +30,7 @@ class Trainer:
     def _feature_files(self, split):
         return [
             '%s/%d.tfrecord' % (self.base_feature_path, mmsi)
-            for mmsi in self.vessel_metadata[split].keys()
+            for mmsi in self.model.vessel_metadata.mmsis_for_split(split)
         ]
 
     def _feature_data_reader(self, split, is_training):
@@ -52,10 +50,10 @@ class Trainer:
 
         Returns:
             A tuple of tensors:
-                1. A tensor of features of dimension [batch_size, 1, width, depth]
-                2. A tensor of int32 labels of dimension [batch_size]
-                3. A tensor of one-hot encodings of the labels of dimension
-                    batch_size, num_classes]
+                1. A tensor of features of dimension [batch_size, 1, width, depth].
+                2. A tensor of timestamps, one per feature of dimension [batch_size, width].
+                3. A tensor of time bounds for the feature data slices of dimension [batch_size, 2].
+                4. A tensor of mmsis for the features, of dimesion [batch_size].
 
         """
         input_files = self._feature_files(split)
@@ -63,56 +61,49 @@ class Trainer:
         capacity = 1000
         min_size_after_deque = capacity - self.model.batch_size * 4
 
-        max_replication = 8.0
+        max_replication = 100.0
 
         readers = []
         for _ in range(self.num_parallel_readers):
             readers.append(
                 utility.cropping_weight_replicating_feature_file_reader(
-                    self.vessel_metadata[split], filename_queue,
+                    self.model.vessel_metadata, filename_queue,
                     self.model.num_feature_dimensions + 1, self.model.
                     max_window_duration_seconds, self.model.window_max_points,
-                    self.model.min_viable_timeslice_length, max_replication,
-                    self.fishing_ranges))
+                    self.model.min_viable_timeslice_length, max_replication))
 
-        features, fishing_timeseries, time_bounds, labels = tf.train.shuffle_batch_join(
-            readers,
-            self.model.batch_size,
-            capacity,
-            min_size_after_deque,
-            enqueue_many=True,
-            shapes=[[
-                1, self.model.window_max_points,
-                self.model.num_feature_dimensions
-            ], [self.model.window_max_points], [2], []])
+        (features, timestamps, time_bounds,
+         mmsis) = tf.train.shuffle_batch_join(
+             readers,
+             self.model.batch_size,
+             capacity,
+             min_size_after_deque,
+             enqueue_many=True,
+             shapes=[[
+                 1, self.model.window_max_points,
+                 self.model.num_feature_dimensions
+             ], [self.model.window_max_points], [2], []])
 
-        return features, labels, fishing_timeseries
+        return features, timestamps, time_bounds, mmsis
 
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
-        features, labels, fishing_timeseries_labels = self._feature_data_reader(
+        features, timestamps, time_bounds, mmsis = self._feature_data_reader(
             'Training', True)
 
-        (loss, optimizer, vessel_class_logits,
-         fishing_localisation_logits) = self.model.build_training_net(
-             features, labels, fishing_timeseries_labels)
+        (optimizer, objectives) = self.model.build_training_net(
+            features, timestamps, mmsis)
 
-        vessel_class_predictions = tf.cast(
-            tf.argmax(vessel_class_logits, 1), tf.int32)
-
-        tf.scalar_summary('Training loss', loss)
-
-        vessel_class_accuracy = slim.metrics.accuracy(labels,
-                                                      vessel_class_predictions)
-        tf.scalar_summary('Vessel class training accuracy',
-                          vessel_class_accuracy)
+        loss = tf.reduce_sum(
+            [o.loss for o in objectives], reduction_indices=[0])
 
         train_op = slim.learning.create_train_op(
             loss,
             optimizer,
             update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
 
+        logging.info("Starting slim training loop.")
         slim.learning.train(
             train_op,
             self.checkpoint_dir,
@@ -125,26 +116,24 @@ class Trainer:
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
 
-        features, labels, fishing_timeseries_labels = self._feature_data_reader(
+        features, timestamps, time_bounds, mmsis = self._feature_data_reader(
             'Test', False)
 
-        vessel_class_logits, fishing_localisation_logits = self.model.build_inference_net(
-            features)
+        objectives = self.model.build_inference_net(features, timestamps,
+                                                    mmsis)
 
-        vessel_class_predictions = tf.cast(
-            tf.argmax(vessel_class_logits, 1), tf.int32)
+        aggregate_metric_maps = [o.build_test_metrics(mmsis)
+                                 for o in objectives]
 
-        names_to_values, names_to_updates = metrics.aggregate_metric_map({
-            'Vessel class test accuracy':
-            metrics.streaming_accuracy(vessel_class_predictions, labels),
-        })
-
-        # Create the summary ops such that they also print out to std output.
         summary_ops = []
-        for metric_name, metric_value in names_to_values.iteritems():
-            op = tf.scalar_summary(metric_name, metric_value)
-            op = tf.Print(op, [metric_value], metric_name)
-            summary_ops.append(op)
+        update_ops = []
+        for names_to_values, names_to_updates in aggregate_metric_maps:
+            for metric_name, metric_value in names_to_values.iteritems():
+                op = tf.scalar_summary(metric_name, metric_value)
+                op = tf.Print(op, [metric_value], metric_name)
+                summary_ops.append(op)
+            for update_op in names_to_updates.values():
+                update_ops.append(update_op)
 
         num_examples = 1024
         num_evals = math.ceil(num_examples / float(self.model.batch_size))
@@ -159,7 +148,7 @@ class Trainer:
                     self.checkpoint_dir,
                     self.eval_dir,
                     num_evals=num_evals,
-                    eval_op=names_to_updates.values(),
+                    eval_op=update_ops,
                     summary_op=tf.merge_summary(summary_ops),
                     eval_interval_secs=120)
             except ValueError as e:

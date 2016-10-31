@@ -6,6 +6,7 @@ import math
 import os
 from pkg_resources import resource_filename
 import sys
+from . import model
 from . import utility
 from .trainer import Trainer
 import importlib
@@ -56,8 +57,7 @@ def main(args):
         raise
 
     metadata_file = os.path.abspath(
-        resource_filename('classification.data',
-                          'combined_classification_list.csv'))
+        resource_filename('classification.data', 'net_training_20161016.csv'))
     if not os.path.exists(metadata_file):
         logging.fatal("Could not find metadata file: %s.", metadata_file)
         sys.exit(-1)
@@ -74,17 +74,19 @@ def main(args):
 
     all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
 
-    vessel_metadata = utility.read_vessel_metadata(all_available_mmsis,
-                                                   metadata_file)
+    vessel_metadata = utility.read_vessel_multiclass_metadata(
+        all_available_mmsis, metadata_file,
+        fishing_ranges, int(args.fishing_range_training_upweight))
 
     feature_dimensions = int(args.feature_dimensions)
+    chosen_model = Model(feature_dimensions, vessel_metadata)
 
-    model = Model(feature_dimensions)
-    trainer = Trainer(model, vessel_metadata, fishing_ranges,
-                      args.root_feature_path, args.training_output_path)
+    trainer = Trainer(chosen_model, args.root_feature_path,
+                      args.training_output_path)
 
     config = json.loads(os.environ.get('TF_CONFIG', '{}'))
     if (config == {}):
+        logging.info("Running locally, training only...")
         node_config = utility.ClusterNodeConfig.create_local_server_config()
         server = tf.train.Server.create_local_server()
         run_training(node_config, server, trainer)
@@ -117,6 +119,11 @@ def parse_args():
         '--feature_dimensions',
         required=True,
         help='The number of dimensions of a classification feature.')
+
+    argparser.add_argument(
+        '--fishing_range_training_upweight',
+        default=1.0,
+        help='The amount to upweight vessels that have fishing ranges when training.')
 
     return argparser.parse_args()
 
