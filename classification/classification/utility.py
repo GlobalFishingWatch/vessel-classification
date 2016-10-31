@@ -513,6 +513,13 @@ class VesselMetadata(object):
             for mmsi, data in vessels.iteritems():
                 self.metadata_by_mmsi[mmsi] = data
 
+        intersection_mmsis = set(self.metadata_by_mmsi.keys()).intersection(
+            set(fishing_ranges_map.keys()))
+        logging.info("Metadata for %d mmsis." % len(self.metadata_by_mmsi))
+        logging.info("Fishing ranges for %d mmsis." % len(fishing_ranges_map))
+        logging.info("Vessels with both types of data: %d",
+                     len(intersection_mmsis))
+
     def vessel_weight(self, mmsi):
         if mmsi in self.fishing_ranges_map:
             fishing_range_multiplier = self.fishing_range_training_upweight
