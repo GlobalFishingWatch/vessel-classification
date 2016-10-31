@@ -1,6 +1,7 @@
 from models.alex import layers
 import csv
 import dateutil.parser
+import model
 import numpy as np
 import utility
 import tensorflow as tf
@@ -133,7 +134,19 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
                     True)
             ]
         }
-        md = utility.VesselMetadata(vmd_dict, fishing_range_dict, 1.0)
+        vmd = utility.VesselMetadata(vmd_dict, fishing_range_dict, 1.0)
+
+        o = model.FishingLocalisationObjective('fishing_localisation',
+            'Fishing Localisation', vmd)
+
+        with self.test_session():
+            # TODO(alexwilson): Add input placeholders for predictions,
+            # timestamps and mmsis, then run and check loss.
+            # Also then check we are actually getting vessels with fishing
+            # localisation info (check loading the metadata, and choosing the
+            # segments).
+            #trainer = o.build_trainer(predictions, timestamps, mmsis)
+            #trainer.loss
 
 
 class VesselMetadataFileReader(tf.test.TestCase):
