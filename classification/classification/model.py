@@ -264,7 +264,7 @@ class ModelBase(object):
 
         """
         optimizer = trainers = None
-        return loss, trainers
+        return optimizer, trainers
 
     @abc.abstractmethod
     def build_inference_net(self, features, timestamps, mmsis):
@@ -276,8 +276,7 @@ class ModelBase(object):
             mmsis: a list of mmsis, one for each batch element.
 
         Returns:
-            ?
+            A list of objects derived from EvaluationBase.
 
         """
-        vessel_class_logits = fishing_localisation_logits = None
-        return vessel_class_logits, fishing_localisation_logits
+        return []
