@@ -68,7 +68,7 @@ class FishingLocalisationObjective(ObjectiveBase):
             shape=tf.shape(predictions))
 
         # TODO(alexwilson): Add training accuracy.
-        raw_loss = utility.fishing_localisation_loss(predictions, dense_labels)
+        raw_loss = utility.fishing_localisation_mse(predictions, dense_labels)
 
         update_ops.append(
             tf.scalar_summary('%s/Training loss' % self.name, raw_loss))

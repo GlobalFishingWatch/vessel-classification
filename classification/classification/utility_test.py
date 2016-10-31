@@ -1,10 +1,15 @@
 from models.alex import layers
+import calendar
 import csv
 import dateutil.parser
 import model
 import numpy as np
 import utility
 import tensorflow as tf
+
+
+def _dt(s):
+    return dateutil.parser.parse(s)
 
 
 class FishingLocalisationLossTest(tf.test.TestCase):
@@ -120,33 +125,53 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
             self.assertAllEqual(res, expected_result)
 
 
-def _dt(s):
-    return dateutil.parser.parse(s)
-
-
+# Check we are actually getting vessels with fishing
+# localisation info (check loading the metadata, and choosing the
+# segments).
 class ObjectiveFunctionsTest(tf.test.TestCase):
-    def test_fishing_range_objective(self):
-        vmd_dict = {'Test': {100001: ({'label': 'Longliner'}, 1.0)}}
-        fishing_range_dict = {
-            100001: [
-                utility.FishingRange(
-                    _dt("2015-04-01T06:00:00Z"), _dt("2015-04-01T09:30:00Z"),
-                    True)
-            ]
-        }
-        vmd = utility.VesselMetadata(vmd_dict, fishing_range_dict, 1.0)
+    vmd_dict = {'Test': {100001: ({'label': 'Longliner'}, 1.0)}}
+    range1 = utility.FishingRange(
+        _dt("2015-04-01T06:00:00Z"), _dt("2015-04-01T09:30:0Z"), 1.0)
+    range2 = utility.FishingRange(
+        _dt("2015-04-01T09:30:00Z"), _dt("2015-04-01T12:30:01Z"), 0.0)
+    fishing_range_dict = {100001: [range1, range2]}
+
+    def _build_trainer(self, objective):
+        predictions = np.array(
+            [[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]], dtype=np.float32)
+        timestamps = [
+            _dt("2015-04-01T08:30:00Z"),
+            _dt("2015-04-01T09:00:00Z"),
+            _dt("2015-04-01T09:29:00Z"),
+            _dt("2015-04-01T10:00:00Z"),
+            _dt("2015-04-01T10:30:00Z"),
+            _dt("2015-04-01T11:00:00Z"),
+        ]
+        epoch_timestamps = [[calendar.timegm(t.utctimetuple())
+                             for t in timestamps]]
+        mmsis = [100001]
+        return objective.build_trainer(predictions, epoch_timestamps, mmsis)
+
+    def test_fishing_range_objective_no_ranges(self):
+        vmd = utility.VesselMetadata(self.vmd_dict, {}, 1.0)
 
         o = model.FishingLocalisationObjective('fishing_localisation',
-            'Fishing Localisation', vmd)
+                                               'Fishing Localisation', vmd)
 
-        with self.test_session():
-            # TODO(alexwilson): Add input placeholders for predictions,
-            # timestamps and mmsis, then run and check loss.
-            # Also then check we are actually getting vessels with fishing
-            # localisation info (check loading the metadata, and choosing the
-            # segments).
-            #trainer = o.build_trainer(predictions, timestamps, mmsis)
-            #trainer.loss
+        with self.test_session() as sess:
+            trainer = self._build_trainer(o)
+            self.assertAlmostEqual(0.0, trainer.loss.eval())
+
+    def test_fishing_range_objective_fully_specified(self):
+        vmd = utility.VesselMetadata(self.vmd_dict, self.fishing_range_dict,
+                                     1.0)
+
+        o = model.FishingLocalisationObjective('fishing_localisation',
+                                               'Fishing Localisation', vmd)
+
+        with self.test_session() as sess:
+            trainer = self._build_trainer(o)
+            self.assertAlmostEqual(0.0, trainer.loss.eval())
 
 
 class VesselMetadataFileReader(tf.test.TestCase):
