@@ -18,8 +18,7 @@ class Trainer:
         model.
     """
 
-    def __init__(self, model, vessel_metadata, base_feature_path,
-                 train_scratch_path):
+    def __init__(self, model, base_feature_path, train_scratch_path):
         self.model = model
         self.training_objectives = model.training_objectives
         self.base_feature_path = base_feature_path
@@ -51,16 +50,15 @@ class Trainer:
 
         Returns:
             A tuple of tensors:
-                1. A tensor of features of dimension [batch_size, 1, width, depth]
-                2. A tensor of int32 labels of dimension [batch_size, num_label_sets]
-                3. A tensor of dimension [batch_size, width] indicating where
-                   fishing occurred in the original input timeseries.
+                1. A tensor of features of dimension [batch_size, 1, width, depth].
+                2. A tensor of timestamps, one per feature of dimension [batch_size, width].
+                3. A tensor of time bounds for the feature data slices of dimension [batch_size, 2].
+                4. A tensor of mmsis for the features, of dimesion [batch_size].
 
         """
         input_files = self._feature_files(split)
         filename_queue = tf.train.input_producer(input_files, shuffle=True)
-        #capacity = 1000
-        capacity = 200
+        capacity = 1000
         min_size_after_deque = capacity - self.model.batch_size * 4
 
         max_replication = 100.0

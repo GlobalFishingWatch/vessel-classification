@@ -88,7 +88,7 @@ class ClusterNodeConfig(object):
         return ClusterNodeConfig({
             "cluster": {},
             "task": {
-                "type": "worker",
+                "type": "master",
                 "index": 0
             }
         })
@@ -256,7 +256,8 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
   Returns:
     A tuple comprising:
       1. The extracted feature timeslice.
-      2. The start and end time of the timeslice (in int64 seconds since epoch).
+      2. The timestamps of each feature point.
+      3. The start and end time of the timeslice (in int32 seconds since epoch).
   """
     features = np_array_random_fixed_time_extract(
         random_state, input, max_time_delta, window_size, min_timeslice_size)
@@ -270,12 +271,12 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
 
     # Drop the first (timestamp) column.
     features = features[:, 1:]
-    timeseries = features[:, 0].astype(np.int32)
+    timestamps = features[:, 0].astype(np.int32)
 
     if not np.isfinite(features).all():
         logging.fatal('Bad features: %s', features)
 
-    return features, timeseries, np.array(
+    return features, timestamps, np.array(
         [start_time, end_time], dtype=np.int32)
 
 
@@ -291,15 +292,10 @@ def np_array_extract_n_random_features(random_state, input, n, max_time_delta,
 
   Returns:
     A tuple comprising:
-      1. An numpy array comprising N feature timeslices, of dimension
-          [n, 1, window_size, num_features].
-      2. A numpy array comprising timebounds for each slice, of dimension
-          [n, 2].
-      3. A numpy array with an int32 label for each slice, of dimension [n].
-      4. A numpy array indicating, when known, when fishing is happening with
-         an int per input point, -1 indicating don't know, 1 indicating fishing
-         and 0 indicating non-fishing.
-
+      1. N extracted feature timeslices.
+      2. N lists of timestamps for each feature point.
+      3. N start and end times for each the timeslice.
+      4. N mmsis, one per feature slice.
   """
 
     samples = []
@@ -344,6 +340,7 @@ def cropping_weight_replicating_feature_file_reader(
                [n, 1, window_size, num_features].
             2. A tensor of the timebounds for the timeslices, of dimension [n, 2].
             3. A tensor of the labels for each timeslice, of dimension [n].
+            4. A tensor of the mmsis for each timeslice, of dimension [n].
     """
     context_features, sequence_features = single_feature_file_reader(
         filename_queue, num_features)

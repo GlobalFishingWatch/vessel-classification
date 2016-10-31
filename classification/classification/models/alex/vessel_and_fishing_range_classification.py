@@ -45,6 +45,10 @@ class Model(ModelBase):
         self.fishing_localisation_objective = FishingLocalisationObjective(
             'fishing_localisation', 'Fishing localisation', vessel_metadata)
 
+        self.training_objectives = self.classification_training_objectives + [
+            self.fishing_localisation_objective
+        ]
+
     def misconception_with_fishing_ranges(self, input, mmsis, is_training):
         """ A misconception tower with additional fishing range classification.
 
@@ -143,6 +147,6 @@ class Model(ModelBase):
 
         evaluations.append(
             self.fishing_localisation_objective.build_evaluation(
-                fishing_prediction, timestamps))
+                fishing_prediction))
 
         return evaluations

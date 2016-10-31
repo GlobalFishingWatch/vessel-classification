@@ -18,6 +18,14 @@ class ObjectiveBase(object):
         self.metadata_label = metadata_label
         self.name = name
 
+    @abc.abstractmethod
+    def build_trainer(self, predictions, timestamps, mmsis, loss_weight):
+        pass
+
+    @abc.abstractmethod
+    def build_evaluation(self, predictions):
+        pass
+
 
 class EvaluationBase(object):
     __metaclass__ = abc.ABCMeta
@@ -77,7 +85,7 @@ class FishingLocalisationObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-    def build_evaluation(self, predictions, timestamps):
+    def build_evaluation(self, predictions):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name):
                 super(self.__class__, self).__init__(metadata_label, name)
@@ -103,7 +111,7 @@ class ClassificationObjective(ObjectiveBase):
                  transformer=None):
         super(self.__class__, self).__init__(metadata_label, name)
         self.label_from_mmsi = label_from_mmsi
-        self.classes = list(classes)
+        self.classes = classes
         self.class_indices = dict(zip(classes, range(len(classes))))
         self.num_classes = len(classes)
         self.transformer = transformer
@@ -160,8 +168,6 @@ class ClassificationObjective(ObjectiveBase):
         return Trainer(loss, update_ops)
 
     def build_evaluation(self, logits):
-        # TODO(alexwilson): Do we actually need a class for this and for Trainer
-        # or could we just used named tuples instead?
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, training_label_lookup,
                          classes, num_classes, logits):
@@ -217,8 +223,8 @@ def make_vessel_label_objective(vessel_metadata,
                                 classes,
                                 transformer=None):
     return ClassificationObjective(
-        name,
         label,
+        name,
         lambda mmsi: vessel_metadata.vessel_label(label, mmsi),
         classes,
         transformer=transformer)
@@ -273,7 +279,9 @@ class ModelBase(object):
             mmsis: a list of mmsis, one for each batch element.
 
         Returns:
-            A list of objects derived from EvaluationBase.
+            A list of objects derived from EvaluationBase providing
+            functionality to log evaluation statistics as well as to
+            return the results of inference as JSON.
 
         """
         return []
