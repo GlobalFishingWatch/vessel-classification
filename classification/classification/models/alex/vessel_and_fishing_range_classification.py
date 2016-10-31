@@ -32,7 +32,7 @@ class Model(ModelBase):
             make_vessel_label_objective(
                 vessel_metadata, 'label', 'Vessel class',
                 utility.VESSEL_CLASS_NAMES), make_vessel_label_objective(
-                    vessel_metadata, 'sublabel', 'Vessel detailedclass',
+                    vessel_metadata, 'sublabel', 'Vessel detailed class',
                     utility.VESSEL_CLASS_DETAILED_NAMES),
             make_vessel_label_objective(
                 vessel_metadata,
@@ -46,7 +46,7 @@ class Model(ModelBase):
             'fishing_localisation', 'Fishing localisation', vessel_metadata)
 
     def misconception_with_fishing_ranges(self, input, mmsis, is_training):
-        """ A misconception tower with additional fishing range classiication.
+        """ A misconception tower with additional fishing range classification.
 
         Args:
             input: a tensor of size [batch_size, 1, width, depth].
@@ -78,9 +78,9 @@ class Model(ModelBase):
 
             vessel_class_embedding = slim.fully_connected(
                 net, self.fishing_vessel_type_embedding_depth)
-            reshaped_embedding = tf.reshape(
-                vessel_class_embedding, [self.batch_size, 1, 1, self.
-                                         fishing_vessel_type_embedding_depth])
+            reshaped_embedding = tf.reshape(vessel_class_embedding, [
+                self.batch_size, 1, 1, self.fishing_vessel_type_embedding_depth
+            ])
             tiled_embedding = tf.tile(reshaped_embedding,
                                       [1, 1, self.window_max_points, 1])
 

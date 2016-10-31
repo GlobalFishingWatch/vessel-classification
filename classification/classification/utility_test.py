@@ -1,5 +1,6 @@
 from models.alex import layers
 import csv
+import dateutil.parser
 import numpy as np
 import utility
 import tensorflow as tf
@@ -116,6 +117,23 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
             res = utility.np_array_random_fixed_time_extract(
                 lambda _: 0, input_data, 20, 5, 50)
             self.assertAllEqual(res, expected_result)
+
+
+def _dt(s):
+    return dateutil.parser.parse(s)
+
+
+class ObjectiveFunctionsTest(tf.test.TestCase):
+    def test_fishing_range_objective(self):
+        vmd_dict = {'Test': {100001: ({'label': 'Longliner'}, 1.0)}}
+        fishing_range_dict = {
+            100001: [
+                utility.FishingRange(
+                    _dt("2015-04-01T06:00:00Z"), _dt("2015-04-01T09:30:00Z"),
+                    True)
+            ]
+        }
+        md = utility.VesselMetadata(vmd_dict, fishing_range_dict, 1.0)
 
 
 class VesselMetadataFileReader(tf.test.TestCase):

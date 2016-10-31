@@ -75,8 +75,8 @@ def main(args):
     all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
 
     vessel_metadata = utility.read_vessel_multiclass_metadata(
-        all_available_mmsis, metadata_file, fishing_ranges,
-        args.fishing_range_training_upweight)
+        all_available_mmsis, metadata_file,
+        fishing_ranges, int(args.fishing_range_training_upweight))
 
     feature_dimensions = int(args.feature_dimensions)
     chosen_model = Model(feature_dimensions, vessel_metadata)

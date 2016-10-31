@@ -22,9 +22,9 @@ class ObjectiveBase(object):
 class EvaluationBase(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, name, metadata_label):
-        self.name = name
+    def __init__(self, metadata_label, name):
         self.metadata_label = metadata_label
+        self.name = name
 
     @abc.abstractmethod
     def build_test_metrics(self, mmsis):
@@ -36,8 +36,8 @@ class EvaluationBase(object):
 
 
 class FishingLocalisationObjective(ObjectiveBase):
-    def __init__(self, name, metadata_label, vessel_metadata):
-        super(self.__class__, self).__init__(name, metadata_label)
+    def __init__(self, metadata_label, name, vessel_metadata):
+        super(self.__class__, self).__init__(metadata_label, name)
         self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
 
     def build_trainer(self, predictions, timestamps, mmsis, loss_weight=1.0):
@@ -53,7 +53,8 @@ class FishingLocalisationObjective(ObjectiveBase):
                 if mmsi in self.fishing_ranges_map:
                     for (start_time, end_time,
                          is_fishing) in self.fishing_ranges_map[mmsi]:
-                        start_range = calendar.timegm(start_time.utctimetuple())
+                        start_range = calendar.timegm(start_time.utctimetuple(
+                        ))
                         end_range = calendar.timegm(end_time.utctimetuple())
                         mask = (timestamps >= start_range) & (
                             timestamps < end_range)
@@ -66,7 +67,7 @@ class FishingLocalisationObjective(ObjectiveBase):
                        [tf.float32]),
             shape=tf.shape(predictions))
 
-        # TODO(alexwilson): Add training loss and accuracy.
+        # TODO(alexwilson): Add training accuracy.
         raw_loss = utility.fishing_localisation_loss(predictions, dense_labels)
 
         update_ops.append(
@@ -97,12 +98,12 @@ class FishingLocalisationObjective(ObjectiveBase):
 
 class ClassificationObjective(ObjectiveBase):
     def __init__(self,
-                 name,
                  metadata_label,
+                 name,
                  label_from_mmsi,
                  classes,
                  transformer=None):
-        super(self.__class__, self).__init__(name, metadata_label)
+        super(self.__class__, self).__init__(metadata_label, name)
         self.label_from_mmsi = label_from_mmsi
         self.classes = list(classes)
         self.class_indices = dict(zip(classes, range(len(classes))))
