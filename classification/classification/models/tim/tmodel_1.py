@@ -35,8 +35,8 @@ class Model(ModelBase):
         return length
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
-        super(self.__class__, self).__init__(
-            num_feature_dimensions, vessel_metadata)
+        super(self.__class__, self).__init__(num_feature_dimensions,
+                                             vessel_metadata)
 
         self.training_objectives = [make_vessel_label_objective(
             vessel_metadata, 'label', 'Vessel class',

@@ -14,9 +14,9 @@ TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 class ObjectiveBase(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, name, metadata_label):
-        self.name = name
+    def __init__(self, metadata_label, name):
         self.metadata_label = metadata_label
+        self.name = name
 
 
 class EvaluationBase(object):
@@ -31,7 +31,7 @@ class EvaluationBase(object):
         pass
 
     @abc.abstractmethod
-    def build_json_results(self):
+    def build_json_results(self, predictions):
         pass
 
 
@@ -79,21 +79,19 @@ class FishingLocalisationObjective(ObjectiveBase):
 
     def build_evaluation(self, predictions, timestamps):
         class Evaluation(EvaluationBase):
-            def __init__(self, name, predictions, timestamps):
-                self.name = name
-                self.timestamps = timestamps
-                self.predictions = predictions
+            def __init__(self, metadata_label, name):
+                super(self.__class__, self).__init__(metadata_label, name)
 
             def build_test_metrics(self, mmsis):
                 # TODO(alexwilson): Add streaming weighted MSE here.
                 return {}, {}
 
-            def build_json_results(self):
-                return {'name': self.name,
-                        'fishing_scores': zip(self.timestamps,
-                                              self.predictions)}
+            def build_json_results(self, fishing_probabilities):
+                # TODO(alexwilson): Plumb through the timestamps as well,
+                # then zip the two to give fishing probability results.
+                return {}
 
-        return Evaluation(self.name, predictions, timestamps)
+        return Evaluation(self.metadata_label, self.name)
 
 
 class ClassificationObjective(ObjectiveBase):
@@ -165,10 +163,9 @@ class ClassificationObjective(ObjectiveBase):
         # TODO(alexwilson): Do we actually need a class for this and for Trainer
         # or could we just used named tuples instead?
         class Evaluation(EvaluationBase):
-            def __init__(self, name, metadata_label, training_label_lookup,
+            def __init__(self, metadata_label, name, training_label_lookup,
                          classes, num_classes, logits):
-                self.name = name
-                self.metadata_label = metadata_label
+                super(self.__class__, self).__init__(metadata_label, name)
                 self.training_label_lookup = training_label_lookup
                 self.classes = classes
                 self.num_classes = num_classes
@@ -210,7 +207,7 @@ class ClassificationObjective(ObjectiveBase):
                     'label_scores': full_scores
                 }
 
-        return Evaluation(self.name, self.metadata_label, self.training_label,
+        return Evaluation(self.metadata_label, self.name, self.training_label,
                           self.classes, self.num_classes, logits)
 
 
