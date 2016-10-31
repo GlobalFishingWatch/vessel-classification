@@ -134,11 +134,8 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         _dt("2015-04-01T06:00:00Z"), _dt("2015-04-01T09:30:0Z"), 1.0)
     range2 = utility.FishingRange(
         _dt("2015-04-01T09:30:00Z"), _dt("2015-04-01T12:30:01Z"), 0.0)
-    fishing_range_dict = {100001: [range1, range2]}
 
-    def _build_trainer(self, objective):
-        predictions = np.array(
-            [[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]], dtype=np.float32)
+    def _build_trainer(self, predictions, objective):
         timestamps = [
             _dt("2015-04-01T08:30:00Z"),
             _dt("2015-04-01T09:00:00Z"),
@@ -153,25 +150,51 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         return objective.build_trainer(predictions, epoch_timestamps, mmsis)
 
     def test_fishing_range_objective_no_ranges(self):
+        predictions = [[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]]
         vmd = utility.VesselMetadata(self.vmd_dict, {}, 1.0)
 
         o = model.FishingLocalisationObjective('fishing_localisation',
                                                'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
-            trainer = self._build_trainer(o)
+            trainer = self._build_trainer(predictions, o)
             self.assertAlmostEqual(0.0, trainer.loss.eval())
 
-    def test_fishing_range_objective_fully_specified(self):
-        vmd = utility.VesselMetadata(self.vmd_dict, self.fishing_range_dict,
-                                     1.0)
+    def test_fishing_range_objective_half_specified(self):
+        predictions = [[1.0, 1.0, 1.0, 0.0, 1.0, 1.0]]
+        fishing_range_dict = {100001: [self.range1]}
+        vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
         o = model.FishingLocalisationObjective('fishing_localisation',
                                                'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
-            trainer = self._build_trainer(o)
+            trainer = self._build_trainer(predictions, o)
             self.assertAlmostEqual(0.0, trainer.loss.eval())
+
+    def test_fishing_range_objective_fully_specified(self):
+        predictions = [[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]]
+        fishing_range_dict = {100001: [self.range1, self.range2]}
+        vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
+
+        o = model.FishingLocalisationObjective('fishing_localisation',
+                                               'Fishing Localisation', vmd)
+
+        with self.test_session() as sess:
+            trainer = self._build_trainer(predictions, o)
+            self.assertAlmostEqual(0.0, trainer.loss.eval())
+
+    def test_fishing_range_objective_fully_specified_mismatch(self):
+        predictions = [[1.0, 1.0, 1.0, 1.0, 0.0, 0.0]]
+        fishing_range_dict = {100001: [self.range1, self.range2]}
+        vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
+
+        o = model.FishingLocalisationObjective('fishing_localisation',
+                                               'Fishing Localisation', vmd)
+
+        with self.test_session() as sess:
+            trainer = self._build_trainer(predictions, o)
+            self.assertAlmostEqual(0.16666667, trainer.loss.eval())
 
 
 class VesselMetadataFileReader(tf.test.TestCase):
