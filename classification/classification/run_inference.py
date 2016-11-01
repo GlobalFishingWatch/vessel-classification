@@ -174,7 +174,7 @@ def main(args):
         raise
 
     feature_dimensions = int(args.feature_dimensions)
-    chosen_model = Model(feature_dimensions, vessel_metadata)
+    chosen_model = Model(feature_dimensions, None)
 
     infererer = Inferer(chosen_model, model_checkpoint_path, root_feature_path,
                         mmsis)

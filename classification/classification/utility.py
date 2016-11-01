@@ -364,7 +364,7 @@ def cropping_weight_replicating_feature_file_reader(
     return features_list, timestamps, time_bounds_list, mmsis
 
 
-def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
+def np_array_extract_slices_for_time_ranges(random_state, input_series, num_features_inc_timestamp, mmsi,
                                             time_ranges, window_size,
                                             min_points_for_classification):
     """ Extract and process a set of specified time slices from a vessel
@@ -419,7 +419,7 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
     if slices == []:
         # Return an appropriately shaped empty numpy array.
         return (np.empty(
-            [0, 1, window_size, 9], dtype=np.float32), np.empty(
+            [0, 1, window_size, num_features_inc_timestamp - 1], dtype=np.float32), np.empty(
                 shape=[0, window_size], dtype=np.int32), np.empty(
                     shape=[0, 2], dtype=np.int32), np.empty(
                         shape=[0], dtype=np.int32))
@@ -459,7 +459,7 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
 
     def replicate_extract(input, mmsi):
         return np_array_extract_slices_for_time_ranges(
-            random_state, input, mmsi, time_ranges, window_size,
+            random_state, input, num_features, mmsi, time_ranges, window_size,
             min_points_for_classification)
 
     features_list, timeseries, time_bounds_list, mmsis = tf.py_func(
