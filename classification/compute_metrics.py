@@ -210,10 +210,20 @@ def confusion_matrix(results):
             attributes.
 
     """
+    EPS = 1e-10
     cm_raw = metrics.confusion_matrix(
         results.true_labels, results.inferred_labels, results.label_list)
+    # For off axis, normalize using the false positive rate
     cm_normalized = cm_raw.astype('float') / (
-        cm_raw.sum(axis=1) + 1e-10)[:, np.newaxis]
+        cm_raw.sum(axis=1, keepdims=True) + EPS)
+    # For on axis, use the F1-score, what is already there is the recall
+    col_totals = cm_raw.sum(axis=0) + EPS   
+    for i in range(len(cm_raw)):
+        recall = cm_normalized[i, i]
+        prec = cm_raw[i, i] / col_totals[i]
+        F1 = 2.0 / ((1.0 / recall) + (1.0 / prec))
+        cm_normalized[i, i] = F1
+    #
     return ConfusionMatrix(cm_raw, cm_normalized)
 
 
