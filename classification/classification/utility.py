@@ -559,23 +559,6 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
             vessel_types.append((mmsi, split, vessel_type))
             dataset_kind_counts[split][vessel_type] += 1
             vessel_type_set.add(vessel_type)
-=======
-
-    # Build a list of vessels + split + and vessel type. Calculate the split on
-    # the fly, but deterministically. Count the occurrence of each vessel type
-    # per split.
-    for row in lines:
-        mmsi = int(row['mmsi'])
-        coarse_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
-        if mmsi in available_mmsis and coarse_vessel_type:
-            if (_hash_mmsi_to_double(mmsi) >= 0.5):
-                split = 'Test'
-            else:
-                split = 'Training'
-            vessel_types.append((mmsi, split, coarse_vessel_type, row))
-            dataset_kind_counts[split][coarse_vessel_type] += 1
-            vessel_type_set.add(coarse_vessel_type)
->>>>>>> master
 
     # Calculate weights for each vessel type per split: the weight is the count
     # of the most frequent vessel type divided by the count for the current
