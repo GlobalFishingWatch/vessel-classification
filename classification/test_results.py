@@ -1,3 +1,10 @@
+"""
+
+Example:
+
+
+
+"""
 from __future__ import division
 from __future__ import absolute_import
 from __future__ import print_function
@@ -9,9 +16,10 @@ from sklearn import metrics
 import dateutil.parser
 import logging
 import argparse
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import sys
 import yattag
+import newlinejson as nlj
 
 InferenceResults = namedtuple("InferenceResults", ["mmsi", "inferred_labels", "true_labels", "start_dates", "scores", "label_set"])
 ConfusionMatrix = namedtuple("ConfusionMatrix", ["raw", "scaled"])
@@ -71,23 +79,24 @@ def repr_metrics(doc, results):
     rows = [(x, accuracy_for_date(x, results.true_labels, results.inferred_labels, results.scores, results.start_dates, THRESHOLD))
                 for x in np.unique(results.start_dates)]
 
-    line('h2', "Accuracy by Date")
+    line('h3', "Accuracy by Date")
     repr_table(doc, ["Start Date", "Accuracy"], [(a.date(), "{:.2f}".format(b)) for (a, b) in rows],
         border=1)
 
     consolidated = consolidate_across_dates(results)
 
-    line('h2', 'Overall Accuracy')
+    line('h3', 'Overall Accuracy')
     text(str(accuracy(consolidated.true_labels, consolidated.inferred_labels)))#, consolidated.scores, THRESHOLD)))
 
-    cm = confusion_matrix(results)
+    cm = confusion_matrix(consolidated)
 
-    line('h2', "Confusion Matrix")
+    line('h3', "Confusion Matrix")
     repr_confusion_matrix(doc, cm.scaled, results.label_set)
 
-    line('h2', 'Metrics by Gear Type')
-    results.inferred_labels[results.scores < THRESHOLD] = "Unknown"
-    repr_table(doc, ["Label","Precision","Recall"],precision_recall(results.label_set, results.true_labels, results.inferred_labels))
+    line('h3', 'Metrics by Label')
+    # TODO MAKE threshold work
+    # results.inferred_labels[consolidated.scores < THRESHOLD] = "Unknown"
+    repr_table(doc, ["Label","Precision","Recall"],precision_recall(consolidated.label_set, consolidated.true_labels, consolidated.inferred_labels))
 
 
 #
@@ -96,17 +105,7 @@ def repr_metrics(doc, results):
 
 def fix_label(x):
     x = x.strip()
-    if x == 'Tug_Pilot_Supply':
-        x = "Tug/Pilot/Supply"
-    elif x == "Cargo_Tanker":
-        x = "Cargo/Tanker"
-    elif x == "Seismic Vessel":
-        x = "Seismic"
-    else:
-        x = x.replace("_", " ")
-    return {'Dredger' : 'Trawler',
-            'Pleasure Craft' : "Passenger",
-            'Sail' : 'Passenger'}.get(x, x)
+    return x.replace("_", " ")
 
 def precision_recall(labels, y_true, y_pred):
     results = []
@@ -130,16 +129,19 @@ def accuracy_for_date(date, true_labels, inferred_labels, scores, dates, thresho
 
 
 def consolidate_across_dates(results):
-    #TODO: once we have full scores, use those instead
     inferred_labels = []
     true_labels = []
     mmsi = sorted(set(results.mmsi))
-    label_map = {x : i for (i, x) in enumerate(results.label_set)}
+    all_labels = set(results.label_set)
+    for scores in results.scores:
+        all_labels |= set(scores.keys())
+    label_map = {x : i for (i, x) in enumerate(sorted(all_labels))}
     for m in mmsi:
         mask = (results.mmsi == m)
         scores = np.zeros(len(results.label_set), dtype=float)
         for i in np.arange(len(results.mmsi))[mask]:
-            scores[label_map[results.inferred_labels[i]]] += results.scores[i]
+            for lbl in results.scores[i]:
+                scores[label_map[lbl]] += results.scores[i][lbl]
         inferred_labels.append(results.label_set[np.argmax(scores)])
         true_labels.append(results.true_labels[mask][0])
     return InferenceResults(results.mmsi, np.array(inferred_labels), np.array(true_labels), None, None, results.label_set)
@@ -156,31 +158,60 @@ def confusion_matrix(results):
     cm_normalized = cm_raw.astype('float') / (cm_raw.sum(axis=1) + 1e-10)[:, np.newaxis]
     return ConfusionMatrix(cm_raw, cm_normalized)
 
+def find_length_cutpoints(inference_path):
+    with nlj.open(inference_path) as src:
+        for row in src:
+            scores = row['labels']['length']['label_scores']
+            if scores:
+                raw_cutpoints = scores.keys()
+                break
+    cutpoints = []
+    for rcp in raw_cutpoints:
+        if rcp.endswith('m+'):
+            cp = float(rcp[:-2])
+        else:
+            endstr = rcp.split('-')[0]
+            cp = float(endstr)
+        cutpoints.append((cp, rcp))
+    cutpoints.sort()
+    return cutpoints
 
-def load_inferred(inferrence_path, label_map):
+
+def cut_length_at(cutpoints, len_map):
+    map = {}
+    cutpoints = sorted(cutpoints)
+    for k, v in len_map.items():
+        for cp, cut_name in reversed(cutpoints):
+            if float(v) >= cp:
+                map[k] = cut_name
+                break
+    return map
+
+
+def load_inferred(inference_path, label_map, field):
     # load inferred_labels and generate comparison data
     start_dates = []
     inferred_labels = []
     true_labels = []
     scores = []
     mmsi_list = []
-    with open(inferrence_path) as f:
-        for row in csv.reader(f):
-            mmsi, start, stop, label, score = [x.strip() for x in row]
+    with nlj.open(inference_path) as src:
+        for row in src:
+            mmsi = row['mmsi']
             if mmsi in label_map:
                 lbl = label_map[mmsi]
                 if lbl == "Unknown":
                     continue
                 mmsi_list.append(mmsi)
-                start_dates.append(dateutil.parser.parse(start))
+                start_dates.append(dateutil.parser.parse(row['start_time']))
                 true_labels.append(label_map[mmsi])
-                inferred_labels.append(label)
-                scores.append(float(score))
+                inferred_labels.append(row['labels'][field]['max_label'])
+                scores.append(row['labels'][field]['label_scores'])
     inferred_labels = np.array(inferred_labels)
     true_labels = np.array(true_labels)
     start_dates = np.array(start_dates)
     scores = np.array(scores)
-    label_set = sorted(set(true_labels) | set(inferred_labels))
+    label_set = sorted(set(true_labels) | set(inferred_labels) | set(label_map.values()))
     mmsi_list = np.array(mmsi_list)
     return InferenceResults(mmsi_list, inferred_labels, true_labels, start_dates, scores, label_set)
 
@@ -189,6 +220,7 @@ def load_inferred(inferrence_path, label_map):
 
 # TODO:
 #    * Date range
+#    * Threshold
 
 
 if __name__ == "__main__":
@@ -197,13 +229,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Test inference results and output metrics")
     parser.add_argument(
-        '--inferrence-path',
-        help='path to inferrence results',
-        default="gs://world-fishing-827/scratch/alex/infered_labels.txt") # TODO: there is more recent data path (in JSON so will need adjusting)
+        '--inference-path',
+        help='path to inference results',
+        required=True)
     parser.add_argument(
-        '--test-path',
+        '--label-path',
         help='path to test data',
-        default='classification/data/test_list.csv'
+        required=True
         )
     parser.add_argument(
         '--dest-path', help="path to write results to",
@@ -217,26 +249,55 @@ if __name__ == "__main__":
     #
     THRESHOLD = 0.5
 
-
-
     #
-    inferrence_path = os.path.join(temp_dir, os.path.basename(args.inferrence_path))
-    # Download labels if they don't already exist
-    if not os.path.exists(inferrence_path):
-        subprocess.check_call(["gsutil", "cp", label_path, inferrence_path])
+    if args.inference_path.startswith('gs'):
+        initial_inference_path = os.path.join(temp_dir, os.path.basename(args.inference_path))
+        # Download labels if they don't already exist
+        is_compressed = initial_inference_path.endswith('.gz')
+        inference_path = initial_inference_path[:-3] if is_compressed else initial_inference_path
+        if not os.path.exists(inference_path):
+            subprocess.check_call(["gsutil", "cp", args.inference_path, initial_inference_path])
+            if is_compressed:
+                subprocess.check_call(['gunzip', initial_inference_path])
+
+    else:
+        inference_path = args.inference_path
     #
     # Load stuff
-    with open(args.test_path) as f:
-        label_map = {x['mmsi'].strip(): fix_label(x['label']) for x in csv.DictReader(f)}
+    maps = defaultdict(dict)
+    with open(args.label_path) as f:
+        for row in csv.DictReader(f):
+            mmsi = int(row['mmsi'].strip())
+            for field in ["label", "sublabel", "length"]:
+                if row[field]:
+                    maps[field][mmsi] = fix_label(row[field])
 
-    results = load_inferred(inferrence_path, label_map)
+
+    results = load_inferred(inference_path, maps['label'], 'label')
+
+    subresults = load_inferred(inference_path, maps['sublabel'], 'sublabel')
+
+    cutpoints = find_length_cutpoints(inference_path)
+
+    len_map = cut_length_at(cutpoints, maps['length'])
+
+    lenresults = load_inferred(inference_path, len_map, 'length')
+    lenresults.label_set.sort(key = lambda x: float(x.split('-')[0].split('m+')[0]))
 
     # Dump out as HTML
     doc= yattag.Doc()
 
+    doc.line('h2', "Coarse Labels")
     repr_metrics(doc, results)
+    doc.stag('hr')
 
-    doc.line('br', '')
+    doc.line('h2', "Fine Labels")
+    repr_metrics(doc, subresults)
+    doc.stag('hr')
+
+    doc.line('h2', "Lengths")
+    repr_metrics(doc, lenresults)
+    doc.stag('br')
 
     with open(args.dest_path, 'w') as f:
         f.write(yattag.indent(doc.getvalue(), indent_text = True))
