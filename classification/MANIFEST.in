@@ -1,2 +1,2 @@
-include classification/data/combined_classification_list.csv
-include classification/data/test_list.csv
+include classification/data/net_training_20161016.csv
+include classification/data/combined_fishing_ranges.csv

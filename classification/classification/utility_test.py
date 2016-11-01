@@ -1,7 +1,68 @@
 from models.alex import layers
+import calendar
+import csv
+import dateutil.parser
+import model
 import numpy as np
 import utility
 import tensorflow as tf
+
+
+def _dt(s):
+    return dateutil.parser.parse(s)
+
+
+class FishingLocalisationLossTest(tf.test.TestCase):
+    def test_simple_loss(self):
+        with self.test_session():
+            logits = np.array([[1, 0, 0, 1, 0], [1, 0, 1, 1, 0]], np.float32)
+            targets = np.array([[1, 0, -1, 0, -1], [1, 0, 0, -1, -1]],
+                               np.float32)
+
+            loss = utility.fishing_localisation_loss(logits, targets)
+
+            filtered_logits = logits[targets != -1]
+            filtered_targets = targets[targets != -1]
+
+            filtered_loss = tf.reduce_mean(
+                tf.nn.sigmoid_cross_entropy_with_logits(filtered_logits,
+                                                        filtered_targets))
+
+            self.assertAlmostEqual(filtered_loss.eval(), loss.eval(), places=5)
+
+    def test_loss_scaling_floor(self):
+        with self.test_session():
+            logits = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], np.float32)
+            targets = np.array([[0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+                                [0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1]],
+                               np.float32)
+
+            loss = utility.fishing_localisation_loss(logits, targets)
+
+            self.assertAlmostEqual(0.66164052, loss.eval())
+
+    def test_loss_no_targets(self):
+        with self.test_session():
+            logits = np.array([[0, 0, 0, 0, 0]], np.float32)
+            targets = np.array([[-1, -1, -1, -1, -1]], np.float32)
+
+            loss = utility.fishing_localisation_loss(logits, targets)
+
+            self.assertAlmostEqual(0.0, loss.eval())
+
+
+class FishingLocalisationMseTest(tf.test.TestCase):
+    def test_simple_mse(self):
+        with self.test_session():
+            predictions = np.array([[1, 0, 0, 1, 0], [1, 0, 1, 1, 0]],
+                                   np.float32)
+            targets = np.array([[1, 0, -1, 0, -1], [1, 0, 0, -1, -1]],
+                               np.float32)
+
+            mse = utility.fishing_localisation_mse(predictions, targets)
+
+            self.assertAlmostEqual(0.33333333, mse.eval())
 
 
 class InceptionLayerTest(tf.test.TestCase):
@@ -29,9 +90,10 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
         with self.test_session():
             input_data = np.array([[1., 5.], [2., 4.], [3., 7.], [4., 9.],
                                    [5., 3.], [6., 8.], [7., 2.], [8., 9.]])
+
             expected_result = np.array([[1., 5.], [2., 4.], [3., 7.], [4., 9.],
-                                        [5.,
-                                         3.], [6., 8.], [1., 5.], [2., 4.]])
+                                        [5., 3.], [6., 8.], [1., 5.],
+                                        [2., 4.]])
 
             class FakeRandomState(object):
                 def randint(self, min, max):
@@ -63,43 +125,126 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
             self.assertAllEqual(res, expected_result)
 
 
+# Check we are actually getting vessels with fishing
+# localisation info (check loading the metadata, and choosing the
+# segments).
+class ObjectiveFunctionsTest(tf.test.TestCase):
+    vmd_dict = {'Test': {100001: ({'label': 'Longliner'}, 1.0)}}
+    range1 = utility.FishingRange(
+        _dt("2015-04-01T06:00:00Z"), _dt("2015-04-01T09:30:0Z"), 1.0)
+    range2 = utility.FishingRange(
+        _dt("2015-04-01T09:30:00Z"), _dt("2015-04-01T12:30:01Z"), 0.0)
+
+    def _build_trainer(self, predictions, objective):
+        timestamps = [
+            _dt("2015-04-01T08:30:00Z"),
+            _dt("2015-04-01T09:00:00Z"),
+            _dt("2015-04-01T09:29:00Z"),
+            _dt("2015-04-01T10:00:00Z"),
+            _dt("2015-04-01T10:30:00Z"),
+            _dt("2015-04-01T11:00:00Z"),
+        ]
+        epoch_timestamps = [[calendar.timegm(t.utctimetuple())
+                             for t in timestamps]]
+        mmsis = [100001]
+        return objective.build_trainer(predictions, epoch_timestamps, mmsis)
+
+    def test_fishing_range_objective_no_ranges(self):
+        predictions = [[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]]
+        vmd = utility.VesselMetadata(self.vmd_dict, {}, 1.0)
+
+        o = model.FishingLocalisationObjective('fishing_localisation',
+                                               'Fishing Localisation', vmd)
+
+        with self.test_session() as sess:
+            trainer = self._build_trainer(predictions, o)
+            self.assertAlmostEqual(0.0, trainer.loss.eval())
+
+    def test_fishing_range_objective_half_specified(self):
+        predictions = [[1.0, 1.0, 1.0, 0.0, 1.0, 1.0]]
+        fishing_range_dict = {100001: [self.range1]}
+        vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
+
+        o = model.FishingLocalisationObjective('fishing_localisation',
+                                               'Fishing Localisation', vmd)
+
+        with self.test_session() as sess:
+            trainer = self._build_trainer(predictions, o)
+            self.assertAlmostEqual(0.0, trainer.loss.eval())
+
+    def test_fishing_range_objective_fully_specified(self):
+        predictions = [[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]]
+        fishing_range_dict = {100001: [self.range1, self.range2]}
+        vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
+
+        o = model.FishingLocalisationObjective('fishing_localisation',
+                                               'Fishing Localisation', vmd)
+
+        with self.test_session() as sess:
+            trainer = self._build_trainer(predictions, o)
+            self.assertAlmostEqual(0.0, trainer.loss.eval())
+
+    def test_fishing_range_objective_fully_specified_mismatch(self):
+        predictions = [[1.0, 1.0, 1.0, 1.0, 0.0, 0.0]]
+        fishing_range_dict = {100001: [self.range1, self.range2]}
+        vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
+
+        o = model.FishingLocalisationObjective('fishing_localisation',
+                                               'Fishing Localisation', vmd)
+
+        with self.test_session() as sess:
+            trainer = self._build_trainer(predictions, o)
+            self.assertAlmostEqual(0.16666667, trainer.loss.eval())
+
+
 class VesselMetadataFileReader(tf.test.TestCase):
     def test_metadata_file_reader(self):
-        lines = [
-            'mmsi,split,kind\n',
-            '100001,Training,Longliner\n',
-            '100002,Training,Longliner\n',
-            '100003,Training,Longliner\n',
-            '100004,Training,Longliner\n',
-            '100005,Training,Trawler\n',
-            '100006,Training,Trawler\n',
-            '100007,Training,Passenger\n',
-            '100008,Test,Trawler\n',
-            '100009,Test,Trawler\n',
-            '100010,Test,Trawler\n',
-            '100011,Test,Tug\n',
-            '100012,Test,Tug\n',
-            '100013,Test,Tug\n',
+        raw_lines = [
+            'mmsi,label,length\n',
+            '100001,Longliner,10.0\n',
+            '100002,Longliner,24.0\n',
+            '100003,Longliner,7.0\n',
+            '100004,Longliner,8.0\n',
+            '100005,Trawler,10.0\n',
+            '100006,Trawler,24.0\n',
+            '100007,Passenger,24.0\n',
+            '100008,Trawler,24.0\n',
+            '100009,Trawler,10.0\n',
+            '100010,Trawler,24.0\n',
+            '100011,Tug,60.0\n',
+            '100012,Tug,5.0\n',
+            '100013,Tug,24.0\n',
         ]
+        parsed_lines = csv.DictReader(raw_lines)
         available_vessels = set(range(100001, 100013))
-        result = utility.read_vessel_metadata_file_lines(available_vessels,
-                                                         lines)
+        result = utility.read_vessel_multiclass_metadata_lines(
+            available_vessels, parsed_lines, {}, 1)
 
-        self.assertTrue('Training' in result)
-        self.assertEquals(result['Training'][100001], ('Longliner', 1.0))
-        self.assertEquals(result['Training'][100002], ('Longliner', 1.0))
-        self.assertEquals(result['Training'][100003], ('Longliner', 1.0))
-        self.assertEquals(result['Training'][100004], ('Longliner', 1.0))
-        self.assertEquals(result['Training'][100005], ('Trawler', 2.0))
-        self.assertEquals(result['Training'][100006], ('Trawler', 2.0))
-        self.assertEquals(result['Training'][100007], ('Passenger', 4.0))
+        self.assertEquals(3.0, result.vessel_weight(100001))
+        self.assertEquals(1.0, result.vessel_weight(100002))
+        self.assertEquals(1.5, result.vessel_weight(100011))
 
-        self.assertTrue('Test' in result)
-        self.assertEquals(result['Test'][100008], ('Trawler', 1.0))
-        self.assertEquals(result['Test'][100009], ('Trawler', 1.0))
-        self.assertEquals(result['Test'][100010], ('Trawler', 1.0))
-        self.assertEquals(result['Test'][100011], ('Tug', 3.0 / 2.0))
-        self.assertEquals(result['Test'][100012], ('Tug', 3.0 / 2.0))
+        self.assertTrue('Training' in result.metadata_by_split)
+        self.assertTrue('Test' in result.metadata_by_split)
+        self.assertTrue('Passenger', result.vessel_label('label', 100007))
+
+        self.assertEquals(result.metadata_by_split['Test'][100001],
+                          ({'label': 'Longliner',
+                            'length': '10.0',
+                            'mmsi': '100001'}, 3.0))
+        self.assertEquals(result.metadata_by_split['Test'][100005],
+                          ({'label': 'Trawler',
+                            'length': '10.0',
+                            'mmsi': '100005'}, 1.0))
+
+        self.assertEquals(result.metadata_by_split['Training'][100002],
+                          ({'label': 'Longliner',
+                            'length': '24.0',
+                            'mmsi': '100002'}, 1.0))
+        self.assertEquals(result.metadata_by_split['Training'][100003],
+                          ({'label': 'Longliner',
+                            'length': '7.0',
+                            'mmsi': '100003'}, 1.0))
 
 
 if __name__ == '__main__':

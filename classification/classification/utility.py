@@ -1,18 +1,56 @@
-from collections import defaultdict
+from collections import defaultdict, namedtuple
+import csv
+import dateutil.parser
+import hashlib
+import math
+import model
+import time
 import logging
+import newlinejson as nlj
 import numpy as np
+import os
+import struct
 import sys
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
-
-VESSEL_CLASS_NAMES = [
-    "Purse seine", "Longliner", "Trawler", "Pots and traps", "Squid fishing",
-    "Passenger", "Cargo/Tanker", "Seismic", "Tug/Pilot/Supply"
+""" The main column for vessel classification. """
+PRIMARY_VESSEL_CLASS_COLUMN = 'label'
+""" The coarse vessel label set. """
+VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
+                      'Seismic vessel', 'Set gillnets', 'Longliners', 'Reefer',
+                      'Pole and Line', 'Purse seines', 'Pots and Traps',
+                      'Trollers', 'Tug/Pilot/Supply']
+""" The finer vessel label set. """
+VESSEL_CLASS_DETAILED_NAMES = [
+    'Squid', 'Trawlers', 'Seismic vessel', 'Set gillnets', 'Reefer',
+    'Pole and Line', 'Purse seines', 'Pots and Traps', 'Trollers', 'Cargo',
+    'Sailing', 'Supply', 'Set longlines', 'Motor Passenger',
+    'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
+]
+""" The vessel length classes. """
+VESSEL_LENGTH_CLASSES = [
+    '0-12m', '12-18m', '18-24m', '24-36m', '36-50m', '50-75m', '75-100m',
+    '100-150m', '150m+'
 ]
 
-VESSEL_CLASS_INDICES = dict(
-    zip(VESSEL_CLASS_NAMES, range(len(VESSEL_CLASS_NAMES))))
+
+def vessel_categorical_length_transformer(vessel_length_string):
+    """ A transformer from continuous vessel lengths to discrete categories. """
+    ranges = [12.0, 18.0, 24.0, 36.0, 50.0, 75.0, 100.0, 150.0]
+
+    if vessel_length_string == '':
+        return ''
+
+    vessel_length = float(vessel_length_string)
+    for i in range(len(ranges)):
+        if vessel_length < ranges[i]:
+            return VESSEL_LENGTH_CLASSES[i]
+    return VESSEL_LENGTH_CLASSES[-1]
+
+
+FishingRange = namedtuple('FishingRange',
+                          ['start_time', 'end_time', 'is_fishing'])
 
 
 class ClusterNodeConfig(object):
@@ -47,9 +85,62 @@ class ClusterNodeConfig(object):
 
     @staticmethod
     def create_local_server_config():
-        return ClusterNodeConfig({"cluster": {},
-                                  "task": {"type": "worker",
-                                           "index": 0}})
+        return ClusterNodeConfig({
+            "cluster": {},
+            "task": {
+                "type": "master",
+                "index": 0
+            }
+        })
+
+
+def fishing_localisation_loss(logits, targets):
+    """A loss function for fishing localisation, which takes into account the
+       fact that we frequently do not have information about when fishing is
+       happening. Thus targets can be in the range 0 (not fishing) - 1 (fishing)
+       or it can take the value -1 to indicate don't know.
+    """
+    cross_entropies = tf.nn.sigmoid_cross_entropy_with_logits(logits, targets)
+
+    mask = tf.select(
+        tf.equal(targets, -1),
+        tf.zeros_like(
+            targets, dtype=tf.float32),
+        tf.ones_like(
+            targets, dtype=tf.float32))
+    input_size = tf.cast(tf.gather(tf.shape(logits), 1), tf.float32)
+
+    # Scale the sum of the loss by the number of present points in the
+    # target data, or 10% of the window size: whichever is the larger. Do this
+    # per sample (not across the batches).
+    loss_scale = tf.maximum(
+        tf.reduce_sum(
+            mask, reduction_indices=[1]), 0.1 * input_size)
+
+    return tf.reduce_mean(
+        tf.reduce_sum(
+            cross_entropies * mask, reduction_indices=[1]) / loss_scale)
+
+
+def fishing_localisation_mse(predictions, targets):
+    """Mean squared error for fishing localisation, which takes into account the
+       fact that we frequently do not have information about when fishing is
+       happening. Thus targets can be in the range 0 (not fishing) - 1 (fishing)
+       or it can take the value -1 to indicate don't know.
+    """
+    mask = tf.select(
+        tf.equal(targets, -1),
+        tf.zeros_like(
+            targets, dtype=tf.float32),
+        tf.ones_like(
+            targets, dtype=tf.float32))
+    scale = tf.reduce_sum(mask)
+
+    error = (predictions - targets) * mask
+    mse_sum = tf.reduce_sum(error * error)
+
+    return tf.cond(
+        tf.equal(scale, 0.0), lambda: scale, lambda: mse_sum / scale)
 
 
 def single_feature_file_reader(filename_queue, num_features):
@@ -72,9 +163,7 @@ def single_feature_file_reader(filename_queue, num_features):
     context_features, sequence_features = tf.parse_single_sequence_example(
         serialized_example,
         # Defaults are not specified since both keys are required.
-        context_features={
-            'mmsi': tf.FixedLenFeature([], tf.int64),
-        },
+        context_features={'mmsi': tf.FixedLenFeature([], tf.int64), },
         sequence_features={
             'movement_features': tf.FixedLenSequenceFeature(
                 shape=(num_features, ), dtype=tf.float32)
@@ -167,7 +256,8 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
   Returns:
     A tuple comprising:
       1. The extracted feature timeslice.
-      2. The start and end time of the timeslice (in int64 seconds since epoch).
+      2. The timestamps of each feature point.
+      3. The start and end time of the timeslice (in int32 seconds since epoch).
   """
     features = np_array_random_fixed_time_extract(
         random_state, input, max_time_delta, window_size, min_timeslice_size)
@@ -175,48 +265,48 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
     start_time = int(features[0][0])
     end_time = int(features[-1][0])
 
-    # Drop the first (timestamp) column.
-    features = features[:, 1:]
-
     # Roll the features randomly to give different offsets.
     roll = random_state.randint(0, window_size)
     features = np.roll(features, roll, axis=0)
 
+    # Drop the first (timestamp) column.
+    features = features[:, 1:]
+    timestamps = features[:, 0].astype(np.int32)
+
     if not np.isfinite(features).all():
         logging.fatal('Bad features: %s', features)
 
-    return features, np.array([start_time, end_time], dtype=np.int32)
+    return features, timestamps, np.array(
+        [start_time, end_time], dtype=np.int32)
 
 
-def np_array_extract_n_random_features(random_state, input, label, n,
-                                       max_time_delta, window_size,
-                                       min_timeslice_size):
+def np_array_extract_n_random_features(random_state, input, n, max_time_delta,
+                                       window_size, min_timeslice_size, mmsi):
     """ Extract and process multiple random timeslices from a vessel movement feature.
 
   Args:
     input: the input data as a 2d numpy array.
-    label: the label for the vessel which made this series.
+    training_labels: the label for the vessel which made this series.
     n: the (floating-point) number of times to extract a feature timeslice from
        this series.
 
   Returns:
     A tuple comprising:
-      1. An numpy array comprising N feature timeslices, of dimension
-          [n, 1, window_size, num_features].
-      2. A numpy array comprising timebounds for each slice, of dimension
-          [n, 2].
-      3. A numpy array with an int32 label for each slice, of dimension [n].
-
+      1. N extracted feature timeslices.
+      2. N lists of timestamps for each feature point.
+      3. N start and end times for each the timeslice.
+      4. N mmsis, one per feature slice.
   """
 
     samples = []
     int_n = int(n)
 
     def add_sample():
-        features, time_bounds = np_array_extract_features(
+        features, timestamps, time_bounds = np_array_extract_features(
             random_state, input, max_time_delta, window_size,
             min_timeslice_size)
-        samples.append((np.stack([features]), time_bounds, np.int32(label)))
+
+        samples.append((np.stack([features]), timestamps, time_bounds, mmsi))
 
     for _ in range(int_n):
         add_sample()
@@ -242,6 +332,7 @@ def cropping_weight_replicating_feature_file_reader(
         num_features: the dimensionality of the features.
         max_replication_factor: the maximum number of samples that can be drawn from a
           single vessel series, regardless of the weight specified.
+        fishing_ranges: a dictionary of fishing ranges per mmsi.
 
     Returns:
         A tuple comprising, for the n samples drawn for each vessel:
@@ -249,6 +340,7 @@ def cropping_weight_replicating_feature_file_reader(
                [n, 1, window_size, num_features].
             2. A tensor of the timebounds for the timeslices, of dimension [n, 2].
             3. A tensor of the labels for each timeslice, of dimension [n].
+            4. A tensor of the mmsis for each timeslice, of dimension [n].
     """
     context_features, sequence_features = single_feature_file_reader(
         filename_queue, num_features)
@@ -258,21 +350,21 @@ def cropping_weight_replicating_feature_file_reader(
     random_state = np.random.RandomState()
 
     def replicate_extract(input, mmsi):
-        string_label, weight = vessel_metadata[mmsi]
-        label = VESSEL_CLASS_INDICES[string_label]
+        weight = vessel_metadata.vessel_weight(mmsi)
+
         n = min(float(max_replication_factor), weight)
-        return np_array_extract_n_random_features(
-            random_state, input, label, n, max_time_delta, window_size,
-            min_timeslice_size)
+        return np_array_extract_n_random_features(random_state, input, n,
+                                                  max_time_delta, window_size,
+                                                  min_timeslice_size, mmsi)
 
-    features_list, time_bounds_list, label_list = tf.py_func(
+    (features_list, timestamps, time_bounds_list, mmsis) = tf.py_func(
         replicate_extract, [movement_features, mmsi],
-        [tf.float32, tf.int32, tf.int32])
+        [tf.float32, tf.int32, tf.int32, tf.int32])
 
-    return features_list, time_bounds_list, label_list
+    return features_list, timestamps, time_bounds_list, mmsis
 
 
-def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
+def np_array_extract_slices_for_time_ranges(random_state, input_series, num_features_inc_timestamp, mmsi,
                                             time_ranges, window_size,
                                             min_points_for_classification):
     """ Extract and process a set of specified time slices from a vessel
@@ -291,9 +383,11 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
       A tuple comprising:
         1. An numpy array comprising N feature timeslices, of dimension
             [n, 1, window_size, num_features].
-        2. A numpy array comprising timebounds for each slice, of dimension
+        2. A numpy array with the timestamps for each feature point, of
+           dimension [n, window_size].
+        3. A numpy array comprising timebounds for each slice, of dimension
             [n, 2].
-        3. A numpy array with an int32 mmsi for each slice, of dimension [n].
+        4. A numpy array with an int32 mmsi for each slice, of dimension [n].
 
     """
     slices = []
@@ -303,8 +397,8 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
         end_index = np.searchsorted(times, end_time, side='left')
         length = end_index - start_index
 
-        # Slice out the time window, removing the timestamp.
-        cropped = input_series[start_index:end_index, 1:]
+        # Slice out the time window.
+        cropped = input_series[start_index:end_index]
 
         # If this window is too long, pick a random subwindow.
         if (length > window_size):
@@ -316,14 +410,19 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, mmsi,
             output_slice = np_pad_repeat_slice(cropped, window_size)
 
             time_bounds = np.array([start_time, end_time], dtype=np.int32)
-            slices.append((np.stack([output_slice]), time_bounds, mmsi))
+
+            without_timestamp = output_slice[:, 1:]
+            timeseries = output_slice[:, 0].astype(np.int32)
+            slices.append(
+                (np.stack([without_timestamp]), timeseries, time_bounds, mmsi))
 
     if slices == []:
         # Return an appropriately shaped empty numpy array.
         return (np.empty(
-            [0, 1, window_size, 9], dtype=np.float32), np.empty(
-                shape=[0, 2], dtype=np.int32), np.empty(
-                    shape=[0], dtype=np.int32))
+            [0, 1, window_size, num_features_inc_timestamp - 1], dtype=np.float32), np.empty(
+                shape=[0, window_size], dtype=np.int32), np.empty(
+                    shape=[0, 2], dtype=np.int32), np.empty(
+                        shape=[0], dtype=np.int32))
 
     return zip(*slices)
 
@@ -344,8 +443,10 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
         A tuple comprising, for the n slices comprising each vessel:
           1. A tensor of the feature timeslices drawn, of dimension
              [n, 1, window_size, num_features].
-          2. A tensor of the timebounds for the timeslices, of dimension [n, 2].
-          3. A tensor of the labels for each timeslice, of dimension [n].
+          2. A tensor of the timestamps for each feature point of dimension
+             [n, window_size].
+          3. A tensor of the timebounds for the timeslices, of dimension [n, 2].
+          4. A tensor of the mmsis of each vessel of dimension [n].
 
     """
     context_features, sequence_features = single_feature_file_reader(
@@ -358,48 +459,99 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
 
     def replicate_extract(input, mmsi):
         return np_array_extract_slices_for_time_ranges(
-            random_state, input, mmsi, time_ranges, window_size,
+            random_state, input, num_features, mmsi, time_ranges, window_size,
             min_points_for_classification)
 
-    features_list, time_bounds_list, mmsis = tf.py_func(
+    features_list, timeseries, time_bounds_list, mmsis = tf.py_func(
         replicate_extract, [movement_features, mmsi],
-        [tf.float32, tf.int32, tf.int32])
+        [tf.float32, tf.int32, tf.int32, tf.int32])
 
-    return features_list, time_bounds_list, mmsis
+    return features_list, timeseries, time_bounds_list, mmsis
 
 
-def read_test_data(path):
-    test_mmsi = set()
-    with open(path, 'r') as f:
-        header = next(f).strip()
-        if header != "mmsi,label":
-            logging.fatal("unexpected header {}".format(header))
-            sys.exit(-1)
-        for l in f:
-            mmsi_str, label = [x.strip() for x in l.split(',')]
-            mmsi = int(mmsi_str)
-            test_mmsi.add(mmsi)
-    return test_mmsi
+def _hash_mmsi_to_double(mmsi, salt=''):
+    """Take a value and hash it to return a value in the range [0, 1.0).
+     To be used as a deterministic probability for vessel dataset
+     assignment: e.g. if we decide vessels should go in the training set at
+     probability 0.2, then we map from mmsi to a probability, then if the value
+     is <= 0.2 we assign this vessel to the training set.
+    Args:
+        mmsi: the input MMSI as an integer.
+        salt: a salt concatenated to the mmsi to allow more than one value to be
+                    generated per mmsi.
+    Returns:
+        A value in the range [0, 1.0).
+    """
+    hasher = hashlib.md5()
+    i = '%s_%s' % (mmsi, salt)
+    hasher.update(i)
 
-def read_vessel_metadata_file_lines(available_mmsis, lines):
+    # Pick a number of bytes from the bottom of the hash, and scale the value
+    # by the max value that an unsigned integer of that size can have, to get a
+    # value in the range [0, 1.0)
+    hash_bytes_for_value = 4
+    hash_value = struct.unpack('I', hasher.digest()[:hash_bytes_for_value])[0]
+    sample = float(hash_value) / math.pow(2.0, hash_bytes_for_value * 8)
+    assert sample >= 0.0
+    assert sample <= 1.0
+    return sample
+
+
+class VesselMetadata(object):
+    def __init__(self,
+                 metadata_dict,
+                 fishing_ranges_map,
+                 fishing_range_training_upweight=1.0):
+        self.metadata_by_split = metadata_dict
+        self.metadata_by_mmsi = {}
+        self.fishing_ranges_map = fishing_ranges_map
+        self.fishing_range_training_upweight = fishing_range_training_upweight
+        for split, vessels in metadata_dict.iteritems():
+            for mmsi, data in vessels.iteritems():
+                self.metadata_by_mmsi[mmsi] = data
+
+        intersection_mmsis = set(self.metadata_by_mmsi.keys()).intersection(
+            set(fishing_ranges_map.keys()))
+        logging.info("Metadata for %d mmsis." % len(self.metadata_by_mmsi))
+        logging.info("Fishing ranges for %d mmsis." % len(fishing_ranges_map))
+        logging.info("Vessels with both types of data: %d",
+                     len(intersection_mmsis))
+
+    def vessel_weight(self, mmsi):
+        if mmsi in self.fishing_ranges_map:
+            fishing_range_multiplier = self.fishing_range_training_upweight
+        else:
+            fishing_range_multiplier = 1.0
+
+        return self.metadata_by_mmsi[mmsi][1] * fishing_range_multiplier
+
+    def vessel_label(self, label_name, mmsi):
+        return self.metadata_by_mmsi[mmsi][0][label_name]
+
+    def mmsis_for_split(self, split):
+        return self.metadata_by_split[split].keys()
+
+
+def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
+                                          fishing_range_dict,
+                                          fishing_range_training_upweight):
     """ For a set of vessels, read metadata and calculate class weights.
 
     Args:
         available_mmsis: a set of all mmsis for which we have feature data.
         lines: a list of comma-separated vessel metadata lines. Columns are
-            the mmsi, the split (train/test) and the vessel type
+            the mmsi and a set of vessel type columns, containing at least one
+            called 'label' being the primary/coarse type of the vessel e.g.
             (Longliner/Passenger etc.).
 
     Returns:
-        A dictionary from data split (training/test) to a dictionary from
-        mmsi to the type and weight for a vessel.
+        A VesselMetadata object with weights and labels for each vessel.
     """
 
-    # Build a list of vessels + split + and vessel type. Count the occurrence
-    # of each vessel type per split.
     vessel_type_set = set()
     dataset_kind_counts = defaultdict(lambda: defaultdict(lambda: 0))
     vessel_types = []
+<<<<<<< HEAD
     for line in lines[1:]:
         mmsi_str, split, vessel_type = [x.strip() for x in line.split(',')]
         mmsi = int(mmsi_str)
@@ -407,6 +559,23 @@ def read_vessel_metadata_file_lines(available_mmsis, lines):
             vessel_types.append((mmsi, split, vessel_type))
             dataset_kind_counts[split][vessel_type] += 1
             vessel_type_set.add(vessel_type)
+=======
+
+    # Build a list of vessels + split + and vessel type. Calculate the split on
+    # the fly, but deterministically. Count the occurrence of each vessel type
+    # per split.
+    for row in lines:
+        mmsi = int(row['mmsi'])
+        coarse_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
+        if mmsi in available_mmsis and coarse_vessel_type:
+            if (_hash_mmsi_to_double(mmsi) >= 0.5):
+                split = 'Test'
+            else:
+                split = 'Training'
+            vessel_types.append((mmsi, split, coarse_vessel_type, row))
+            dataset_kind_counts[split][coarse_vessel_type] += 1
+            vessel_type_set.add(coarse_vessel_type)
+>>>>>>> master
 
     # Calculate weights for each vessel type per split: the weight is the count
     # of the most frequent vessel type divided by the count for the current
@@ -415,14 +584,14 @@ def read_vessel_metadata_file_lines(available_mmsis, lines):
     dataset_kind_weights = defaultdict(lambda: {})
     for split, counts in dataset_kind_counts.iteritems():
         max_count = max(counts.values())
-        for vessel_type, count in counts.iteritems():
-            dataset_kind_weights[split][vessel_type] = float(
+        for coarse_vessel_type, count in counts.iteritems():
+            dataset_kind_weights[split][coarse_vessel_type] = float(
                 max_count) / float(count)
 
     metadata_dict = defaultdict(lambda: {})
-    for mmsi, split, vessel_type in vessel_types:
-        metadata_dict[split][mmsi] = (vessel_type,
-                                      dataset_kind_weights[split][vessel_type])
+    for mmsi, split, coarse_vessel_type, row in vessel_types:
+        metadata_dict[split][mmsi] = (
+            row, dataset_kind_weights[split][coarse_vessel_type])
 
     if len(vessel_type_set) == 0:
         logging.fatal('No vessel types found for training.')
@@ -430,9 +599,69 @@ def read_vessel_metadata_file_lines(available_mmsis, lines):
 
     logging.info("Vessel types: %s", list(vessel_type_set))
 
-    return metadata_dict
+    return VesselMetadata(metadata_dict, fishing_range_dict,
+                          fishing_range_training_upweight)
 
 
-def read_vessel_metadata(available_mmsis, metadata_file):
+def read_vessel_multiclass_metadata(available_mmsis,
+                                    metadata_file,
+                                    fishing_range_dict={},
+                                    fishing_range_training_upweight=1.0):
     with open(metadata_file, 'r') as f:
-        return read_vessel_metadata_file_lines(available_mmsis, f.readlines())
+        reader = csv.DictReader(f)
+        logging.info("Metadata columns: %s", reader.fieldnames)
+        return read_vessel_multiclass_metadata_lines(
+            available_mmsis, reader, fishing_range_dict,
+            fishing_range_training_upweight)
+
+
+def find_available_mmsis(feature_path):
+    # TODO(alexwilson): Using a temporary session to get the matching files on
+    # GCS is far from ideal. However the alternative is to bring in additional
+    # libraries with explicit auth that may or may not play nicely with CloudML.
+    # Improve later...
+    mmsi_cache_filename = "available_mmsis.cache"
+    if os.path.exists(mmsi_cache_filename):
+        with nlj.open(mmsi_cache_filename, 'r') as cache:
+            for line in cache:
+                if line["path"] == feature_path:
+                    logging.info("Loading mmsis from cache.")
+                    return set(line['mmsis'])
+
+    with tf.Session() as sess:
+        logging.info(
+            "Finding matching features files. May take a few minutes...")
+        matching_files = tf.train.match_filenames_once(feature_path +
+                                                       "/*.tfrecord")
+        sess.run(tf.initialize_all_variables())
+
+        all_feature_files = sess.run(matching_files)
+        if len(all_feature_files) == 0:
+            logging.fatal("Error: no feature files found.")
+            sys.exit(-1)
+        logging.info("Found %d feature files.", len(all_feature_files))
+
+    mmsis = [int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files]
+    with nlj.open(mmsi_cache_filename, 'a') as cache:
+        cache.write({"path": feature_path, "mmsis": mmsis})
+
+    return set(mmsis)
+
+
+def read_fishing_ranges(fishing_range_file):
+    """ Read vessel fishing ranges, return a dict of mmsi to classified fishing
+        or non-fishing ranges for that vessel.
+    """
+    fishing_range_dict = defaultdict(lambda: [])
+    with open(fishing_range_file, 'r') as f:
+        for l in f.readlines()[1:]:
+            els = l.split(',')
+            mmsi = int(els[0])
+            start_time = dateutil.parser.parse(els[1])
+            end_time = dateutil.parser.parse(els[2])
+            is_fishing = float(els[3])
+
+            fishing_range_dict[mmsi].append(
+                FishingRange(start_time, end_time, is_fishing))
+
+    return fishing_range_dict

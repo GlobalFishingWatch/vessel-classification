@@ -6,6 +6,7 @@ import math
 import os
 from pkg_resources import resource_filename
 import sys
+from . import model
 from . import utility
 from .trainer import Trainer
 import importlib
@@ -54,54 +55,38 @@ def main(args):
     except:
         logging.fatal("Could not load model: {}".format(module))
         raise
+
     metadata_file = os.path.abspath(
-        resource_filename('classification.data',
-                          'combined_classification_list.csv'))
+        resource_filename('classification.data', 'net_training_20161016.csv'))
     if not os.path.exists(metadata_file):
-        logging.fatal("Could not find metadata file: %s.", metadata_file) 
+        logging.fatal("Could not find metadata file: %s.", metadata_file)
         sys.exit(-1)
 
-    # Determine the MMIS in the final test set and exclude them from the
-    # available MMSIs so that they aren't used for test or validation.
-    test_data_file = os.path.abspath(
-                resource_filename('classification.data',
-                          'test_list.csv'))
-    if not os.path.exists(test_data_file):
-        logging.fatal("Could not find test_data file: %s.", test_data_file)
+    fishing_range_file = os.path.abspath(
+        resource_filename('classification.data',
+                          'combined_fishing_ranges.csv'))
+    if not os.path.exists(fishing_range_file):
+        logging.fatal("Could not find fishing range file: %s.",
+                      fishing_range_file)
         sys.exit(-1)
-    test_mmsi = utility.read_test_data(test_data_file)
 
-    # TODO(alexwilson): Using a temporary session to get the matching files on
-    # GCS is far from ideal. However the alternative is to bring in additional
-    # libraries with explicit auth that may or may not play nicely with CloudML.
-    # Improve later...
-    with tf.Session() as sess:
-        logging.info(
-            "Finding matching features files. May take a few minutes...")
-        matching_files = tf.train.match_filenames_once(args.root_feature_path +
-                                                       "/*.tfrecord")
-        sess.run(tf.initialize_all_variables())
+    fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
 
-        all_feature_files = sess.run(matching_files)
-        if len(all_feature_files) == 0:
-            logging.fatal("Error: no feature files found.")
-            sys.exit(-1)
-        logging.info("Found %d feature files.", len(all_feature_files))
+    all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
 
-    all_available_mmsis = set(
-        [int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files])
+    vessel_metadata = utility.read_vessel_multiclass_metadata(
+        all_available_mmsis, metadata_file,
+        fishing_ranges, int(args.fishing_range_training_upweight))
 
-    nontest_mmsi = all_available_mmsis - test_mmsi
+    feature_dimensions = int(args.feature_dimensions)
+    chosen_model = Model(feature_dimensions, vessel_metadata)
 
-    vessel_metadata = utility.read_vessel_metadata(nontest_mmsi,
-                                                   metadata_file)
-
-    model = Model()
-    trainer = Trainer(model, vessel_metadata, args.root_feature_path,
+    trainer = Trainer(chosen_model, args.root_feature_path,
                       args.training_output_path)
 
     config = json.loads(os.environ.get('TF_CONFIG', '{}'))
     if (config == {}):
+        logging.info("Running locally, training only...")
         node_config = utility.ClusterNodeConfig.create_local_server_config()
         server = tf.train.Server.create_local_server()
         run_training(node_config, server, trainer)
@@ -129,6 +114,16 @@ def parse_args():
         '--training_output_path',
         required=True,
         help='The working path for model statistics and checkpoints.')
+
+    argparser.add_argument(
+        '--feature_dimensions',
+        required=True,
+        help='The number of dimensions of a classification feature.')
+
+    argparser.add_argument(
+        '--fishing_range_training_upweight',
+        default=1.0,
+        help='The amount to upweight vessels that have fishing ranges when training.')
 
     return argparser.parse_args()
 

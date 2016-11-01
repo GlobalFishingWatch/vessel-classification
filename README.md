@@ -4,15 +4,63 @@ Vessel classification pipeline: feature generation and model training/inference.
 
 [![Build Status](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline.svg?branch=master)](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline)
 
+# Data layout
+
+The production classification pipeline has multiple stages, computing: feature generation, port
+inference, encounters, model training, vessel type inference, fishing locality inference, accuracy
+evaluation. This is implemented in several stages, each requiring outputs to GCS. In addition we
+run experiments of our own to improve or develop the pipeline further. We need the data to be laid
+out systematically on GCS. Currently we use the following structure:
+
+* `world-fishing-827/data-production` (prod)
+  * `classification`
+    * `<date> or <job name>`
+      * `pipeline` (for cloud dataflow pipeline output)
+        * `staging` (for the various files required for runs, e.g. dataflow jars).
+        * `output` (for the output from the dataflow pipeline).
+      * `inference` (for the output from inference + the eval framework).
+* `world-fishing-827-dev-ttl30d/data-production` (dev)
+    * `classification`
+      * `alex`
+        * `<job name>`
+          * A mirror of the files you see under `production`.
+          * Plus a new directory `models`
+      * `tim`
+      * etc...
+
+Here, we have a production pipeline running under (probably) cron, generating new results daily to
+(`world-fishing-827/data-production`).
+We have tight control over the code that's pushed to run on production (probably via a Docker image
+registered on GCR).
+
+We then have a dev directory (`world-fishing-827-dev-ttl30d/data-production`). Anything we're trying
+that hasn't yet hit production will end up in a `dev/<username>` directory, mirroring the
+directories in prod but isolated from prod and from other developer's experiments. This directory
+has a TTL set on all contents such that anything that is older than 30 days will be automatically
+deleted (to keep our GCS costs low and prevent infinite accumulation of experiments).
+
+I further propose we have also have a subdirectory under `dev`: `models` (or some other name) where
+we experiment with and train new models. Given our models are quite small, I would be inclined to
+package them in the Docker images we deploy rather than store them on GCS. We could commit the
+latest model files to git.
+
+## Common parameters
+
+In order to support the above layout, all our programs need the following common parameters:
+
+* `env`: to specify the environment - either development or production.
+* `job-name`: for the name (or date) of the current job.
+* Additionally if the job is a dev job, the programs will read the $USER environment variable
+  in order to be able to choose the appropriate subdirectory for the output data.
+
 # Developing
 
-* Code is to be formatted using [YAPF](https://github.com/google/yapf) before submission. Use `yapf -r -i .` in top level
-  directory.
+* Code is to be formatted using [YAPF](https://github.com/google/yapf) before submission. See YAPF section below.
 
 
-# Building
+# Setup and building
 
-## Requirements
+## Summary of Requirements
 
 * A JVM.
 * A proto3-compatible version of protoc. See: [protocol buffers](https://developers.google.com/protocol-buffers/).
@@ -58,6 +106,16 @@ To install the dependencies:
 
 * `sudo pip install google-api-python-client pyyaml`
 
+## YAPF
+
+[YAPF](https://github.com/google/yapf) is a code formatter for Python. All our python code should
+be autoformatted with YAPF before committing. To install it, run:
+
+* `sudo pip install yapf`
+
+Run `yapf -r -i .` in the top level directory to fix the format of the full project.
+
+
 ## Deployment
 
 Some of our jobs are run on managed services (for instance the feature pipeline on Cloud Dataflow, the
@@ -68,6 +126,12 @@ To build and deploy inference, from the root directory:
 * `docker build -f deploy/inference/Dockerfile .`
 
 
+# Adding new models
+
+* Create a directory in classification/classification/models with the model name (usually the developer name)
+* Add the model to setup.py
+
+
 # Running jobs
 
 * Compute Engine.
@@ -75,11 +139,12 @@ To build and deploy inference, from the root directory:
   * Sign in: `gcloud auth application-default login`.
 * Cloud Dataflow
    * From the sbt console:
-   * Run jobs, specifying the zone and max number of workers, e.g. `run --zone=europe-west1-c  --maxNumWorkers=80`.
+   * Run jobs, specifying the zone and max number of workers, e.g.
+     `run --zone=europe-west1-c  --maxNumWorkers=80 --job-name=new_pipeline_features --env=dev`.
 * Running TF locally:
    * Training:
        - `python -m classification.run_training alex.vessel_classification <...>`
 * Cloud ML
    * Training:
-       - `./deploy_cloudml.py alex.vessel_classification`
-       - `./deploy_cloudml.py tim.tmodel_1`
+       - `./deploy_cloudml.py --model_name alex.vessel_classification --env dev --job_name test2`
+       - `./deploy_cloudml.py --model_name tim.tmodel_1 --env dev --job_name test2`

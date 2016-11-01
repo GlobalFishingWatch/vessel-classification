@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
+from common.gcp_config import GcpConfig
 import yaml
 import json
 import time
@@ -25,33 +26,32 @@ from oauth2client.client import GoogleCredentials
 from googleapiclient import discovery
 import tempfile
 
-project_id = 'world-fishing-827'
 
-
-def launch(model_name):
+def launch(environment, model_name, job_name):
     # Read the configuration file so that we 
     # know the train path and don't need to
     # hardcode it here
     with open("deploy_cloudml_config_template.txt") as f:
         config_template = f.read()
 
-    time_stamp = datetime.datetime.utcnow().strftime('%y%m%d_%H%M%S')
-    job_id = model_name.replace('.', '_') + '_' + time_stamp
+    gcp = GcpConfig.make_from_env_name(environment, job_name)
 
-    config_txt = config_template.format(model_name=model_name, job_id=job_id)
+    config_txt = config_template.format(
+        output_path=gcp.model_path(), model_name=model_name)
 
-    staging_path = "gs://world-fishing-827/scratch/classification/%s/%s" % (
-        model_name, job_id)
+    timestamp = gcp.start_time.strftime('%Y%m%dT%H%M%S')
+    job_id = ('%s_%s_%s' % (job_name, model_name, timestamp)).replace('.', '_')
 
     # Kick off the job on CloudML
     with tempfile.NamedTemporaryFile() as temp:
         temp.write(config_txt)
         temp.flush()
-        subprocess.check_call(
-            ['gcloud', 'beta', 'ml', 'jobs', 'submit', 'training', job_id,
-             '--config', temp.name, '--module-name',
-             'classification.run_training', '--staging-bucket',
-             'gs://world-fishing-827-ml', '--package-path', 'classification'])
+        subprocess.check_call([
+            'gcloud', 'beta', 'ml', 'jobs', 'submit', 'training', job_id,
+            '--config', temp.name, '--module-name',
+            'classification.run_training', '--staging-bucket',
+            'gs://world-fishing-827-ml', '--package-path', 'classification'
+        ])
 
     return job_id
 
@@ -73,8 +73,10 @@ def print_logs(job_id, level="INFO"):
     #                   discoveryServiceUrl='https://storage.googleapis.com/cloud-ml/discovery/ml_v1alpha3_discovery.json')
     # op_name = ('projects/%s/operations/%s' % (project_id, job_id))
 
-    tail = ['gcloud', 'beta', 'logging', 'read', '--format=json',
-            'labels."ml.googleapis.com/job_id"="%s"' % (job_id, )]
+    tail = [
+        'gcloud', 'beta', 'logging', 'read', '--format=json',
+        'labels."ml.googleapis.com/job_id"="%s"' % (job_id, )
+    ]
     while True:
         entries = json.loads(subprocess.check_output(tail))
 
@@ -99,8 +101,9 @@ def print_logs(job_id, level="INFO"):
                     print("Uninterpretable log entry:", entry)
                     continue
                 print(text)
-                if text.strip() in ["Job failed.",
-                                    "Job completed successfully."]:
+                if text.strip() in [
+                        "Job failed.", "Job completed successfully."
+                ]:
                     return
         last_timestamp = entries[-1]['timestamp']
 
@@ -111,9 +114,11 @@ def print_logs(job_id, level="INFO"):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Deploy ML Training.')
-    parser.add_argument('model_name', help='module name of model')
+    parser.add_argument('--env', help='environment for run: prod/dev.')
+    parser.add_argument('--model_name', help='module name of model.')
+    parser.add_argument('--job_name', help='unique name for this job.')
 
     args = parser.parse_args()
 
-    job_id = launch(args.model_name)
+    job_id = launch(args.env, args.model_name, args.job_name) + '_2'
     print_logs(job_id)

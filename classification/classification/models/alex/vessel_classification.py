@@ -2,7 +2,8 @@ from __future__ import absolute_import
 import argparse
 import json
 from . import layers
-from classification.model import ModelBase, TrainNetInfo
+from classification import utility
+from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective
 import logging
 import math
 import os
@@ -16,41 +17,69 @@ class Model(ModelBase):
 
     window_size = 3
     stride = 2
-    feature_depth = 20
+    feature_depth = 50
     levels = 10
+
+    def __init__(self, num_feature_dimensions, vessel_metadata):
+        super(self.__class__, self).__init__(num_feature_dimensions,
+                                             vessel_metadata)
+
+        self.training_objectives = [
+            make_vessel_label_objective(vessel_metadata, 'is_fishing',
+                                        'Fishing', ['Fishing', 'Non-fishing']),
+            make_vessel_label_objective(
+                vessel_metadata, 'label', 'Vessel class',
+                utility.VESSEL_CLASS_NAMES), make_vessel_label_objective(
+                    vessel_metadata, 'sublabel', 'Vessel detailed class',
+                    utility.VESSEL_CLASS_DETAILED_NAMES),
+            make_vessel_label_objective(
+                vessel_metadata,
+                'length',
+                'Vessel length',
+                utility.VESSEL_LENGTH_CLASSES,
+                transformer=utility.vessel_categorical_length_transformer)
+        ]
 
     def zero_pad_features(self, features):
         """ Zero-pad features in the depth dimension to match requested feature depth. """
 
         feature_pad_size = self.feature_depth - self.num_feature_dimensions
         assert (feature_pad_size >= 0)
-        zero_padding = tf.zeros([self.batch_size, 1, self.window_max_points,
-                                 feature_pad_size])
+        zero_padding = tf.zeros(
+            [self.batch_size, 1, self.window_max_points, feature_pad_size])
         padded = tf.concat(3, [features, zero_padding])
 
         return padded
 
-    def build_training_net(self, features, labels):
-
-        features = self.zero_pad_features(features)
-        one_hot_labels = slim.one_hot_encoding(labels, self.num_classes)
-
-        logits = layers.misconception_model(
-            features, self.window_size, self.stride, self.feature_depth,
-            self.levels, self.num_classes, True)
-
-        loss = slim.losses.softmax_cross_entropy(logits, one_hot_labels)
-
-        optimizer = tf.train.AdamOptimizer(2e-5)
-
-        return TrainNetInfo(loss, optimizer, logits)
-
-    def build_inference_net(self, features):
+    def build_training_net(self, features, timestamps, mmsis):
 
         features = self.zero_pad_features(features)
 
-        logits = layers.misconception_model(
+        logits_list = layers.misconception_model(
             features, self.window_size, self.stride, self.feature_depth,
-            self.levels, self.num_classes, False)
+            self.levels, self.training_objectives, True)
 
-        return logits
+        trainers = []
+        for i in range(len(self.training_objectives)):
+            trainers.append(self.training_objectives[i].build_trainer(
+                logits_list[i], timestamps, mmsis))
+
+        optimizer = tf.train.AdamOptimizer(1e-5)
+
+        return TrainNetInfo(optimizer, trainers)
+
+    def build_inference_net(self, features, timestamps, mmsis):
+
+        features = self.zero_pad_features(features)
+
+        logits_list = layers.misconception_model(
+            features, self.window_size, self.stride, self.feature_depth,
+            self.levels, self.training_objectives, False)
+
+        evaluations = []
+        for i in range(len(self.training_objectives)):
+            to = self.training_objectives[i]
+            logits = logits_list[i]
+            evaluations.append(to.build_evaluation(logits))
+
+        return evaluations

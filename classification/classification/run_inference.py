@@ -2,24 +2,30 @@ from __future__ import absolute_import
 
 import argparse
 import datetime
+import gzip
 import importlib
 import logging
+import newlinejson as nlj
+import numpy as np
+import os
+from pkg_resources import resource_filename
 import pytz
 import tensorflow.contrib.slim as slim
 import tensorflow as tf
 import time
+from . import model
 from . import utility
 
 
 class Inferer(object):
-    def __init__(self, model, model_checkpoint_path,
-                 unclassified_feature_path):
+    def __init__(self, model, model_checkpoint_path, root_feature_path, mmsis):
 
         self.model = model
         self.model_checkpoint_path = model_checkpoint_path
-        self.unclassified_feature_path = unclassified_feature_path
+        self.root_feature_path = root_feature_path
         self.batch_size = self.model.batch_size
         self.min_points_for_classification = 250
+        self.mmsis = mmsis
 
         def _build_starts():
             today = datetime.datetime.now(pytz.utc)
@@ -39,10 +45,14 @@ class Inferer(object):
         self.time_ranges = [(s, e)
                             for (s, e) in zip(time_starts, time_starts[2:])]
 
+    def _feature_files(self, split):
+        return [
+            '%s/%d.tfrecord' % (self.root_feature_path, mmsi)
+            for mmsi in self.mmsis
+        ]
+
     def run_inference(self, inference_parallelism, inference_results_path):
-        matching_files_i = tf.matching_files(self.unclassified_feature_path)
-        matching_files = tf.Print(matching_files_i, [matching_files_i],
-                                  "Files: ")
+        matching_files = self._feature_files(self.mmsis)
         filename_queue = tf.train.input_producer(
             matching_files, shuffle=False, num_epochs=1)
 
@@ -54,20 +64,20 @@ class Inferer(object):
                 self.min_points_for_classification)
             readers.append(reader)
 
-        features, time_ranges, mmsis = tf.train.batch_join(
+        features, timestamps, time_ranges, mmsis = tf.train.batch_join(
             readers,
             self.batch_size,
             enqueue_many=True,
             capacity=1000,
-            shapes=[[1, self.model.window_max_points,
-                     self.model.num_feature_dimensions], [2], []])
+            shapes=[[
+                1, self.model.window_max_points,
+                self.model.num_feature_dimensions
+            ], [self.model.window_max_points], [2], []])
 
-        logits = self.model.build_inference_net(features)
+        objectives = self.model.build_inference_net(features, timestamps,
+                                                    mmsis)
 
-        softmax = slim.softmax(logits)
-
-        predictions = tf.cast(tf.argmax(softmax, 1), tf.int32)
-        max_probabilities = tf.reduce_max(softmax, [1])
+        all_predictions = [o.prediction for o in objectives]
 
         # Open output file, on cloud storage - so what file api?
         config = tf.ConfigProto(
@@ -90,26 +100,33 @@ class Inferer(object):
             # be terminated when an EOF exception is thrown.
             logging.info("Running predictions.")
             i = 0
-            with open(inference_results_path, 'w') as output_file:
+            with nlj.open(gzip.GzipFile(inference_results_path, 'w'),
+                          'w') as output_nlj:
                 while True:
                     logging.info("Inference step: %d", i)
                     i += 1
-                    result = sess.run(
-                        [mmsis, time_ranges, predictions, max_probabilities])
-                    for mmsi, (
-                            start_time_seconds,
-                            end_time_seconds), label, max_probability in zip(
-                                *result):
+                    batch_results = sess.run([mmsis, time_ranges] +
+                                             all_predictions)
+                    for result in zip(*batch_results):
+                        mmsi = result[0]
+                        (start_time_seconds, end_time_seconds) = result[1]
+                        predictions = result[2:]
+
                         start_time = datetime.datetime.utcfromtimestamp(
                             start_time_seconds)
                         end_time = datetime.datetime.utcfromtimestamp(
                             end_time_seconds)
-                        output_file.write('%d, %s, %s, %s, %.3f\n' % (
-                            mmsi, start_time.isoformat(), end_time.isoformat(),
-                            utility.VESSEL_CLASS_NAMES[label],
-                            max_probability))
 
-            # Write predictions to file: mmsi, max_feature, logits.
+                        labels = dict(
+                            [(o.metadata_label, o.build_json_results(p))
+                             for (o, p) in zip(objectives, predictions)])
+
+                        output_nlj.write({
+                            'mmsi': int(mmsi),
+                            'start_time': start_time.isoformat(),
+                            'end_time': end_time.isoformat(),
+                            'labels': labels
+                        })
 
 
 def main(args):
@@ -117,9 +134,37 @@ def main(args):
     tf.logging.set_verbosity(tf.logging.DEBUG)
 
     model_checkpoint_path = args.model_checkpoint_path
-    unclassified_feature_path = args.unclassified_feature_path
+    root_feature_path = args.root_feature_path
     inference_results_path = args.inference_results_path
     inference_parallelism = args.inference_parallelism
+
+    all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
+
+    if args.dataset_split:
+        if args.dataset_split in ['Training', 'Test']:
+            metadata_file = os.path.abspath(
+                resource_filename('classification.data',
+                                  'net_training_20161016.csv'))
+            if not os.path.exists(metadata_file):
+                logging.fatal("Could not find metadata file: %s.",
+                              metadata_file)
+                sys.exit(-1)
+
+            vessel_metadata = utility.read_vessel_multiclass_metadata(
+                all_available_mmsis, metadata_file)
+
+            mmsis = set(vessel_metadata.mmsis_for_split(args.dataset_split))
+        else:
+            mmsis_file = os.path.abspath(
+                resource_filename('classification.data', args.dataset_split))
+            if not os.path.exists(mmsis_file):
+                logging.fatal("Could not find mmsis file: %s.",
+                              args.dataset_split)
+                sys.exit(-1)
+            with open(mmsis_file, 'r') as f:
+                mmsis = set([int(m) for m in f])
+    else:
+        mmsis = all_available_mmsis
 
     module = "classification.models.{}".format(args.model_name)
     try:
@@ -128,9 +173,11 @@ def main(args):
         logging.error("Could not load model: {}".format(module))
         raise
 
-    model = Model()
-    infererer = Inferer(model, model_checkpoint_path,
-                        unclassified_feature_path)
+    feature_dimensions = int(args.feature_dimensions)
+    chosen_model = Model(feature_dimensions, None)
+
+    infererer = Inferer(chosen_model, model_checkpoint_path, root_feature_path,
+                        mmsis)
     infererer.run_inference(inference_parallelism, inference_results_path)
 
 
@@ -142,9 +189,9 @@ def parse_args():
     argparser.add_argument('model_name')
 
     argparser.add_argument(
-        '--unclassified_feature_path',
+        '--root_feature_path',
         required=True,
-        help='The path to the unclassified vessel movement feature directories.')
+        help='The path to the vessel movement feature directories.')
 
     argparser.add_argument(
         '--model_checkpoint_path',
@@ -161,6 +208,19 @@ def parse_args():
         type=int,
         default=4,
         help='Path to the csv file to dump all inference results.')
+
+    argparser.add_argument(
+        '--dataset_split',
+        type=str,
+        default='',
+        help='Data split to classify. If unspecified, all vessels. Otherwise '
+        'if Training or Test, read from built-in training/test split, '
+        'otherwise the name of a single-column csv file of mmsis.')
+
+    argparser.add_argument(
+        '--feature_dimensions',
+        required=True,
+        help='The number of dimensions of a classification feature.')
 
     return argparser.parse_args()
 

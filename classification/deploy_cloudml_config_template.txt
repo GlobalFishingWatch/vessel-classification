@@ -1,12 +1,14 @@
 trainingInput:
   args: [
     "{model_name}",
-    "--root_feature_path", "gs://alex-dataflow-scratch/features-scratch/20161003T203417Z",
-    "--training_output_path", "gs://world-fishing-827/scratch/classification/{model_name}/{job_id}"]
+    "--feature_dimensions", "11",
+    "--root_feature_path", "gs://alex-dataflow-scratch/features-scratch/new_features_ports_anchorage/20161018T153546Z/features",
+    "--training_output_path", "{output_path}/{model_name}",
+    "--fishing_range_training_upweight", "1"]
   scaleTier: CUSTOM
   masterType: "standard"
   parameterServerType: "standard"
   workerType: "large_model"
-  workerCount: 10
+  workerCount: 4
   parameterServerCount: 1
   region: us-central1
