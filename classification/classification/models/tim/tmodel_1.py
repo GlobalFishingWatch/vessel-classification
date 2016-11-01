@@ -16,7 +16,7 @@ TowerParams = namedtuple("TowerParams", [
 
 class Model(ModelBase):
 
-    initial_learning_rate = 0.01
+    initial_learning_rate = 0.1
     learning_decay_rate = 0.99
     decay_examples = 10000
     momentum = 0.9
