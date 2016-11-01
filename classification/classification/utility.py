@@ -273,8 +273,8 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
     features = np.roll(features, roll, axis=0)
 
     # Drop the first (timestamp) column.
-    features = features[:, 1:]
     timestamps = features[:, 0].astype(np.int32)
+    features = features[:, 1:]
 
     if not np.isfinite(features).all():
         logging.fatal('Bad features: %s', features)
