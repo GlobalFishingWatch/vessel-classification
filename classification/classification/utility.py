@@ -34,6 +34,9 @@ VESSEL_LENGTH_CLASSES = [
     '100-150m', '150m+'
 ]
 
+TEST_SPLIT = 'Test'
+TRAINING_SPLIT = 'Training'
+
 
 def vessel_categorical_length_transformer(vessel_length_string):
     """ A transformer from continuous vessel lengths to discrete categories. """
@@ -88,7 +91,7 @@ class ClusterNodeConfig(object):
         return ClusterNodeConfig({
             "cluster": {},
             "task": {
-                "type": "master",
+                "type": "worker",
                 "index": 0
             }
         })
@@ -350,9 +353,7 @@ def cropping_weight_replicating_feature_file_reader(
     random_state = np.random.RandomState()
 
     def replicate_extract(input, mmsi):
-        weight = vessel_metadata.vessel_weight(mmsi)
-
-        n = min(float(max_replication_factor), weight)
+        n = 4.0
         return np_array_extract_n_random_features(random_state, input, n,
                                                   max_time_delta, window_size,
                                                   min_timeslice_size, mmsi)
@@ -364,9 +365,9 @@ def cropping_weight_replicating_feature_file_reader(
     return features_list, timestamps, time_bounds_list, mmsis
 
 
-def np_array_extract_slices_for_time_ranges(random_state, input_series, num_features_inc_timestamp, mmsi,
-                                            time_ranges, window_size,
-                                            min_points_for_classification):
+def np_array_extract_slices_for_time_ranges(
+        random_state, input_series, num_features_inc_timestamp, mmsi,
+        time_ranges, window_size, min_points_for_classification):
     """ Extract and process a set of specified time slices from a vessel
         movement feature.
 
@@ -419,7 +420,8 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, num_feat
     if slices == []:
         # Return an appropriately shaped empty numpy array.
         return (np.empty(
-            [0, 1, window_size, num_features_inc_timestamp - 1], dtype=np.float32), np.empty(
+            [0, 1, window_size, num_features_inc_timestamp - 1],
+            dtype=np.float32), np.empty(
                 shape=[0, window_size], dtype=np.int32), np.empty(
                     shape=[0, 2], dtype=np.int32), np.empty(
                         shape=[0], dtype=np.int32))
@@ -530,6 +532,32 @@ class VesselMetadata(object):
 
     def mmsis_for_split(self, split):
         return self.metadata_by_split[split].keys()
+
+    def weighted_training_list(self, random_state, split,
+                               max_replication_factor):
+        replicated_mmsis = []
+        logging.info("Training mmsis: %d",
+                     len(self.metadata_by_split[split].keys()))
+        fishing_ranges_mmsis = []
+        for mmsi, (rows, weight) in self.metadata_by_split[split].iteritems():
+
+            if mmsi in self.fishing_ranges_map:
+                fishing_ranges_mmsis.append(mmsi)
+                weight = weight * self.fishing_range_training_upweight
+
+            weight = min(weight, max_replication_factor)
+
+            int_n = int(weight)
+            replicated_mmsis = replicated_mmsis + ([mmsi] * int_n)
+            frac_n = weight - float(int_n)
+            if (random_state.uniform(0.0, 1.0) <= frac_n):
+                replicated_mmsis.append(mmsi)
+
+        random_state.shuffle(replicated_mmsis)
+        logging.info("Replicated training mmsis: %d", len(replicated_mmsis))
+        logging.info("Fishing range mmsis: %d", len(fishing_ranges_mmsis))
+
+        return replicated_mmsis
 
 
 def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
