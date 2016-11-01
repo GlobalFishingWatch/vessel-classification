@@ -199,6 +199,9 @@ def consolidate_across_dates(results):
 
 
 
+def harmonic_mean(x, y):
+    return 2.0 / ((1.0 / x) + (1.0 / y))
+
 def confusion_matrix(results):
     """Compute raw and normalized confusion matrices based on results.
 
@@ -213,16 +216,17 @@ def confusion_matrix(results):
     EPS = 1e-10
     cm_raw = metrics.confusion_matrix(
         results.true_labels, results.inferred_labels, results.label_list)
-    # For off axis, normalize using the false positive rate
-    cm_normalized = cm_raw.astype('float') / (
-        cm_raw.sum(axis=1, keepdims=True) + EPS)
-    # For on axis, use the F1-score, what is already there is the recall
-    col_totals = cm_raw.sum(axis=0) + EPS   
+    # For off axis, normalize harmonic mean of row / col inverse errors
+    row_totals = cm_raw.sum(axis=1, keepdims=True) + EPS   
+    col_totals = cm_raw.sum(axis=0, keepdims=True) + EPS   
+    inv_row_fracs = 1 - cm_raw / row_totals
+    inv_col_fracs = 1 - cm_raw / col_totals
+    cm_normalized = 1 - harmonic_mean(inv_col_fracs, inv_row_fracs)
+    # For on axis, use the F1-score
     for i in range(len(cm_raw)):
-        recall = cm_normalized[i, i]
-        prec = cm_raw[i, i] / col_totals[i]
-        F1 = 2.0 / ((1.0 / recall) + (1.0 / prec))
-        cm_normalized[i, i] = F1
+        recall = cm_raw[i, i] / row_totals[i, 0]
+        precision = cm_raw[i, i] / col_totals[0, i]
+        cm_normalized[i, i] = harmonic_mean(recall, precision)
     #
     return ConfusionMatrix(cm_raw, cm_normalized)
 
