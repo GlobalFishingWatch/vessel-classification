@@ -364,9 +364,9 @@ def cropping_weight_replicating_feature_file_reader(
     return features_list, timestamps, time_bounds_list, mmsis
 
 
-def np_array_extract_slices_for_time_ranges(random_state, input_series, num_features_inc_timestamp, mmsi,
-                                            time_ranges, window_size,
-                                            min_points_for_classification):
+def np_array_extract_slices_for_time_ranges(
+        random_state, input_series, num_features_inc_timestamp, mmsi,
+        time_ranges, window_size, min_points_for_classification):
     """ Extract and process a set of specified time slices from a vessel
         movement feature.
 
@@ -419,7 +419,8 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, num_feat
     if slices == []:
         # Return an appropriately shaped empty numpy array.
         return (np.empty(
-            [0, 1, window_size, num_features_inc_timestamp - 1], dtype=np.float32), np.empty(
+            [0, 1, window_size, num_features_inc_timestamp - 1],
+            dtype=np.float32), np.empty(
                 shape=[0, window_size], dtype=np.int32), np.empty(
                     shape=[0, 2], dtype=np.int32), np.empty(
                         shape=[0], dtype=np.int32))
@@ -551,7 +552,6 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
     vessel_type_set = set()
     dataset_kind_counts = defaultdict(lambda: defaultdict(lambda: 0))
     vessel_types = []
-<<<<<<< HEAD
     for line in lines[1:]:
         mmsi_str, split, vessel_type = [x.strip() for x in line.split(',')]
         mmsi = int(mmsi_str)

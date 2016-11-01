@@ -114,7 +114,8 @@ def misconception_layer(inputs,
     with tf.variable_scope(name):
         # Input is a n_batch x width x 1 x n_filter
         #
-        conv = atrous_conv1d_layer(inputs, filter_size, filter_count, filter_rate, padding=padding)
+        conv = atrous_conv1d_layer(
+            inputs, filter_size, filter_count, filter_rate, padding=padding)
         #
         pool_width = filter_rate * (filter_size - 1) + 1
         pool = tf.nn.max_pool(

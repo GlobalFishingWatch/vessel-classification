@@ -250,11 +250,11 @@ class ModelBase(object):
     def __init__(self, num_feature_dimensions, vessel_metadata):
         self.num_feature_dimensions = num_feature_dimensions
         if vessel_metadata:
-          self.vessel_metadata = vessel_metadata
-          self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
+            self.vessel_metadata = vessel_metadata
+            self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
         else:
-          self.vessel_metadata = None
-          self.fishing_ranges_map = None
+            self.vessel_metadata = None
+            self.fishing_ranges_map = None
         self.training_objectives = None
 
     @abc.abstractmethod
