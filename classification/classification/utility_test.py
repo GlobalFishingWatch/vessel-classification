@@ -12,6 +12,36 @@ def _dt(s):
     return dateutil.parser.parse(s)
 
 
+class RegressionLossTest(tf.test.TestCase):
+    def test_simple_loss(self):
+        with self.test_session():
+            predictions = np.array([1.0, 4.0, 5.0, 6.0, 3.0])
+            mmsis = np.array([1, 2, 3, 4, 5])
+
+            real_values = {1: 1.0, 2: 4.0, 3: 5.0, 4: 6.0, 5: 3.0}
+
+            objective = model.RegressionObjective(
+                'a label', 'A name', lambda mmsi: real_values.get(mmsi))
+
+            loss, _ = objective.build_trainer(predictions, None, mmsis)
+
+            self.assertAlmostEqual(0.0, loss.eval())
+
+    def test_loss_missing_values(self):
+        with self.test_session():
+            predictions = np.array([1.0, 4.0, 5.0, 6.0, 3.0])
+            mmsis = np.array([1, 2, 3, 4, 5])
+
+            real_values = {1: 2.0, 2: 3.0, 3: 3.0}
+
+            objective = model.RegressionObjective(
+                'a label', 'A name', lambda mmsi: real_values.get(mmsi))
+
+            loss, _ = objective.build_trainer(predictions, None, mmsis)
+
+            self.assertAlmostEqual(2., loss.eval())
+
+
 class FishingLocalisationLossTest(tf.test.TestCase):
     def test_simple_loss(self):
         with self.test_session():

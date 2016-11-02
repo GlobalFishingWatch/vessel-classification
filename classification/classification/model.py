@@ -103,26 +103,45 @@ class FishingLocalisationObjective(ObjectiveBase):
 
         return Evaluation(self.metadata_label, self.name)
 
+
 class RegressionObjective(ObjectiveBase):
     def __init__(self, metadata_label, name, value_from_mmsi, loss_weight=1.0):
         super(self.__class__, self).__init__(metadata_label, name)
         self.value_from_mmsi = value_from_mmsi
         self.loss_weight = loss_weight
 
+    def _masked_mean_mse(self, predictions, mmsis):
+        def impl(predictions_array, mmsis_array):
+            count = 0
+            acc = 0.0
+            for prediction, mmsi in zip(predictions_array, mmsis_array):
+                expected = self.value_from_mmsi(mmsi)
+                if expected != None:
+                    count += 1
+                    diff = (prediction - expected)
+                    acc += (diff * diff)
+            if count == 0:
+                return 0
+
+            return np.float32(acc / float(count))
+
+        return tf.reshape(
+            tf.py_func(impl, [predictions, mmsis], [tf.float32]), shape=[])
+
     def build_trainer(self, predictions, timestamps, mmsis):
-        def values_from_mmsis(mmsis_array):
-            return np.vectorize(
-                self.value_from_mmsi, otypes=[np.float32])(mmsis_array)
+        raw_loss = self._masked_mean_mse(predictions, mmsis)
 
-        # Look up the values for each mmsi.
-        values = tf.reshape(tf.py_func(values_from_mmsis, [mmsis], [tf.float32]),
-            shape=tf.shape(mmsis))
+        update_ops = []
+        update_ops.append(
+            tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
 
-        diff = (values - predictions)
-        squared = diff * diff
+        loss = self.loss_weight * raw_loss
+
+        return Trainer(loss, update_ops)
 
     def build_evaluation(self, logits):
         pass
+
 
 class ClassificationObjective(ObjectiveBase):
     def __init__(self,
