@@ -4,7 +4,7 @@ trainingInput:
     "--feature_dimensions", "11",
     "--root_feature_path", "gs://alex-dataflow-scratch/features-scratch/new_features_ports_anchorage/20161018T153546Z/features",
     "--training_output_path", "{output_path}/{model_name}",
-    "--fishing_range_training_upweight", "1"]
+    "--fishing_range_training_upweight", "20"]
   scaleTier: CUSTOM
   masterType: "standard"
   parameterServerType: "standard"
