@@ -91,7 +91,7 @@ class ClusterNodeConfig(object):
         return ClusterNodeConfig({
             "cluster": {},
             "task": {
-                "type": "master",
+                "type": "worker",
                 "index": 0
             }
         })
@@ -290,7 +290,7 @@ def np_array_extract_n_random_features(random_state, input, n, max_time_delta,
   Args:
     input: the input data as a 2d numpy array.
     training_labels: the label for the vessel which made this series.
-    n: the (floating-point) number of times to extract a feature timeslice from
+    n: the number of times to extract a feature timeslice from
        this series.
 
   Returns:
@@ -302,28 +302,20 @@ def np_array_extract_n_random_features(random_state, input, n, max_time_delta,
   """
 
     samples = []
-    int_n = int(n)
 
-    def add_sample():
+    for _ in range(n):
         features, timestamps, time_bounds = np_array_extract_features(
             random_state, input, max_time_delta, window_size,
             min_timeslice_size)
 
         samples.append((np.stack([features]), timestamps, time_bounds, mmsi))
 
-    for _ in range(int_n):
-        add_sample()
-
-    frac_n = n - float(int_n)
-    if (random_state.uniform(0.0, 1.0) <= frac_n):
-        add_sample()
-
     return zip(*samples)
 
 
-def cropping_weight_replicating_feature_file_reader(
-        vessel_metadata, filename_queue, num_features, max_time_delta,
-        window_size, min_timeslice_size, max_replication_factor):
+def random_feature_cropping_file_reader(vessel_metadata, filename_queue,
+                                        num_features, max_time_delta,
+                                        window_size, min_timeslice_size):
     """ Set up a file reader and training feature extractor for the files in a queue.
 
     As a training feature extractor, this pulls sets of random timeslices from the
@@ -352,11 +344,13 @@ def cropping_weight_replicating_feature_file_reader(
     mmsi = tf.cast(context_features['mmsi'], tf.int32)
     random_state = np.random.RandomState()
 
+    num_slices_per_mmsi = 4
+
     def replicate_extract(input, mmsi):
-        n = 4.0
-        return np_array_extract_n_random_features(random_state, input, n,
-                                                  max_time_delta, window_size,
-                                                  min_timeslice_size, mmsi)
+        # Extract several random windows from each vessel track
+        return np_array_extract_n_random_features(
+            random_state, input, num_slices_per_mmsi, max_time_delta,
+            window_size, min_timeslice_size, mmsi)
 
     (features_list, timestamps, time_bounds_list, mmsis) = tf.py_func(
         replicate_extract, [movement_features, mmsi],
@@ -537,7 +531,7 @@ class VesselMetadata(object):
                                max_replication_factor):
         replicated_mmsis = []
         logging.info("Training mmsis: %d",
-                     len(self.metadata_by_split[split].keys()))
+                     len(self.mmsis_for_split(split)))
         fishing_ranges_mmsis = []
         for mmsi, (rows, weight) in self.metadata_by_split[split].iteritems():
 
@@ -548,7 +542,8 @@ class VesselMetadata(object):
             weight = min(weight, max_replication_factor)
 
             int_n = int(weight)
-            replicated_mmsis = replicated_mmsis + ([mmsi] * int_n)
+
+            replicated_mmsis += ([mmsi] * int_n)
             frac_n = weight - float(int_n)
             if (random_state.uniform(0.0, 1.0) <= frac_n):
                 replicated_mmsis.append(mmsi)

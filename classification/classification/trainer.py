@@ -70,12 +70,11 @@ class Trainer:
         readers = []
         for _ in range(self.num_parallel_readers):
             readers.append(
-                utility.cropping_weight_replicating_feature_file_reader(
+                utility.random_feature_cropping_file_reader(
                     self.model.vessel_metadata, filename_queue,
                     self.model.num_feature_dimensions + 1, self.model.
                     max_window_duration_seconds, self.model.window_max_points,
-                    self.model.min_viable_timeslice_length,
-                    self.max_replication_factor))
+                    self.model.min_viable_timeslice_length))
 
         (features, timestamps, time_bounds,
          mmsis) = tf.train.shuffle_batch_join(
