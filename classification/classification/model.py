@@ -109,6 +109,7 @@ class RegressionObjective(ObjectiveBase):
         super(self.__class__, self).__init__(metadata_label, name)
         self.value_from_mmsi = value_from_mmsi
         self.loss_weight = loss_weight
+        self.num_classes = 1
 
     # Currently calculates L1 error
     def _masked_mean_error(self, predictions, mmsis):
@@ -140,20 +141,27 @@ class RegressionObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-    def build_evaluation(self, prediction):
+    def build_evaluation(self, predictions):
         class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name, predictions):
+            def __init__(self, metadata_label, name, masked_mean_error, predictions):
                 super(self.__class__, self).__init__(metadata_label, name)
+                self.masked_mean_error = masked_mean_error
                 self.predictions = predictions
 
             def build_test_metrics(self, mmsis):
-                raw_loss = self._masked_mean_mse(self.predictions, mmsis)
+                raw_loss = self.masked_mean_error(self.predictions, mmsis)
+
+                # TODO(alexwilson): Add error metric here.
+                return {}, {}
 
             def build_json_results(self, prediction):
                 return {
                     'name': self.name,
                     'value': self.prediction
                 }
+
+        return Evaluation(self.metadata_label, self.name,
+            self._masked_mean_error, predictions)
 
 
 class ClassificationObjective(ObjectiveBase):

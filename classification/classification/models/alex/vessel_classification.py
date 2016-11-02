@@ -3,9 +3,10 @@ import argparse
 import json
 from . import layers
 from classification import utility
-from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective
+from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective, RegressionObjective
 import logging
 import math
+import numpy as np
 import os
 
 import tensorflow as tf
@@ -24,6 +25,14 @@ class Model(ModelBase):
         super(self.__class__, self).__init__(num_feature_dimensions,
                                              vessel_metadata)
 
+
+        def length_or_none(mmsi):
+            length = vessel_metadata.vessel_label('length', mmsi)
+            if length == '':
+                return None
+
+            return np.float32(length)
+
         self.training_objectives = [
             make_vessel_label_objective(vessel_metadata, 'is_fishing',
                                         'Fishing', ['Fishing', 'Non-fishing']),
@@ -35,9 +44,11 @@ class Model(ModelBase):
             make_vessel_label_objective(
                 vessel_metadata,
                 'length',
-                'Vessel length',
+                'Vessel length category',
                 utility.VESSEL_LENGTH_CLASSES,
-                transformer=utility.vessel_categorical_length_transformer)
+                transformer=utility.vessel_categorical_length_transformer),
+            RegressionObjective('length', 'Vessel length regression',
+                length_or_none)
         ]
 
     def zero_pad_features(self, features):
