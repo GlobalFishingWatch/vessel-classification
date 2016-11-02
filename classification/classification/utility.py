@@ -542,7 +542,6 @@ class VesselMetadata(object):
             weight = min(weight, max_replication_factor)
 
             int_n = int(weight)
-
             replicated_mmsis += ([mmsi] * int_n)
             frac_n = weight - float(int_n)
             if (random_state.uniform(0.0, 1.0) <= frac_n):
