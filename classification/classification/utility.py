@@ -364,9 +364,9 @@ def cropping_weight_replicating_feature_file_reader(
     return features_list, timestamps, time_bounds_list, mmsis
 
 
-def np_array_extract_slices_for_time_ranges(random_state, input_series, num_features_inc_timestamp, mmsi,
-                                            time_ranges, window_size,
-                                            min_points_for_classification):
+def np_array_extract_slices_for_time_ranges(
+        random_state, input_series, num_features_inc_timestamp, mmsi,
+        time_ranges, window_size, min_points_for_classification):
     """ Extract and process a set of specified time slices from a vessel
         movement feature.
 
@@ -419,7 +419,8 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, num_feat
     if slices == []:
         # Return an appropriately shaped empty numpy array.
         return (np.empty(
-            [0, 1, window_size, num_features_inc_timestamp - 1], dtype=np.float32), np.empty(
+            [0, 1, window_size, num_features_inc_timestamp - 1],
+            dtype=np.float32), np.empty(
                 shape=[0, window_size], dtype=np.int32), np.empty(
                     shape=[0, 2], dtype=np.int32), np.empty(
                         shape=[0], dtype=np.int32))
@@ -482,6 +483,7 @@ def _hash_mmsi_to_double(mmsi, salt=''):
     Returns:
         A value in the range [0, 1.0).
     """
+    assert isinstance(mmsi, int)
     hasher = hashlib.md5()
     i = '%s_%s' % (mmsi, salt)
     hasher.update(i)
@@ -532,6 +534,12 @@ class VesselMetadata(object):
         return self.metadata_by_split[split].keys()
 
 
+def is_test(mmsi):
+    """Is this mmsi in the test set?
+    """
+    return (_hash_mmsi_to_double(mmsi) >= 0.5)
+
+
 def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
                                           fishing_range_dict,
                                           fishing_range_training_upweight):
@@ -559,7 +567,7 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
         mmsi = int(row['mmsi'])
         coarse_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
         if mmsi in available_mmsis and coarse_vessel_type:
-            if (_hash_mmsi_to_double(mmsi) >= 0.5):
+            if is_test(mmsi):
                 split = 'Test'
             else:
                 split = 'Training'

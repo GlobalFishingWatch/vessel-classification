@@ -23,20 +23,64 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.utility import vessel_categorical_length_transformer
+from classification.utility import vessel_categorical_length_transformer, is_test
+import gzip
 
-InferenceResults = namedtuple("InferenceResults",
-                              ["mmsi", "inferred_labels", "true_labels",
-                               "start_dates", "scores", "label_list"])
+InferenceResults = namedtuple('InferenceResults',
+                              ['mmsi', 'inferred_labels', 'true_labels',
+                               'start_dates', 'scores', 'label_list'])
 
-ConfusionMatrix = namedtuple("ConfusionMatrix", ["raw", "scaled"])
+ConfusionMatrix = namedtuple('ConfusionMatrix', ['raw', 'scaled'])
+
+css = """
+
+table {
+    text-align: center;
+    border-collapse: collapse;
+}
+
+.confmatrix th.col {
+  height: 140px; 
+  white-space: nowrap;
+}
+
+.confmatrix th.col div {
+    transform: translate(25px, 51px) rotate(315deg); 
+    width: 30px;
+}
+
+.confmatrix th.col span {
+    border-bottom: 1px solid #ccc; 
+    padding: 5px 10px; 
+    text-align: left;
+}
+
+.confmatrix th.row {
+    text-align: right;
+}
+
+.confmatrix td.diagonal {
+    border: 1px solid black;
+}
+
+.confmatrix td.offdiagonal {
+    border: 1px dotted grey;
+}
+
+.unbreakable {
+    page-break-inside: avoid;
+}
 
 
+
+
+"""
 
 # Helper function formatting as HTML (using yattag)
 
+
 def ydump_confusion_matrix(doc, cm, labels, **kwargs):
-    """Dump an sklearn confusiong matrix to HTML using yatag
+    """Dump an sklearn confusion matrix to HTML using yatag
 
     Args:
         doc: yatag Doc instance
@@ -45,41 +89,38 @@ def ydump_confusion_matrix(doc, cm, labels, **kwargs):
             labels for confusion matrix
     """
     doc, tag, text, line = doc.ttl()
-    with tag('table', **kwargs):
+    with tag('table', klass="confmatrix", **kwargs):
         with tag('tr'):
-            line('th', "")
+            line('th', '')
             for x in labels:
-                with tag('th', style="height: 140px; white-space: nowrap;"):
-                    with tag(
-                            'div',
-                            style="transform: translate(25px, 51px) rotate(315deg); width: 30px;"):
-                        with tag(
-                                'span',
-                                style="border-bottom: 1px solid #ccc; padding: 5px 10px; text-align: left;"):
-                            text(x)
+                with tag('th', klass="col"):
+                    with tag('div'):
+                        line('span', x)
         for i, (l, row) in enumerate(zip(labels, cm.scaled)):
             with tag('tr'):
-                line('th', str(l), style="text-align: right;")
+                line('th', str(l), klass="row")
                 for j, x in enumerate(row):
                     if i == j:
                         if x > 0.5:
                             cval = np.clip(int(round(512 * (x - 0.5))), 0, 255)
-                            invhexcode = "{:02x}".format(255 - cval)
-                            color = "#{}FF00".format(invhexcode)
+                            invhexcode = '{:02x}'.format(255 - cval)
+                            color = '#{}FF00'.format(invhexcode)
                         else:
                             cval = np.clip(int(round(512 * x)), 0, 255)
-                            hexcode = "{:02x}".format(cval)
-                            color = "#FF{}00".format(hexcode)
-                        style = 'border: 1px solid black; text-align: center;'
+                            hexcode = '{:02x}'.format(cval)
+                            color = '#FF{}00'.format(hexcode)
+                        klass = "diagonal"
                     else:
                         cval = np.clip(int(round(255 * x)), 0, 255)
-                        hexcode = "{:02x}".format(cval)
-                        invhexcode = "{:02x}".format(255 - cval)
-                        color = "#FF{}{}".format(invhexcode, invhexcode)
-                        style = 'text-align: center;'
-                    with tag('td', style=style, bgcolor=color):
+                        hexcode = '{:02x}'.format(cval)
+                        invhexcode = '{:02x}'.format(255 - cval)
+                        color = '#FF{}{}'.format(invhexcode, invhexcode)
+                        klass = "offdiagonal"
+                    with tag('td', klass=klass, bgcolor=color):
                         raw = cm.raw[i, j]
-                        with tag('font', color="#000000", title="{0:.3f}".format(x)):
+                        with tag('font',
+                                 color='#000000',
+                                 title='{0:.3f}'.format(x)):
                             text(str(raw))
 
 
@@ -119,39 +160,38 @@ def ydump_metrics(doc, results):
         for x in np.unique(results.start_dates)
     ]
 
-    with tag('div', style="page-break-inside: avoid"):
-        line('h3', "Accuracy by Date")
-        ydump_table(
-            doc, ["Start Date", "Accuracy"],
-            [(a.date(), "{:.2f}".format(b)) for (a, b) in rows],
-            border=1)
+    with tag('div', klass="unbreakable"):
+        line('h3', 'Accuracy by Date')
+        ydump_table(doc, ['Start Date', 'Accuracy'],
+                    [(a.date(), '{:.2f}'.format(b)) for (a, b) in rows])
 
     consolidated = consolidate_across_dates(results)
 
-    with tag('div', style="page-break-inside: avoid"):
+    with tag('div', klass="unbreakable"):
         line('h3', 'Overall Accuracy')
-        text(str(accuracy(consolidated.true_labels, consolidated.
-                          inferred_labels)))
+        text('{:.2f}'.format(
+            accuracy(consolidated.true_labels, consolidated.inferred_labels)))
 
     cm = confusion_matrix(consolidated)
 
-    with tag('div', style="page-break-inside: avoid"):
-        line('h3', "Confusion Matrix")
+    with tag('div', klass="unbreakable"):
+        line('h3', 'Confusion Matrix')
         ydump_confusion_matrix(doc, cm, results.label_list)
 
-    with tag('div', style="page-break-inside: avoid"):
+    with tag('div', klass="unbreakable"):
         line('h3', 'Metrics by Label')
-        ydump_table(doc, ["Label", "Precision", "Recall"], precision_recall(
-            consolidated.label_list, consolidated.true_labels,
-            consolidated.inferred_labels))
-
+        ydump_table(doc, ['Label', 'Precision', 'Recall'],
+                    [(a, '{:.2f}'.format(b), "{:.2f}".format(c))
+                     for (a, b, c) in precision_recall(
+                         consolidated.label_list, consolidated.true_labels,
+                         consolidated.inferred_labels)])
 
 # Helper functions for computing metrics
 
 
 def clean_label(x):
     x = x.strip()
-    return x.replace("_", " ")
+    return x.replace('_', ' ')
 
 
 def precision_recall(labels, y_true, y_pred):
@@ -165,9 +205,11 @@ def precision_recall(labels, y_true, y_pred):
         results.append((lbl, precision, recall))
     return results
 
+
 def accuracy(true_labels, inferred_labels):
-    overall_true_positives = (inferred_labels == true_labels) 
+    overall_true_positives = (inferred_labels == true_labels)
     return overall_true_positives.sum() / len(inferred_labels)
+
 
 def accuracy_for_date(date, true_labels, inferred_labels, scores, dates):
     mask = (dates == date)
@@ -190,7 +232,11 @@ def consolidate_across_dates(results):
         scores = np.zeros(len(results.label_list), dtype=float)
         for i in np.arange(len(results.mmsi))[mask]:
             for lbl in results.scores[i]:
-                scores[label_map[lbl]] += results.scores[i][lbl]
+                try:
+                    scores[label_map[lbl]] += results.scores[i][lbl]
+                except:
+                    print(label_map, lbl, results.scores[i].keys())
+                    raise
         inferred_labels.append(results.label_list[np.argmax(scores)])
         true_labels.append(results.true_labels[mask][0])
     return InferenceResults(results.mmsi, np.array(inferred_labels),
@@ -198,9 +244,9 @@ def consolidate_across_dates(results):
                             results.label_list)
 
 
-
 def harmonic_mean(x, y):
     return 2.0 / ((1.0 / x) + (1.0 / y))
+
 
 def confusion_matrix(results):
     """Compute raw and normalized confusion matrices based on results.
@@ -216,20 +262,26 @@ def confusion_matrix(results):
     EPS = 1e-10
     cm_raw = metrics.confusion_matrix(
         results.true_labels, results.inferred_labels, results.label_list)
-    # For off axis, normalize harmonic mean of row / col inverse errors
-    row_totals = cm_raw.sum(axis=1, keepdims=True) + EPS   
-    col_totals = cm_raw.sum(axis=0, keepdims=True) + EPS   
+
+    # For off axis, normalize harmonic mean of row / col inverse errors.
+    # The idea here is that this average will go to 1 => BAD, as
+    # either the row error or column error approaches 1. That is, if this
+    # off diagonal element dominates eitehr the predicted values for this 
+    # label OR the actual values for this label.  A standard mean will only
+    # go to zero if it dominates both, but these can become decoupled with 
+    # unbalanced classes.
+    row_totals = cm_raw.sum(axis=1, keepdims=True) + EPS
+    col_totals = cm_raw.sum(axis=0, keepdims=True) + EPS
     inv_row_fracs = 1 - cm_raw / row_totals
     inv_col_fracs = 1 - cm_raw / col_totals
     cm_normalized = 1 - harmonic_mean(inv_col_fracs, inv_row_fracs)
-    # For on axis, use the F1-score
+    # For on axis, use the F1-score (also a harmonic mean!)
     for i in range(len(cm_raw)):
         recall = cm_raw[i, i] / row_totals[i, 0]
         precision = cm_raw[i, i] / col_totals[0, i]
         cm_normalized[i, i] = harmonic_mean(recall, precision)
-    #
-    return ConfusionMatrix(cm_raw, cm_normalized)
 
+    return ConfusionMatrix(cm_raw, cm_normalized)
 
 
 def remap_lengths(len_map):
@@ -237,6 +289,13 @@ def remap_lengths(len_map):
     for k, v in len_map.items():
         map[k] = vessel_categorical_length_transformer(v)
     return map
+
+
+def open_gzip_or_regular(path):
+    if path.endswith('.gz'):
+        return gzip.GzipFile(path)
+    else:
+        return open(path)
 
 
 def load_inferred(inference_path, label_map, field):
@@ -248,28 +307,31 @@ def load_inferred(inference_path, label_map, field):
     true_labels = []
     scores = []
     mmsi_list = []
-    with nlj.open(inference_path) as src:
-        for row in src:
-            mmsi = row['mmsi']
-            if mmsi in label_map:
-                lbl = label_map[mmsi]
-                if lbl == "Unknown":
-                    continue
-                mmsi_list.append(mmsi)
-                start_dates.append(dateutil.parser.parse(row['start_time']))
-                true_labels.append(label_map[mmsi])
-                inferred_labels.append(row['labels'][field]['max_label'])
-                scores.append(row['labels'][field]['label_scores'])
+    all_labels = set()
+    with open_gzip_or_regular(inference_path) as f:
+        with nlj.open(f) as src:
+            for row in src:
+                mmsi = row['mmsi']
+                if mmsi in label_map:
+                    lbl = label_map[mmsi]
+                    if lbl == 'Unknown':
+                        continue
+                    mmsi_list.append(mmsi)
+                    label_scores = row['labels'][field]['label_scores']
+                    all_labels |= set(label_scores.keys())
+                    start_dates.append(
+                        dateutil.parser.parse(row['start_time']))
+                    true_labels.append(label_map[mmsi])
+                    inferred_labels.append(row['labels'][field]['max_label'])
+                    scores.append(label_scores)
     inferred_labels = np.array(inferred_labels)
     true_labels = np.array(true_labels)
     start_dates = np.array(start_dates)
     scores = np.array(scores)
-    label_list = sorted(
-        set(true_labels) | set(inferred_labels) | set(label_map.values()))
+    label_list = sorted(all_labels)
     mmsi_list = np.array(mmsi_list)
     return InferenceResults(mmsi_list, inferred_labels, true_labels,
                             start_dates, scores, label_list)
-
 
 
 def get_local_inference_path(args):
@@ -281,42 +343,39 @@ def get_local_inference_path(args):
           will not be downloaded.
     """
     if args.inference_path.startswith('gs'):
-        initial_inference_path = os.path.join(
-            temp_dir, os.path.basename(args.inference_path))
-        # Download labels if they don't already exist
-        is_compressed = initial_inference_path.endswith('.gz')
-        inference_path = initial_inference_path[:
-                                                -3] if is_compressed else initial_inference_path
+        inference_path = os.path.join(temp_dir,
+                                      os.path.basename(args.inference_path))
         if not os.path.exists(inference_path):
             subprocess.check_call(
-                ["gsutil", "cp", args.inference_path, initial_inference_path])
-            if is_compressed:
-                subprocess.check_call(['gunzip', initial_inference_path])
-
+                ['gsutil', 'cp', args.inference_path, inference_path])
     else:
-        inference_path = args.inference_path  
+        inference_path = args.inference_path
     #
-    return inference_path 
+    return inference_path
 
 
 def compute_results(args):
     inference_path = get_local_inference_path(args)
-    #
+
     maps = defaultdict(dict)
     with open(args.label_path) as f:
         for row in csv.DictReader(f):
             mmsi = int(row['mmsi'].strip())
-            for field in ["is_fishing", "label", "sublabel", "length"]:
+            if not is_test(mmsi):
+                continue
+            for field in ['is_fishing', 'label', 'sublabel', 'length']:
                 if row[field]:
                     maps[field][mmsi] = clean_label(row[field])
 
     results = {}
 
-    results['fishing'] = load_inferred(inference_path, maps['is_fishing'], 'is_fishing')
+    results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
+                                       'is_fishing')
 
     results['coarse'] = load_inferred(inference_path, maps['label'], 'label')
 
-    results['fine'] = load_inferred(inference_path, maps['sublabel'], 'sublabel')
+    results['fine'] = load_inferred(inference_path, maps['sublabel'],
+                                    'sublabel')
 
     len_map = remap_lengths(maps['length'])
     results['length'] = load_inferred(inference_path, len_map, 'length')
@@ -327,23 +386,21 @@ def compute_results(args):
 
 
 def dump_html(args, results):
+
+    classification_metrics = [
+        ('fishing', 'Is Fishing'), ('coarse', 'Coarse Labels'),
+        ('fine', "Fine Labels"), ('length', 'Lengths')
+    ]
+
     doc = yattag.Doc()
 
-    doc.line('h2', "Is Fishing")
-    ydump_metrics(doc, results['fishing'])
-    doc.stag('hr')
+    with doc.tag("style", type="text/css"):
+        doc.asis(css)
 
-    doc.line('h2', "Coarse Labels")
-    ydump_metrics(doc, results['coarse'])
-    doc.stag('hr')
-
-    doc.line('h2', "Fine Labels")
-    ydump_metrics(doc, results['fine'])
-    doc.stag('hr')
-
-    doc.line('h2', "Lengths")
-    ydump_metrics(doc, results['length'])
-    doc.stag('br')
+    for key, heading in classification_metrics:
+        doc.line('h2', heading)
+        ydump_metrics(doc, results[key])
+        doc.stag('hr')
 
     with open(args.dest_path, 'w') as f:
         f.write(yattag.indent(doc.getvalue(), indent_text=True))
@@ -353,30 +410,27 @@ def dump_html(args, results):
 #    * Thresholds
 #    * Load all labels at once for better speed
 #    * Use real temp directory (current approach good for development); remove `temp` from gitignore
-#    * Compute off by one accuracy for Length if we don't move to regression.
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
-temp_dir = os.path.join(this_dir, "temp")
+temp_dir = os.path.join(this_dir, 'temp')
 
-if __name__ == "__main__":
-    logging.getLogger().setLevel("WARNING")
-    #
+if __name__ == '__main__':
+    logging.getLogger().setLevel('WARNING')
+
     parser = argparse.ArgumentParser(
-        description="Test inference results and output metrics")
+        description='Test inference results and output metrics')
     parser.add_argument(
         '--inference-path', help='path to inference results', required=True)
     parser.add_argument(
         '--label-path', help='path to test data', required=True)
     parser.add_argument(
-        '--dest-path', help="path to write results to", required=True)
+        '--dest-path', help='path to write results to', required=True)
     parser.add_argument(
         '--plot-confusion',
         help='plot confusion matrix (run with pythonw)',
         action='store_true')
     args = parser.parse_args()
-    #
+
     results = compute_results(args)
 
     dump_html(args, results)
-
-
