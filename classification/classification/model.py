@@ -151,8 +151,9 @@ class RegressionObjective(ObjectiveBase):
             def build_test_metrics(self, mmsis):
                 raw_loss = self.masked_mean_error(self.predictions, mmsis)
 
-                # TODO(alexwilson): Add error metric here.
-                return {}, {}
+                return metrics.aggregate_metric_map({
+                    '%s/Test error' % self.name: metrics.streaming_mean(raw_loss)
+                })
 
             def build_json_results(self, prediction):
                 return {
