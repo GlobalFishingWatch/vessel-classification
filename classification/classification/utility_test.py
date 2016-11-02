@@ -32,14 +32,14 @@ class RegressionLossTest(tf.test.TestCase):
             predictions = np.array([1.0, 4.0, 5.0, 6.0, 3.0])
             mmsis = np.array([1, 2, 3, 4, 5])
 
-            real_values = {1: 2.0, 2: 3.0, 3: 3.0}
+            real_values = {1: 2.0, 2: 2.5, 3: 4.5}
 
             objective = model.RegressionObjective(
                 'a label', 'A name', lambda mmsi: real_values.get(mmsi))
 
             loss, _ = objective.build_trainer(predictions, None, mmsis)
 
-            self.assertAlmostEqual(2., loss.eval())
+            self.assertAlmostEqual(1.0, loss.eval())
 
 
 class FishingLocalisationLossTest(tf.test.TestCase):

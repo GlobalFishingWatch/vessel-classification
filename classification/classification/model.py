@@ -110,7 +110,8 @@ class RegressionObjective(ObjectiveBase):
         self.value_from_mmsi = value_from_mmsi
         self.loss_weight = loss_weight
 
-    def _masked_mean_mse(self, predictions, mmsis):
+    # Currently calculates L1 error
+    def _masked_mean_error(self, predictions, mmsis):
         def impl(predictions_array, mmsis_array):
             count = 0
             acc = 0.0
@@ -119,7 +120,7 @@ class RegressionObjective(ObjectiveBase):
                 if expected != None:
                     count += 1
                     diff = (prediction - expected)
-                    acc += (diff * diff)
+                    acc += np.abs(diff)
             if count == 0:
                 return 0
 
@@ -129,7 +130,7 @@ class RegressionObjective(ObjectiveBase):
             tf.py_func(impl, [predictions, mmsis], [tf.float32]), shape=[])
 
     def build_trainer(self, predictions, timestamps, mmsis):
-        raw_loss = self._masked_mean_mse(predictions, mmsis)
+        raw_loss = self._masked_mean_error(predictions, mmsis)
 
         update_ops = []
         update_ops.append(
@@ -139,8 +140,20 @@ class RegressionObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-    def build_evaluation(self, logits):
-        pass
+    def build_evaluation(self, prediction):
+        class Evaluation(EvaluationBase):
+            def __init__(self, metadata_label, name, predictions):
+                super(self.__class__, self).__init__(metadata_label, name)
+                self.predictions = predictions
+
+            def build_test_metrics(self, mmsis):
+                raw_loss = self._masked_mean_mse(self.predictions, mmsis)
+
+            def build_json_results(self, prediction):
+                return {
+                    'name': self.name,
+                    'value': self.prediction
+                }
 
 
 class ClassificationObjective(ObjectiveBase):
