@@ -44,11 +44,12 @@ class EvaluationBase(object):
 
 
 class FishingLocalisationObjective(ObjectiveBase):
-    def __init__(self, metadata_label, name, vessel_metadata):
+    def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0):
         super(self.__class__, self).__init__(metadata_label, name)
         self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
+        self.loss_weight = loss_weight
 
-    def build_trainer(self, predictions, timestamps, mmsis, loss_weight=1.0):
+    def build_trainer(self, predictions, timestamps, mmsis):
         update_ops = []
 
         # Convert fishing range labels to per-point labels.
@@ -81,7 +82,7 @@ class FishingLocalisationObjective(ObjectiveBase):
         update_ops.append(
             tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
 
-        loss = loss_weight * raw_loss
+        loss = self.loss_weight * raw_loss
 
         return Trainer(loss, update_ops)
 
@@ -101,6 +102,26 @@ class FishingLocalisationObjective(ObjectiveBase):
 
         return Evaluation(self.metadata_label, self.name)
 
+class RegressionObjective(ObjectiveBase):
+    def __init__(self, metadata_label, name, value_from_mmsi, loss_weight=1.0):
+        super(self.__class__, self).__init__(metadata_label, name)
+        self.value_from_mmsi = value_from_mmsi
+        self.loss_weight = loss_weight
+
+    def build_trainer(self, predictions, timestamps, mmsis):
+        def values_from_mmsis(mmsis_array):
+            return np.vectorize(
+                self.value_from_mmsi, otypes=[np.float32])(mmsis_array)
+
+        # Look up the values for each mmsi.
+        values = tf.reshape(tf.py_func(values_from_mmsis, [mmsis], [tf.float32]),
+            shape=tf.shape(mmsis))
+
+        diff = (values - predictions)
+        squared = diff * diff
+
+    def build_evaluation(self, logits):
+        pass
 
 class ClassificationObjective(ObjectiveBase):
     def __init__(self,
@@ -108,13 +129,15 @@ class ClassificationObjective(ObjectiveBase):
                  name,
                  label_from_mmsi,
                  classes,
-                 transformer=None):
+                 transformer=None,
+                 loss_weight=1.0):
         super(self.__class__, self).__init__(metadata_label, name)
         self.label_from_mmsi = label_from_mmsi
         self.classes = classes
         self.class_indices = dict(zip(classes, range(len(classes))))
         self.num_classes = len(classes)
         self.transformer = transformer
+        self.loss_weight = loss_weight
 
     def training_label(self, mmsi):
         """ Return the index of this training label, or if it's unset, return
@@ -128,7 +151,7 @@ class ClassificationObjective(ObjectiveBase):
         else:
             return -1
 
-    def build_trainer(self, logits, timestamps, mmsis, loss_weight=1.0):
+    def build_trainer(self, logits, timestamps, mmsis):
         def labels_from_mmsis(mmsis_array):
             return np.vectorize(
                 self.training_label, otypes=[np.int32])(mmsis_array)
@@ -153,7 +176,7 @@ class ClassificationObjective(ObjectiveBase):
 
         raw_loss = slim.losses.softmax_cross_entropy(
             logits, one_hot_labels, weight=label_weights)
-        loss = raw_loss * loss_weight
+        loss = raw_loss * self.loss_weight
         class_predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
         update_ops = []
