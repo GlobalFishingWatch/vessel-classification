@@ -43,7 +43,9 @@ class Model(ModelBase):
         ]
 
         self.fishing_localisation_objective = FishingLocalisationObjective(
-            'fishing_localisation', 'Fishing localisation', vessel_metadata,
+            'fishing_localisation',
+            'Fishing localisation',
+            vessel_metadata,
             loss_weight=5.0)
 
         self.training_objectives = self.classification_training_objectives + [
