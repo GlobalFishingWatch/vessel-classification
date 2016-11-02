@@ -122,7 +122,7 @@ class Trainer:
         objectives = self.model.build_inference_net(features, timestamps,
                                                     mmsis)
 
-        aggregate_metric_maps = [o.build_test_metrics(mmsis)
+        aggregate_metric_maps = [o.build_test_metrics(mmsis, timestamps)
                                  for o in objectives]
 
         summary_ops = []

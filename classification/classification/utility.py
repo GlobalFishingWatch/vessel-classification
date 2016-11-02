@@ -411,8 +411,8 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, num_feat
 
             time_bounds = np.array([start_time, end_time], dtype=np.int32)
 
-            without_timestamp = output_slice[:, 1:]
             timeseries = output_slice[:, 0].astype(np.int32)
+            without_timestamp = output_slice[:, 1:]
             slices.append(
                 (np.stack([without_timestamp]), timeseries, time_bounds, mmsi))
 

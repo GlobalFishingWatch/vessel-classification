@@ -6,6 +6,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 import utility
+import logging 
 
 Trainer = namedtuple("Trainer", ["loss", "update_ops"])
 TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
@@ -35,7 +36,7 @@ class EvaluationBase(object):
         self.name = name
 
     @abc.abstractmethod
-    def build_test_metrics(self, mmsis):
+    def build_test_metrics(self, mmsis, timestamps):
         pass
 
     @abc.abstractmethod
@@ -44,36 +45,46 @@ class EvaluationBase(object):
 
 
 class FishingLocalisationObjective(ObjectiveBase):
+
     def __init__(self, metadata_label, name, vessel_metadata):
         super(self.__class__, self).__init__(metadata_label, name)
         self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
 
-    def build_trainer(self, predictions, timestamps, mmsis, loss_weight=1.0):
-        update_ops = []
-
+    def dense_labels(self, predictions, timestamps, mmsis):
         # Convert fishing range labels to per-point labels.
+        logging.info("map keys %s", self.fishing_ranges_map.keys())
         def dense_fishing_labels(mmsis_array, timestamps_array):
             dense_labels_list = []
             for mmsi, timestamps in zip(mmsis_array, timestamps_array):
                 dense_labels = np.zeros_like(timestamps, dtype=np.float32)
                 dense_labels.fill(-1.0)
                 mmsi = int(mmsi)
+                logging.info("mmsi %s", mmsi)
                 if mmsi in self.fishing_ranges_map:
                     for (start_time, end_time,
                          is_fishing) in self.fishing_ranges_map[mmsi]:
                         start_range = calendar.timegm(start_time.utctimetuple(
                         ))
                         end_range = calendar.timegm(end_time.utctimetuple())
+                        logging.info("making mask %s %s %s %s", start_range, end_range, timestamps[0], timestamps[-1])
                         mask = (timestamps >= start_range) & (
                             timestamps < end_range)
                         dense_labels[mask] = is_fishing
+                        logging.info("mask.sum() = %s", mask.sum())
                 dense_labels_list.append(dense_labels)
             return np.array(dense_labels_list)
 
-        dense_labels = tf.reshape(
+        return tf.reshape(
             tf.py_func(dense_fishing_labels, [mmsis, timestamps],
                        [tf.float32]),
             shape=tf.shape(predictions))
+
+
+
+    def build_trainer(self, predictions, timestamps, mmsis, loss_weight=1.0):
+        update_ops = []
+
+        dense_labels = self.dense_labels(predictions, timestamps, mmsis)
 
         # TODO(alexwilson): Add training accuracy.
         raw_loss = utility.fishing_localisation_mse(predictions, dense_labels)
@@ -86,21 +97,54 @@ class FishingLocalisationObjective(ObjectiveBase):
         return Trainer(loss, update_ops)
 
     def build_evaluation(self, predictions):
-        class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name):
-                super(self.__class__, self).__init__(metadata_label, name)
 
-            def build_test_metrics(self, mmsis):
-                # TODO(alexwilson): Add streaming weighted MSE here.
-                return {}, {}
+        dense_labels = self.dense_labels
+
+        class Evaluation(EvaluationBase):
+            def __init__(self, metadata_label, name, predictions):
+                super(self.__class__, self).__init__(metadata_label, name)
+                self.predictions = predictions
+ 
+            def build_test_metrics(self, mmsis, timestamps):
+
+                labels = dense_labels(self.predictions, timestamps, mmsis)
+
+                valid = tf.to_int32(tf.not_equal(labels, -1))
+                ones = tf.to_int32(tf.equal(labels, 1))
+                weights = tf.to_float(valid)
+
+                raw_metrics = {
+                    'Test MSE':
+                    slim.metrics.streaming_mean_squared_error(tf.to_float(self.predictions), tf.to_float(ones), 
+                                    weights=weights),
+                    'Test accuracy':
+                    slim.metrics.streaming_accuracy(self.predictions, ones, 
+                                    weights=weights),
+                    'Test precision':
+                    slim.metrics.streaming_precision(self.predictions, ones, 
+                                    weights=weights),
+                    'Test recall':
+                    slim.metrics.streaming_recall(self.predictions, ones, 
+                                    weights=weights),
+                    'Test fishing fraction':
+                    slim.metrics.streaming_accuracy(self.predictions, valid, 
+                                    weights=weights)
+                }
+
+                return metrics.aggregate_metric_map( 
+                    {"{}/{}".format(self.name, k): v for (k, v) in raw_metrics.items()})
+
+
 
             def build_json_results(self, fishing_probabilities):
                 # TODO(alexwilson): Plumb through the timestamps as well,
                 # then zip the two to give fishing probability results.
                 return {}
 
-        return Evaluation(self.metadata_label, self.name)
+        return Evaluation(self.metadata_label, self.name, predictions)
 
+
+ 
 
 class ClassificationObjective(ObjectiveBase):
     def __init__(self,
@@ -177,7 +221,7 @@ class ClassificationObjective(ObjectiveBase):
                 self.num_classes = num_classes
                 self.prediction = slim.softmax(logits)
 
-            def build_test_metrics(self, mmsis):
+            def build_test_metrics(self, mmsis, timestamps):
                 def labels_from_mmsis(mmsis_array):
                     return np.vectorize(
                         self.training_label_lookup,
