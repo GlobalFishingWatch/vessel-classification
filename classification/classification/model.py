@@ -44,7 +44,7 @@ class EvaluationBase(object):
         pass
 
 
-class FishingLocalisationObjectiveMSE(ObjectiveBase):
+AbstractFishingLocalizationObjective(ObjectiveBase):
 
     def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0):
         ObjectiveBase.__init__(self, metadata_label, name)
@@ -78,10 +78,10 @@ class FishingLocalisationObjectiveMSE(ObjectiveBase):
                        [tf.float32]),
             shape=tf.shape(template))
 
-
+    @abstractmethod
     def loss_function(self, logits, dense_labels):
-        predictions = tf.sigmoid(logits)
-        return utility.fishing_localisation_mse(predictions, dense_labels)
+        loss_function = None
+        return loss_function
 
     def build_trainer(self, logits, timestamps, mmsis, loss_weight=1.0):
         update_ops = []
@@ -152,7 +152,16 @@ class FishingLocalisationObjectiveMSE(ObjectiveBase):
 
 
 
-class FishingLocalizationObjectiveCrossEntropy(FishingLocalisationObjectiveMSE):
+class FishingLocalisationObjectiveMSE(AbstractFishingLocalizationObjective):
+
+    def loss_function(self, logits, dense_labels):
+        loss_function = None
+        return loss_fu
+        predictions = tf.sigmoid(logits)
+        return utility.fishing_localisation_mse(predictions, dense_labels)
+
+
+class FishingLocalizationObjectiveCrossEntropy(AbstractFishingLocalizationObjective):
 
     def loss_function(self, logits, dense_labels):
         fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
