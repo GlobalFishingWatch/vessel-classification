@@ -48,7 +48,7 @@ class Model(ModelBase):
                 utility.VESSEL_LENGTH_CLASSES,
                 transformer=utility.vessel_categorical_length_transformer),
             RegressionObjective('length', 'Vessel length regression',
-                length_or_none)
+                length_or_none, loss_weight=0.05)
         ]
 
     def zero_pad_features(self, features):

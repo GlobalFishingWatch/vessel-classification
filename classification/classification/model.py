@@ -109,26 +109,38 @@ class RegressionObjective(ObjectiveBase):
         super(self.__class__, self).__init__(metadata_label, name)
         self.value_from_mmsi = value_from_mmsi
         self.loss_weight = loss_weight
+        # TODO(alexwilson): This isn't number of classes, but width of input
+        # tensor for this objective. Update.
         self.num_classes = 1
+    
+    def _expected_and_mask(self, mmsis):
+        def impl(mmsis_array):
+            expected = []
+            mask = []
+            for mmsi in mmsis_array:
+                e = self.value_from_mmsi(mmsi)
+                if e != None:
+                    expected.append(e)
+                    mask.append(1.0)
+                else:
+                    expected.append(0.0)
+                    mask.append(0.0)
+            return (np.array(expected, dtype=np.float32),
+                np.array(mask, dtype=np.float32))
 
-    # Currently calculates L1 error
+        expected, mask = tf.py_func(impl, [mmsis], [tf.float32, tf.float32])
+
+        return expected, mask
+
     def _masked_mean_error(self, predictions, mmsis):
-        def impl(predictions_array, mmsis_array):
-            count = 0
-            acc = 0.0
-            for prediction, mmsi in zip(predictions_array, mmsis_array):
-                expected = self.value_from_mmsi(mmsi)
-                if expected != None:
-                    count += 1
-                    diff = (prediction - expected)
-                    acc += np.abs(diff)
-            if count == 0:
-                return 0
+        expected, mask = self._expected_and_mask(mmsis)
 
-            return np.float32(acc / float(count))
+        count = tf.reduce_sum(mask)
+        diff = (expected - predictions) * mask
 
-        return tf.reshape(
-            tf.py_func(impl, [predictions, mmsis], [tf.float32]), shape=[])
+        error = tf.sqrt(tf.reduce_sum((diff * diff)/count))
+
+        return error
 
     def build_trainer(self, predictions, timestamps, mmsis):
         raw_loss = self._masked_mean_error(predictions, mmsis)
