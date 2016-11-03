@@ -150,50 +150,50 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         return objective.build_trainer(predictions, epoch_timestamps, mmsis)
 
     def test_fishing_range_objective_no_ranges(self):
-        predictions = [[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]]
+        logits = [[1e9, 1e9, 1e9, -1e9, -1e9, -1e9]]
         vmd = utility.VesselMetadata(self.vmd_dict, {}, 1.0)
 
-        o = model.FishingLocalisationObjective('fishing_localisation',
+        o = model.FishingLocalisationObjectiveMSE('fishing_localisation',
                                                'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
-            trainer = self._build_trainer(predictions, o)
+            trainer = self._build_trainer(logits, o)
             self.assertAlmostEqual(0.0, trainer.loss.eval())
 
     def test_fishing_range_objective_half_specified(self):
-        predictions = [[1.0, 1.0, 1.0, 0.0, 1.0, 1.0]]
+        logits = [[1e9, 1e9, 1e9, -1e9, -1e9, -1e9]]
         fishing_range_dict = {100001: [self.range1]}
         vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
-        o = model.FishingLocalisationObjective('fishing_localisation',
+        o = model.FishingLocalisationObjectiveMSE('fishing_localisation',
                                                'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
-            trainer = self._build_trainer(predictions, o)
+            trainer = self._build_trainer(logits, o)
             self.assertAlmostEqual(0.0, trainer.loss.eval())
 
     def test_fishing_range_objective_fully_specified(self):
-        predictions = [[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]]
+        logits = [[1e9, 1e9, 1e9, -1e9, -1e9, -1e9]]
         fishing_range_dict = {100001: [self.range1, self.range2]}
         vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
-        o = model.FishingLocalisationObjective('fishing_localisation',
+        o = model.FishingLocalisationObjectiveMSE('fishing_localisation',
                                                'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
-            trainer = self._build_trainer(predictions, o)
+            trainer = self._build_trainer(logits, o)
             self.assertAlmostEqual(0.0, trainer.loss.eval())
 
     def test_fishing_range_objective_fully_specified_mismatch(self):
-        predictions = [[1.0, 1.0, 1.0, 1.0, 0.0, 0.0]]
+        logits = [[1e9, 1e9, 1e9, 1e9, -1e9, -1e9]]
         fishing_range_dict = {100001: [self.range1, self.range2]}
         vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
-        o = model.FishingLocalisationObjective('fishing_localisation',
+        o = model.FishingLocalisationObjectiveMSE('fishing_localisation',
                                                'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
-            trainer = self._build_trainer(predictions, o)
+            trainer = self._build_trainer(logits, o)
             self.assertAlmostEqual(0.16666667, trainer.loss.eval())
 
 
