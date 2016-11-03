@@ -39,7 +39,7 @@ class RegressionLossTest(tf.test.TestCase):
 
             loss, _ = objective.build_trainer(predictions, None, mmsis)
 
-            self.assertAlmostEqual(1.0, loss.eval())
+            self.assertAlmostEqual(1.0801235, loss.eval())
 
 
 class FishingLocalisationLossTest(tf.test.TestCase):
