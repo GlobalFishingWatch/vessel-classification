@@ -1,12 +1,12 @@
 import abc
 import calendar
 from collections import namedtuple
+import logging
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 import utility
-import logging 
 
 Trainer = namedtuple("Trainer", ["loss", "update_ops"])
 TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
@@ -44,13 +44,16 @@ class EvaluationBase(object):
         pass
 
 
-class FishingLocalisationObjective(ObjectiveBase):
+class FishingLocalisationObjectiveMSE(ObjectiveBase):
 
-    def __init__(self, metadata_label, name, vessel_metadata):
+    def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0):
         super(self.__class__, self).__init__(metadata_label, name)
         self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
+        self.loss_weight = loss_weight
 
-    def dense_labels(self, predictions, timestamps, mmsis):
+
+    def dense_labels(self, template, timestamps, mmsis):
+
         # Convert fishing range labels to per-point labels.
         def dense_fishing_labels(mmsis_array, timestamps_array):
             dense_labels_list = []
@@ -67,34 +70,34 @@ class FishingLocalisationObjective(ObjectiveBase):
                         mask = (timestamps >= start_range) & (
                             timestamps < end_range)
                         dense_labels[mask] = is_fishing
-                        logging.info("rangeinfo %s %s %s %s", start_range, end_range, timestamps.min(), timestamps.max())
-                    logging.info("maskinfo %s %s", mask.sum(), len(mask))
                 dense_labels_list.append(dense_labels)
             return np.array(dense_labels_list)
 
         return tf.reshape(
             tf.py_func(dense_fishing_labels, [mmsis, timestamps],
                        [tf.float32]),
-            shape=tf.shape(predictions))
+            shape=tf.shape(template))
 
+
+    def loss_function(self, logits, dense_labels):
+        predictions = tf.sigmoid(logits)
+        return utility.fishing_localisation_mse(predictions, dense_labels)
 
     def build_trainer(self, logits, timestamps, mmsis, loss_weight=1.0):
         update_ops = []
 
-        dense_labels = self.dense_labels(predictions, timestamps, mmsis)
+        dense_labels = self.dense_labels(logits, timestamps, mmsis)
 
-        fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
-        fishing_targets = tf.to_float(dense_labels > 0.5)
-        raw_loss = (tf.reduce_sum(fishing_mask * tf.nn.sigmoid_cross_entropy_with_logits(
-            logits, fishing_targets)) / self.window_max_points)
+        raw_loss = self.loss_function(logits, dense_labels)
 
         # TODO(alexwilson): Add training accuracy.
+        # predictions = tf.sigmoid(logits)
         # raw_loss = utility.fishing_localisation_mse(predictions, dense_labels)
 
         update_ops.append(
             tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
 
-        loss = loss_weight * raw_loss
+        loss = self.loss_weight * raw_loss
 
         return Trainer(loss, update_ops)
 
@@ -148,6 +151,14 @@ class FishingLocalisationObjective(ObjectiveBase):
         return Evaluation(self.metadata_label, self.name, scores)
 
 
+
+class FishingLocalizationObjectiveCrossEntropy(FishingLocalisationObjectiveMSE):
+
+    def loss_function(self, logits, dense_labels):
+        fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
+        fishing_targets = tf.to_float(dense_labels > 0.5)
+        return (tf.reduce_mean(fishing_mask * tf.nn.sigmoid_cross_entropy_with_logits(
+            logits, fishing_targets)))
  
 
 class ClassificationObjective(ObjectiveBase):
@@ -156,13 +167,15 @@ class ClassificationObjective(ObjectiveBase):
                  name,
                  label_from_mmsi,
                  classes,
-                 transformer=None):
+                 transformer=None,
+                 loss_weight=1.0):
         super(self.__class__, self).__init__(metadata_label, name)
         self.label_from_mmsi = label_from_mmsi
         self.classes = classes
         self.class_indices = dict(zip(classes, range(len(classes))))
         self.num_classes = len(classes)
         self.transformer = transformer
+        self.loss_weight = loss_weight
 
     def training_label(self, mmsi):
         """ Return the index of this training label, or if it's unset, return
@@ -176,7 +189,7 @@ class ClassificationObjective(ObjectiveBase):
         else:
             return -1
 
-    def build_trainer(self, logits, timestamps, mmsis, loss_weight=1.0):
+    def build_trainer(self, logits, timestamps, mmsis):
         def labels_from_mmsis(mmsis_array):
             return np.vectorize(
                 self.training_label, otypes=[np.int32])(mmsis_array)
@@ -201,7 +214,7 @@ class ClassificationObjective(ObjectiveBase):
 
         raw_loss = slim.losses.softmax_cross_entropy(
             logits, one_hot_labels, weight=label_weights)
-        loss = raw_loss * loss_weight
+        loss = raw_loss * self.loss_weight
         class_predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
         update_ops = []
@@ -298,11 +311,11 @@ class ModelBase(object):
     def __init__(self, num_feature_dimensions, vessel_metadata):
         self.num_feature_dimensions = num_feature_dimensions
         if vessel_metadata:
-          self.vessel_metadata = vessel_metadata
-          self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
+            self.vessel_metadata = vessel_metadata
+            self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
         else:
-          self.vessel_metadata = None
-          self.fishing_ranges_map = None
+            self.vessel_metadata = None
+            self.fishing_ranges_map = None
         self.training_objectives = None
 
     @abc.abstractmethod

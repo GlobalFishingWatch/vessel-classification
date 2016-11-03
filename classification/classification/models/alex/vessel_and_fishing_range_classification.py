@@ -3,7 +3,8 @@ import argparse
 import json
 from . import layers
 from classification import utility
-from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective, FishingLocalisationObjective
+from classification.model import (ModelBase, TrainNetInfo, make_vessel_label_objective, 
+                                FishingLocalisationObjectiveMSE)
 import logging
 import math
 import os
@@ -42,8 +43,11 @@ class Model(ModelBase):
                 transformer=utility.vessel_categorical_length_transformer)
         ]
 
-        self.fishing_localisation_objective = FishingLocalisationObjective(
-            'fishing_localisation', 'Fishing localisation', vessel_metadata)
+        self.fishing_localisation_objective = FishingLocalisationObjectiveMSE(
+            'fishing_localisation',
+            'Fishing localisation',
+            vessel_metadata,
+            loss_weight=5.0)
 
         self.training_objectives = self.classification_training_objectives + [
             self.fishing_localisation_objective

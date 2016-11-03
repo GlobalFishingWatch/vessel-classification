@@ -3,6 +3,7 @@ import argparse
 import json
 import logging
 import math
+import numpy as np
 import os
 from . import utility
 
@@ -18,6 +19,8 @@ class Trainer:
         model.
     """
 
+    max_replication_factor = 100.0
+
     def __init__(self, model, base_feature_path, train_scratch_path):
         self.model = model
         self.training_objectives = model.training_objectives
@@ -28,9 +31,12 @@ class Trainer:
         self.num_parallel_readers = 16
 
     def _feature_files(self, split):
+        random_state = np.random.RandomState()
+        training_mmsis = self.model.vessel_metadata.weighted_training_list(
+            random_state, split, self.max_replication_factor)
         return [
             '%s/%d.tfrecord' % (self.base_feature_path, mmsi)
-            for mmsi in self.model.vessel_metadata.mmsis_for_split(split)
+            for mmsi in training_mmsis
         ]
 
     def _feature_data_reader(self, split, is_training):
@@ -61,16 +67,14 @@ class Trainer:
         capacity = 8000
         min_size_after_deque = capacity - self.model.batch_size * 4
 
-        max_replication = 100.0
-
         readers = []
         for _ in range(self.num_parallel_readers):
             readers.append(
-                utility.cropping_weight_replicating_feature_file_reader(
+                utility.random_feature_cropping_file_reader(
                     self.model.vessel_metadata, filename_queue,
                     self.model.num_feature_dimensions + 1, self.model.
                     max_window_duration_seconds, self.model.window_max_points,
-                    self.model.min_viable_timeslice_length, max_replication))
+                    self.model.min_viable_timeslice_length))
 
         (features, timestamps, time_bounds,
          mmsis) = tf.train.shuffle_batch_join(
@@ -90,7 +94,7 @@ class Trainer:
         """ The function for running a training replica on a worker. """
 
         features, timestamps, time_bounds, mmsis = self._feature_data_reader(
-            'Training', True)
+            utility.TRAINING_SPLIT, True)
 
         (optimizer, objectives) = self.model.build_training_net(
             features, timestamps, mmsis)
@@ -117,7 +121,7 @@ class Trainer:
         """ The function for running model evaluation on the master. """
 
         features, timestamps, time_bounds, mmsis = self._feature_data_reader(
-            'Test', False)
+            utility.TEST_SPLIT, False)
 
         objectives = self.model.build_inference_net(features, timestamps,
                                                     mmsis)
@@ -141,6 +145,7 @@ class Trainer:
         # Setup the global step.
         slim.get_or_create_global_step()
 
+        merged_summary_ops = tf.merge_summary(summary_ops)
         while True:
             try:
                 slim.evaluation.evaluation_loop(
@@ -149,7 +154,7 @@ class Trainer:
                     self.eval_dir,
                     num_evals=num_evals,
                     eval_op=update_ops,
-                    summary_op=tf.merge_summary(summary_ops),
+                    summary_op=merged_summary_ops,
                     eval_interval_secs=120)
             except ValueError as e:
                 logging.warning('Error in evaluation loop: (%s), retrying',
