@@ -478,6 +478,7 @@ def _hash_mmsi_to_double(mmsi, salt=''):
     Returns:
         A value in the range [0, 1.0).
     """
+    assert isinstance(mmsi, int)
     hasher = hashlib.md5()
     i = '%s_%s' % (mmsi, salt)
     hasher.update(i)
@@ -554,6 +555,12 @@ class VesselMetadata(object):
         return replicated_mmsis
 
 
+def is_test(mmsi):
+    """Is this mmsi in the test set?
+    """
+    return (_hash_mmsi_to_double(mmsi) >= 0.5)
+
+
 def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
                                           fishing_range_dict,
                                           fishing_range_training_upweight):
@@ -581,7 +588,7 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
         mmsi = int(row['mmsi'])
         coarse_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
         if mmsi in available_mmsis and coarse_vessel_type:
-            if (_hash_mmsi_to_double(mmsi) >= 0.5):
+            if is_test(mmsi):
                 split = 'Test'
             else:
                 split = 'Training'
