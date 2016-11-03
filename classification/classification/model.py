@@ -83,7 +83,7 @@ class FishingLocalisationObjective(ObjectiveBase):
         update_ops.append(
             tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
 
-        loss = self.loss_weight * raw_loss
+        loss = raw_loss * self.loss_weight
 
         return Trainer(loss, update_ops)
 
@@ -136,9 +136,18 @@ class RegressionObjective(ObjectiveBase):
         expected, mask = self._expected_and_mask(mmsis)
 
         count = tf.reduce_sum(mask)
-        diff = (expected - predictions) * mask
+        #diff = tf.abs(tf.mul(expected - predictions, mask))
+        diff = tf.sub(expected, predictions)
 
-        error = tf.sqrt(tf.reduce_sum((diff * diff)/count))
+        epsilon = 1e-7
+        error_i = tf.reduce_sum(diff) / tf.maximum(count, epsilon)
+
+        predictions_shape = tf.shape(predictions)
+        expected_shape = tf.shape(expected)
+        diff_shape = tf.shape(diff)
+
+        error = tf.Print(error_i, [predictions_shape, expected_shape, diff_shape,
+            predictions, expected, mask, count, diff, error_i], 'Predictions ', summarize=600)
 
         return error
 
@@ -149,7 +158,7 @@ class RegressionObjective(ObjectiveBase):
         update_ops.append(
             tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
 
-        loss = self.loss_weight * raw_loss
+        loss = raw_loss * self.loss_weight
 
         return Trainer(loss, update_ops)
 
@@ -310,7 +319,8 @@ def make_vessel_label_objective(vessel_metadata,
 class ModelBase(object):
     __metaclass__ = abc.ABCMeta
 
-    batch_size = 32
+    #batch_size = 32
+    batch_size = 4
 
     feature_duration_days = 180
     max_sample_frequency_seconds = 5 * 60

@@ -41,6 +41,23 @@ class RegressionLossTest(tf.test.TestCase):
 
             self.assertAlmostEqual(1.0801235, loss.eval())
 
+    def test_gradient(self):
+        with self.test_session():
+            predictions = tf.constant(np.array([1.0, 4.0, 5.0, 6.0, 3.0], dtype=np.float32))
+            mmsis = np.array([1, 2, 3, 4, 5])
+
+            real_values = {1: 2.0, 2: 2.5, 3: 4.5}
+
+            objective = model.RegressionObjective(
+                'a label', 'A name', lambda mmsi: real_values.get(mmsi))
+
+            loss, _ = objective.build_trainer(predictions, None, mmsis)
+
+            error = tf.test.compute_gradient_error(predictions, [5], loss, [1])
+
+            print 'ERROR: ', error
+
+
 
 class FishingLocalisationLossTest(tf.test.TestCase):
     def test_simple_loss(self):

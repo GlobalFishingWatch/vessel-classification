@@ -34,19 +34,19 @@ class Model(ModelBase):
             return np.float32(length)
 
         self.training_objectives = [
-            make_vessel_label_objective(vessel_metadata, 'is_fishing',
-                                        'Fishing', ['Fishing', 'Non-fishing']),
-            make_vessel_label_objective(
-                vessel_metadata, 'label', 'Vessel class',
-                utility.VESSEL_CLASS_NAMES), make_vessel_label_objective(
-                    vessel_metadata, 'sublabel', 'Vessel detailed class',
-                    utility.VESSEL_CLASS_DETAILED_NAMES),
-            make_vessel_label_objective(
-                vessel_metadata,
-                'length',
-                'Vessel length category',
-                utility.VESSEL_LENGTH_CLASSES,
-                transformer=utility.vessel_categorical_length_transformer),
+            #make_vessel_label_objective(vessel_metadata, 'is_fishing',
+            #                            'Fishing', ['Fishing', 'Non-fishing']),
+            #make_vessel_label_objective(
+            #    vessel_metadata, 'label', 'Vessel class',
+            #    utility.VESSEL_CLASS_NAMES), make_vessel_label_objective(
+            #        vessel_metadata, 'sublabel', 'Vessel detailed class',
+            #        utility.VESSEL_CLASS_DETAILED_NAMES),
+            #make_vessel_label_objective(
+            #    vessel_metadata,
+            #    'length',
+            #    'Vessel length category',
+            #    utility.VESSEL_LENGTH_CLASSES,
+            #    transformer=utility.vessel_categorical_length_transformer),
             RegressionObjective('length', 'Vessel length regression',
                 length_or_none, loss_weight=0.05)
         ]
