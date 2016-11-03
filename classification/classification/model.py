@@ -47,7 +47,7 @@ class EvaluationBase(object):
 class FishingLocalisationObjectiveMSE(ObjectiveBase):
 
     def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0):
-        super(self.__class__, self).__init__(metadata_label, name)
+        ObjectiveBase.__init__(self, metadata_label, name)
         self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
         self.loss_weight = loss_weight
 
