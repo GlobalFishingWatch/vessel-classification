@@ -307,6 +307,10 @@ object Pipeline extends LazyLogging {
       Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
     encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
 
+    // Get a list of all MMSIs to save to disk to speed up TF training startup.
+    val mmsiListPath = config.pipelineOutputPath + "/mmsis"
+    features.keys.saveAsTextFile(mmsiListPath)
+
     sc.close()
   }
 }
