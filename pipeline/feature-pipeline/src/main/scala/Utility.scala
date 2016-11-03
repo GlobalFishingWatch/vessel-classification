@@ -93,6 +93,24 @@ case class VesselLocationRecord(timestamp: Instant,
                                 course: DoubleU[degrees],
                                 heading: DoubleU[degrees])
 
+
+case class PortVisit(port: Anchorage,
+                     arrival: Instant,
+                     departure: Instant) {
+  def extend(other: PortVisit) : immutable.Seq[PortVisit] = {
+    if (port eq other.port) {
+      Vector[PortVisit](PortVisit(port, arrival, other.departure))
+    } else {
+      Vector[PortVisit](this, other)
+    }
+  }
+
+  def toJson =
+    ("port" -> port.getId()) ~
+    ("arrival" -> arrival.toString()) ~
+    ("departure" -> departure.toString())
+}
+
 case class ResampledVesselLocation(timestamp: Instant,
                                    location: LatLon,
                                    distanceToShore: DoubleU[kilometer],
@@ -129,12 +147,17 @@ case class Anchorage(meanLocation: LatLon,
 
   def toJson = {
     val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
-    ("latitude" -> meanLocation.lat.value) ~
+    ("id" -> getId) ~
+      ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
       ("unique_vessel_count" -> vessels.size) ~
       ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
       ("flag_state_distribution" -> flagStateDistribution) ~
       ("mmsis" -> vessels.map(_.mmsi))
+  }
+
+  def getId() = {
+    meanLocation.getS2CellId(14).toToken
   }
 }
 
