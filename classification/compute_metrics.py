@@ -39,31 +39,31 @@ table {
     border-collapse: collapse;
 }
 
-.confmatrix th.col {
+.confusion-matrix th.col {
   height: 140px; 
   white-space: nowrap;
 }
 
-.confmatrix th.col div {
+.confusion-matrix th.col div {
     transform: translate(25px, 51px) rotate(315deg); 
     width: 30px;
 }
 
-.confmatrix th.col span {
+.confusion-matrix th.col span {
     border-bottom: 1px solid #ccc; 
     padding: 5px 10px; 
     text-align: left;
 }
 
-.confmatrix th.row {
+.confusion-matrix th.row {
     text-align: right;
 }
 
-.confmatrix td.diagonal {
+.confusion-matrix td.diagonal {
     border: 1px solid black;
 }
 
-.confmatrix td.offdiagonal {
+.confusion-matrix td.offdiagonal {
     border: 1px dotted grey;
 }
 
@@ -89,7 +89,7 @@ def ydump_confusion_matrix(doc, cm, labels, **kwargs):
             labels for confusion matrix
     """
     doc, tag, text, line = doc.ttl()
-    with tag('table', klass="confmatrix", **kwargs):
+    with tag('table', klass="confusion-matrix", **kwargs):
         with tag('tr'):
             line('th', '')
             for x in labels:
@@ -291,13 +291,6 @@ def remap_lengths(len_map):
     return map
 
 
-def open_gzip_or_regular(path):
-    if path.endswith('.gz'):
-        return gzip.GzipFile(path)
-    else:
-        return open(path)
-
-
 def load_inferred(inference_path, label_map, field):
     """Load inferred data and generate comparison data
 
@@ -308,7 +301,7 @@ def load_inferred(inference_path, label_map, field):
     scores = []
     mmsi_list = []
     all_labels = set()
-    with open_gzip_or_regular(inference_path) as f:
+    with gzip.GzipFile(inference_path) as f:
         with nlj.open(f) as src:
             for row in src:
                 mmsi = row['mmsi']
