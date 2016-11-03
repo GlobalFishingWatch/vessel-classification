@@ -44,7 +44,7 @@ class EvaluationBase(object):
         pass
 
 
-AbstractFishingLocalizationObjective(ObjectiveBase):
+class AbstractFishingLocalizationObjective(ObjectiveBase):
 
     def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0):
         ObjectiveBase.__init__(self, metadata_label, name)
@@ -78,7 +78,7 @@ AbstractFishingLocalizationObjective(ObjectiveBase):
                        [tf.float32]),
             shape=tf.shape(template))
 
-    @abstractmethod
+    @abc.abstractmethod
     def loss_function(self, logits, dense_labels):
         loss_function = None
         return loss_function
@@ -108,7 +108,7 @@ AbstractFishingLocalizationObjective(ObjectiveBase):
 
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, scores):
-                super(self.__class__, self).__init__(metadata_label, name)
+                super(Evaluation, self).__init__(metadata_label, name)
                 self.scores = scores
  
             def build_test_metrics(self, mmsis, timestamps):
@@ -155,8 +155,6 @@ AbstractFishingLocalizationObjective(ObjectiveBase):
 class FishingLocalisationObjectiveMSE(AbstractFishingLocalizationObjective):
 
     def loss_function(self, logits, dense_labels):
-        loss_function = None
-        return loss_fu
         predictions = tf.sigmoid(logits)
         return utility.fishing_localisation_mse(predictions, dense_labels)
 
@@ -178,7 +176,7 @@ class ClassificationObjective(ObjectiveBase):
                  classes,
                  transformer=None,
                  loss_weight=1.0):
-        super(self.__class__, self).__init__(metadata_label, name)
+        super(ClassificationObjective, self).__init__(metadata_label, name)
         self.label_from_mmsi = label_from_mmsi
         self.classes = classes
         self.class_indices = dict(zip(classes, range(len(classes))))
@@ -241,7 +239,7 @@ class ClassificationObjective(ObjectiveBase):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, training_label_lookup,
                          classes, num_classes, logits):
-                super(self.__class__, self).__init__(metadata_label, name)
+                super(Evaluation, self).__init__(metadata_label, name)
                 self.training_label_lookup = training_label_lookup
                 self.classes = classes
                 self.num_classes = num_classes
