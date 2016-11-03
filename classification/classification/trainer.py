@@ -58,7 +58,7 @@ class Trainer:
         """
         input_files = self._feature_files(split)
         filename_queue = tf.train.input_producer(input_files, shuffle=True)
-        capacity = 1000
+        capacity = 8000
         min_size_after_deque = capacity - self.model.batch_size * 4
 
         max_replication = 100.0
@@ -135,7 +135,7 @@ class Trainer:
             for update_op in names_to_updates.values():
                 update_ops.append(update_op)
 
-        num_examples = 1024
+        num_examples = 16 * 1024
         num_evals = math.ceil(num_examples / float(self.model.batch_size))
 
         # Setup the global step.

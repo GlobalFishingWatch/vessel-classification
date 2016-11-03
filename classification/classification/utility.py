@@ -128,19 +128,14 @@ def fishing_localisation_mse(predictions, targets):
        happening. Thus targets can be in the range 0 (not fishing) - 1 (fishing)
        or it can take the value -1 to indicate don't know.
     """
-    mask = tf.select(
-        tf.equal(targets, -1),
-        tf.zeros_like(
-            targets, dtype=tf.float32),
-        tf.ones_like(
-            targets, dtype=tf.float32))
+    EPSILON = 1e-10
+    mask = tf.to_float(tf.not_equal(targets, -1))
     scale = tf.reduce_sum(mask)
 
     error = (predictions - targets) * mask
     mse_sum = tf.reduce_sum(error * error)
 
-    return tf.cond(
-        tf.equal(scale, 0.0), lambda: scale, lambda: mse_sum / scale)
+    return mse_sum / (scale + EPSILON)
 
 
 def single_feature_file_reader(filename_queue, num_features):
@@ -270,8 +265,8 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
     features = np.roll(features, roll, axis=0)
 
     # Drop the first (timestamp) column.
-    features = features[:, 1:]
     timestamps = features[:, 0].astype(np.int32)
+    features = features[:, 1:]
 
     if not np.isfinite(features).all():
         logging.fatal('Bad features: %s', features)
@@ -411,8 +406,8 @@ def np_array_extract_slices_for_time_ranges(random_state, input_series, num_feat
 
             time_bounds = np.array([start_time, end_time], dtype=np.int32)
 
-            timeseries = output_slice[:, 0].astype(np.int32)
             without_timestamp = output_slice[:, 1:]
+            timeseries = output_slice[:, 0].astype(np.int32)
             slices.append(
                 (np.stack([without_timestamp]), timeseries, time_bounds, mmsi))
 
