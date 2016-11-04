@@ -131,19 +131,14 @@ def fishing_localisation_mse(predictions, targets):
        happening. Thus targets can be in the range 0 (not fishing) - 1 (fishing)
        or it can take the value -1 to indicate don't know.
     """
-    mask = tf.select(
-        tf.equal(targets, -1),
-        tf.zeros_like(
-            targets, dtype=tf.float32),
-        tf.ones_like(
-            targets, dtype=tf.float32))
+    EPSILON = 1e-10
+    mask = tf.to_float(tf.not_equal(targets, -1))
     scale = tf.reduce_sum(mask)
 
     error = (predictions - targets) * mask
     mse_sum = tf.reduce_sum(error * error)
 
-    return tf.cond(
-        tf.equal(scale, 0.0), lambda: scale, lambda: mse_sum / scale)
+    return mse_sum / (scale + EPSILON)
 
 
 def single_feature_file_reader(filename_queue, num_features):
@@ -531,8 +526,7 @@ class VesselMetadata(object):
     def weighted_training_list(self, random_state, split,
                                max_replication_factor):
         replicated_mmsis = []
-        logging.info("Training mmsis: %d",
-                     len(self.mmsis_for_split(split)))
+        logging.info("Training mmsis: %d", len(self.mmsis_for_split(split)))
         fishing_ranges_mmsis = []
         for mmsi, (rows, weight) in self.metadata_by_split[split].iteritems():
 

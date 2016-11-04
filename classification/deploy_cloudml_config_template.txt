@@ -11,4 +11,3 @@ trainingInput:
   workerType: "large_model"
   workerCount: 4
   parameterServerCount: 1
-  region: us-central1
