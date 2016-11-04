@@ -8,7 +8,6 @@ import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 import utility
 
-
 Trainer = namedtuple("Trainer", ["loss", "update_ops"])
 TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 

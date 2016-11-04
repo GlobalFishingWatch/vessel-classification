@@ -4,6 +4,7 @@ import numpy as np
 import utility
 import tensorflow as tf
 
+
 class PythonFixedTimeExtractTest(tf.test.TestCase):
     def test_cropped_extract(self):
         with self.test_session():
@@ -42,7 +43,6 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
             res = utility.np_array_random_fixed_time_extract(
                 lambda _: 0, input_data, 20, 5, 50)
             self.assertAllEqual(res, expected_result)
-
 
 
 class VesselMetadataFileReaderTest(tf.test.TestCase):

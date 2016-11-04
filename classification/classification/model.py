@@ -9,7 +9,6 @@ import tensorflow.contrib.metrics as metrics
 import utility
 
 
-
 class ModelBase(object):
     __metaclass__ = abc.ABCMeta
 

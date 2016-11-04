@@ -5,6 +5,7 @@ import numpy as np
 import utility
 import tensorflow as tf
 
+
 def _dt(s):
     return dateutil.parser.parse(s)
 
@@ -90,8 +91,8 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         predictions = [[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]]
         vmd = utility.VesselMetadata(self.vmd_dict, {}, 1.0)
 
-        o = objectives.FishingLocalisationObjective('fishing_localisation',
-                                               'Fishing Localisation', vmd)
+        o = objectives.FishingLocalisationObjective(
+            'fishing_localisation', 'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
             trainer = self._build_trainer(predictions, o)
@@ -102,8 +103,8 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         fishing_range_dict = {100001: [self.range1]}
         vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
-        o = objectives.FishingLocalisationObjective('fishing_localisation',
-                                               'Fishing Localisation', vmd)
+        o = objectives.FishingLocalisationObjective(
+            'fishing_localisation', 'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
             trainer = self._build_trainer(predictions, o)
@@ -114,8 +115,8 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         fishing_range_dict = {100001: [self.range1, self.range2]}
         vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
-        o = objectives.FishingLocalisationObjective('fishing_localisation',
-                                               'Fishing Localisation', vmd)
+        o = objectives.FishingLocalisationObjective(
+            'fishing_localisation', 'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
             trainer = self._build_trainer(predictions, o)
@@ -126,8 +127,8 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         fishing_range_dict = {100001: [self.range1, self.range2]}
         vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
-        o = objectives.FishingLocalisationObjective('fishing_localisation',
-                                               'Fishing Localisation', vmd)
+        o = objectives.FishingLocalisationObjective(
+            'fishing_localisation', 'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
             trainer = self._build_trainer(predictions, o)
