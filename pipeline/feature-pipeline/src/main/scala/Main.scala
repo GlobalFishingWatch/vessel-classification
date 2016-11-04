@@ -241,43 +241,40 @@ object Pipeline extends LazyLogging {
   }
 
   def findPortVisits(
-    locationEvents: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
-    anchorages: SCollection[Anchorage]
-  ) : SCollection[(VesselMetadata, immutable.Seq[PortVisit])] = {
+      locationEvents: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
+      anchorages: SCollection[Anchorage]
+  ): SCollection[(VesselMetadata, immutable.Seq[PortVisit])] = {
     val si = anchorages.asListSideInput
 
-    locationEvents.withSideInputs(si)
+    locationEvents
+      .withSideInputs(si)
       .map {
         case ((metadata, locations), ctx) => {
-          val lookup = AdjacencyLookup(
-            ctx(si),
-            (port:Anchorage) => port.meanLocation,
-            0.5.of[kilometer],
-            13)
+          val lookup =
+            AdjacencyLookup(ctx(si), (port: Anchorage) => port.meanLocation, 0.5.of[kilometer], 13)
 
           (metadata,
            locations
-              .map((location) => {
-                (location, lookup.nearby(location.location))
-              })
-              .filter {
-                case (location, ports)  =>
-                  ports.length > 0
-              }
-              .map {
-                case (location, ports) =>
-                  // ports is List[(Distance, Anchorage)]
-                  PortVisit(ports.head._2, location.timestamp, location.timestamp)
-              }
-              .foldLeft(Vector[PortVisit]())((res:Vector[PortVisit], visit:PortVisit) => {
-                if (res.length == 0) {
-                  res :+ visit
-                } else {
-                  res.init ++ res.last.extend(visit)
-                }
-              })
-             .toSeq
-          )
+             .map((location) => {
+               (location, lookup.nearby(location.location))
+             })
+             .filter {
+               case (location, ports) =>
+                 ports.length > 0
+             }
+             .map {
+               case (location, ports) =>
+                 // ports is List[(Distance, Anchorage)]
+                 PortVisit(ports.head._2, location.timestamp, location.timestamp)
+             }
+             .foldLeft(Vector[PortVisit]())((res: Vector[PortVisit], visit: PortVisit) => {
+               if (res.length == 0) {
+                 res :+ visit
+               } else {
+                 res.init ++ res.last.extend(visit)
+               }
+             })
+             .toSeq)
         }
       }
       .toSCollection
@@ -330,20 +327,14 @@ object Pipeline extends LazyLogging {
 
     val portVisitsPath = config.pipelineOutputPath + "/port_visits"
 
-    findPortVisits(locationRecords, anchorages)
-      .flatMap {
-         case (metadata, visits) =>
-           visits.map((visit) => {
-             (metadata, visit)
-           })
-      }
-      .map {
-        case (metadata, visit) =>
-          compact(render(
-            ("mmsi" -> metadata.mmsi) ~
-            ("visit" -> visit.toJson)))
-      }
-      .saveAsTextFile(portVisitsPath)
+    findPortVisits(locationRecords, anchorages).flatMap {
+      case (metadata, visits) =>
+        visits.map((visit) => {
+          compact(
+            render(("mmsi" -> metadata.mmsi) ~
+              ("visit" -> visit.toJson)))
+        })
+    }.saveAsTextFile(portVisitsPath)
 
     val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
       case (md, feature) =>

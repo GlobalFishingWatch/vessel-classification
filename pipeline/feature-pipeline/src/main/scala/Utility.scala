@@ -93,11 +93,8 @@ case class VesselLocationRecord(timestamp: Instant,
                                 course: DoubleU[degrees],
                                 heading: DoubleU[degrees])
 
-
-case class PortVisit(port: Anchorage,
-                     arrival: Instant,
-                     departure: Instant) {
-  def extend(other: PortVisit) : immutable.Seq[PortVisit] = {
+case class PortVisit(port: Anchorage, arrival: Instant, departure: Instant) {
+  def extend(other: PortVisit): immutable.Seq[PortVisit] = {
     if (port eq other.port) {
       Vector[PortVisit](PortVisit(port, arrival, other.departure))
     } else {
@@ -107,8 +104,8 @@ case class PortVisit(port: Anchorage,
 
   def toJson =
     ("port" -> port.getId()) ~
-    ("arrival" -> arrival.toString()) ~
-    ("departure" -> departure.toString())
+      ("arrival" -> arrival.toString()) ~
+      ("departure" -> departure.toString())
 }
 
 case class ResampledVesselLocation(timestamp: Instant,
