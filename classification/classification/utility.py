@@ -530,8 +530,7 @@ class VesselMetadata(object):
     def weighted_training_list(self, random_state, split,
                                max_replication_factor):
         replicated_mmsis = []
-        logging.info("Training mmsis: %d",
-                     len(self.mmsis_for_split(split)))
+        logging.info("Training mmsis: %d", len(self.mmsis_for_split(split)))
         fishing_ranges_mmsis = []
         for mmsi, (rows, weight) in self.metadata_by_split[split].iteritems():
 

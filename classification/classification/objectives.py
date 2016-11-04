@@ -120,7 +120,7 @@ class RegressionObjective(ObjectiveBase):
 
     def build_objective_function(self, input):
         return tf.squeeze(slim.fully_connected(input, 1))
-    
+
     def _expected_and_mask(self, mmsis):
         def impl(mmsis_array):
             expected = []
@@ -133,8 +133,9 @@ class RegressionObjective(ObjectiveBase):
                 else:
                     expected.append(0.0)
                     mask.append(0.0)
-            return (np.array(expected, dtype=np.float32),
-                np.array(mask, dtype=np.float32))
+            return (np.array(
+                expected, dtype=np.float32), np.array(
+                    mask, dtype=np.float32))
 
         expected, mask = tf.py_func(impl, [mmsis], [tf.float32, tf.float32])
 
@@ -163,7 +164,8 @@ class RegressionObjective(ObjectiveBase):
 
     def build_evaluation(self, predictions, mmsis):
         class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name, masked_mean_error, predictions):
+            def __init__(self, metadata_label, name, masked_mean_error,
+                         predictions):
                 super(self.__class__, self).__init__(metadata_label, name)
                 self.masked_mean_error = masked_mean_error
                 self.predictions = predictions
@@ -173,17 +175,15 @@ class RegressionObjective(ObjectiveBase):
                 raw_loss = self.masked_mean_error(self.predictions, self.mmsis)
 
                 return metrics.aggregate_metric_map({
-                    '%s/Test error' % self.name: metrics.streaming_mean(raw_loss)
+                    '%s/Test error' % self.name:
+                    metrics.streaming_mean(raw_loss)
                 })
 
             def build_json_results(self, predictions, timestamps):
-                return {
-                    'name': self.name,
-                    'value': self.prediction
-                }
+                return {'name': self.name, 'value': self.prediction}
 
         return Evaluation(self.metadata_label, self.name,
-            self._masked_mean_error, predictions)
+                          self._masked_mean_error, predictions)
 
 
 class ClassificationObjective(ObjectiveBase):

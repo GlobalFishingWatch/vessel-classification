@@ -8,12 +8,11 @@ import tensorflow.contrib.metrics as metrics
 import utility
 
 
-
 class ModelBase(object):
     __metaclass__ = abc.ABCMeta
 
     batch_size = 32
-    
+
     feature_duration_days = 180
     max_sample_frequency_seconds = 5 * 60
     max_window_duration_seconds = feature_duration_days * 24 * 3600

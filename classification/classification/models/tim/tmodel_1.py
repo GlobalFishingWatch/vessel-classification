@@ -89,7 +89,8 @@ class Model(ModelBase):
 
         # Determine fishing estimate
         with tf.variable_scope("prediction-layer"):
-            logits = self.training_objectives[0].build_objective_function(current)
+            logits = self.training_objectives[0].build_objective_function(
+                current)
 
         return logits
 

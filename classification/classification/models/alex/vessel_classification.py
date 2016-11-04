@@ -26,7 +26,6 @@ class Model(ModelBase):
         super(self.__class__, self).__init__(num_feature_dimensions,
                                              vessel_metadata)
 
-
         def length_or_none(mmsi):
             length = vessel_metadata.vessel_label('length', mmsi)
             if length == '':
@@ -48,8 +47,11 @@ class Model(ModelBase):
                 'Vessel length category',
                 utility.VESSEL_LENGTH_CLASSES,
                 transformer=utility.vessel_categorical_length_transformer),
-            RegressionObjective('length', 'Vessel length regression',
-                length_or_none, loss_weight=0.1)
+            RegressionObjective(
+                'length',
+                'Vessel length regression',
+                length_or_none,
+                loss_weight=0.1)
         ]
 
     def zero_pad_features(self, features):
