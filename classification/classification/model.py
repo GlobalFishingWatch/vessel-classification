@@ -89,8 +89,6 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
         raw_loss = self.loss_function(logits, dense_labels)
 
         # TODO(alexwilson): Add training accuracy.
-        # predictions = tf.sigmoid(logits)
-        # raw_loss = utility.fishing_localisation_mse(predictions, dense_labels)
 
         update_ops.append(
             tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
