@@ -5,18 +5,16 @@ from collections import namedtuple
 import tensorflow.contrib.slim as slim
 import logging
 
-from classification.model import (ModelBase, TrainNetInfo, make_vessel_label_objective, 
+from classification.model import (ModelBase, TrainNetInfo,
+                                  make_vessel_label_objective,
                                   FishingLocalizationObjectiveCrossEntropy)
-
 
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm
 
-
 TowerParams = namedtuple("TowerParams",
-                         ["filter_count", "filter_widths", "pool_size", "pool_stride",
-                          "keep_prob", "shunt"])
-
+                         ["filter_count", "filter_widths", "pool_size",
+                          "pool_stride", "keep_prob", "shunt"])
 
 
 class Model(ModelBase):
@@ -31,16 +29,13 @@ class Model(ModelBase):
 
     tower_params = [
         TowerParams(*x)
-        for x in [(32, [3], 2, 2, 1.0, True)] * 9 + 
-                 [(32, [3], 2, 2, 0.8, True)]
+        for x in [(32, [3], 2, 2, 1.0, True)] * 9 + [(32, [3], 2, 2, 0.8, True)
+                                                     ]
     ]
-
-
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
         super(self.__class__, self).__init__(num_feature_dimensions,
                                              vessel_metadata)
-
 
         # TODO(bitsofbits): consider moving these to cached properties instead so we don't need init
         self.classification_training_objectives = [
@@ -123,15 +118,15 @@ class Model(ModelBase):
         # Determine classification logits
         logit_list = []
         for cto in self.classification_training_objectives:
-            with tf.variable_scope("prediction-layer-{}".format(cto.name.replace(' ', '-'))):
+            with tf.variable_scope("prediction-layer-{}".format(
+                    cto.name.replace(' ', '-'))):
                 logit_list.append(dense_layer(current, cto.num_classes))
 
         # Assemble the fishing score logits
 
         fishing_sublayers = []
         for l in reversed(layers):
-            l = tf.slice(l, [0, 0, 0, 0],
-                            [-1, -1, -1, self.fishing_per_layer])
+            l = tf.slice(l, [0, 0, 0, 0], [-1, -1, -1, self.fishing_per_layer])
             H, W, C = [int(x) for x in l.get_shape().dims[1:]]
             assert self.window_max_points % W == 0
             logging.debug("SUBLAYERS %s %s %s", H, W, C)
@@ -142,16 +137,18 @@ class Model(ModelBase):
             fishing_sublayers.append(l)
         current = tf.concat(3, fishing_sublayers)
         current = tf.nn.elu(
-                        batch_norm(
-                            conv1d_layer(current, 1, self.fishing_dense_layer, name="fishing1"),
-                            is_training))
+            batch_norm(
+                conv1d_layer(
+                    current, 1, self.fishing_dense_layer, name="fishing1"),
+                is_training))
         current = conv1d_layer(current, 1, 1, name="fishing_logits")
         fishing_logits = tf.reshape(current, (-1, self.window_max_points))
 
         return logit_list, fishing_logits
 
     def build_inference_net(self, features, timestamps, mmsis):
-        logits_list, fishing_logits = self.build_model(tf.constant(False), features)
+        logits_list, fishing_logits = self.build_model(
+            tf.constant(False), features)
 
         evaluations = []
         for i in range(len(self.classification_training_objectives)):
@@ -167,12 +164,10 @@ class Model(ModelBase):
 
         return evaluations
 
-
-
     def build_training_net(self, features, timestamps, mmsis):
 
-        logits_list, fishing_logits = self.build_model(tf.constant(True), features)
-
+        logits_list, fishing_logits = self.build_model(
+            tf.constant(True), features)
 
         # logits_list, fishing_scores = self.misconception_with_fishing_ranges(
         #     features, mmsis, True)
@@ -192,9 +187,7 @@ class Model(ModelBase):
             self.initial_learning_rate, example, self.decay_examples,
             self.learning_decay_rate)
 
-        optimizer = tf.train.MomentumOptimizer(learning_rate,
-                                                self.momentum)
+        optimizer = tf.train.MomentumOptimizer(learning_rate, self.momentum)
         # optimizer = tf.train.AdamOptimizer(1e-5)
 
         return TrainNetInfo(optimizer, trainers)
-

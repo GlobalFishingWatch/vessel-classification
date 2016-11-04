@@ -45,12 +45,10 @@ class EvaluationBase(object):
 
 
 class AbstractFishingLocalizationObjective(ObjectiveBase):
-
     def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0):
         ObjectiveBase.__init__(self, metadata_label, name)
         self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
         self.loss_weight = loss_weight
-
 
     def dense_labels(self, template, timestamps, mmsis):
 
@@ -101,7 +99,6 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-
     def build_evaluation(self, scores):
 
         dense_labels = self.dense_labels
@@ -110,7 +107,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
             def __init__(self, metadata_label, name, scores):
                 super(Evaluation, self).__init__(metadata_label, name)
                 self.scores = scores
- 
+
             def build_test_metrics(self, mmsis, timestamps):
 
                 labels = dense_labels(self.scores, timestamps, mmsis)
@@ -121,27 +118,21 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 weights = tf.to_float(valid)
 
                 raw_metrics = {
-                    'Test MSE':
-                    slim.metrics.streaming_mean_squared_error(self.scores, tf.to_float(ones), 
-                                    weights=weights),
-                    'Test accuracy':
-                    slim.metrics.streaming_accuracy(predictions, ones, 
-                                    weights=weights),
-                    'Test precision':
-                    slim.metrics.streaming_precision(predictions, ones, 
-                                    weights=weights),
-                    'Test recall':
-                    slim.metrics.streaming_recall(predictions, ones, 
-                                    weights=weights),
-                    'Test fishing fraction':
-                    slim.metrics.streaming_accuracy(predictions, valid, 
-                                    weights=weights)
+                    'Test MSE': slim.metrics.streaming_mean_squared_error(
+                        self.scores, tf.to_float(ones), weights=weights),
+                    'Test accuracy': slim.metrics.streaming_accuracy(
+                        predictions, ones, weights=weights),
+                    'Test precision': slim.metrics.streaming_precision(
+                        predictions, ones, weights=weights),
+                    'Test recall': slim.metrics.streaming_recall(
+                        predictions, ones, weights=weights),
+                    'Test fishing fraction': slim.metrics.streaming_accuracy(
+                        predictions, valid, weights=weights)
                 }
 
-                return metrics.aggregate_metric_map( 
-                    {"{}/{}".format(self.name, k): v for (k, v) in raw_metrics.items()})
-
-
+                return metrics.aggregate_metric_map(
+                    {"{}/{}".format(self.name, k): v
+                     for (k, v) in raw_metrics.items()})
 
             def build_json_results(self, fishing_probabilities):
                 # TODO(alexwilson): Plumb through the timestamps as well,
@@ -151,22 +142,21 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
         return Evaluation(self.metadata_label, self.name, scores)
 
 
-
 class FishingLocalisationObjectiveMSE(AbstractFishingLocalizationObjective):
-
     def loss_function(self, logits, dense_labels):
         predictions = tf.sigmoid(logits)
         return utility.fishing_localisation_mse(predictions, dense_labels)
 
 
-class FishingLocalizationObjectiveCrossEntropy(AbstractFishingLocalizationObjective):
-
+class FishingLocalizationObjectiveCrossEntropy(
+        AbstractFishingLocalizationObjective):
     def loss_function(self, logits, dense_labels):
         fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
         fishing_targets = tf.to_float(dense_labels > 0.5)
-        return (tf.reduce_mean(fishing_mask * tf.nn.sigmoid_cross_entropy_with_logits(
-            logits, fishing_targets)))
- 
+        return (tf.reduce_mean(fishing_mask *
+                               tf.nn.sigmoid_cross_entropy_with_logits(
+                                   logits, fishing_targets)))
+
 
 class ClassificationObjective(ObjectiveBase):
     def __init__(self,

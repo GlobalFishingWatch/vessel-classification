@@ -3,8 +3,9 @@ import argparse
 import json
 from . import layers
 from classification import utility
-from classification.model import (ModelBase, TrainNetInfo, make_vessel_label_objective, 
-                                FishingLocalisationObjectiveMSE)
+from classification.model import (ModelBase, TrainNetInfo,
+                                  make_vessel_label_objective,
+                                  FishingLocalisationObjectiveMSE)
 import logging
 import math
 import os
@@ -94,11 +95,9 @@ class Model(ModelBase):
 
             fishing_prediction_input = tf.concat(
                 3, [fishing_prediction_layer, tiled_embedding])
-            fishing_logits= tf.squeeze(
+            fishing_logits = tf.squeeze(
                 slim.conv2d(
-                    fishing_prediction_input,
-                    1, [1, 20],
-                    activation_fn=None),
+                    fishing_prediction_input, 1, [1, 20], activation_fn=None),
                 squeeze_dims=[1, 3])
 
             logits = [slim.fully_connected(net, of.num_classes)
