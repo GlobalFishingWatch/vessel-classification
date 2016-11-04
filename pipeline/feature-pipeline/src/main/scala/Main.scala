@@ -37,6 +37,9 @@ import scala.collection.{mutable, immutable}
 import scala.collection.JavaConversions._
 import scala.math
 
+import resource._
+import ScioContextResource._
+
 object Parameters {
   val minRequiredPositions = 1000
   val minTimeBetweenPoints = Duration.standardMinutes(5)
@@ -250,6 +253,8 @@ object Pipeline extends LazyLogging {
       .toSet
   }
 
+  import Utility._
+
   def main(argArray: Array[String]) {
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
 
@@ -264,49 +269,52 @@ object Pipeline extends LazyLogging {
     options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
 
-    val sc = ScioContext(options)
+    managed(ScioContext(options)).acquireAndGet((sc) => {
 
-    // Read, filter and build location records. We build a set of matches for all
-    // relevant years, as a single Cloud Dataflow text reader currently can't yet
-    // handle the sheer volume of matching files.
-    val matches = (Parameters.allDataYears).map { year =>
-      val path = s"${Parameters.inputMeasuresPath}/$year-*/*.json"
-      sc.tableRowJsonFile(path)
-    }
+      // Read, filter and build location records. We build a set of matches for all
+      // relevant years, as a single Cloud Dataflow text reader currently can't yet
+      // handle the sheer volume of matching files.
+      val matches = (Parameters.allDataYears).map { year =>
+        val path = s"${Parameters.inputMeasuresPath}/$year-05-05*/*.json"
+        sc.tableRowJsonFile(path)
+      }
 
-    val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
-      readJsonRecords(matches)
+      val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
+        readJsonRecords(matches)
 
-    val adjacencyAnnotated =
-      Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
+      val adjacencyAnnotated =
+        Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
 
-    val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
+      val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 
-    val knownFishingMMSIs = loadFishingMMSIs()
-    val anchorages: SCollection[Anchorage] = findAnchorageCells(processed, knownFishingMMSIs)
+      val knownFishingMMSIs = loadFishingMMSIs()
+      val anchorages: SCollection[Anchorage] = findAnchorageCells(processed, knownFishingMMSIs)
 
-    val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
-      case (md, feature) =>
-        (s"${md.mmsi}", feature)
-    }
+      val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
+        case (md, feature) =>
+          (s"${md.mmsi}", feature)
+      }
 
-    // Output vessel classifier features.
-    val outputFeaturePath = config.pipelineOutputPath + "/features"
-    val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
+      // Output vessel classifier features.
+      val outputFeaturePath = config.pipelineOutputPath + "/features"
+      val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
 
-    // Output anchorages.
-    val anchoragesPath = config.pipelineOutputPath + "/anchorages"
-    val anchoragesAsString = anchorages.map { anchorage =>
-      compact(render(anchorage.toJson))
-    }
-    anchoragesAsString.saveAsTextFile(anchoragesPath)
+      // Output anchorages.
+      val anchoragesPath = config.pipelineOutputPath + "/anchorages"
+      val anchoragesAsString = anchorages.map { anchorage =>
+        compact(render(anchorage.toJson))
+      }
+      anchoragesAsString.saveAsTextFile(anchoragesPath)
 
-    // Build and output suspected encounters.
-    val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
-    val encounters =
-      Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
-    encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
+      // Build and output suspected encounters.
+      val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
+      val encounters =
+        Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
+      encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
 
-    sc.close()
+      // Get a list of all MMSIs to save to disk to speed up TF training startup.
+      val mmsiListPath = config.pipelineOutputPath + "/mmsis"
+      features.keys.saveAsTextFile(mmsiListPath)
+    })
   }
 }

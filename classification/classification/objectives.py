@@ -112,6 +112,7 @@ class FishingLocalisationObjective(ObjectiveBase):
         return Evaluation(self.metadata_label, self.name)
 
 
+
 class RegressionObjective(ObjectiveBase):
     def __init__(self, metadata_label, name, value_from_mmsi, loss_weight=1.0):
         super(self.__class__, self).__init__(metadata_label, name)
