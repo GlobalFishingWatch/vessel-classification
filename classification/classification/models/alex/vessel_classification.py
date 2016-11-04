@@ -86,14 +86,14 @@ class Model(ModelBase):
 
         features = self.zero_pad_features(features)
 
-        logits_list = layers.misconception_model(
+        outputs_list = layers.misconception_model(
             features, self.window_size, self.stride, self.feature_depth,
             self.levels, self.training_objectives, False)
 
         evaluations = []
         for i in range(len(self.training_objectives)):
             to = self.training_objectives[i]
-            logits = logits_list[i]
-            evaluations.append(to.build_evaluation(logits, mmsis))
+            output = outputs_list[i]
+            evaluations.append(to.build_evaluation(output, mmsis))
 
         return evaluations

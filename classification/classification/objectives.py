@@ -61,7 +61,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
     def build_trainer(self, output, timestamps, mmsis):
         update_ops = []
 
-    def dense_labels(self, template, timestamps, mmsis):
+    def dense_labels(self, template_shape, timestamps, mmsis):
         # Convert fishing range labels to per-point labels.
         def dense_fishing_labels(mmsis_array, timestamps_array):
             dense_labels_list = []
@@ -84,7 +84,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
         return tf.reshape(
             tf.py_func(dense_fishing_labels, [mmsis, timestamps],
                        [tf.float32]),
-            shape=tf.shape(template))
+            shape=template_shape)
 
     @abc.abstractmethod
     def loss_function(self, logits, dense_labels):
@@ -94,9 +94,9 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
     def build_trainer(self, output, timestamps, mmsis):
         update_ops = []
 
-        dense_labels = self.dense_labels(output, timestamps, mmsis)
+        dense_labels = self.dense_labels(tf.shape(output), timestamps, mmsis)
 
-        raw_loss = self.loss_function(logits, dense_labels)
+        raw_loss = self.loss_function(output, dense_labels)
         update_ops.append(
             tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
 
@@ -104,13 +104,13 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-    def build_evaluation(self, output, timestamps, mmsis):
+    def build_evaluation(self, scores, timestamps, mmsis):
         dense_labels = self.dense_labels
 
         class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name, output, timestamps, mmsis):
+            def __init__(self, metadata_label, name, scores, timestamps, mmsis):
                 super(Evaluation, self).__init__(metadata_label, name)
-                self.output = output
+                self.scores = scores
 
             def build_test_metrics(self):
 
@@ -169,7 +169,7 @@ class RegressionObjective(ObjectiveBase):
         self.value_from_mmsi = value_from_mmsi
 
     def build_objective_function(self, input):
-        return tf.squeeze(slim.fully_connected(input, 1))
+        return tf.squeeze(slim.fully_connected(input, 1, activation_fn=None))
 
     def _expected_and_mask(self, mmsis):
         def impl(mmsis_array):
@@ -339,12 +339,14 @@ class ClassificationObjective(ObjectiveBase):
                         predictions, labels, weights=label_mask),
                 })
 
-            def build_json_results(self, class_probabilities, timestamps):
-                max_prob_index = np.argmax(class_probabilities)
-                max_probability = float(class_probabilities[max_prob_index])
+            def build_json_results(self, output, timestamps):
+                # TODO(alexwilson): Apply softmax to the outputs to get
+                # class probabilities instead.
+                max_prob_index = np.argmax(outputs)
+                max_probability = float(outputs[max_prob_index])
                 max_label = self.classes[max_prob_index]
                 full_scores = dict(
-                    zip(self.classes, [float(v) for v in class_probabilities]))
+                    zip(self.classes, [float(v) for v in outputs]))
 
                 return {
                     'name': self.name,

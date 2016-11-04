@@ -95,15 +95,15 @@ class Model(ModelBase):
 
             fishing_prediction_input = tf.concat(
                 3, [fishing_prediction_layer, tiled_embedding])
-            fishing_logits = tf.squeeze(
+            fishing_outputs = tf.squeeze(
                 slim.conv2d(
                     fishing_prediction_input, 1, [1, 20], activation_fn=None),
                 squeeze_dims=[1, 3])
 
-            logits = [of.build_objective_function(net)
+            outputs = [of.build_objective_function(net)
                       for of in self.classification_training_objectives]
 
-            return logits, fishing_logits
+            return outputs, fishing_outputs
 
     def zero_pad_features(self, features):
         """ Zero-pad features in the depth dimension to match requested feature depth. """
