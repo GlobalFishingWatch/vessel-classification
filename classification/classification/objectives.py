@@ -15,20 +15,21 @@ TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 class ObjectiveBase(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, metadata_label, name):
+    def __init__(self, metadata_label, name, loss_weight):
         self.metadata_label = metadata_label
         self.name = name
+        self.loss_weight = loss_weight
 
     @abc.abstractmethod
     def build_objective_function(self, input):
         pass
 
     @abc.abstractmethod
-    def build_trainer(self, predictions, timestamps, mmsis, loss_weight):
+    def build_trainer(self, output, timestamps, mmsis):
         pass
 
     @abc.abstractmethod
-    def build_evaluation(self, predictions, mmsis):
+    def build_evaluation(self, output, timestamps, mmsis):
         pass
 
 
@@ -44,23 +45,23 @@ class EvaluationBase(object):
         pass
 
     @abc.abstractmethod
-    def build_json_results(self, predictions, timestamps):
+    def build_json_results(self, output, timestamps):
         pass
 
 
-class FishingLocalisationObjective(ObjectiveBase):
+class AbstractFishingLocalizationObjective(ObjectiveBase):
     def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0):
-        super(self.__class__, self).__init__(metadata_label, name)
+        ObjectiveBase.__init__(self, metadata_label, name, loss_weight)
         self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
-        self.loss_weight = loss_weight
 
     def build_objective_function(self, input):
         # The objective for fishing localisation is currently built elsewhere.
         pass
 
-    def build_trainer(self, predictions, timestamps, mmsis):
+    def build_trainer(self, output, timestamps, mmsis):
         update_ops = []
 
+    def dense_labels(self, template, timestamps, mmsis):
         # Convert fishing range labels to per-point labels.
         def dense_fishing_labels(mmsis_array, timestamps_array):
             dense_labels_list = []
@@ -80,14 +81,22 @@ class FishingLocalisationObjective(ObjectiveBase):
                 dense_labels_list.append(dense_labels)
             return np.array(dense_labels_list)
 
-        dense_labels = tf.reshape(
+        return tf.reshape(
             tf.py_func(dense_fishing_labels, [mmsis, timestamps],
                        [tf.float32]),
-            shape=tf.shape(predictions))
+            shape=tf.shape(template))
 
-        # TODO(alexwilson): Add training accuracy.
-        raw_loss = utility.fishing_localisation_mse(predictions, dense_labels)
+    @abc.abstractmethod
+    def loss_function(self, logits, dense_labels):
+        loss_function = None
+        return loss_function
 
+    def build_trainer(self, output, timestamps, mmsis):
+        update_ops = []
+
+        dense_labels = self.dense_labels(output, timestamps, mmsis)
+
+        raw_loss = self.loss_function(logits, dense_labels)
         update_ops.append(
             tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
 
@@ -95,29 +104,69 @@ class FishingLocalisationObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-    def build_evaluation(self, predictions, mmsis):
-        class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name):
-                super(self.__class__, self).__init__(metadata_label, name)
+    def build_evaluation(self, output, timestamps, mmsis):
+        dense_labels = self.dense_labels
 
-            def build_test_metrics(self, mmsis):
-                # TODO(alexwilson): Add streaming weighted MSE here.
-                return {}, {}
+        class Evaluation(EvaluationBase):
+            def __init__(self, metadata_label, name, output, timestamps, mmsis):
+                super(Evaluation, self).__init__(metadata_label, name)
+                self.output = output
+
+            def build_test_metrics(self):
+
+                labels = dense_labels(self.scores, self.timestamps, self.mmsis)
+                predictions = tf.to_int32(self.scores > 0.5)
+
+                valid = tf.to_int32(tf.not_equal(labels, -1))
+                ones = tf.to_int32(tf.equal(labels, 1))
+                weights = tf.to_float(valid)
+
+                raw_metrics = {
+                    'Test MSE': slim.metrics.streaming_mean_squared_error(
+                        self.scores, tf.to_float(ones), weights=weights),
+                    'Test accuracy': slim.metrics.streaming_accuracy(
+                        predictions, ones, weights=weights),
+                    'Test precision': slim.metrics.streaming_precision(
+                        predictions, ones, weights=weights),
+                    'Test recall': slim.metrics.streaming_recall(
+                        predictions, ones, weights=weights),
+                    'Test fishing fraction': slim.metrics.streaming_accuracy(
+                        predictions, valid, weights=weights)
+                }
+
+                return metrics.aggregate_metric_map(
+                    {"{}/{}".format(self.name, k): v
+                     for (k, v) in raw_metrics.items()})
 
             def build_json_results(self, fishing_probabilities, timestamps):
                 # TODO(alexwilson): Plumb through the timestamps as well,
                 # then zip the two to give fishing probability results.
                 return {}
 
-        return Evaluation(self.metadata_label, self.name)
+        return Evaluation(self.metadata_label, self.name, scores, timestamps, mmsis)
+
+
+class FishingLocalisationObjectiveMSE(AbstractFishingLocalizationObjective):
+    def loss_function(self, logits, dense_labels):
+        predictions = tf.sigmoid(logits)
+        return utility.fishing_localisation_mse(predictions, dense_labels)
+
+
+class FishingLocalizationObjectiveCrossEntropy(
+        AbstractFishingLocalizationObjective):
+    def loss_function(self, logits, dense_labels):
+        fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
+        fishing_targets = tf.to_float(dense_labels > 0.5)
+        return (tf.reduce_mean(fishing_mask *
+                               tf.nn.sigmoid_cross_entropy_with_logits(
+                                   logits, fishing_targets)))
 
 
 
 class RegressionObjective(ObjectiveBase):
     def __init__(self, metadata_label, name, value_from_mmsi, loss_weight=1.0):
-        super(self.__class__, self).__init__(metadata_label, name)
+        super(self.__class__, self).__init__(metadata_label, name, loss_weight)
         self.value_from_mmsi = value_from_mmsi
-        self.loss_weight = loss_weight
 
     def build_objective_function(self, input):
         return tf.squeeze(slim.fully_connected(input, 1))
@@ -152,8 +201,8 @@ class RegressionObjective(ObjectiveBase):
 
         return error
 
-    def build_trainer(self, predictions, timestamps, mmsis):
-        raw_loss = self._masked_mean_error(predictions, mmsis)
+    def build_trainer(self, output, timestamps, mmsis):
+        raw_loss = self._masked_mean_error(output, mmsis)
 
         update_ops = []
         update_ops.append(
@@ -163,28 +212,28 @@ class RegressionObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-    def build_evaluation(self, predictions, mmsis):
+    def build_evaluation(self, output, timestamps, mmsis):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, masked_mean_error,
                          predictions):
                 super(self.__class__, self).__init__(metadata_label, name)
                 self.masked_mean_error = masked_mean_error
-                self.predictions = predictions
+                self.output = output
                 self.mmsis = mmsis
 
             def build_test_metrics(self):
-                raw_loss = self.masked_mean_error(self.predictions, self.mmsis)
+                raw_loss = self.masked_mean_error(self.output, self.mmsis)
 
                 return metrics.aggregate_metric_map({
                     '%s/Test error' % self.name:
                     metrics.streaming_mean(raw_loss)
                 })
 
-            def build_json_results(self, predictions, timestamps):
-                return {'name': self.name, 'value': self.prediction}
+            def build_json_results(self, output, timestamps):
+                return {'name': self.name, 'value': self.output}
 
         return Evaluation(self.metadata_label, self.name,
-                          self._masked_mean_error, predictions)
+                          self._masked_mean_error, output)
 
 
 class ClassificationObjective(ObjectiveBase):
@@ -195,13 +244,12 @@ class ClassificationObjective(ObjectiveBase):
                  classes,
                  transformer=None,
                  loss_weight=1.0):
-        super(self.__class__, self).__init__(metadata_label, name)
+        super(ClassificationObjective, self).__init__(metadata_label, name, loss_weight)
         self.label_from_mmsi = label_from_mmsi
         self.classes = classes
         self.class_indices = dict(zip(classes, range(len(classes))))
         self.num_classes = len(classes)
         self.transformer = transformer
-        self.loss_weight = loss_weight
 
     def build_objective_function(self, input):
         return slim.fully_connected(input, self.num_classes)
@@ -218,7 +266,7 @@ class ClassificationObjective(ObjectiveBase):
         else:
             return -1
 
-    def build_trainer(self, logits, timestamps, mmsis):
+    def build_trainer(self, output, timestamps, mmsis):
         def labels_from_mmsis(mmsis_array):
             return np.vectorize(
                 self.training_label, otypes=[np.int32])(mmsis_array)
@@ -242,7 +290,7 @@ class ClassificationObjective(ObjectiveBase):
                 labels, dtype=tf.float32))
 
         raw_loss = slim.losses.softmax_cross_entropy(
-            logits, one_hot_labels, weight=label_weights)
+            output, one_hot_labels, weight=label_weights)
         loss = raw_loss * self.loss_weight
         class_predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
 
@@ -257,16 +305,17 @@ class ClassificationObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-    def build_evaluation(self, logits, mmsis):
+    def build_evaluation(self, output, timestamps, mmsis):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, training_label_lookup,
                          classes, num_classes, logits):
-                super(self.__class__, self).__init__(metadata_label, name)
+                super(Evaluation, self).__init__(metadata_label, name)
                 self.training_label_lookup = training_label_lookup
                 self.classes = classes
                 self.num_classes = num_classes
-                self.prediction = slim.softmax(logits)
+                self.prediction = slim.softmax(output)
                 self.mmsis = mmsis
+                self.timestamps = timestamps
 
             def build_test_metrics(self):
                 def labels_from_mmsis(mmsis_array):

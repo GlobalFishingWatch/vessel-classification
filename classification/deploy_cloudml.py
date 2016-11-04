@@ -50,7 +50,8 @@ def launch(environment, model_name, job_name):
             'gcloud', 'beta', 'ml', 'jobs', 'submit', 'training', job_id,
             '--config', temp.name, '--module-name',
             'classification.run_training', '--staging-bucket',
-            'gs://world-fishing-827-ml', '--package-path', 'classification'
+            'gs://world-fishing-827-ml', '--package-path', 'classification',
+            '--region', 'us-central1',
         ])
 
     return job_id
