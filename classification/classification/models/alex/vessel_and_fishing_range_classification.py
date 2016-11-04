@@ -3,7 +3,9 @@ import argparse
 import json
 from . import layers
 from classification import utility
-from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective, FishingLocalisationObjective
+from classification.model import (ModelBase, TrainNetInfo,
+                                  make_vessel_label_objective,
+                                  FishingLocalisationObjectiveMSE)
 import logging
 import math
 import os
@@ -42,7 +44,7 @@ class Model(ModelBase):
                 transformer=utility.vessel_categorical_length_transformer)
         ]
 
-        self.fishing_localisation_objective = FishingLocalisationObjective(
+        self.fishing_localisation_objective = FishingLocalisationObjectiveMSE(
             'fishing_localisation',
             'Fishing localisation',
             vessel_metadata,
@@ -93,17 +95,15 @@ class Model(ModelBase):
 
             fishing_prediction_input = tf.concat(
                 3, [fishing_prediction_layer, tiled_embedding])
-            fishing_prediction = tf.squeeze(
+            fishing_logits = tf.squeeze(
                 slim.conv2d(
-                    fishing_prediction_input,
-                    1, [1, 20],
-                    activation_fn=tf.nn.sigmoid),
+                    fishing_prediction_input, 1, [1, 20], activation_fn=None),
                 squeeze_dims=[1, 3])
 
             logits = [slim.fully_connected(net, of.num_classes)
                       for of in self.classification_training_objectives]
 
-            return logits, fishing_prediction
+            return logits, fishing_logits
 
     def zero_pad_features(self, features):
         """ Zero-pad features in the depth dimension to match requested feature depth. """
@@ -119,7 +119,7 @@ class Model(ModelBase):
     def build_training_net(self, features, timestamps, mmsis):
         features = self.zero_pad_features(features)
 
-        logits_list, fishing_prediction = self.misconception_with_fishing_ranges(
+        logits_list, fishing_logits = self.misconception_with_fishing_ranges(
             features, mmsis, True)
 
         trainers = []
@@ -129,7 +129,7 @@ class Model(ModelBase):
 
         trainers.append(
             self.fishing_localisation_objective.build_trainer(
-                fishing_prediction, timestamps, mmsis))
+                fishing_logits, timestamps, mmsis))
 
         optimizer = tf.train.AdamOptimizer(1e-5)
 
@@ -139,7 +139,7 @@ class Model(ModelBase):
 
         features = self.zero_pad_features(features)
 
-        logits_list, fishing_prediction = self.misconception_with_fishing_ranges(
+        logits_list, fishing_logits = self.misconception_with_fishing_ranges(
             features, mmsis, False)
 
         evaluations = []
@@ -148,8 +148,9 @@ class Model(ModelBase):
             logits = logits_list[i]
             evaluations.append(to.build_evaluation(logits))
 
+        fishing_scores = tf.sigmoid(fishing_logits, "fishing-scores")
         evaluations.append(
             self.fishing_localisation_objective.build_evaluation(
-                fishing_prediction))
+                fishing_scores))
 
         return evaluations

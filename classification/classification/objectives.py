@@ -20,7 +20,7 @@ class ObjectiveBase(object):
         self.name = name
 
     @abc.abstractmethod
-    def build_trainer(self, predictions, timestamps, mmsis, loss_weight):
+    def build_trainer(self, logits, timestamps, mmsis, loss_weight):
         pass
 
     @abc.abstractmethod
@@ -36,7 +36,7 @@ class EvaluationBase(object):
         self.name = name
 
     @abc.abstractmethod
-    def build_test_metrics(self, mmsis):
+    def build_test_metrics(self, mmsis, timestamps):
         pass
 
     @abc.abstractmethod
@@ -44,14 +44,13 @@ class EvaluationBase(object):
         pass
 
 
-class FishingLocalisationObjective(ObjectiveBase):
+class AbstractFishingLocalizationObjective(ObjectiveBase):
     def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0):
-        super(self.__class__, self).__init__(metadata_label, name)
+        ObjectiveBase.__init__(self, metadata_label, name)
         self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
         self.loss_weight = loss_weight
 
-    def build_trainer(self, predictions, timestamps, mmsis):
-        update_ops = []
+    def dense_labels(self, template, timestamps, mmsis):
 
         # Convert fishing range labels to per-point labels.
         def dense_fishing_labels(mmsis_array, timestamps_array):
@@ -72,13 +71,24 @@ class FishingLocalisationObjective(ObjectiveBase):
                 dense_labels_list.append(dense_labels)
             return np.array(dense_labels_list)
 
-        dense_labels = tf.reshape(
+        return tf.reshape(
             tf.py_func(dense_fishing_labels, [mmsis, timestamps],
                        [tf.float32]),
-            shape=tf.shape(predictions))
+            shape=tf.shape(template))
+
+    @abc.abstractmethod
+    def loss_function(self, logits, dense_labels):
+        loss_function = None
+        return loss_function
+
+    def build_trainer(self, logits, timestamps, mmsis, loss_weight=1.0):
+        update_ops = []
+
+        dense_labels = self.dense_labels(logits, timestamps, mmsis)
+
+        raw_loss = self.loss_function(logits, dense_labels)
 
         # TODO(alexwilson): Add training accuracy.
-        raw_loss = utility.fishing_localisation_mse(predictions, dense_labels)
 
         update_ops.append(
             tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
@@ -87,21 +97,63 @@ class FishingLocalisationObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-    def build_evaluation(self, predictions):
-        class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name):
-                super(self.__class__, self).__init__(metadata_label, name)
+    def build_evaluation(self, scores):
 
-            def build_test_metrics(self, mmsis):
-                # TODO(alexwilson): Add streaming weighted MSE here.
-                return {}, {}
+        dense_labels = self.dense_labels
+
+        class Evaluation(EvaluationBase):
+            def __init__(self, metadata_label, name, scores):
+                super(Evaluation, self).__init__(metadata_label, name)
+                self.scores = scores
+
+            def build_test_metrics(self, mmsis, timestamps):
+
+                labels = dense_labels(self.scores, timestamps, mmsis)
+                predictions = tf.to_int32(self.scores > 0.5)
+
+                valid = tf.to_int32(tf.not_equal(labels, -1))
+                ones = tf.to_int32(tf.equal(labels, 1))
+                weights = tf.to_float(valid)
+
+                raw_metrics = {
+                    'Test MSE': slim.metrics.streaming_mean_squared_error(
+                        self.scores, tf.to_float(ones), weights=weights),
+                    'Test accuracy': slim.metrics.streaming_accuracy(
+                        predictions, ones, weights=weights),
+                    'Test precision': slim.metrics.streaming_precision(
+                        predictions, ones, weights=weights),
+                    'Test recall': slim.metrics.streaming_recall(
+                        predictions, ones, weights=weights),
+                    'Test fishing fraction': slim.metrics.streaming_accuracy(
+                        predictions, valid, weights=weights)
+                }
+
+                return metrics.aggregate_metric_map(
+                    {"{}/{}".format(self.name, k): v
+                     for (k, v) in raw_metrics.items()})
 
             def build_json_results(self, fishing_probabilities):
                 # TODO(alexwilson): Plumb through the timestamps as well,
                 # then zip the two to give fishing probability results.
                 return {}
 
-        return Evaluation(self.metadata_label, self.name)
+        return Evaluation(self.metadata_label, self.name, scores)
+
+
+class FishingLocalisationObjectiveMSE(AbstractFishingLocalizationObjective):
+    def loss_function(self, logits, dense_labels):
+        predictions = tf.sigmoid(logits)
+        return utility.fishing_localisation_mse(predictions, dense_labels)
+
+
+class FishingLocalizationObjectiveCrossEntropy(
+        AbstractFishingLocalizationObjective):
+    def loss_function(self, logits, dense_labels):
+        fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
+        fishing_targets = tf.to_float(dense_labels > 0.5)
+        return (tf.reduce_mean(fishing_mask *
+                               tf.nn.sigmoid_cross_entropy_with_logits(
+                                   logits, fishing_targets)))
 
 
 class ClassificationObjective(ObjectiveBase):
@@ -112,7 +164,7 @@ class ClassificationObjective(ObjectiveBase):
                  classes,
                  transformer=None,
                  loss_weight=1.0):
-        super(self.__class__, self).__init__(metadata_label, name)
+        super(ClassificationObjective, self).__init__(metadata_label, name)
         self.label_from_mmsi = label_from_mmsi
         self.classes = classes
         self.class_indices = dict(zip(classes, range(len(classes))))
@@ -175,13 +227,13 @@ class ClassificationObjective(ObjectiveBase):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, training_label_lookup,
                          classes, num_classes, logits):
-                super(self.__class__, self).__init__(metadata_label, name)
+                super(Evaluation, self).__init__(metadata_label, name)
                 self.training_label_lookup = training_label_lookup
                 self.classes = classes
                 self.num_classes = num_classes
                 self.prediction = slim.softmax(logits)
 
-            def build_test_metrics(self, mmsis):
+            def build_test_metrics(self, mmsis, timestamps):
                 def labels_from_mmsis(mmsis_array):
                     return np.vectorize(
                         self.training_label_lookup,
