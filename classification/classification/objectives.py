@@ -20,11 +20,15 @@ class ObjectiveBase(object):
         self.name = name
 
     @abc.abstractmethod
+    def build_objective_function(self, input):
+        pass
+
+    @abc.abstractmethod
     def build_trainer(self, predictions, timestamps, mmsis, loss_weight):
         pass
 
     @abc.abstractmethod
-    def build_evaluation(self, predictions):
+    def build_evaluation(self, predictions, mmsis):
         pass
 
 
@@ -36,11 +40,11 @@ class EvaluationBase(object):
         self.name = name
 
     @abc.abstractmethod
-    def build_test_metrics(self, mmsis):
+    def build_test_metrics(self):
         pass
 
     @abc.abstractmethod
-    def build_json_results(self, predictions):
+    def build_json_results(self, predictions, timestamps):
         pass
 
 
@@ -49,6 +53,10 @@ class FishingLocalisationObjective(ObjectiveBase):
         super(self.__class__, self).__init__(metadata_label, name)
         self.fishing_ranges_map = vessel_metadata.fishing_ranges_map
         self.loss_weight = loss_weight
+
+    def build_objective_function(self, input):
+        # The objective for fishing localisation is currently built elsewhere.
+        pass
 
     def build_trainer(self, predictions, timestamps, mmsis):
         update_ops = []
@@ -87,7 +95,7 @@ class FishingLocalisationObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-    def build_evaluation(self, predictions):
+    def build_evaluation(self, predictions, mmsis):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name):
                 super(self.__class__, self).__init__(metadata_label, name)
@@ -96,7 +104,7 @@ class FishingLocalisationObjective(ObjectiveBase):
                 # TODO(alexwilson): Add streaming weighted MSE here.
                 return {}, {}
 
-            def build_json_results(self, fishing_probabilities):
+            def build_json_results(self, fishing_probabilities, timestamps):
                 # TODO(alexwilson): Plumb through the timestamps as well,
                 # then zip the two to give fishing probability results.
                 return {}
@@ -109,9 +117,9 @@ class RegressionObjective(ObjectiveBase):
         super(self.__class__, self).__init__(metadata_label, name)
         self.value_from_mmsi = value_from_mmsi
         self.loss_weight = loss_weight
-        # TODO(alexwilson): This isn't number of classes, but width of input
-        # tensor for this objective. Update.
-        self.num_classes = 1
+
+    def build_objective_function(self, input):
+        return tf.squeeze(slim.fully_connected(input, 1))
     
     def _expected_and_mask(self, mmsis):
         def impl(mmsis_array):
@@ -134,20 +142,11 @@ class RegressionObjective(ObjectiveBase):
 
     def _masked_mean_error(self, predictions, mmsis):
         expected, mask = self._expected_and_mask(mmsis)
-        predictions = tf.squeeze(predictions)
         count = tf.reduce_sum(mask)
         diff = tf.abs(tf.mul(expected - predictions, mask))
-        #diff = tf.sub(expected, predictions)
 
         epsilon = 1e-7
         error = tf.reduce_sum(diff) / tf.maximum(count, epsilon)
-
-        #predictions_shape = tf.shape(predictions)
-        #expected_shape = tf.shape(expected)
-        #diff_shape = tf.shape(diff)
-
-        #error = tf.Print(error_i, [predictions_shape, expected_shape, diff_shape,
-        #    predictions, expected, mask, count, diff, error_i], 'Predictions ', summarize=600)
 
         return error
 
@@ -162,21 +161,22 @@ class RegressionObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-    def build_evaluation(self, predictions):
+    def build_evaluation(self, predictions, mmsis):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, masked_mean_error, predictions):
                 super(self.__class__, self).__init__(metadata_label, name)
                 self.masked_mean_error = masked_mean_error
                 self.predictions = predictions
+                self.mmsis = mmsis
 
-            def build_test_metrics(self, mmsis):
-                raw_loss = self.masked_mean_error(self.predictions, mmsis)
+            def build_test_metrics(self):
+                raw_loss = self.masked_mean_error(self.predictions, self.mmsis)
 
                 return metrics.aggregate_metric_map({
                     '%s/Test error' % self.name: metrics.streaming_mean(raw_loss)
                 })
 
-            def build_json_results(self, prediction):
+            def build_json_results(self, predictions, timestamps):
                 return {
                     'name': self.name,
                     'value': self.prediction
@@ -201,6 +201,9 @@ class ClassificationObjective(ObjectiveBase):
         self.num_classes = len(classes)
         self.transformer = transformer
         self.loss_weight = loss_weight
+
+    def build_objective_function(self, input):
+        return slim.fully_connected(input, self.num_classes)
 
     def training_label(self, mmsi):
         """ Return the index of this training label, or if it's unset, return
@@ -253,7 +256,7 @@ class ClassificationObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
-    def build_evaluation(self, logits):
+    def build_evaluation(self, logits, mmsis):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, training_label_lookup,
                          classes, num_classes, logits):
@@ -262,8 +265,9 @@ class ClassificationObjective(ObjectiveBase):
                 self.classes = classes
                 self.num_classes = num_classes
                 self.prediction = slim.softmax(logits)
+                self.mmsis = mmsis
 
-            def build_test_metrics(self, mmsis):
+            def build_test_metrics(self):
                 def labels_from_mmsis(mmsis_array):
                     return np.vectorize(
                         self.training_label_lookup,
@@ -273,7 +277,7 @@ class ClassificationObjective(ObjectiveBase):
 
                 # Look up the labels for each mmsi.
                 labels = tf.reshape(
-                    tf.py_func(labels_from_mmsis, [mmsis], [tf.int32]),
+                    tf.py_func(labels_from_mmsis, [self.mmsis], [tf.int32]),
                     shape=tf.shape(mmsis))
 
                 label_mask = tf.select(
@@ -285,7 +289,7 @@ class ClassificationObjective(ObjectiveBase):
                         predictions, labels, weights=label_mask),
                 })
 
-            def build_json_results(self, class_probabilities):
+            def build_json_results(self, class_probabilities, timestamps):
                 max_prob_index = np.argmax(class_probabilities)
                 max_probability = float(class_probabilities[max_prob_index])
                 max_label = self.classes[max_prob_index]

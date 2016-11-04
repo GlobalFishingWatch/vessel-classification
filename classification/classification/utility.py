@@ -91,7 +91,7 @@ class ClusterNodeConfig(object):
         return ClusterNodeConfig({
             "cluster": {},
             "task": {
-                "type": "worker",
+                "type": "master",
                 "index": 0
             }
         })

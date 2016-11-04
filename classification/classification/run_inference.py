@@ -105,12 +105,13 @@ class Inferer(object):
                 while True:
                     logging.info("Inference step: %d", i)
                     i += 1
-                    batch_results = sess.run([mmsis, time_ranges] +
+                    batch_results = sess.run([mmsis, time_ranges, timestamps] +
                                              all_predictions)
                     for result in zip(*batch_results):
                         mmsi = result[0]
                         (start_time_seconds, end_time_seconds) = result[1]
-                        predictions = result[2:]
+                        timestamps = result[2]
+                        predictions = result[3:]
 
                         start_time = datetime.datetime.utcfromtimestamp(
                             start_time_seconds)
@@ -118,7 +119,7 @@ class Inferer(object):
                             end_time_seconds)
 
                         labels = dict(
-                            [(o.metadata_label, o.build_json_results(p))
+                            [(o.metadata_label, o.build_json_results(p, timestamps))
                              for (o, p) in zip(objectives, predictions)])
 
                         output_nlj.write({

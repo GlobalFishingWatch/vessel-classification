@@ -92,6 +92,6 @@ class Model(ModelBase):
         for i in range(len(self.training_objectives)):
             to = self.training_objectives[i]
             logits = logits_list[i]
-            evaluations.append(to.build_evaluation(logits))
+            evaluations.append(to.build_evaluation(logits, mmsis))
 
         return evaluations

@@ -4,7 +4,8 @@ from collections import namedtuple
 import tensorflow.contrib.slim as slim
 
 from classification import utility
-from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective
+from classification.model import ModelBase
+from classification.objectives import TrainNetInfo, make_vessel_label_objective
 
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm
@@ -88,14 +89,13 @@ class Model(ModelBase):
 
         # Determine fishing estimate
         with tf.variable_scope("prediction-layer"):
-            logits = dense_layer(current,
-                                 self.training_objectives[0].num_classes)
+            logits = self.training_objectives[0].build_objective_function(current)
 
         return logits
 
     def build_inference_net(self, features, timestamps, mmsis):
         logits = self.build_model(tf.constant(False), features)
-        return [self.training_objectives[0].build_evaluation(logits)]
+        return [self.training_objectives[0].build_evaluation(logits, mmsis)]
 
     def build_training_net(self, features, timestamps, mmsis):
         vessel_class_logits = self.build_model(tf.constant(True), features)

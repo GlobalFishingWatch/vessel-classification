@@ -100,7 +100,7 @@ class Model(ModelBase):
                     activation_fn=tf.nn.sigmoid),
                 squeeze_dims=[1, 3])
 
-            logits = [slim.fully_connected(net, of.num_classes)
+            logits = [of.build_objective_function(net)
                       for of in self.classification_training_objectives]
 
             return logits, fishing_prediction
