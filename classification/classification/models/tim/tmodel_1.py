@@ -4,7 +4,8 @@ from collections import namedtuple
 import tensorflow.contrib.slim as slim
 
 from classification import utility
-from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective
+from classification.model import ModelBase
+from classification.objectives import TrainNetInfo, make_vessel_label_objective
 
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm
