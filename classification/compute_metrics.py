@@ -45,7 +45,7 @@ table {
 }
 
 .confusion-matrix th.col div {
-    transform: translate(25px, 51px) rotate(315deg); 
+    transform: translate(16px, 49px) rotate(315deg); 
     width: 30px;
 }
 
