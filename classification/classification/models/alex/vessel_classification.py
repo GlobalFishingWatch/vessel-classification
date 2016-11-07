@@ -3,7 +3,8 @@ import argparse
 import json
 from . import layers
 from classification import utility
-from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective
+from classification.model import ModelBase
+from classification.objectives import TrainNetInfo, make_vessel_label_objective
 import logging
 import math
 import os
