@@ -347,18 +347,39 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
 
   "Vessel" should "visit the correct anchorages" in {
     runWithContext { sc =>
-      Pipeline.findPortVisits(
+      import org.apache.commons.lang3.builder.ToStringBuilder._
+      import scala.collection.{mutable, immutable}
+      import com.spotify.scio.io._
+
+      val res = Pipeline.findPortVisits(
         Pipeline.readJsonRecords(Seq(sc.parallelize(vesselPath))),
-        sc.parallelize(anchorageLocations)
-      ).materialize.onSuccess({
-        case portVisits =>
+        sc.parallelize(anchorageLocations))
 
-import org.apache.commons.lang3.builder.ToStringBuilder._
-println("\n\n\n\n####################################################")
-      println(reflectionToString(portVisits))
-println("\n\n\n\n####################################################")
-      }: PartialFunction[Any, _])
-
+      println("\n\n\n\n####################################################")
+      println(reflectionToString(res.materialize.waitForResult().value))
     }
   }
+
+  "Scio" should "be able to materialize" in {
+      import org.apache.commons.lang3.builder.ToStringBuilder._
+
+
+//    var x:scala.concurrent.Future[com.spotify.scio.io.Tap[String]] = null
+    runWithContext { sc =>
+      import org.apache.commons.lang3.builder.ToStringBuilder._
+      import scala.collection.{mutable, immutable}
+      import com.spotify.scio.io._
+
+      val res = Pipeline.readJsonRecords(Seq(sc.parallelize(vesselPath)))
+
+      val x = res.saveAsTextFile("/tmp/x")
+      println("\n\n\n\n####################################################")
+      println(reflectionToString(x.waitForResult().value))
+
+    }
+//      println("\n\n\n\n####################################################")
+//      println(reflectionToString(x.waitForResult().value))
+
+  }
+
 }
