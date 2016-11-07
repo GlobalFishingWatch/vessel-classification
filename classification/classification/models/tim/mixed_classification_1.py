@@ -29,8 +29,8 @@ class Model(ModelBase):
 
     tower_params = [
         TowerParams(*x)
-        for x in [(32, [3], 2, 2, 1.0, True)] * 9 + [(32, [3], 2, 2, 0.8, True)
-                                                     ]
+        for x in [(32, [3], 2, 2, 1.0, True)] * 9 + [(32, [3], 2, 2, 0.8, True
+                                                      )]
     ]
 
     def __init__(self, num_feature_dimensions, vessel_metadata):

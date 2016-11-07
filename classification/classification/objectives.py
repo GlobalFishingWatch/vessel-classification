@@ -46,10 +46,12 @@ class ObjectiveBase(object):
 class EvaluationBase(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, metadata_label, name, prediction):
+    def __init__(self, metadata_label, name, prediction, timestamps, mmsis):
         self.metadata_label = metadata_label
         self.name = name
         self.prediction = prediction
+        self.timestamps = timestamps
+        self.mmsis = mmsis
 
     @abc.abstractmethod
     def build_test_metrics(self):
@@ -115,7 +117,8 @@ class RegressionObjective(ObjectiveBase):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, masked_mean_error,
                          prediction):
-                super(self.__class__, self).__init__(metadata_label, name, prediction)
+                super(self.__class__, self).__init__(
+                    metadata_label, name, prediction, timestamps, mmsis)
                 self.masked_mean_error = masked_mean_error
                 self.mmsis = mmsis
 
@@ -209,12 +212,11 @@ class ClassificationObjective(ObjectiveBase):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, training_label_lookup,
                          classes, num_classes, prediction):
-                super(Evaluation, self).__init__(metadata_label, name, prediction)
+                super(Evaluation, self).__init__(metadata_label, name,
+                                                 prediction, timestamps, mmsis)
                 self.training_label_lookup = training_label_lookup
                 self.classes = classes
                 self.num_classes = num_classes
-                self.mmsis = mmsis
-                self.timestamps = timestamps
 
             def build_test_metrics(self):
                 def labels_from_mmsis(mmsis_array):
@@ -315,11 +317,12 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, prediction, timestamps,
                          mmsis):
-                super(Evaluation, self).__init__(metadata_label, name, prediction)
+                super(Evaluation, self).__init__(metadata_label, name,
+                                                 prediction, timestamps, mmsis)
 
             def build_test_metrics(self):
-                labels = dense_labels(self.prediction, self.timestamps,
-                                      self.mmsis)
+                labels = dense_labels(
+                    tf.shape(self.prediction), self.timestamps, self.mmsis)
                 thresholded_prediction = tf.to_int32(self.prediction > 0.5)
 
                 valid = tf.to_int32(tf.not_equal(labels, -1))
@@ -348,8 +351,8 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 # then zip the two to give fishing probability results.
                 return {}
 
-        return Evaluation(self.metadata_label, self.name, scores, timestamps,
-                          mmsis)
+        return Evaluation(self.metadata_label, self.name, self.prediction,
+                          timestamps, mmsis)
 
 
 class FishingLocalisationObjectiveMSE(AbstractFishingLocalizationObjective):
@@ -377,5 +380,5 @@ class VesselMetadataClassificationObjective(ClassificationObjective):
                  loss_weight=1.0):
         super(VesselMetadataClassificationObjective, self).__init__(
             metadata_label, name,
-            lambda mmsi: vessel_metadata.vessel_label(metadata_label, mmsi), classes,
-            transformer, loss_weight)
+            lambda mmsi: vessel_metadata.vessel_label(metadata_label, mmsi),
+            classes, transformer, loss_weight)

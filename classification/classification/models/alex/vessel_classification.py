@@ -37,13 +37,12 @@ class Model(ModelBase):
             VesselMetadataClassificationObjective('is_fishing', 'Fishing',
                                                   vessel_metadata,
                                                   ['Fishing', 'Non-fishing']),
+            VesselMetadataClassificationObjective('label', 'Vessel class',
+                                                  vessel_metadata,
+                                                  utility.VESSEL_CLASS_NAMES),
             VesselMetadataClassificationObjective(
-                'label', 'Vessel class', vessel_metadata,
-                utility.VESSEL_CLASS_NAMES),
-            VesselMetadataClassificationObjective(
-                    'sublabel', 'Vessel detailed class',
-                    vessel_metadata,
-                    utility.VESSEL_CLASS_DETAILED_NAMES),
+                'sublabel', 'Vessel detailed class', vessel_metadata,
+                utility.VESSEL_CLASS_DETAILED_NAMES),
             VesselMetadataClassificationObjective(
                 'length',
                 'Vessel length category',
