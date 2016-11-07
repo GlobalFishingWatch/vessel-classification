@@ -20,6 +20,7 @@ class Trainer:
     """
 
     max_replication_factor = 100.0
+    num_parallel_readers = 32
 
     def __init__(self, model, base_feature_path, train_scratch_path):
         self.model = model
@@ -28,7 +29,6 @@ class Trainer:
         self.train_scratch_path = train_scratch_path
         self.checkpoint_dir = self.train_scratch_path + '/train'
         self.eval_dir = self.train_scratch_path + '/eval'
-        self.num_parallel_readers = 16
 
     def _feature_files(self, split):
         random_state = np.random.RandomState()
@@ -126,8 +126,7 @@ class Trainer:
         objectives = self.model.build_inference_net(features, timestamps,
                                                     mmsis)
 
-        aggregate_metric_maps = [o.build_test_metrics(mmsis, timestamps)
-                                 for o in objectives]
+        aggregate_metric_maps = [o.build_test_metrics() for o in objectives]
 
         summary_ops = []
         update_ops = []

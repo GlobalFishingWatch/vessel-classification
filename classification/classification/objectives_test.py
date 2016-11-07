@@ -1,13 +1,45 @@
 import calendar
 import dateutil.parser
-import objectives
 import numpy as np
+import objectives
 import utility
 import tensorflow as tf
 
 
 def _dt(s):
     return dateutil.parser.parse(s)
+
+
+class RegressionLossTest(tf.test.TestCase):
+    def test_simple_loss(self):
+        with self.test_session():
+            prediction = np.array([1.0, 4.0, 5.0, 6.0, 3.0])
+            mmsis = np.array([1, 2, 3, 6, 9])
+
+            real_values = {1: 1.0, 2: 4.0, 3: 5.0, 6: 6.0, 9: 3.0}
+
+            objective = objectives.RegressionObjective(
+                'a label', 'A name', lambda mmsi: real_values.get(mmsi))
+
+            objective.prediction = prediction
+            loss, _ = objective.build_trainer(None, mmsis)
+
+            self.assertAlmostEqual(0.0, loss.eval())
+
+    def test_loss_missing_values(self):
+        with self.test_session():
+            prediction = np.array([1.0, 4.0, 5.0, 6.0, 3.0])
+            mmsis = np.array([1, 2, 3, 4, 5])
+
+            real_values = {1: 2.0, 2: 2.5, 3: 4.5}
+
+            objective = objectives.RegressionObjective(
+                'a label', 'A name', lambda mmsi: real_values.get(mmsi))
+            objective.prediction = prediction
+
+            loss, _ = objective.build_trainer(None, mmsis)
+
+            self.assertAlmostEqual(1.0, loss.eval())
 
 
 class FishingLocalisationLossTest(tf.test.TestCase):
@@ -62,6 +94,7 @@ class FishingLocalisationMseTest(tf.test.TestCase):
 
             self.assertAlmostEqual(0.33333333, mse.eval())
 
+
 # Check we are actually getting vessels with fishing
 # localisation info (check loading the metadata, and choosing the
 # segments).
@@ -84,14 +117,16 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         epoch_timestamps = [[calendar.timegm(t.utctimetuple())
                              for t in timestamps]]
         mmsis = [100001]
-        return objective.build_trainer(logits, epoch_timestamps, mmsis)
+
+        objective.build(logits)
+        return objective.build_trainer(epoch_timestamps, mmsis)
 
     def test_fishing_range_objective_no_ranges(self):
         logits = [[np.inf, np.inf, np.inf, -np.inf, -np.inf, -np.inf]]
         vmd = utility.VesselMetadata(self.vmd_dict, {}, 1.0)
 
-        o = objectives.FishingLocalisationObjectiveMSE('fishing_localisation',
-                                                  'Fishing Localisation', vmd)
+        o = objectives.FishingLocalisationObjectiveMSE(
+            'fishing_localisation', 'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
             trainer = self._build_trainer(logits, o)
@@ -102,8 +137,8 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         fishing_range_dict = {100001: [self.range1]}
         vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
-        o = objectives.FishingLocalisationObjectiveMSE('fishing_localisation',
-                                                  'Fishing Localisation', vmd)
+        o = objectives.FishingLocalisationObjectiveMSE(
+            'fishing_localisation', 'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
             trainer = self._build_trainer(logits, o)
@@ -114,8 +149,8 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         fishing_range_dict = {100001: [self.range1, self.range2]}
         vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
-        o = objectives.FishingLocalisationObjectiveMSE('fishing_localisation',
-                                                  'Fishing Localisation', vmd)
+        o = objectives.FishingLocalisationObjectiveMSE(
+            'fishing_localisation', 'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
             trainer = self._build_trainer(logits, o)
@@ -126,8 +161,8 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         fishing_range_dict = {100001: [self.range1, self.range2]}
         vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
-        o = objectives.FishingLocalisationObjectiveMSE('fishing_localisation',
-                                                  'Fishing Localisation', vmd)
+        o = objectives.FishingLocalisationObjectiveMSE(
+            'fishing_localisation', 'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
             trainer = self._build_trainer(logits, o)

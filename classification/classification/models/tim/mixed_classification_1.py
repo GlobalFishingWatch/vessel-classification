@@ -5,9 +5,10 @@ from collections import namedtuple
 import tensorflow.contrib.slim as slim
 import logging
 
-from classification.model import (ModelBase, TrainNetInfo,
-                                  make_vessel_label_objective,
-                                  FishingLocalizationObjectiveCrossEntropy)
+from classification.model import ModelBase
+from classification.objectives import (
+    TrainNetInfo, VesselMetadataClassificationObjective,
+    FishingLocalizationObjectiveCrossEntropy)
 
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm
@@ -29,8 +30,8 @@ class Model(ModelBase):
 
     tower_params = [
         TowerParams(*x)
-        for x in [(32, [3], 2, 2, 1.0, True)] * 9 + [(32, [3], 2, 2, 0.8, True)
-                                                     ]
+        for x in [(32, [3], 2, 2, 1.0, True)] * 9 + [(32, [3], 2, 2, 0.8, True
+                                                      )]
     ]
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
@@ -39,17 +40,19 @@ class Model(ModelBase):
 
         # TODO(bitsofbits): consider moving these to cached properties instead so we don't need init
         self.classification_training_objectives = [
-            make_vessel_label_objective(vessel_metadata, 'is_fishing',
-                                        'Fishing', ['Fishing', 'Non-fishing']),
-            make_vessel_label_objective(
-                vessel_metadata, 'label', 'Vessel class',
-                utility.VESSEL_CLASS_NAMES), make_vessel_label_objective(
-                    vessel_metadata, 'sublabel', 'Vessel detailed class',
-                    utility.VESSEL_CLASS_DETAILED_NAMES),
-            make_vessel_label_objective(
-                vessel_metadata,
+            VesselMetadataClassificationObjective('is_fishing', 'Fishing',
+                                                  vessel_metadata,
+                                                  ['Fishing', 'Non-fishing']),
+            VesselMetadataClassificationObjective('label', 'Vessel class',
+                                                  vessel_metadata,
+                                                  utility.VESSEL_CLASS_NAMES),
+            VesselMetadataClassificationObjective(
+                'sublabel', 'Vessel detailed class', vessel_metadata,
+                utility.VESSEL_CLASS_DETAILED_NAMES),
+            VesselMetadataClassificationObjective(
                 'length',
-                'Vessel length',
+                'Vessel length category',
+                vessel_metadata,
                 utility.VESSEL_LENGTH_CLASSES,
                 transformer=utility.vessel_categorical_length_transformer)
         ]
@@ -120,7 +123,7 @@ class Model(ModelBase):
         for cto in self.classification_training_objectives:
             with tf.variable_scope("prediction-layer-{}".format(
                     cto.name.replace(' ', '-'))):
-                logit_list.append(dense_layer(current, cto.num_classes))
+                logit_list.append(cto.build(current))
 
         # Assemble the fishing score logits
 
@@ -144,23 +147,21 @@ class Model(ModelBase):
         current = conv1d_layer(current, 1, 1, name="fishing_logits")
         fishing_logits = tf.reshape(current, (-1, self.window_max_points))
 
+        self.fishing_localisation_objective.build(fishing_logits)
+
         return logit_list, fishing_logits
 
     def build_inference_net(self, features, timestamps, mmsis):
-        logits_list, fishing_logits = self.build_model(
-            tf.constant(False), features)
+        self.build_model(tf.constant(False), features)
 
         evaluations = []
         for i in range(len(self.classification_training_objectives)):
             to = self.classification_training_objectives[i]
-            logits = logits_list[i]
-            evaluations.append(to.build_evaluation(logits))
+            evaluations.append(to.build_evaluation(timestamps, mmsis))
 
-        # TODO(bitsofbits): pass logits instead of scores so we have wider choice of objectives
-        fishing_scores = tf.sigmoid(fishing_logits, "fishing-scores")
         evaluations.append(
-            self.fishing_localisation_objective.build_evaluation(
-                fishing_scores))
+            self.fishing_localisation_objective.build_evaluation(timestamps,
+                                                                 mmsis))
 
         return evaluations
 
@@ -175,11 +176,11 @@ class Model(ModelBase):
         trainers = []
         for i in range(len(self.classification_training_objectives)):
             trainers.append(self.classification_training_objectives[i]
-                            .build_trainer(logits_list[i], timestamps, mmsis))
+                            .build_trainer(timestamps, mmsis))
 
         trainers.append(
-            self.fishing_localisation_objective.build_trainer(
-                fishing_logits, timestamps, mmsis))
+            self.fishing_localisation_objective.build_trainer(timestamps,
+                                                              mmsis))
 
         example = slim.get_or_create_global_step() * self.batch_size
 

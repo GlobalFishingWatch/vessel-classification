@@ -1,5 +1,4 @@
 import abc
-import calendar
 from collections import namedtuple
 import logging
 import numpy as np
@@ -14,7 +13,7 @@ class ModelBase(object):
 
     batch_size = 32
 
-    feature_duration_days = 180
+    feature_duration_days = 45
     max_sample_frequency_seconds = 5 * 60
     max_window_duration_seconds = feature_duration_days * 24 * 3600
 

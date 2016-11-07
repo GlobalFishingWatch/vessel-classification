@@ -339,7 +339,7 @@ def random_feature_cropping_file_reader(vessel_metadata, filename_queue,
     mmsi = tf.cast(context_features['mmsi'], tf.int32)
     random_state = np.random.RandomState()
 
-    num_slices_per_mmsi = 4
+    num_slices_per_mmsi = 8
 
     def replicate_extract(input, mmsi):
         # Extract several random windows from each vessel track
