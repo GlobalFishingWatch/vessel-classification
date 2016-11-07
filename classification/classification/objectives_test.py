@@ -10,6 +10,7 @@ def _dt(s):
     return dateutil.parser.parse(s)
 
 
+
 class RegressionLossTest(tf.test.TestCase):
     def test_simple_loss(self):
         with self.test_session():
@@ -117,6 +118,7 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         epoch_timestamps = [[calendar.timegm(t.utctimetuple())
                              for t in timestamps]]
         mmsis = [100001]
+
         objective.build(logits)
         return objective.build_trainer(epoch_timestamps, mmsis)
 
