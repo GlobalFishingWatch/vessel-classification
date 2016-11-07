@@ -12,7 +12,7 @@ lazy val commonSettings = Seq(
   organization := "org.skytruth",
   version := "0.0.1",
   scalaVersion := "2.11.8",
-  scalacOptions ++= Seq("-optimize", "-Yinline-warnings"),
+  scalacOptions ++= Seq("-optimize"),
   resolvers ++= Seq(
     "Apache commons" at "https://repository.apache.org/snapshots"
   ),
@@ -53,7 +53,8 @@ lazy val featurePipeline =
     .settings(
       Seq(
         libraryDependencies ++= Seq("com.opencsv" % "opencsv" % "3.7",
-                                    "org.json4s" %% "json4s-native" % "3.3.0")
+                                    "org.json4s" %% "json4s-native" % "3.3.0",
+                                    "com.jsuereth" %% "scala-arm" % "1.4")
       ))
     .dependsOn(tfExampleProtos)
 

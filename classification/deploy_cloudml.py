@@ -39,7 +39,8 @@ def launch(environment, model_name, job_name):
     config_txt = config_template.format(
         output_path=gcp.model_path(), model_name=model_name)
 
-    job_id = ('%s_%s' % (job_name, model_name)).replace('.', '_')
+    timestamp = gcp.start_time.strftime('%Y%m%dT%H%M%S')
+    job_id = ('%s_%s_%s' % (job_name, model_name, timestamp)).replace('.', '_')
 
     # Kick off the job on CloudML
     with tempfile.NamedTemporaryFile() as temp:
@@ -49,7 +50,8 @@ def launch(environment, model_name, job_name):
             'gcloud', 'beta', 'ml', 'jobs', 'submit', 'training', job_id,
             '--config', temp.name, '--module-name',
             'classification.run_training', '--staging-bucket',
-            'gs://world-fishing-827-ml', '--package-path', 'classification'
+            'gs://world-fishing-827-ml', '--package-path', 'classification',
+            '--region', 'us-central1',
         ])
 
     return job_id
@@ -119,5 +121,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    job_id = launch(args.env, args.model_name, args.job_name)
+    job_id = launch(args.env, args.model_name, args.job_name) + '_2'
     print_logs(job_id)

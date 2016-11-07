@@ -49,8 +49,8 @@ def misconception_with_bypass(input,
         return misconception + bypass
 
 
-def misconception_model(input, window_size, stride, depth, levels, num_classes,
-                        is_training):
+def misconception_model(input, window_size, stride, depth, levels,
+                        objective_functions, is_training):
     """ A misconception tower.
 
   Args:
@@ -58,7 +58,10 @@ def misconception_model(input, window_size, stride, depth, levels, num_classes,
     window_size: the width of the conv and pooling filters to apply.
     stride: the downsampling to apply when filtering.
     depth: the depth of the output tensor.
-    levels: The height of the tower in misconception layers.
+    levels: the height of the tower in misconception layers.
+    objective_functions: a list of objective functions to add to the top of
+                         the network.
+    is_training: whether the network is training.
 
   Returns:
     a tensor of size [batch_size, num_classes].
@@ -72,6 +75,7 @@ def misconception_model(input, window_size, stride, depth, levels, num_classes,
         net = slim.fully_connected(net, 100)
         net = slim.dropout(net, 0.5, is_training=is_training)
 
-        net = slim.fully_connected(net, num_classes)
+        logits = [slim.fully_connected(net, of.num_classes)
+                  for of in objective_functions]
 
-        return net
+        return logits
