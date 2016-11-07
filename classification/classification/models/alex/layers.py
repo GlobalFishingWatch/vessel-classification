@@ -75,7 +75,6 @@ def misconception_model(input, window_size, stride, depth, levels,
         net = slim.fully_connected(net, 100)
         net = slim.dropout(net, 0.5, is_training=is_training)
 
-        outputs = [of.build_objective_function(net)
-                   for of in objective_functions]
+        outputs = [of.build(net) for of in objective_functions]
 
         return outputs

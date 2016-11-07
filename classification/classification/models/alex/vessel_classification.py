@@ -39,8 +39,10 @@ class Model(ModelBase):
                                                   ['Fishing', 'Non-fishing']),
             VesselMetadataClassificationObjective(
                 'label', 'Vessel class', vessel_metadata,
-                utility.VESSEL_CLASS_NAMES), make_vessel_label_objective(
-                    vessel_metadata, 'sublabel', 'Vessel detailed class',
+                utility.VESSEL_CLASS_NAMES),
+            VesselMetadataClassificationObjective(
+                    'sublabel', 'Vessel detailed class',
+                    vessel_metadata,
                     utility.VESSEL_CLASS_DETAILED_NAMES),
             VesselMetadataClassificationObjective(
                 'length',
@@ -77,7 +79,7 @@ class Model(ModelBase):
         trainers = []
         for i in range(len(self.training_objectives)):
             trainers.append(self.training_objectives[i].build_trainer(
-                logits_list[i], timestamps, mmsis))
+                timestamps, mmsis))
 
         optimizer = tf.train.AdamOptimizer(1e-5)
 
@@ -95,6 +97,6 @@ class Model(ModelBase):
         for i in range(len(self.training_objectives)):
             to = self.training_objectives[i]
             output = outputs_list[i]
-            evaluations.append(to.build_evaluation(output, mmsis))
+            evaluations.append(to.build_evaluation(timestamps, mmsis))
 
         return evaluations
