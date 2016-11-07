@@ -103,12 +103,10 @@ class Model(ModelBase):
                     fishing_prediction_input, 1, [1, 20], activation_fn=None),
                 squeeze_dims=[1, 3])
 
-            outputs = [of.build(net)
-                       for of in self.classification_training_objectives]
+            for of in self.classification_training_objectives:
+                of.build(net)
 
             self.fishing_localisation_objective.build(fishing_outputs)
-
-            return outputs, fishing_outputs
 
     def zero_pad_features(self, features):
         """ Zero-pad features in the depth dimension to match requested feature depth. """
@@ -124,8 +122,7 @@ class Model(ModelBase):
     def build_training_net(self, features, timestamps, mmsis):
         features = self.zero_pad_features(features)
 
-        logits_list, fishing_logits = self.misconception_with_fishing_ranges(
-            features, mmsis, True)
+        self.misconception_with_fishing_ranges(features, mmsis, True)
 
         trainers = []
         for i in range(len(self.classification_training_objectives)):
@@ -144,15 +141,13 @@ class Model(ModelBase):
 
         features = self.zero_pad_features(features)
 
-        logits_list, fishing_logits = self.misconception_with_fishing_ranges(
-            features, mmsis, False)
+        self.misconception_with_fishing_ranges(features, mmsis, False)
 
         evaluations = []
         for i in range(len(self.classification_training_objectives)):
             to = self.classification_training_objectives[i]
             evaluations.append(to.build_evaluation(timestamps, mmsis))
 
-        fishing_scores = tf.sigmoid(fishing_logits, "fishing-scores")
         evaluations.append(
             self.fishing_localisation_objective.build_evaluation(timestamps,
                                                                  mmsis))
