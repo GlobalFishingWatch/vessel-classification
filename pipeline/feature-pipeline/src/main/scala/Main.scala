@@ -254,7 +254,8 @@ object Pipeline extends LazyLogging {
       .map {
         case ((metadata, locations), ctx) => {
           val lookup =
-            AdjacencyLookup(ctx(si), (port: Anchorage) => port.meanLocation, 0.5.of[kilometer], 13)
+            AdjacencyLookup(ctx(si), (port: Anchorage) => port.meanLocation, 1000.0.of[kilometer], 1)
+//            AdjacencyLookup(ctx(si), (port: Anchorage) => port.meanLocation, 0.5.of[kilometer], 13)
 
           (metadata,
            locations
