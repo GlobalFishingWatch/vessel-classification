@@ -4,7 +4,7 @@ import json
 from . import layers
 from classification import utility
 from classification.model import ModelBase
-from classification.objectives import TrainNetInfo, make_vessel_label_objective, RegressionObjective
+from classification.objectives import TrainNetInfo, VesselMetadataClassificationObjective, RegressionObjective
 import logging
 import math
 import numpy as np
@@ -34,17 +34,18 @@ class Model(ModelBase):
             return np.float32(length)
 
         self.training_objectives = [
-            make_vessel_label_objective(vessel_metadata, 'is_fishing',
-                                        'Fishing', ['Fishing', 'Non-fishing']),
-            make_vessel_label_objective(
-                vessel_metadata, 'label', 'Vessel class',
+            VesselMetadataClassificationObjective('is_fishing', 'Fishing',
+                                                  vessel_metadata,
+                                                  ['Fishing', 'Non-fishing']),
+            VesselMetadataClassificationObjective(
+                'label', 'Vessel class', vessel_metadata,
                 utility.VESSEL_CLASS_NAMES), make_vessel_label_objective(
                     vessel_metadata, 'sublabel', 'Vessel detailed class',
                     utility.VESSEL_CLASS_DETAILED_NAMES),
-            make_vessel_label_objective(
-                vessel_metadata,
+            VesselMetadataClassificationObjective(
                 'length',
                 'Vessel length category',
+                vessel_metadata,
                 utility.VESSEL_LENGTH_CLASSES,
                 transformer=utility.vessel_categorical_length_transformer),
             RegressionObjective(

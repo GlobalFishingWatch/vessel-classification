@@ -370,14 +370,15 @@ class FishingLocalizationObjectiveCrossEntropy(
                                    self.logits, fishing_targets)))
 
 
-def make_vessel_label_objective(vessel_metadata,
-                                label,
-                                name,
-                                classes,
-                                transformer=None):
-    return ClassificationObjective(
-        label,
-        name,
-        lambda mmsi: vessel_metadata.vessel_label(label, mmsi),
-        classes,
-        transformer=transformer)
+class VesselMetadataClassificationObjective(ClassificationObjective):
+    def __init__(self,
+                 metadata_label,
+                 name,
+                 vessel_metadata,
+                 classes,
+                 transformer=None,
+                 loss_weight=1.0):
+        super(ClassificationObjective, self).__init__(
+            metadata_label, name,
+            lambda mmsi: vessel_metadata.vessel_label(label, mmsi), classes,
+            transformer, loss_weight)

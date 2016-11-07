@@ -29,19 +29,25 @@ class Model(ModelBase):
                                              vessel_metadata)
 
         self.classification_training_objectives = [
-            make_vessel_label_objective(vessel_metadata, 'is_fishing',
-                                        'Fishing', ['Fishing', 'Non-fishing']),
-            make_vessel_label_objective(
-                vessel_metadata, 'label', 'Vessel class',
+            VesselMetadataClassificationObjective('is_fishing', 'Fishing',
+                                                  vessel_metadata,
+                                                  ['Fishing', 'Non-fishing']),
+            VesselMetadataClassificationObjective(
+                'label', 'Vessel class', vessel_metadata,
                 utility.VESSEL_CLASS_NAMES), make_vessel_label_objective(
                     vessel_metadata, 'sublabel', 'Vessel detailed class',
                     utility.VESSEL_CLASS_DETAILED_NAMES),
-            make_vessel_label_objective(
-                vessel_metadata,
+            VesselMetadataClassificationObjective(
                 'length',
-                'Vessel length',
+                'Vessel length category',
+                vessel_metadata,
                 utility.VESSEL_LENGTH_CLASSES,
-                transformer=utility.vessel_categorical_length_transformer)
+                transformer=utility.vessel_categorical_length_transformer),
+            RegressionObjective(
+                'length',
+                'Vessel length regression',
+                length_or_none,
+                loss_weight=0.1)
         ]
 
         self.fishing_localisation_objective = FishingLocalisationObjectiveMSE(
