@@ -16,18 +16,48 @@ import tensorflow.contrib.slim as slim
 import threading
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
+
+#TODO: (bitsofbits) export to config file
+categories = {
+'coarse': [
+    ['Longliners', ['Drifting longlines', 'Set longlines']], 
+    ['Trawlers', ['Trawlers']], 
+    ['Pots and Traps', ['Pots and Traps']], ['Set gillnets', ['Set gillnets']], ['Purse seines', ['Purse seines']], 
+['Squid', ['Squid']], ['Pole and Line', ['Pole and Line']], ['Trollers', ['Trollers']], ['Cargo/Tanker', 
+['Cargo', 'Tanker']], ['Reefer', ['Reefer']], ['Passenger', ['Motor Passenger', 'Sailing']], 
+['Seismic vessel', ['Seismic vessel']], ['Tug/Pilot/Supply', ['Tug', 'Pilot', 'Supply']]], 
+'fishing': [
+    ['Fishing', ['Drifting longlines', 'Set longlines', 'Trawlers', 'Pots and Traps', 'Set gillnets', 'Purse seines', 
+        'Squid', 'Pole and Line', 'Trollers']], 
+    ['Non-fishing', ['Cargo', 'Tanker', 'Reefer', 'Motor Passenger', 'Sailing', 'Seismic vessel', 
+        'Tug', 'Pilot', 'Supply']]]}
+
+
+#TODO(bitsofbit): clean up
 """ The coarse vessel label set. """
-VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
+_VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
                       'Seismic vessel', 'Set gillnets', 'Longliners', 'Reefer',
                       'Pole and Line', 'Purse seines', 'Pots and Traps',
                       'Trollers', 'Tug/Pilot/Supply']
 """ The finer vessel label set. """
-VESSEL_CLASS_DETAILED_NAMES = [
+_VESSEL_CLASS_DETAILED_NAMES = [
     'Squid', 'Trawlers', 'Seismic vessel', 'Set gillnets', 'Reefer',
     'Pole and Line', 'Purse seines', 'Pots and Traps', 'Trollers', 'Cargo',
     'Sailing', 'Supply', 'Set longlines', 'Motor Passenger',
     'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
 ]
+VESSEL_CLASS_NAMES = [x for (x, _) in categories['coarse']]
+VESSEL_CLASS_DETAILED_NAMES = []
+for coarse, fine_list in categories['coarse']:
+    for fine in fine_list:
+        VESSEL_CLASS_DETAILED_NAMES.append(fine)
+
+FISHING_NONFISHING_NAMES = [x for (x, _) in categories['fishing']]
+
+assert sorted(VESSEL_CLASS_NAMES) == sorted(_VESSEL_CLASS_NAMES), VESSEL_CLASS_NAMES
+assert sorted(VESSEL_CLASS_DETAILED_NAMES) == sorted(_VESSEL_CLASS_DETAILED_NAMES), VESSEL_CLASS_DETAILED_NAMES
+
+
 """ The vessel length classes. """
 VESSEL_LENGTH_CLASSES = [
     '0-12m', '12-18m', '18-24m', '24-36m', '36-50m', '50-75m', '75-100m',
@@ -678,3 +708,57 @@ def read_fishing_ranges(fishing_range_file):
                 FishingRange(start_time, end_time, is_fishing))
 
     return fishing_range_dict
+
+
+
+    # The key we compute is:
+    #  key = max(fine_label, 0) + 
+    #           (fine_label == -1) * ((n_fine + max(coarse_label, 0)) + 
+    #                                 (coarse_label == -1) * (n_coarse + fishing_label))
+
+#TODO:(bitsofbit) make four lookup tables, fine, coarse, fishing and combined
+
+def build_multihot_lookup_table():
+    # There are three levels of categories we are concerned with fishing / nonfishing, coarse labels, and fine
+    # labels. All items should have fishing / nonfishing.
+    n_fine = len(VESSEL_CLASS_DETAILED_NAMES)
+    n_coarse = len(VESSEL_CLASS_NAMES)
+    n_fishing = len(categories['fishing'])
+    assert n_fishing == 2
+    # Items with a fine label go in [0, n_fine), with a coarse label in [n_fine, n_fine + n_coarse), 
+    # while fishing/ non-fishing for in [n_fine + n_coarse, n_fine + n_coarse + 2)
+    multihot_lookup_table = np.zeros([n_fine + n_coarse + 2, n_fine], dtype=np.int32)
+    for i in range(n_fine):
+        multihot_lookup_table[i, i] = 1
+    coarse_map = dict(categories['coarse'])
+    for i, clbl in enumerate(VESSEL_CLASS_NAMES):
+        for flbl in coarse_map[clbl]:
+            j = VESSEL_CLASS_DETAILED_NAMES.index(flbl)
+            multihot_lookup_table[n_fine + i, j] = 1
+    fishing_map = dict(categories['fishing'])
+    for i, clbl in enumerate(FISHING_NONFISHING_NAMES):
+        for flbl in fishing_map[clbl]:
+            j = VESSEL_CLASS_DETAILED_NAMES.index(flbl)
+            multihot_lookup_table[n_fine + n_coarse + i, j] = 1
+    return (multihot_lookup_table, 
+        multihot_lookup_table[n_fine:n_fine + n_coarse], 
+        multihot_lookup_table[n_fine + n_coarse:])
+
+multihot_lookup_table, multihot_coarse_lookup_table, multihot_fishing_lookup_table = build_multihot_lookup_table()
+
+
+def multihot_encode(is_fishing, coarse, fine):
+    """
+    TODO:(bitsofbits) Explain this!
+    TODO:(bitsofbits) We are assuming that is_fishing always defined. Check this in code
+    """
+    n_fine = len(VESSEL_CLASS_DETAILED_NAMES)
+    n_coarse = len(VESSEL_CLASS_NAMES)
+    keys = (tf.maximum(fine, 0) + 
+            tf.to_int32(tf.equal(fine, -1)) * (n_fine + tf.maximum(coarse, 0) +
+            tf.to_int32(tf.equal(coarse, -1)) * (n_coarse + is_fishing)))
+    tf_multihot_lookup_table = tf.convert_to_tensor(multihot_lookup_table)
+    return tf.gather(tf_multihot_lookup_table, keys)
+
+
+
