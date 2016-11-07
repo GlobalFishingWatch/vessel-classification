@@ -10,7 +10,6 @@ def _dt(s):
     return dateutil.parser.parse(s)
 
 
-
 class RegressionLossTest(tf.test.TestCase):
     def test_simple_loss(self):
         with self.test_session():

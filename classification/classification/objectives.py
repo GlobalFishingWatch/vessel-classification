@@ -7,7 +7,6 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 import utility
-
 """ Terminology in the context of objectives.
     
     Net: the raw input to an objective function, an embeddeding that has not
@@ -17,7 +16,6 @@ import utility
                 from a categorical function, or a continuous output vector for
                 a regression.
 """
-
 
 Trainer = namedtuple("Trainer", ["loss", "update_ops"])
 TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
@@ -321,7 +319,6 @@ class ClassificationObjective(ObjectiveBase):
             tf.scalar_summary('%s/Training accuracy' % self.name, accuracy))
 
         return Trainer(loss, update_ops)
-
 
     def build_evaluation(self, timestamps, mmsis):
         class Evaluation(EvaluationBase):
