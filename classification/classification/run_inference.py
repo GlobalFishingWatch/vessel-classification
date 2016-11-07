@@ -119,8 +119,8 @@ class Inferer(object):
                             end_time_seconds)
 
                         labels = dict(
-                            [(o.metadata_label, o.build_json_results(
-                                p, timestamps))
+                            [(o.metadata_label,
+                              o.build_json_results(p, timestamps))
                              for (o, p) in zip(objectives, predictions)])
 
                         output_nlj.write({

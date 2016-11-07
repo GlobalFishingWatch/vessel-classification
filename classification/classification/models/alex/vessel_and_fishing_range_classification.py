@@ -101,7 +101,7 @@ class Model(ModelBase):
                 squeeze_dims=[1, 3])
 
             outputs = [of.build_objective_function(net)
-                      for of in self.classification_training_objectives]
+                       for of in self.classification_training_objectives]
 
             return outputs, fishing_outputs
 

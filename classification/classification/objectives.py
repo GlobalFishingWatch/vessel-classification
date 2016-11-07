@@ -7,7 +7,6 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 import utility
-
 """ Terminology in the context of objectives.
     
     Net: the raw input to an objective function, an embeddeding that has not
@@ -67,7 +66,9 @@ class RegressionObjective(ObjectiveBase):
         self.value_from_mmsi = value_from_mmsi
 
     def build(self, net):
-        self.prediction = tf.squeeze(slim.fully_connected(input, 1, activation_fn=None))
+        self.prediction = tf.squeeze(
+            slim.fully_connected(
+                input, 1, activation_fn=None))
 
     def _expected_and_mask(self, mmsis):
         def impl(mmsis_array):
@@ -142,7 +143,8 @@ class ClassificationObjective(ObjectiveBase):
                  classes,
                  transformer=None,
                  loss_weight=1.0):
-        super(ClassificationObjective, self).__init__(metadata_label, name, loss_weight)
+        super(ClassificationObjective, self).__init__(metadata_label, name,
+                                                      loss_weight)
         self.label_from_mmsi = label_from_mmsi
         self.classes = classes
         self.class_indices = dict(zip(classes, range(len(classes))))
@@ -256,7 +258,6 @@ class ClassificationObjective(ObjectiveBase):
                           self.classes, self.num_classes, self.prediction)
 
 
-
 class AbstractFishingLocalizationObjective(ObjectiveBase):
     def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0):
         ObjectiveBase.__init__(self, metadata_label, name, loss_weight)
@@ -299,7 +300,8 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
     def build_trainer(self, timestamps, mmsis):
         update_ops = []
 
-        dense_labels = self.dense_labels(tf.shape(self.prediction), timestamps, mmsis)
+        dense_labels = self.dense_labels(
+            tf.shape(self.prediction), timestamps, mmsis)
 
         raw_loss = self.loss_function(dense_labels)
         update_ops.append(
@@ -313,12 +315,14 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
         dense_labels = self.dense_labels
 
         class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name, prediction, timestamps, mmsis):
+            def __init__(self, metadata_label, name, prediction, timestamps,
+                         mmsis):
                 super(Evaluation, self).__init__(metadata_label, name)
                 self.prediction = prediction
 
             def build_test_metrics(self):
-                labels = dense_labels(self.prediction, self.timestamps, self.mmsis)
+                labels = dense_labels(self.prediction, self.timestamps,
+                                      self.mmsis)
                 thresholded_prediction = tf.to_int32(self.prediction > 0.5)
 
                 valid = tf.to_int32(tf.not_equal(labels, -1))
@@ -347,7 +351,8 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 # then zip the two to give fishing probability results.
                 return {}
 
-        return Evaluation(self.metadata_label, self.name, scores, timestamps, mmsis)
+        return Evaluation(self.metadata_label, self.name, scores, timestamps,
+                          mmsis)
 
 
 class FishingLocalisationObjectiveMSE(AbstractFishingLocalizationObjective):
