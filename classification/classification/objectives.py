@@ -291,7 +291,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
         loss_function = None
         return loss_function
 
-    def build_objective_function(self, net):
+    def build(self, net):
         self.logits = net
         self.prediction = tf.sigmoid(net)
 
