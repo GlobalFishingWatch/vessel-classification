@@ -5,6 +5,7 @@ import logging
 import math
 import numpy as np
 import os
+from . import evaluation_loop
 from . import utility
 
 import tensorflow as tf
@@ -145,19 +146,12 @@ class Trainer:
         slim.get_or_create_global_step()
 
         merged_summary_ops = tf.merge_summary(summary_ops)
-        while True:
-            try:
-                slim.evaluation.evaluation_loop(
-                    master,
-                    self.checkpoint_dir,
-                    self.eval_dir,
-                    num_evals=num_evals,
-                    eval_op=update_ops,
-                    summary_op=merged_summary_ops,
-                    eval_interval_secs=120)
-            except ValueError as e:
-                logging.warning('Error in evaluation loop: (%s), retrying',
-                                str(e))
-            except errors.NotFoundError as e:
-                logging.warning('Error in evaluation loop: (%s), retrying',
-                                str(e))
+        evaluation_loop.evaluation_loop(
+            master,
+            self.checkpoint_dir,
+            self.eval_dir,
+            num_evals=num_evals,
+            eval_op=update_ops,
+            summary_op=merged_summary_ops,
+            eval_interval_secs=120,
+            timeout=20 * 60)
