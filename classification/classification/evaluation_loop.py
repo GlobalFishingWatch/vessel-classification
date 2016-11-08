@@ -10,6 +10,7 @@ from tensorflow.python.training import saver as tf_saver
 from tensorflow.python.training import summary_io
 from tensorflow.python.training import supervisor
 
+
 # The same as the slim loop, but with a checkpoint pause to ensure there are
 # no GCS race condition issues.
 def evaluation_loop(master,
@@ -34,16 +35,15 @@ def evaluation_loop(master,
         global_step=None,
         saver=saver)
 
-    for checkpoint_path in slim.evaluation.checkpoints_iterator(checkpoint_dir,
-                                                eval_interval_secs, timeout):
+    for checkpoint_path in slim.evaluation.checkpoints_iterator(
+            checkpoint_dir, eval_interval_secs, timeout):
         logging.info(
             'New checkpoint found. Sleeping to ensure completely written')
         time.sleep(10)
         logging.info('Starting evaluation at ' + time.strftime(
             '%Y-%m-%d-%H:%M:%S', time.gmtime()))
 
-        with sv.managed_session(
-                master, start_standard_services=False) as sess:
+        with sv.managed_session(master, start_standard_services=False) as sess:
             sv.saver.restore(sess, checkpoint_path)
             sv.start_queue_runners(sess)
             final_op_value = slim.evaluation.evaluation(
