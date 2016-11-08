@@ -4,7 +4,6 @@ from collections import namedtuple
 import datetime
 import logging
 import numpy as np
-import pytz
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
@@ -356,8 +355,8 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 last = None
                 fishing_ranges = []
                 for ts_raw, is_fishing in combined:
-                    ts = datetime.datetime.fromtimestamp(int(ts_raw),
-                                                         pytz.utc).isoformat()
+                    ts = datetime.datetime.utcfromtimestamp(int(
+                        ts_raw)).isoformat()
                     if is_fishing:
                         if last and last[1]:
                             fishing_ranges[-1][1] = ts
