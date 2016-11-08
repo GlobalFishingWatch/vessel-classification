@@ -285,7 +285,8 @@ object Pipeline extends LazyLogging {
       val adjacencyAnnotated =
         Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
 
-      val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
+      val processed =
+        filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 
       val knownFishingMMSIs = loadFishingMMSIs()
       val anchorages: SCollection[Anchorage] = findAnchorageCells(processed, knownFishingMMSIs)

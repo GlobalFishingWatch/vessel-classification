@@ -18,7 +18,6 @@ lazy val commonSettings = Seq(
   ),
   // Main project dependencies.
   libraryDependencies ++= Seq(
-
     "com.spotify" % "scio-core_2.11" % "0.2.1",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
     "io.github.karols" %% "units" % "0.2.1",
@@ -44,6 +43,10 @@ lazy val tfExampleProtos = project
       includePaths in PB.protobufConfig += (sourceDirectory in PB.protobufConfig).value
     ))
 
+lazy val common = project.in(file("common")).settings(commonSettings: _*)
+
+lazy val newProject =
+  project.in(file("new-project")).settings(commonSettings: _*).dependsOn(common)
 
 // The dataflow feature generation pipeline.
 lazy val featurePipeline =
@@ -56,7 +59,7 @@ lazy val featurePipeline =
                                     "org.json4s" %% "json4s-native" % "3.3.0",
                                     "com.jsuereth" %% "scala-arm" % "1.4")
       ))
-    .dependsOn(tfExampleProtos)
+    .dependsOn(common, tfExampleProtos)
 
 // An aggregation of all projects.
-lazy val root = (project in file(".")).aggregate(featurePipeline)
+lazy val root = (project in file(".")).aggregate(common, newProject, featurePipeline)
