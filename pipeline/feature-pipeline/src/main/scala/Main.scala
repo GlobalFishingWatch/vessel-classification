@@ -255,7 +255,8 @@ object Pipeline extends LazyLogging {
       .withSideInputs(si)
       .map {
         case ((metadata, locations), ctx) => {
-          val lookup = AdjacencyLookup(ctx(si), (port: Anchorage) => port.meanLocation, 0.5.of[kilometer], 13)
+          val lookup =
+            AdjacencyLookup(ctx(si), (port: Anchorage) => port.meanLocation, 0.5.of[kilometer], 13)
           (metadata,
            locations
              .map((location) => {
@@ -294,8 +295,7 @@ object Pipeline extends LazyLogging {
              .map(visit => {
                println(reflectionToString(("RANGE", visit)))
                visit
-             })
-          )
+             }))
         }
       }
       .toSCollection
@@ -343,7 +343,8 @@ object Pipeline extends LazyLogging {
       val adjacencyAnnotated =
         Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
 
-      val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
+      val processed =
+        filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 
       val knownFishingMMSIs = loadFishingMMSIs()
       val anchorages: SCollection[Anchorage] = findAnchorageCells(processed, knownFishingMMSIs)
