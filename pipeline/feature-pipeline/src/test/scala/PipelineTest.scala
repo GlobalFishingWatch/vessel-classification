@@ -364,7 +364,7 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
   )
 
   val expected = (VesselMetadata(45),
-                  Seq(
+                  immutable.Seq(
                     PortVisit(Anchorage(LatLon(0.0.of[degrees],0.0.of[degrees]),List(),0),Instant.parse("2016-01-01T00:00:00.000Z"),Instant.parse("2016-01-01T00:08:00.000Z")),
                     PortVisit(Anchorage(LatLon(0.0.of[degrees],1.0.of[degrees]),List(),0),Instant.parse("2016-01-01T02:00:00.000Z"),Instant.parse("2016-01-01T02:08:00.000Z"))))
 
@@ -375,11 +375,6 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
         vesselRecords,
         sc.parallelize(anchorageLocations)
       )
-      .map((portVisit) => {
-        println("\n\n\n\n####################################################")
-        println(reflectionToString(("VISIT", portVisit)))
-        portVisit
-      })
 
       res should containSingleValue(expected)
     }
