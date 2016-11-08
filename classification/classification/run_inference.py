@@ -110,8 +110,8 @@ class Inferer(object):
                     for result in zip(*batch_results):
                         mmsi = result[0]
                         (start_time_seconds, end_time_seconds) = result[1]
-                        timestamps = result[2]
-                        predictions = result[3:]
+                        timestamps_array = result[2]
+                        predictions_array = result[3:]
 
                         start_time = datetime.datetime.utcfromtimestamp(
                             start_time_seconds)
@@ -120,8 +120,8 @@ class Inferer(object):
 
                         labels = dict(
                             [(o.metadata_label,
-                              o.build_json_results(p, timestamps))
-                             for (o, p) in zip(objectives, predictions)])
+                              o.build_json_results(p, timestamps_array))
+                             for (o, p) in zip(objectives, predictions_array)])
 
                         output_nlj.write({
                             'mmsi': int(mmsi),

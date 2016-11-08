@@ -359,13 +359,11 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                     ts = datetime.datetime.fromtimestamp(int(ts_raw),
                                                          pytz.utc).isoformat()
                     if is_fishing:
-                        if last[1]:
+                        if last and last[1]:
                             fishing_ranges[-1][1] = ts
                         else:
                             fishing_ranges.append([ts, ts])
                     last = (ts, is_fishing)
-
-                print fishing_ranges
 
                 return fishing_ranges
 
