@@ -40,6 +40,8 @@ import scala.math
 import resource._
 import ScioContextResource._
 
+import org.apache.commons.lang3.builder.ToStringBuilder._
+
 object Parameters {
   val minRequiredPositions = 1000
   val minTimeBetweenPoints = Duration.standardMinutes(5)
@@ -253,32 +255,47 @@ object Pipeline extends LazyLogging {
       .withSideInputs(si)
       .map {
         case ((metadata, locations), ctx) => {
-          val lookup =
-            AdjacencyLookup(ctx(si), (port: Anchorage) => port.meanLocation, 1000.0.of[kilometer], 1)
-//            AdjacencyLookup(ctx(si), (port: Anchorage) => port.meanLocation, 0.5.of[kilometer], 13)
-
+          val lookup = AdjacencyLookup(ctx(si), (port: Anchorage) => port.meanLocation, 0.5.of[kilometer], 13)
           (metadata,
            locations
              .map((location) => {
-               (location, lookup.nearby(location.location))
+               val ports = lookup.nearby(location.location)
+               if (ports.length > 0) {
+                 Some(PortVisit(ports.head._2, location.timestamp, location.timestamp))
+               } else {
+                 None
+               }
              })
-             .filter {
-               case (location, ports) =>
-                 ports.length > 0
-             }
-             .map {
-               case (location, ports) =>
-                 // ports is List[(Distance, Anchorage)]
-                 PortVisit(ports.head._2, location.timestamp, location.timestamp)
-             }
-             .foldLeft(Vector[PortVisit]())((res: Vector[PortVisit], visit: PortVisit) => {
+             .foldLeft(Vector[Option[PortVisit]]())((res, visit) => {
                if (res.length == 0) {
                  res :+ visit
                } else {
-                 res.init ++ res.last.extend(visit)
+                 visit match {
+                   case None =>
+                     res.last match {
+                       case None =>
+                         res
+                       case Some(last) =>
+                         res :+ None
+                     }
+                   case Some(visit) =>
+                     res.last match {
+                       case None =>
+                         res.init :+ Some(visit)
+                       case Some(last) =>
+                         res.init ++ last.extend(visit).map(visit => Some(visit))
+                     }
+                 }
                }
              })
-             .toSeq)
+             .filter(visit => !visit.isEmpty)
+             .map(visit => visit.head)
+             .toSeq
+             .map(visit => {
+               println(reflectionToString(("RANGE", visit)))
+               visit
+             })
+          )
         }
       }
       .toSCollection
