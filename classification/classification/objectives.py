@@ -467,7 +467,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                           timestamps, mmsis)
 
 
-class FishingLocalisationObjectiveMSE(AbstractFishingLocalizationObjective):
+class FishingLocalizationObjectiveMSE(AbstractFishingLocalizationObjective):
     def loss_function(self, dense_labels):
         return utility.fishing_localisation_mse(self.prediction, dense_labels)
 

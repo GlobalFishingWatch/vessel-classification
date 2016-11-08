@@ -14,6 +14,8 @@ import sys
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
+
+
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 """ The coarse vessel label set. """
@@ -91,7 +93,7 @@ class ClusterNodeConfig(object):
         return ClusterNodeConfig({
             "cluster": {},
             "task": {
-                "type": "worker",
+                "type": "master",
                 "index": 0
             }
         })
@@ -678,3 +680,6 @@ def read_fishing_ranges(fishing_range_file):
                 FishingRange(start_time, end_time, is_fishing))
 
     return fishing_range_dict
+
+
+
