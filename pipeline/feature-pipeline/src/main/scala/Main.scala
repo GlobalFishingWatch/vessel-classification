@@ -271,31 +271,18 @@ object Pipeline extends LazyLogging {
                if (res.length == 0) {
                  res :+ visit
                } else {
-                 visit match {
-                   case None =>
-                     res.last match {
-                       case None =>
-                         res
-                       case Some(last) =>
-                         res :+ None
-                     }
-                   case Some(visit) =>
-                     res.last match {
-                       case None =>
-                         res.init :+ Some(visit)
-                       case Some(last) =>
-                         res.init ++ last.extend(visit).map(visit => Some(visit))
-                     }
+                 (visit, res.last) match {
+                   case (None, None) => res
+                   case (None, Some(last)) => res :+ None
+                   case (Some(visit), None) => res.init :+ Some(visit)
+                   case (Some(visit), Some(last)) =>
+                     res.init ++ last.extend(visit).map(visit => Some(visit))
                  }
                }
              })
-             .filter(visit => !visit.isEmpty)
-             .map(visit => visit.head)
-             .toSeq
-             .map(visit => {
-               println(reflectionToString(("RANGE", visit)))
-               visit
-             }))
+             .filter(_.nonEmpty)
+             .map(_.head)
+             .toSeq)
         }
       }
       .toSCollection
