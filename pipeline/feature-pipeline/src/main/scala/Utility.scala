@@ -163,7 +163,7 @@ case class Anchorage(meanLocation: LatLon,
   }
 
   def getId() = {
-    meanLocation.getS2CellId(14).toToken
+    meanLocation.getS2CellId(13).toToken
   }
 }
 
