@@ -125,7 +125,7 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         logits = [[np.inf, np.inf, np.inf, -np.inf, -np.inf, -np.inf]]
         vmd = utility.VesselMetadata(self.vmd_dict, {}, 1.0)
 
-        o = objectives.FishingLocalisationObjectiveMSE(
+        o = objectives.FishingLocalizationObjectiveMSE(
             'fishing_localisation', 'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
@@ -137,7 +137,7 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         fishing_range_dict = {100001: [self.range1]}
         vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
-        o = objectives.FishingLocalisationObjectiveMSE(
+        o = objectives.FishingLocalizationObjectiveMSE(
             'fishing_localisation', 'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
@@ -149,7 +149,7 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         fishing_range_dict = {100001: [self.range1, self.range2]}
         vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
-        o = objectives.FishingLocalisationObjectiveMSE(
+        o = objectives.FishingLocalizationObjectiveMSE(
             'fishing_localisation', 'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
@@ -161,7 +161,7 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
         fishing_range_dict = {100001: [self.range1, self.range2]}
         vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
 
-        o = objectives.FishingLocalisationObjectiveMSE(
+        o = objectives.FishingLocalizationObjectiveMSE(
             'fishing_localisation', 'Fishing Localisation', vmd)
 
         with self.test_session() as sess:
