@@ -25,6 +25,9 @@ import yattag
 import newlinejson as nlj
 from classification.utility import vessel_categorical_length_transformer, is_test
 import gzip
+import dateutil.parser
+import datetime
+import pytz
 
 InferenceResults = namedtuple('InferenceResults',
                               ['mmsi', 'inferred_labels', 'true_labels',
@@ -347,8 +350,132 @@ def get_local_inference_path(args):
     return inference_path
 
 
+
+def load_true_fishing_ranges_by_mmsi(fishing_range_path):
+    ranges_by_mmsi = defaultdict(list)
+    parse = dateutil.parser.parse
+    with open(fishing_range_path) as f:
+        for row in csv.DictReader(f):
+            mmsi = int(row['mmsi'].strip())
+            if not is_test(mmsi):
+                continue
+            rng = ((float(row['is_fishing']) > 0.5), parse(row['start_time']), parse(row['end_time'])) 
+            ranges_by_mmsi[mmsi].append(rng)
+    return ranges_by_mmsi
+
+
+def load_predicted_fishing_ranges_by_mmsi(inference_path, mmsi_set):
+    ranges_by_mmsi = defaultdict(list)
+    coverage_by_mmsi = defaultdict(list)
+    def parse(x):
+        # 2014-08-28T13:56:16+00:00
+        dt = datetime.datetime.strptime(x[:-6], "%Y-%m-%dT%H:%M:%S")
+        assert x[-6:] == "+00:00"
+        return dt.replace(tzinfo=pytz.UTC)
+
+    def parse2(x):
+        # 2014-08-28T13:56:16+00:00
+        dt = datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S")
+        return dt.replace(tzinfo=pytz.UTC)
+    # parse = dateutil.parser.parse
+    with gzip.GzipFile(inference_path) as f:
+        with nlj.open(f) as src:
+            for row in src:
+                mmsi = row['mmsi']
+                if mmsi not in mmsi_set:
+                    continue
+                rng = [(parse(a), parse(b)) for (a, b) in row['labels']['fishing_localisation']]
+                ranges_by_mmsi[mmsi].extend(rng)
+                #TODO: fix generation to generate consistent datetimes
+                coverage_by_mmsi[mmsi].append((parse2(row['start_time']), parse2(row['end_time'])))
+    return ranges_by_mmsi, coverage_by_mmsi
+
+
+def datetime_to_minute(dt):
+    timestamp = (dt - datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
+    return int(timestamp // 60)
+
+def compare_fishing_localization(inference_path, fishing_range_path):
+
+    logging.debug("loading fishing ranges")
+    true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(fishing_range_path)
+    logging.debug("loading predicted fishing")
+    pred_ranges_by_mmsi, pred_coverage_by_mmsi = load_predicted_fishing_ranges_by_mmsi(inference_path, set(true_ranges_by_mmsi.keys()))
+
+    true_chunks = []
+    pred_chunks = []
+
+    for mmsi in sorted(true_ranges_by_mmsi.keys()):
+        logging.debug("processing %s", mmsi)
+        if mmsi not in pred_ranges_by_mmsi:
+            continue
+        true_ranges = true_ranges_by_mmsi[mmsi]
+        if not true_ranges:
+            continue
+
+        # Determine minutes from start to finish of this mmsi, create an array to
+        # hold results and fill with -1 (unknown)
+        logging.debug("processing %s true ranges", len(true_ranges))
+        logging.debug("finding overall range")
+        _, start, end = true_ranges[0]
+        for (_, s, e) in true_ranges[1:]:
+            start = min(start, s)
+            end = max(end, e)
+        start_min = datetime_to_minute(start)
+        end_min = datetime_to_minute(end)
+        minutes = np.empty([end_min - start_min + 1, 2], dtype=int)
+        minutes.fill(-1)
+
+        # Fill in minutes[:, 0] with known true / false values
+        logging.debug("filling 0s")
+        for (is_fishing, s, e) in true_ranges:
+            s_min = datetime_to_minute(s)
+            e_min = datetime_to_minute(e)
+            for m in range(s_min - start_min, e_min - start_min + 1):
+                minutes[m, 0] = is_fishing
+
+        # fill in minutes[:, 1] with 0 (default) in areas with coverage
+        logging.debug("filling 1s")
+        for (s, e) in pred_coverage_by_mmsi[mmsi]:
+            s_min = datetime_to_minute(s)
+            e_min = datetime_to_minute(e)
+            for m in range(s_min - start_min, e_min - start_min + 1):
+                if 0 <= m < len(minutes):
+                    minutes[m, 1] = 0        
+
+        # fill in minutes[:, 1] with 1 where fishing is predicted
+        logging.debug("filling in predicted values")
+        for (s, e) in pred_ranges_by_mmsi[mmsi]:
+            s_min = datetime_to_minute(s)
+            e_min = datetime_to_minute(e)
+            for m in range(s_min - start_min, e_min - start_min + 1):
+                if 0 <= m < len(minutes):
+                    minutes[m, 1] = 1         
+
+        mask = ((minutes[:, 0] != -1) & (minutes[:, 1] != -1))
+
+        if mask.sum():
+            accuracy = ((minutes[:, 0] == minutes[:, 1]) * mask).sum() / mask.sum()
+            logging.info("Accuracy for MMSI %s: %s", mmsi, accuracy)
+
+            true_chunks.append(minutes[mask, 0])
+            pred_chunks.append(minutes[mask, 1])
+
+        y_true = np.concatenate(true_chunks)
+        y_pred = np.concatenate(pred_chunks)
+
+    logging.info("Overall localization accuracy %s", metrics.accuracy_score(y_true, y_pred))
+    logging.info("Overall localization precision %s", metrics.precision_score(y_true, y_pred))
+    logging.info("Overall localization recall %s", metrics.recall_score(y_true, y_pred))
+
+
+
 def compute_results(args):
     inference_path = get_local_inference_path(args)
+
+    fishing_results = compare_fishing_localization(inference_path, args.fishing_ranges)
+
+    raise SystemExit()
 
     maps = defaultdict(dict)
     with open(args.label_path) as f:
@@ -408,7 +535,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 temp_dir = os.path.join(this_dir, 'temp')
 
 if __name__ == '__main__':
-    logging.getLogger().setLevel('WARNING')
+    logging.getLogger().setLevel('INFO')
 
     parser = argparse.ArgumentParser(
         description='Test inference results and output metrics')
@@ -416,6 +543,8 @@ if __name__ == '__main__':
         '--inference-path', help='path to inference results', required=True)
     parser.add_argument(
         '--label-path', help='path to test data', required=True)
+    parser.add_argument(
+        '--fishing-ranges', help='path to fishing range data', required=True)
     parser.add_argument(
         '--dest-path', help='path to write results to', required=True)
     parser.add_argument(
