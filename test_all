@@ -9,8 +9,9 @@ popd
 
 # Run python TF tests.
 pushd classification
-python classification/utility_test.py
-python classification/objectives_test.py
+python -m classification.utility_test
+python -m classification.objectives_test
+python -m classification.models.models_test
 popd
 
 # Build docker containers
