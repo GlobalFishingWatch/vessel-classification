@@ -38,6 +38,13 @@ TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
 
 
+def duplicate_double_pad(input):
+    batch_size, _, width, depth = input.get_shape()
+    doubled = tf.concat(3, [input, input])
+    return tf.reshape(doubled,
+                      [int(batch_size), 1, int(width * 2), int(depth)])
+
+
 def vessel_categorical_length_transformer(vessel_length_string):
     """ A transformer from continuous vessel lengths to discrete categories. """
     ranges = [12.0, 18.0, 24.0, 36.0, 50.0, 75.0, 100.0, 150.0]

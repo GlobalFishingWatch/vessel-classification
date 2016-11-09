@@ -85,35 +85,32 @@ class Model(ModelBase):
         """
         with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu):
             net = input
-            # Three levels of misconception w/out narrowing for fishing prediction.
-            net = slim.repeat(net, 3, layers.misconception_with_bypass,
-                              self.window_size, 1, self.feature_depth,
-                              is_training)
-
-            fishing_prediction_layer = net
 
             # Then a tower for classification.
-            net = slim.repeat(
-                net, self.levels, layers.misconception_with_bypass,
-                self.window_size, self.stride, self.feature_depth, is_training)
+            multiscale_layers = []
+            for i in range(self.levels):
+                with tf.variable_scope("layer_%d" % i):
+                    ddp = net
+                    for j in range(i):
+                        ddp = utility.duplicate_double_pad(ddp)
+                    multiscale_layers.append(ddp)
+
+                    net = layers.misconception_with_bypass(
+                        net, self.window_size, self.stride, self.feature_depth,
+                        is_training)
+
             net = slim.flatten(net)
             net = slim.dropout(net, 0.5, is_training=is_training)
             net = slim.fully_connected(net, 100)
             net = slim.dropout(net, 0.5, is_training=is_training)
 
-            vessel_class_embedding = slim.fully_connected(
-                net, self.fishing_vessel_type_embedding_depth)
-            reshaped_embedding = tf.reshape(vessel_class_embedding, [
-                self.batch_size, 1, 1, self.fishing_vessel_type_embedding_depth
-            ])
-            tiled_embedding = tf.tile(reshaped_embedding,
-                                      [1, 1, self.window_max_points, 1])
+            concatenated_multiscale_embedding = tf.concat(3, multiscale_layers)
 
-            fishing_prediction_input = tf.concat(
-                3, [fishing_prediction_layer, tiled_embedding])
             fishing_outputs = tf.squeeze(
                 slim.conv2d(
-                    fishing_prediction_input, 1, [1, 20], activation_fn=None),
+                    concatenated_multiscale_embedding,
+                    1, [1, 1],
+                    activation_fn=None),
                 squeeze_dims=[1, 3])
 
             for of in self.classification_training_objectives:
@@ -146,7 +143,7 @@ class Model(ModelBase):
             self.fishing_localisation_objective.build_trainer(timestamps,
                                                               mmsis))
 
-        optimizer = tf.train.AdamOptimizer(1e-5)
+        optimizer = tf.train.AdamOptimizer(1e-4)
 
         return TrainNetInfo(optimizer, trainers)
 

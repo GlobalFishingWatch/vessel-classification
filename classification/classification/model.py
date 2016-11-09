@@ -22,6 +22,7 @@ class ModelBase(object):
     # always much more sparse.
     window_max_points = (max_window_duration_seconds /
                          max_sample_frequency_seconds) / 4
+    window_max_points = 4096
 
     min_viable_timeslice_length = 500
 
