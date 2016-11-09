@@ -139,7 +139,7 @@ class Trainer:
             for update_op in names_to_updates.values():
                 update_ops.append(update_op)
 
-        num_examples = 1024
+        num_examples = 4096
         num_evals = math.ceil(num_examples / float(self.model.batch_size))
 
         # Setup the global step.
