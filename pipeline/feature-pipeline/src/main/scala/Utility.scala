@@ -179,7 +179,7 @@ case class Anchorage(meanLocation: LatLon,
     meanLocation.getS2CellId(Parameters.portsS2Scale).toToken
 }
 
-case class AnchorageGroup(meanLocation: LatLon, anchorages: Seq[Anchorage]) {
+case class AnchorageGroup(meanLocation: LatLon, anchorages: Set[Anchorage]) {
   def id: String =
     meanLocation.getS2CellId(Parameters.portsS2Scale).toToken
 }
@@ -188,7 +188,7 @@ object AnchorageGroup {
   def fromAnchorages(anchorages: Iterable[Anchorage]) =
     AnchorageGroup(LatLon.weightedMean(anchorages.map(_.meanLocation),
                                        anchorages.map(_.vessels.length.toDouble)),
-                   anchorages.toSeq)
+                   anchorages.toSet)
 }
 
 case class VesselEncounters(vessel1: VesselMetadata,
