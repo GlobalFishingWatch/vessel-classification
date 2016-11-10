@@ -36,6 +36,11 @@ InferenceResults = namedtuple('InferenceResults',
 LengthResults = namedtuple('LengthResults',
                             ['mmsi', 'inferred_lengths', 'true_lengths', 'true_labels', 'start_dates'])
 
+
+LocalisationResults = namedtuple('LocalisationResults', ['true_fishing_by_mmsi', 'pred_fishing_by_mmsi',
+    'label_map'])
+
+
 ConfusionMatrix = namedtuple('ConfusionMatrix', ['raw', 'scaled'])
 
 css = """
@@ -175,8 +180,6 @@ def ydump_length(doc, results):
 
     consolidated = consolidate_length_across_dates(results)
 
-    print(consolidated.true_lengths.shape, consolidated.inferred_lengths.shape)
-
     with tag('div', klass="unbreakable"):
         line('h3', 'Overall RMS Error')
         text('{:.2f}'.format(RMS(consolidated.true_lengths, consolidated.inferred_lengths)))
@@ -243,30 +246,30 @@ def ydump_metrics(doc, results):
 
 
 
-def ydump_fishing_localization(doc, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi):
+def ydump_fishing_localisation(doc, results):
     doc, tag, text, line = doc.ttl()
 
-    y_true = np.concatenate(true_fishing_by_mmsi.values())
-    y_pred = np.concatenate(pred_fishing_by_mmsi.values())
+    y_true = np.concatenate(results.true_fishing_by_mmsi.values())
+    y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
 
 
     header = ["Gear Type", "Precision", "Recall", "Accuracy", "F1-Score"]
     rows = []
-    logging.info("Overall localization accuracy %s", metrics.accuracy_score(y_true, y_pred))
-    logging.info("Overall localization precision %s", metrics.precision_score(y_true, y_pred))
-    logging.info("Overall localization recall %s", metrics.recall_score(y_true, y_pred))
+    logging.info("Overall localisation accuracy %s", metrics.accuracy_score(y_true, y_pred))
+    logging.info("Overall localisation precision %s", metrics.precision_score(y_true, y_pred))
+    logging.info("Overall localisation recall %s", metrics.recall_score(y_true, y_pred))
 
 
-    for cls in sorted(set(maps['label'].values())):
+    for cls in sorted(set(results.label_map.values())):
         true_chunks = []
         pred_chunks = []
-        for mmsi in maps['label']:
-            if mmsi not in true_fishing_by_mmsi:
+        for mmsi in results.label_map:
+            if mmsi not in results.true_fishing_by_mmsi:
                 continue
-            if maps['label'][mmsi] != cls:
+            if results.label_map[mmsi] != cls:
                 continue
-            true_chunks.append(true_fishing_by_mmsi[mmsi])
-            pred_chunks.append(pred_fishing_by_mmsi[mmsi])
+            true_chunks.append(results.true_fishing_by_mmsi[mmsi])
+            pred_chunks.append(results.pred_fishing_by_mmsi[mmsi])
         if len(true_chunks):
             y_true = np.concatenate(true_chunks)
             y_pred = np.concatenate(pred_chunks)
@@ -278,8 +281,8 @@ def ydump_fishing_localization(doc, maps, true_fishing_by_mmsi, pred_fishing_by_
 
     rows.append(['', '', '', '', ''])
 
-    y_true = np.concatenate(true_fishing_by_mmsi.values())
-    y_pred = np.concatenate(pred_fishing_by_mmsi.values())
+    y_true = np.concatenate(results.true_fishing_by_mmsi.values())
+    y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
 
     rows.append(['Overall', metrics.precision_score(y_true, y_pred), 
                 metrics.recall_score(y_true, y_pred),
@@ -339,7 +342,7 @@ def consolidate_across_dates(results):
                 try:
                     scores[label_map[lbl]] += results.scores[i][lbl]
                 except:
-                    print(label_map, lbl, results.scores[i].keys())
+                    logging.error(label_map, lbl, results.scores[i].keys())
                     raise
         inferred_labels.append(results.label_list[np.argmax(scores)])
         true_labels.append(results.true_labels[mask][0])
@@ -554,7 +557,7 @@ def datetime_to_minute(dt):
     return int(timestamp // 60)
 
 
-def compare_fishing_localization(inference_path, fishing_range_path):
+def compare_fishing_localisation(inference_path, fishing_range_path):
 
     logging.debug("loading fishing ranges")
     true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(fishing_range_path)
@@ -628,7 +631,7 @@ def compare_fishing_localization(inference_path, fishing_range_path):
 def compute_results(args):
     inference_path = get_local_inference_path(args)
 
-    true_fishing_by_mmsi, pred_fishing_by_mmsi = compare_fishing_localization(inference_path, args.fishing_ranges)
+    true_fishing_by_mmsi, pred_fishing_by_mmsi = compare_fishing_localisation(inference_path, args.fishing_ranges)
 
 
     maps = defaultdict(dict)
@@ -644,6 +647,9 @@ def compute_results(args):
 
     results = {}
 
+    results['localisation'] = LocalisationResults(true_fishing_by_mmsi,
+        pred_fishing_by_mmsi, maps['label'])
+
     results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
                                        'is_fishing')
 
@@ -655,14 +661,14 @@ def compute_results(args):
     results['length'] = load_lengths(inference_path, maps['length'], maps['label'])
 
 
-    return results, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi
+    return results
 
 
 
 
 
 
-def dump_html(args, results, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi):
+def dump_html(args, results):
 
     classification_metrics = [
         ('fishing', 'Is Fishing'), ('coarse', 'Coarse Labels'),
@@ -684,7 +690,7 @@ def dump_html(args, results, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi):
     doc.stag('hr')
 
     doc.line('h2', 'Fishing Localisation')
-    ydump_fishing_localization(doc, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi)
+    ydump_fishing_localisation(doc, results['localisation'])
     doc.stag('hr')
 
 
@@ -717,9 +723,9 @@ if __name__ == '__main__':
         help='dump csv file mapping csv to consolidated gear-type labels')
     args = parser.parse_args()
 
-    results, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi = compute_results(args)
+    results = compute_results(args)
 
-    dump_html(args, results, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi)
+    dump_html(args, results)
 
     if args.dump_labels_to:
         if not args.dump_labels_to.endswith('.csv'):
