@@ -6,7 +6,7 @@ import com.spotify.scio.testing.PipelineSpec
 import io.github.karols.units._
 import io.github.karols.units.SI._
 
-import org.joda.time.{Instant}
+import org.joda.time.{Duration, Instant}
 import org.scalatest._
 
 import scala.collection.{mutable, immutable}
@@ -69,7 +69,8 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
       val vesselRecords = sc.parallelize(Seq((VesselMetadata(45), vesselPath)))
       val res = Anchorages.findAnchorageGroupVisits(
         vesselRecords,
-        sc.parallelize(anchorageGroups)
+        sc.parallelize(anchorageGroups),
+        Duration.standardMinutes(5)
       )
 
       res should containSingleValue(expected)

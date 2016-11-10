@@ -126,6 +126,8 @@ case class AnchorageGroupVisit(anchorageGroup: AnchorageGroup,
     }
   }
 
+  def duration = new Duration(arrival, departure)
+
   def toJson =
     ("anchorageGroup" -> anchorageGroup.id) ~
       ("arrival" -> arrival.toString()) ~

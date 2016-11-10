@@ -9,6 +9,7 @@ import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 
 import org.jgrapht.alg.util.UnionFind
+import org.joda.time.{Duration}
 
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._
@@ -77,7 +78,8 @@ object Anchorages {
 
   def findAnchorageGroupVisits(
       locationEvents: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
-      anchorageGroups: SCollection[AnchorageGroup]
+      anchorageGroups: SCollection[AnchorageGroup],
+      minVisitDuration: Duration
   ): SCollection[(VesselMetadata, immutable.Seq[AnchorageGroupVisit])] = {
     val si = anchorageGroups.asListSideInput
 
@@ -126,6 +128,7 @@ object Anchorages {
              })
              .filter(_.nonEmpty)
              .map(_.head)
+             .filter(_.duration.isLongerThan(minVisitDuration))
              .toSeq)
         }
       }

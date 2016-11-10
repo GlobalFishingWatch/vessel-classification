@@ -238,7 +238,10 @@ object Pipeline extends LazyLogging {
 
       val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_group_visits"
 
-      val anchorageVisits = Anchorages.findAnchorageGroupVisits(locationRecords, anchorageGroups)
+      val anchorageVisits =
+        Anchorages.findAnchorageGroupVisits(locationRecords,
+                                            anchorageGroups,
+                                            Parameters.minAnchorageVisitDuration)
 
       anchorageVisits.flatMap {
         case (metadata, visits) =>
