@@ -44,7 +44,9 @@ object Anchorages {
     val unionFind = new UnionFind[Anchorage](anchorages.toSet.asJava)
     anchorages.foreach { ancorage =>
       val neighbourCells = Array.fill[S2CellId](4) { new S2CellId() }
-      ancorage.meanLocation.getS2CellId(Parameters.anchoragesS2Scale).getEdgeNeighbors(neighbourCells)
+      ancorage.meanLocation
+        .getS2CellId(Parameters.anchoragesS2Scale)
+        .getEdgeNeighbors(neighbourCells)
 
       neighbourCells.flatMap { nc =>
         anchoragesById.get(nc.toToken)

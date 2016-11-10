@@ -262,15 +262,13 @@ object Pipeline extends LazyLogging {
       val anchoragesPath = config.pipelineOutputPath + "/anchorages"
       anchorages.map { anchorage =>
         compact(render(anchorage.toJson))
-      }
-      .saveAsTextFile(anchoragesPath)
+      }.saveAsTextFile(anchoragesPath)
 
       // And anchorage groups.
       val anchorageGroupsPath = config.pipelineOutputPath + "/anchorage_groups"
       anchorageGroups.map { anchorageGroup =>
         compact(render(anchorageGroup.toJson))
-      }
-      .saveAsTextFile(anchorageGroupsPath)
+      }.saveAsTextFile(anchorageGroupsPath)
 
       // Build and output suspected encounters.
       val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
