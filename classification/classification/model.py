@@ -13,16 +13,16 @@ class ModelBase(object):
 
     batch_size = 32
 
-    feature_duration_days = 45
+    feature_duration_days = 90
     max_sample_frequency_seconds = 5 * 60
     max_window_duration_seconds = feature_duration_days * 24 * 3600
 
     # We allocate a much smaller buffer than would fit the specified time
     # sampled at 5 mins intervals, on the basis that the sample is almost
     # always much more sparse.
-    window_max_points = (max_window_duration_seconds /
-                         max_sample_frequency_seconds) / 4
-    window_max_points = 4096
+    #window_max_points = (max_window_duration_seconds /
+    #                     max_sample_frequency_seconds) / 4
+    window_max_points = 8192
 
     min_viable_timeslice_length = 500
 

@@ -4,7 +4,7 @@ import json
 from . import layers
 from classification import utility
 from classification.model import ModelBase
-from classification.objectives import (FishingLocalizationObjectiveMSE,
+from classification.objectives import (FishingLocalizationObjectiveCrossEntropy,
                                        RegressionObjective, TrainNetInfo,
                                        VesselMetadataClassificationObjective)
 import logging
@@ -23,6 +23,7 @@ class Model(ModelBase):
     stride = 2
     feature_depth = 50
     levels = 10
+    batch_size = 64
 
     fishing_vessel_type_embedding_depth = 8
 
@@ -60,11 +61,11 @@ class Model(ModelBase):
                 loss_weight=0.1)
         ]
 
-        self.fishing_localisation_objective = FishingLocalizationObjectiveMSE(
+        self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
             'fishing_localisation',
             'Fishing localisation',
             vessel_metadata,
-            loss_weight=5.0)
+            loss_weight=50.0)
 
         self.training_objectives = self.classification_training_objectives + [
             self.fishing_localisation_objective

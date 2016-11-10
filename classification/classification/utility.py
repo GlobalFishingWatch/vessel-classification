@@ -271,8 +271,8 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
     end_time = int(features[-1][0])
 
     # Roll the features randomly to give different offsets.
-    roll = random_state.randint(0, window_size)
-    features = np.roll(features, roll, axis=0)
+    #roll = random_state.randint(0, window_size)
+    #features = np.roll(features, roll, axis=0)
 
     # Drop the first (timestamp) column.
     timestamps = features[:, 0].astype(np.int32)
