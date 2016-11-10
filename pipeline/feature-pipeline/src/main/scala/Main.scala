@@ -40,6 +40,8 @@ import scala.math
 import resource._
 import ScioContextResource._
 
+import org.apache.commons.lang3.builder.ToStringBuilder._
+
 object Parameters {
   val minRequiredPositions = 1000
   val minTimeBetweenPoints = Duration.standardMinutes(5)
@@ -243,6 +245,49 @@ object Pipeline extends LazyLogging {
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForPort }
   }
 
+  def findPortVisits(
+      locationEvents: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
+      anchorages: SCollection[Anchorage]
+  ): SCollection[(VesselMetadata, immutable.Seq[PortVisit])] = {
+    val si = anchorages.asListSideInput
+
+    locationEvents
+      .withSideInputs(si)
+      .map {
+        case ((metadata, locations), ctx) => {
+          val lookup =
+            AdjacencyLookup(ctx(si), (port: Anchorage) => port.meanLocation, 0.5.of[kilometer], 13)
+          (metadata,
+           locations
+             .map((location) => {
+               val ports = lookup.nearby(location.location)
+               if (ports.length > 0) {
+                 Some(PortVisit(ports.head._2, location.timestamp, location.timestamp))
+               } else {
+                 None
+               }
+             })
+             .foldLeft(Vector[Option[PortVisit]]())((res, visit) => {
+               if (res.length == 0) {
+                 res :+ visit
+               } else {
+                 (visit, res.last) match {
+                   case (None, None) => res
+                   case (None, Some(last)) => res :+ None
+                   case (Some(visit), None) => res.init :+ Some(visit)
+                   case (Some(visit), Some(last)) =>
+                     res.init ++ last.extend(visit).map(visit => Some(visit))
+                 }
+               }
+             })
+             .filter(_.nonEmpty)
+             .map(_.head)
+             .toSeq)
+        }
+      }
+      .toSCollection
+  }
+
   def loadFishingMMSIs(): Set[Int] = {
     val fishingMMSIreader = new CSVReader(new FileReader(Parameters.knownFishingMMSIs))
     fishingMMSIreader
@@ -285,10 +330,22 @@ object Pipeline extends LazyLogging {
       val adjacencyAnnotated =
         Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
 
-      val processed = filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
+      val processed =
+        filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 
       val knownFishingMMSIs = loadFishingMMSIs()
       val anchorages: SCollection[Anchorage] = findAnchorageCells(processed, knownFishingMMSIs)
+
+      val portVisitsPath = config.pipelineOutputPath + "/port_visits"
+
+      findPortVisits(locationRecords, anchorages).flatMap {
+        case (metadata, visits) =>
+          visits.map((visit) => {
+            compact(
+              render(("mmsi" -> metadata.mmsi) ~
+                ("visit" -> visit.toJson)))
+          })
+      }.saveAsTextFile(portVisitsPath)
 
       val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
         case (md, feature) =>
