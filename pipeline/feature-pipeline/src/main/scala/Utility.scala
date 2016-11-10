@@ -178,14 +178,14 @@ case class Anchorage(meanLocation: LatLon,
   }
 
   def id: String =
-    meanLocation.getS2CellId(Parameters.portsS2Scale).toToken
+    meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
 }
 
 case class AnchorageGroup(meanLocation: LatLon, anchorages: Set[Anchorage]) {
   import STImplicits._
 
   def id: String =
-    meanLocation.getS2CellId(Parameters.portsS2Scale).toToken
+    meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
 
   def toJson = {
     ("id" -> id) ~

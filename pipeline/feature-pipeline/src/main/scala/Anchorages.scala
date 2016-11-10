@@ -22,7 +22,7 @@ object Anchorages {
     input.flatMap {
       case (md, processedLocations) =>
         processedLocations.stationaryPeriods.map { pl =>
-          val cell = pl.location.getS2CellId(Parameters.portsS2Scale)
+          val cell = pl.location.getS2CellId(Parameters.anchoragesS2Scale)
           (cell, (md, pl))
         }
     }.groupByKey.map {
@@ -34,7 +34,7 @@ object Anchorages {
         }.size
 
         Anchorage(centralPoint, uniqueVessels, fishingVesselCount)
-    }.filter { _.vessels.size >= Parameters.minUniqueVesselsForPort }
+    }.filter { _.vessels.size >= Parameters.minUniqueVesselsForAnchorage }
   }
 
   def mergeAdjacentAnchorages(anchorages: Iterable[Anchorage]): Seq[AnchorageGroup] = {
@@ -44,7 +44,7 @@ object Anchorages {
     val unionFind = new UnionFind[Anchorage](anchorages.toSet.asJava)
     anchorages.foreach { ancorage =>
       val neighbourCells = Array.fill[S2CellId](4) { new S2CellId() }
-      ancorage.meanLocation.getS2CellId(Parameters.portsS2Scale).getEdgeNeighbors(neighbourCells)
+      ancorage.meanLocation.getS2CellId(Parameters.anchoragesS2Scale).getEdgeNeighbors(neighbourCells)
 
       neighbourCells.flatMap { nc =>
         anchoragesById.get(nc.toToken)
@@ -95,7 +95,7 @@ object Anchorages {
             AdjacencyLookup(allPorts,
                             (anchorage: Anchorage) => anchorage.meanLocation,
                             Parameters.anchorageVisitDistanceThreshold,
-                            Parameters.portsS2Scale)
+                            Parameters.anchoragesS2Scale)
           (metadata,
            locations
              .map((location) => {

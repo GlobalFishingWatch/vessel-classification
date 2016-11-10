@@ -190,7 +190,7 @@ object ModelFeatures extends LazyLogging {
           val anchorageLookup = AdjacencyLookup(s(siAnchorages),
                                                 (v: Anchorage) => v.meanLocation,
                                                 Parameters.anchorageVisitDistanceThreshold,
-                                                Parameters.portsS2Scale)
+                                                Parameters.anchoragesS2Scale)
           val features = buildSingleVesselFeatures(processedLocations.locations, anchorageLookup)
           val featuresAsTFExample = buildTFExampleProto(metadata, features)
           (metadata, featuresAsTFExample)

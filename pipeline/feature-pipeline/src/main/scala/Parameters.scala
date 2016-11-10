@@ -30,8 +30,8 @@ object Parameters {
   val splits = Seq(trainingSplit, testSplit, unclassifiedSplit)
 
   // Around 1km^2
-  val portsS2Scale = 13
-  val minUniqueVesselsForPort = 20
+  val anchoragesS2Scale = 13
+  val minUniqueVesselsForAnchorage = 20
   val anchorageVisitDistanceThreshold = 0.5.of[kilometer]
 
   val adjacencyResamplePeriod = Duration.standardMinutes(10)
