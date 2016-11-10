@@ -107,10 +107,13 @@ class Model(ModelBase):
 
             concatenated_multiscale_embedding = tf.concat(3, multiscale_layers)
 
+            fishing_pre_outputs = slim.conv2d(
+                    concatenated_multiscale_embedding,
+                    8, [1, 1])
+
             fishing_outputs = tf.squeeze(
                 slim.conv2d(
-                    concatenated_multiscale_embedding,
-                    1, [1, 1],
+                    fishing_pre_outputs, 1, [1, 50],
                     activation_fn=None),
                 squeeze_dims=[1, 3])
 
