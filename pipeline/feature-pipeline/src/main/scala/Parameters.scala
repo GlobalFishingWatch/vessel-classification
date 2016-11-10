@@ -32,6 +32,7 @@ object Parameters {
   // Around 1km^2
   val portsS2Scale = 13
   val minUniqueVesselsForPort = 20
+  val anchorageVisitDistanceThreshold = 0.5.of[kilometer]
 
   val adjacencyResamplePeriod = Duration.standardMinutes(10)
   val maxInterpolateGap = Duration.standardMinutes(60)

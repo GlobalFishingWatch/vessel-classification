@@ -94,8 +94,8 @@ object Anchorages {
           val lookup =
             AdjacencyLookup(allPorts,
                             (anchorage: Anchorage) => anchorage.meanLocation,
-                            0.5.of[kilometer],
-                            13)
+                            Parameters.anchorageVisitDistanceThreshold,
+                            Parameters.portsS2Scale)
           (metadata,
            locations
              .map((location) => {
