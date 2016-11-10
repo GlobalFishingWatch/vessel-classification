@@ -54,7 +54,8 @@ lazy val featurePipeline =
       Seq(
         libraryDependencies ++= Seq("com.opencsv" % "opencsv" % "3.7",
                                     "org.json4s" %% "json4s-native" % "3.3.0",
-                                    "com.jsuereth" %% "scala-arm" % "1.4")
+                                    "com.jsuereth" %% "scala-arm" % "1.4",
+                                    "org.jgrapht" % "jgrapht-core" % "1.0.0")
       ))
     .dependsOn(tfExampleProtos)
 

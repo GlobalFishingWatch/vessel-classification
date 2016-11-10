@@ -4,10 +4,14 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
+import com.google.common.geometry.{S2CellId}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 
+import org.jgrapht.alg.util.UnionFind
+
 import scala.collection.{mutable, immutable}
+import scala.collection.JavaConverters._
 
 import AdditionalUnits._
 
@@ -31,6 +35,31 @@ object Anchorages {
 
         Anchorage(centralPoint, uniqueVessels, fishingVesselCount)
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForPort }
+  }
+
+  def mergeAdjacentAnchorages(anchorages: Seq[Anchorage]): Seq[AnchorageGroup] = {
+    val anchoragesById = anchorages.map(anchorage => (anchorage.id, anchorage)).toMap
+
+    // Merge adjacent anchorages.
+    val unionFind = new UnionFind[Anchorage](anchorages.toSet.asJava)
+    anchorages.foreach { ancorage =>
+      val neighbourCells = Array[S2CellId]()
+      ancorage.meanLocation.getS2CellId(Parameters.portsS2Scale).getEdgeNeighbors(neighbourCells)
+
+      neighbourCells.flatMap { nc =>
+        anchoragesById.get(nc.toToken)
+      }.foreach { neighbour =>
+        unionFind.union(ancorage, neighbour)
+      }
+    }
+
+    // Build anchorage groups.
+    anchorages.groupBy { anchorage =>
+      unionFind.find(anchorage).id
+    }.map {
+      case (_, anchorages) =>
+        AnchorageGroup.fromAnchorages(anchorages)
+    }.toSeq
   }
 
   def findPortVisits(

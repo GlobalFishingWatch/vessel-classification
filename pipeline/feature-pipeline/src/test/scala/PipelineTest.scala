@@ -371,7 +371,7 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
   "Vessel" should "visit the correct anchorages" in {
     runWithContext { sc =>
       val vesselRecords = sc.parallelize(Seq((VesselMetadata(45), vesselPath)))
-      val res = Pipeline.findPortVisits(
+      val res = Anchorages.findPortVisits(
         vesselRecords,
         sc.parallelize(anchorageLocations)
       )

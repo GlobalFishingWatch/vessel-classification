@@ -84,6 +84,19 @@ object LatLon {
     }
     LatLon((lat / count.toDouble).of[degrees], (lon / count.toDouble).of[degrees])
   }
+
+  def weightedMean(locations: Iterable[LatLon], weights: Iterable[Double]): LatLon = {
+    var lat = 0.0
+    var lon = 0.0
+    var weight = 0.0
+    (locations zip weights).foreach {
+      case (l, w) =>
+        lat += l.lat.value * w
+        lon += l.lon.value * w
+        weight += w
+    }
+    LatLon((lat / weight).of[degrees], (lon / weight).of[degrees])
+  }
 }
 
 case class VesselMetadata(mmsi: Int) {
@@ -112,7 +125,7 @@ case class PortVisit(port: Anchorage, arrival: Instant, departure: Instant) {
   }
 
   def toJson =
-    ("port" -> port.getId()) ~
+    ("port" -> port.id) ~
       ("arrival" -> arrival.toString()) ~
       ("departure" -> departure.toString())
 }
@@ -153,7 +166,7 @@ case class Anchorage(meanLocation: LatLon,
 
   def toJson = {
     val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
-    ("id" -> getId) ~
+    ("id" -> id) ~
       ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
       ("unique_vessel_count" -> vessels.size) ~
@@ -162,9 +175,20 @@ case class Anchorage(meanLocation: LatLon,
       ("mmsis" -> vessels.map(_.mmsi))
   }
 
-  def getId() = {
-    meanLocation.getS2CellId(13).toToken
-  }
+  def id: String =
+    meanLocation.getS2CellId(Parameters.portsS2Scale).toToken
+}
+
+case class AnchorageGroup(meanLocation: LatLon, anchorages: Seq[Anchorage]) {
+  def id: String =
+    meanLocation.getS2CellId(Parameters.portsS2Scale).toToken
+}
+
+object AnchorageGroup {
+  def fromAnchorages(anchorages: Iterable[Anchorage]) =
+    AnchorageGroup(LatLon.weightedMean(anchorages.map(_.meanLocation),
+                                       anchorages.map(_.vessels.length.toDouble)),
+                   anchorages.toSeq)
 }
 
 case class VesselEncounters(vessel1: VesselMetadata,
