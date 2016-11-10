@@ -115,17 +115,19 @@ case class VesselLocationRecord(timestamp: Instant,
                                 course: DoubleU[degrees],
                                 heading: DoubleU[degrees])
 
-case class PortVisit(port: Anchorage, arrival: Instant, departure: Instant) {
-  def extend(other: PortVisit): immutable.Seq[PortVisit] = {
-    if (port eq other.port) {
-      Vector[PortVisit](PortVisit(port, arrival, other.departure))
+case class AnchorageGroupVisit(anchorageGroup: AnchorageGroup,
+                               arrival: Instant,
+                               departure: Instant) {
+  def extend(other: AnchorageGroupVisit): immutable.Seq[AnchorageGroupVisit] = {
+    if (anchorageGroup eq other.anchorageGroup) {
+      Vector(AnchorageGroupVisit(anchorageGroup, arrival, other.departure))
     } else {
-      Vector[PortVisit](this, other)
+      Vector(this, other)
     }
   }
 
   def toJson =
-    ("port" -> port.id) ~
+    ("anchorageGroup" -> anchorageGroup.id) ~
       ("arrival" -> arrival.toString()) ~
       ("departure" -> departure.toString())
 }
@@ -180,8 +182,17 @@ case class Anchorage(meanLocation: LatLon,
 }
 
 case class AnchorageGroup(meanLocation: LatLon, anchorages: Set[Anchorage]) {
+  import STImplicits._
+
   def id: String =
     meanLocation.getS2CellId(Parameters.portsS2Scale).toToken
+
+  def toJson = {
+    ("id" -> id) ~
+      ("latitude" -> meanLocation.lat.value) ~
+      ("longitude" -> meanLocation.lon.value) ~
+      ("anchorages" -> anchorages.toSeq.sortBy(_.id).map(_.id))
+  }
 }
 
 object AnchorageGroup {
