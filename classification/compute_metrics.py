@@ -33,6 +33,9 @@ InferenceResults = namedtuple('InferenceResults',
                               ['mmsi', 'inferred_labels', 'true_labels',
                                'start_dates', 'scores', 'label_list'])
 
+LengthResults = namedtuple('LengthResults',
+                            ['mmsi', 'inferred_lengths', 'true_lengths', 'true_labels', 'start_dates'])
+
 ConfusionMatrix = namedtuple('ConfusionMatrix', ['raw', 'scaled'])
 
 css = """
@@ -147,6 +150,55 @@ def ydump_table(doc, headings, rows, **kwargs):
                     line('td', str(x))
 
 
+def ydump_length(doc, results):
+    """dump metrics for `results` to html using yatag
+
+    Args:
+        doc: yatag Doc instance
+        results: InferenceResults instance
+
+    """
+    doc, tag, text, line = doc.ttl()
+
+    def RMS(a, b):
+        return np.sqrt(np.square(a - b).mean())
+
+    rows = []
+    for dt in np.unique(results.start_dates):
+        mask = (results.start_dates == dt)
+        rows.append([dt, RMS(results.true_lengths[mask], results.inferred_lengths[mask])])
+
+    with tag('div', klass="unbreakable"):
+        line('h3', 'RMS Error (m) by Date')
+        ydump_table(doc, ['Start Date', 'RMS Error'],
+                    [(a.date(), '{:.2f}'.format(b)) for (a, b) in rows])
+
+    consolidated = consolidate_length_across_dates(results)
+
+    print(consolidated.true_lengths.shape, consolidated.inferred_lengths.shape)
+
+    with tag('div', klass="unbreakable"):
+        line('h3', 'Overall RMS Error')
+        text('{:.2f}'.format(RMS(consolidated.true_lengths, consolidated.inferred_lengths)))
+
+
+    def RMS_by_label(true_lengths, pred_lengths, true_labels):        
+        results = []
+        labels = sorted(set(true_labels))
+        for lbl in labels:
+            mask = (lbl == true_labels)
+            err = RMS(true_lengths[mask], pred_lengths[mask])
+            results.append((lbl, err, true_lengths[mask].mean()))
+        return results
+
+    with tag('div', klass="unbreakable"):
+        line('h3', 'RMS Error by Label')
+        ydump_table(doc, ['Label', 'RMS Error (m)', 'Mean Length (m)'],
+                    [(a, '{:.2f}'.format(b), '{:.2f}'.format(c))
+                     for (a, b, c) in RMS_by_label(consolidated.true_lengths, consolidated.inferred_lengths,
+                        consolidated.true_labels)])
+
+
 def ydump_metrics(doc, results):
     """dump metrics for `results` to html using yatag
 
@@ -188,6 +240,55 @@ def ydump_metrics(doc, results):
                      for (a, b, c) in precision_recall(
                          consolidated.label_list, consolidated.true_labels,
                          consolidated.inferred_labels)])
+
+
+
+def ydump_fishing_localization(doc, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi):
+    doc, tag, text, line = doc.ttl()
+
+    y_true = np.concatenate(true_fishing_by_mmsi.values())
+    y_pred = np.concatenate(pred_fishing_by_mmsi.values())
+
+
+    header = ["Gear Type", "Precision", "Recall", "Accuracy", "F1-Score"]
+    rows = []
+    logging.info("Overall localization accuracy %s", metrics.accuracy_score(y_true, y_pred))
+    logging.info("Overall localization precision %s", metrics.precision_score(y_true, y_pred))
+    logging.info("Overall localization recall %s", metrics.recall_score(y_true, y_pred))
+
+
+    for cls in sorted(set(maps['label'].values())):
+        true_chunks = []
+        pred_chunks = []
+        for mmsi in maps['label']:
+            if mmsi not in true_fishing_by_mmsi:
+                continue
+            if maps['label'][mmsi] != cls:
+                continue
+            true_chunks.append(true_fishing_by_mmsi[mmsi])
+            pred_chunks.append(pred_fishing_by_mmsi[mmsi])
+        if len(true_chunks):
+            y_true = np.concatenate(true_chunks)
+            y_pred = np.concatenate(pred_chunks)
+            rows.append([cls, metrics.precision_score(y_true, y_pred), 
+                    metrics.recall_score(y_true, y_pred),
+                    metrics.accuracy_score(y_true, y_pred),
+                    metrics.f1_score(y_true, y_pred),
+                    ])
+
+    rows.append(['', '', '', '', ''])
+
+    y_true = np.concatenate(true_fishing_by_mmsi.values())
+    y_pred = np.concatenate(pred_fishing_by_mmsi.values())
+
+    rows.append(['Overall', metrics.precision_score(y_true, y_pred), 
+                metrics.recall_score(y_true, y_pred),
+                metrics.accuracy_score(y_true, y_pred),
+                metrics.f1_score(y_true, y_pred),])
+
+    with tag('div', klass="unbreakable"):
+        ydump_table(doc, header,
+                    [[('{:.2f}'.format(x) if isinstance(x, float) else x) for x in row] for row in rows])
 
 # Helper functions for computing metrics
 
@@ -242,9 +343,29 @@ def consolidate_across_dates(results):
                     raise
         inferred_labels.append(results.label_list[np.argmax(scores)])
         true_labels.append(results.true_labels[mask][0])
-    return InferenceResults(results.mmsi, np.array(inferred_labels),
+    return InferenceResults(mmsi, np.array(inferred_labels),
                             np.array(true_labels), None, None,
                             results.label_list)
+
+
+def consolidate_length_across_dates(results):
+    """Consolidate scores for each MMSI across available dates.
+
+    For each mmsi, we average the lengths across all available dates
+
+    """
+    inferred_lengths = []
+    true_lengths = []
+    true_labels = []
+    mmsi = sorted(set(results.mmsi))
+    for m in mmsi:
+        mask = (results.mmsi == m)
+        inferred_lengths.append(results.inferred_lengths[mask].mean())
+        true_lengths.append(results.true_lengths[mask].mean())
+        true_labels.append(results.true_labels[mask][0])
+    return LengthResults(mmsi, np.array(inferred_lengths),
+                            np.array(true_lengths), np.array(true_labels), None)
+
 
 
 def harmonic_mean(x, y):
@@ -287,6 +408,7 @@ def confusion_matrix(results):
     return ConfusionMatrix(cm_raw, cm_normalized)
 
 
+#TODO: remove
 def remap_lengths(len_map):
     map = {}
     for k, v in len_map.items():
@@ -330,6 +452,38 @@ def load_inferred(inference_path, label_map, field):
                             start_dates, scores, label_list)
 
 
+def load_lengths(inference_path, length_map, label_map):
+    """Load inferred data and generate comparison data
+
+    """
+    start_dates = []
+    inferred_lengths = []
+    true_lengths = []
+    true_labels = []
+    mmsi_list = []
+    with gzip.GzipFile(inference_path) as f:
+        with nlj.open(f) as src:
+            for row in src:
+                mmsi = row['mmsi']
+                if mmsi in length_map:
+                    lbl = label_map[mmsi]
+                    if lbl == 'Unknown':
+                        continue
+                    mmsi_list.append(mmsi)
+                    start_dates.append(
+                        dateutil.parser.parse(row['start_time']))
+                    true_lengths.append(float(length_map[mmsi]))
+                    true_labels.append(label_map.get(mmsi, 'Unknown'))
+                    inferred_lengths.append(row['labels']['length']['value'])
+    inferred_lengths = np.array(inferred_lengths)
+    true_lengths = np.array(true_lengths)
+    start_dates = np.array(start_dates)
+    mmsi_list = np.array(mmsi_list)
+    true_labels = np.array(true_labels)
+    return LengthResults(mmsi_list, inferred_lengths, true_lengths, true_labels,
+                            start_dates)
+
+
 def get_local_inference_path(args):
     """Return a local path to inference data.
 
@@ -367,6 +521,8 @@ def load_true_fishing_ranges_by_mmsi(fishing_range_path):
 def load_predicted_fishing_ranges_by_mmsi(inference_path, mmsi_set):
     ranges_by_mmsi = defaultdict(list)
     coverage_by_mmsi = defaultdict(list)
+
+    # Faster than using dateutil
     def parse(x):
         # 2014-08-28T13:56:16+00:00
         dt = datetime.datetime.strptime(x[:-6], "%Y-%m-%dT%H:%M:%S")
@@ -374,16 +530,18 @@ def load_predicted_fishing_ranges_by_mmsi(inference_path, mmsi_set):
         return dt.replace(tzinfo=pytz.UTC)
 
     def parse2(x):
-        # 2014-08-28T13:56:16+00:00
+        # 2014-08-28T13:56:16
         dt = datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S")
         return dt.replace(tzinfo=pytz.UTC)
-    # parse = dateutil.parser.parse
+
     with gzip.GzipFile(inference_path) as f:
         with nlj.open(f) as src:
             for row in src:
                 mmsi = row['mmsi']
                 if mmsi not in mmsi_set:
                     continue
+                if not is_test(mmsi):
+                    info.warning("%s is not a test mmsi", mmsi)
                 rng = [(parse(a), parse(b)) for (a, b) in row['labels']['fishing_localisation']]
                 ranges_by_mmsi[mmsi].extend(rng)
                 #TODO: fix generation to generate consistent datetimes
@@ -395,15 +553,17 @@ def datetime_to_minute(dt):
     timestamp = (dt - datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
     return int(timestamp // 60)
 
+
 def compare_fishing_localization(inference_path, fishing_range_path):
 
     logging.debug("loading fishing ranges")
     true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(fishing_range_path)
     logging.debug("loading predicted fishing")
-    pred_ranges_by_mmsi, pred_coverage_by_mmsi = load_predicted_fishing_ranges_by_mmsi(inference_path, set(true_ranges_by_mmsi.keys()))
+    pred_ranges_by_mmsi, pred_coverage_by_mmsi = load_predicted_fishing_ranges_by_mmsi(inference_path, 
+        set(true_ranges_by_mmsi.keys()))
 
-    true_chunks = []
-    pred_chunks = []
+    true_by_mmsi = {}
+    pred_by_mmsi = {}
 
     for mmsi in sorted(true_ranges_by_mmsi.keys()):
         logging.debug("processing %s", mmsi)
@@ -456,26 +616,20 @@ def compare_fishing_localization(inference_path, fishing_range_path):
 
         if mask.sum():
             accuracy = ((minutes[:, 0] == minutes[:, 1]) * mask).sum() / mask.sum()
-            logging.info("Accuracy for MMSI %s: %s", mmsi, accuracy)
+            logging.debug("Accuracy for MMSI %s: %s", mmsi, accuracy)
 
-            true_chunks.append(minutes[mask, 0])
-            pred_chunks.append(minutes[mask, 1])
+            true_by_mmsi[mmsi] = minutes[mask, 0]
+            pred_by_mmsi[mmsi] = minutes[mask, 1]
 
-        y_true = np.concatenate(true_chunks)
-        y_pred = np.concatenate(pred_chunks)
-
-    logging.info("Overall localization accuracy %s", metrics.accuracy_score(y_true, y_pred))
-    logging.info("Overall localization precision %s", metrics.precision_score(y_true, y_pred))
-    logging.info("Overall localization recall %s", metrics.recall_score(y_true, y_pred))
+    return true_by_mmsi, pred_by_mmsi
 
 
 
 def compute_results(args):
     inference_path = get_local_inference_path(args)
 
-    fishing_results = compare_fishing_localization(inference_path, args.fishing_ranges)
+    true_fishing_by_mmsi, pred_fishing_by_mmsi = compare_fishing_localization(inference_path, args.fishing_ranges)
 
-    raise SystemExit()
 
     maps = defaultdict(dict)
     with open(args.label_path) as f:
@@ -487,6 +641,7 @@ def compute_results(args):
                 if row[field]:
                     maps[field][mmsi] = clean_label(row[field])
 
+
     results = {}
 
     results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
@@ -497,19 +652,21 @@ def compute_results(args):
     results['fine'] = load_inferred(inference_path, maps['sublabel'],
                                     'sublabel')
 
-    len_map = remap_lengths(maps['length'])
-    results['length'] = load_inferred(inference_path, len_map, 'length')
-    results['length'].label_list.sort(
-        key=lambda x: float(x.split('-')[0].split('m+')[0]))
-
-    return results
+    results['length'] = load_lengths(inference_path, maps['length'], maps['label'])
 
 
-def dump_html(args, results):
+    return results, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi
+
+
+
+
+
+
+def dump_html(args, results, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi):
 
     classification_metrics = [
         ('fishing', 'Is Fishing'), ('coarse', 'Coarse Labels'),
-        ('fine', "Fine Labels"), ('length', 'Lengths')
+        ('fine', "Fine Labels")#, ('length', 'Lengths')
     ]
 
     doc = yattag.Doc()
@@ -521,6 +678,15 @@ def dump_html(args, results):
         doc.line('h2', heading)
         ydump_metrics(doc, results[key])
         doc.stag('hr')
+
+    doc.line('h2', 'Length Inference')
+    ydump_length(doc, results['length'])
+    doc.stag('hr')
+
+    doc.line('h2', 'Fishing Localisation')
+    ydump_fishing_localization(doc, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi)
+    doc.stag('hr')
+
 
     with open(args.dest_path, 'w') as f:
         f.write(yattag.indent(doc.getvalue(), indent_text=True))
@@ -547,12 +713,18 @@ if __name__ == '__main__':
         '--fishing-ranges', help='path to fishing range data', required=True)
     parser.add_argument(
         '--dest-path', help='path to write results to', required=True)
-    parser.add_argument(
-        '--plot-confusion',
-        help='plot confusion matrix (run with pythonw)',
-        action='store_true')
+    parser.add_argument('--dump-labels-to',
+        help='dump csv file mapping csv to consolidated gear-type labels')
     args = parser.parse_args()
 
-    results = compute_results(args)
+    results, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi = compute_results(args)
 
-    dump_html(args, results)
+    dump_html(args, results, maps, true_fishing_by_mmsi, pred_fishing_by_mmsi)
+
+    if args.dump_labels_to:
+        if not args.dump_labels_to.endswith('.csv'):
+            logging.warn('dump-labels-to file does not end with ".csv"')
+        with open(args.dump_labels_to, 'w') as f:
+            f.write('mmsi,label\n')
+            for mmsi, label in zip(results['coarse'].mmsi, results['coarse'].inferred_labels):
+                f.write('{},{}\n'.format(mmsi, label))
