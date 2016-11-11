@@ -189,8 +189,8 @@ object ModelFeatures extends LazyLogging {
           // should be once per mapper task.
           val anchorageLookup = AdjacencyLookup(s(siAnchorages),
                                                 (v: Anchorage) => v.meanLocation,
-                                                0.5.of[kilometer],
-                                                13)
+                                                Parameters.anchorageVisitDistanceThreshold,
+                                                Parameters.anchoragesS2Scale)
           val features = buildSingleVesselFeatures(processedLocations.locations, anchorageLookup)
           val featuresAsTFExample = buildTFExampleProto(metadata, features)
           (metadata, featuresAsTFExample)

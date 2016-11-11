@@ -18,7 +18,6 @@ lazy val commonSettings = Seq(
   ),
   // Main project dependencies.
   libraryDependencies ++= Seq(
-
     "com.spotify" % "scio-core_2.11" % "0.2.1",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
     "io.github.karols" %% "units" % "0.2.1",
@@ -44,7 +43,6 @@ lazy val tfExampleProtos = project
       includePaths in PB.protobufConfig += (sourceDirectory in PB.protobufConfig).value
     ))
 
-
 // The dataflow feature generation pipeline.
 lazy val featurePipeline =
   project
@@ -54,7 +52,8 @@ lazy val featurePipeline =
       Seq(
         libraryDependencies ++= Seq("com.opencsv" % "opencsv" % "3.7",
                                     "org.json4s" %% "json4s-native" % "3.3.0",
-                                    "com.jsuereth" %% "scala-arm" % "1.4")
+                                    "com.jsuereth" %% "scala-arm" % "1.4",
+                                    "org.jgrapht" % "jgrapht-core" % "1.0.0")
       ))
     .dependsOn(tfExampleProtos)
 

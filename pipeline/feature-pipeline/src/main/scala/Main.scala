@@ -42,45 +42,6 @@ import ScioContextResource._
 
 import org.apache.commons.lang3.builder.ToStringBuilder._
 
-object Parameters {
-  val minRequiredPositions = 1000
-  val minTimeBetweenPoints = Duration.standardMinutes(5)
-
-  val stationaryPeriodMaxDistance = 0.8.of[kilometer]
-  val stationaryPeriodMinDuration = Duration.standardHours(2 * 24)
-
-  // TODO(alexwilson): remove years list when cloud dataflow text source can
-  // handle our volume of files.
-  //val allDataYears = List("2012", "2013", "2014", "2015", "2016")
-  val allDataYears = List("2015")
-  val inputMeasuresPath =
-    "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment"
-
-  val knownFishingMMSIs = "feature-pipeline/src/main/data/treniformis_known_fishing_mmsis_2016.txt"
-
-  val minValidTime = Instant.parse("2012-01-01T00:00:00Z")
-  lazy val maxValidTime = Instant.now()
-
-  val trainingSplit = "Training"
-  val testSplit = "Test"
-  val unclassifiedSplit = "Unclassified"
-  val splits = Seq(trainingSplit, testSplit, unclassifiedSplit)
-
-  // Around 1km^2
-  val portsS2Scale = 13
-  val minUniqueVesselsForPort = 20
-
-  val adjacencyResamplePeriod = Duration.standardMinutes(10)
-  val maxInterpolateGap = Duration.standardMinutes(60)
-
-  val maxClosestNeighbours = 10
-  val maxEncounterRadius = 1.0.of[kilometer]
-
-  val maxDistanceForEncounter = 0.5.of[kilometer]
-  val minDurationForEncounter = Duration.standardHours(3)
-  val minDistanceToShoreForEncounter = 20.0.of[kilometer]
-}
-
 import AdditionalUnits._
 
 case class RangeValidator(valid: Boolean) extends AnyVal {
@@ -224,70 +185,6 @@ object Pipeline extends LazyLogging {
     }
   }
 
-  def findAnchorageCells(input: SCollection[(VesselMetadata, ProcessedLocations)],
-                         knownFishingMMSIs: Set[Int]): SCollection[Anchorage] = {
-
-    input.flatMap {
-      case (md, processedLocations) =>
-        processedLocations.stationaryPeriods.map { pl =>
-          val cell = pl.location.getS2CellId(Parameters.portsS2Scale)
-          (cell, (md, pl))
-        }
-    }.groupByKey.map {
-      case (cell, visits) =>
-        val centralPoint = LatLon.mean(visits.map(_._2.location))
-        val uniqueVessels = visits.map(_._1).toIndexedSeq.distinct
-        val fishingVesselCount = uniqueVessels.filter { md =>
-          knownFishingMMSIs.contains(md.mmsi)
-        }.size
-
-        Anchorage(centralPoint, uniqueVessels, fishingVesselCount)
-    }.filter { _.vessels.size >= Parameters.minUniqueVesselsForPort }
-  }
-
-  def findPortVisits(
-      locationEvents: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
-      anchorages: SCollection[Anchorage]
-  ): SCollection[(VesselMetadata, immutable.Seq[PortVisit])] = {
-    val si = anchorages.asListSideInput
-
-    locationEvents
-      .withSideInputs(si)
-      .map {
-        case ((metadata, locations), ctx) => {
-          val lookup =
-            AdjacencyLookup(ctx(si), (port: Anchorage) => port.meanLocation, 0.5.of[kilometer], 13)
-          (metadata,
-           locations
-             .map((location) => {
-               val ports = lookup.nearby(location.location)
-               if (ports.length > 0) {
-                 Some(PortVisit(ports.head._2, location.timestamp, location.timestamp))
-               } else {
-                 None
-               }
-             })
-             .foldLeft(Vector[Option[PortVisit]]())((res, visit) => {
-               if (res.length == 0) {
-                 res :+ visit
-               } else {
-                 (visit, res.last) match {
-                   case (None, None) => res
-                   case (None, Some(last)) => res :+ None
-                   case (Some(visit), None) => res.init :+ Some(visit)
-                   case (Some(visit), Some(last)) =>
-                     res.init ++ last.extend(visit).map(visit => Some(visit))
-                 }
-               }
-             })
-             .filter(_.nonEmpty)
-             .map(_.head)
-             .toSeq)
-        }
-      }
-      .toSCollection
-  }
-
   def loadFishingMMSIs(): Set[Int] = {
     val fishingMMSIreader = new CSVReader(new FileReader(Parameters.knownFishingMMSIs))
     fishingMMSIreader
@@ -320,7 +217,7 @@ object Pipeline extends LazyLogging {
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
       val matches = (Parameters.allDataYears).map { year =>
-        val path = s"${Parameters.inputMeasuresPath}/$year-05-05*/*.json"
+        val path = s"${Parameters.inputMeasuresPath}/$year-*-*/*.json"
         sc.tableRowJsonFile(path)
       }
 
@@ -334,18 +231,25 @@ object Pipeline extends LazyLogging {
         filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 
       val knownFishingMMSIs = loadFishingMMSIs()
-      val anchorages: SCollection[Anchorage] = findAnchorageCells(processed, knownFishingMMSIs)
 
-      val portVisitsPath = config.pipelineOutputPath + "/port_visits"
+      val anchoragePoints =
+        Anchorages.findAnchoragePointCells(processed, knownFishingMMSIs)
+      val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
 
-      findPortVisits(locationRecords, anchorages).flatMap {
+      val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_group_visits"
+
+      val anchorageVisits =
+        Anchorages
+          .findAnchorageVisits(locationRecords, anchorages, Parameters.minAnchorageVisitDuration)
+
+      anchorageVisits.flatMap {
         case (metadata, visits) =>
           visits.map((visit) => {
             compact(
               render(("mmsi" -> metadata.mmsi) ~
                 ("visit" -> visit.toJson)))
           })
-      }.saveAsTextFile(portVisitsPath)
+      }.saveAsTextFile(anchorageVisitsPath)
 
       val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
         case (md, feature) =>
@@ -356,12 +260,17 @@ object Pipeline extends LazyLogging {
       val outputFeaturePath = config.pipelineOutputPath + "/features"
       val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
 
-      // Output anchorages.
+      // Output anchorages points.
+      val anchoragePointsPath = config.pipelineOutputPath + "/anchorage_points"
+      anchoragePoints.map { anchoragePoint =>
+        compact(render(anchoragePoint.toJson))
+      }.saveAsTextFile(anchoragePointsPath)
+
+      // And anchorages.
       val anchoragesPath = config.pipelineOutputPath + "/anchorages"
-      val anchoragesAsString = anchorages.map { anchorage =>
+      anchorages.map { anchorage =>
         compact(render(anchorage.toJson))
-      }
-      anchoragesAsString.saveAsTextFile(anchoragesPath)
+      }.saveAsTextFile(anchoragesPath)
 
       // Build and output suspected encounters.
       val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
