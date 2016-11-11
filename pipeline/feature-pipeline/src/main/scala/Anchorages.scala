@@ -38,7 +38,7 @@ object Anchorages {
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForAnchorage }
   }
 
-  def mergeAdjacentAnchorages(anchorages: Iterable[AnchoragePoint]): Seq[AnchorageGroup] = {
+  def mergeAdjacentAnchorages(anchorages: Iterable[AnchoragePoint]): Seq[Anchorage] = {
     val anchoragesById = anchorages.map(anchorage => (anchorage.id, anchorage)).toMap
 
     // Merge adjacent anchorages.
@@ -61,11 +61,11 @@ object Anchorages {
       unionFind.find(anchorage).id
     }.map {
       case (_, anchorages) =>
-        AnchorageGroup.fromAnchorages(anchorages)
+        Anchorage.fromAnchoragePoints(anchorages)
     }.toSeq
   }
 
-  def buildAnchorageGroups(anchorages: SCollection[AnchoragePoint]): SCollection[AnchorageGroup] =
+  def buildAnchorages(anchorages: SCollection[AnchoragePoint]): SCollection[Anchorage] =
     anchorages
     // TODO(alexwilson): These three lines hackily group all anchorages on one mapper
     .map { a =>
@@ -76,18 +76,18 @@ object Anchorages {
       mergeAdjacentAnchorages(anchorages)
     }
 
-  def findAnchorageGroupVisits(
+  def findAnchorageVisits(
       locationEvents: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
-      anchorageGroups: SCollection[AnchorageGroup],
+      anchorages: SCollection[Anchorage],
       minVisitDuration: Duration
-  ): SCollection[(VesselMetadata, immutable.Seq[AnchorageGroupVisit])] = {
-    val si = anchorageGroups.asListSideInput
+  ): SCollection[(VesselMetadata, immutable.Seq[AnchorageVisit])] = {
+    val si = anchorages.asListSideInput
 
     locationEvents
       .withSideInputs(si)
       .map {
         case ((metadata, locations), ctx) => {
-          val anchoragePointToAnchorageGroup = ctx(si).flatMap { ag =>
+          val anchoragePointToAnchorage = ctx(si).flatMap { ag =>
             ag.anchoragePoints.map { a =>
               (a.id, ag)
             }
@@ -106,14 +106,14 @@ object Anchorages {
                val anchoragePoints = lookup.nearby(location.location)
                if (anchoragePoints.length > 0) {
                  Some(
-                   AnchorageGroupVisit(anchoragePointToAnchorageGroup(anchoragePoints.head._2.id),
+                   AnchorageVisit(anchoragePointToAnchorage(anchoragePoints.head._2.id),
                                        location.timestamp,
                                        location.timestamp))
                } else {
                  None
                }
              })
-             .foldLeft(Vector[Option[AnchorageGroupVisit]]())((res, visit) => {
+             .foldLeft(Vector[Option[AnchorageVisit]]())((res, visit) => {
                if (res.length == 0) {
                  res :+ visit
                } else {

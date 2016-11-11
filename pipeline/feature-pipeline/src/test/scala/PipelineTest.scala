@@ -182,9 +182,9 @@ class FeatureBuilderTests extends PipelineSpec with Matchers {
   import AdditionalUnits._
 
   val anchorageLocations = IndexedSeq(
-    AnchorageGroup.fromAnchorages(Seq(AnchoragePoint(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]), Seq(VesselMetadata(1)), 0))),
-    AnchorageGroup.fromAnchorages(Seq(AnchoragePoint(LatLon(-1.4686489.of[degrees], 55.2206029.of[degrees]), Seq(VesselMetadata(1)), 0))),
-    AnchorageGroup.fromAnchorages(Seq(AnchoragePoint(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), Seq(VesselMetadata(1)), 0))))
+    Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]), Seq(VesselMetadata(1)), 0))),
+    Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4686489.of[degrees], 55.2206029.of[degrees]), Seq(VesselMetadata(1)), 0))),
+    Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), Seq(VesselMetadata(1)), 0))))
 
   val vesselPath = Seq(vlr("2011-07-01T00:00:00Z", -1.4065933, 55.2350923, speed = 1.0),
                        vlr("2011-07-01T00:05:00Z", -1.4218712, 55.2342113, speed = 1.0),
@@ -205,7 +205,7 @@ class FeatureBuilderTests extends PipelineSpec with Matchers {
 
   "Adjacency lookup" should "correctly return the nearest locations" in {
     val anchorageLookup =
-        AdjacencyLookup(anchorageLocations, (v: AnchorageGroup) => v.meanLocation, 0.5.of[kilometer], 12)
+        AdjacencyLookup(anchorageLocations, (v: Anchorage) => v.meanLocation, 0.5.of[kilometer], 12)
     val firstLoc = LatLon(-1.4065933.of[degrees], 55.2350923.of[degrees])
     val secondLoc = LatLon(-1.4704514.of[degrees], 55.2206029.of[degrees])
     val thirdLoc = LatLon(-1.3998985.of[degrees], 55.2037573.of[degrees])
@@ -217,10 +217,10 @@ class FeatureBuilderTests extends PipelineSpec with Matchers {
 
   "The pipeline" should "correctly build single vessel features" in {
     val locations = Seq[VesselLocationRecord]()
-    val anchorages = Seq[AnchorageGroup]()
+    val anchorages = Seq[Anchorage]()
 
     val anchorageLookup =
-        AdjacencyLookup(anchorageLocations, (v: AnchorageGroup) => v.meanLocation, 0.1.of[kilometer], 13)
+        AdjacencyLookup(anchorageLocations, (v: Anchorage) => v.meanLocation, 0.1.of[kilometer], 13)
 
     val features = ModelFeatures.buildSingleVesselFeatures(vesselPath, anchorageLookup)
 

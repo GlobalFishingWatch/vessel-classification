@@ -234,13 +234,13 @@ object Pipeline extends LazyLogging {
 
       val anchoragePoints =
         Anchorages.findAnchorageCells(processed, knownFishingMMSIs)
-      val anchorageGroups = Anchorages.buildAnchorageGroups(anchoragePoints)
+      val anchorages = Anchorages.buildAnchorages(anchoragePoints)
 
       val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_group_visits"
 
       val anchorageVisits =
-        Anchorages.findAnchorageGroupVisits(locationRecords,
-                                            anchorageGroups,
+        Anchorages.findAnchorageVisits(locationRecords,
+                                            anchorages,
                                             Parameters.minAnchorageVisitDuration)
 
       anchorageVisits.flatMap {
@@ -252,7 +252,7 @@ object Pipeline extends LazyLogging {
           })
       }.saveAsTextFile(anchorageVisitsPath)
 
-      val features = ModelFeatures.buildVesselFeatures(processed, anchorageGroups).map {
+      val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
         case (md, feature) =>
           (s"${md.mmsi}", feature)
       }
@@ -262,16 +262,16 @@ object Pipeline extends LazyLogging {
       val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
 
       // Output anchorages points.
-      val anchoragesPath = config.pipelineOutputPath + "/anchorage_points"
+      val anchoragePointsPath = config.pipelineOutputPath + "/anchorage_points"
       anchoragePoints.map { anchoragePoint =>
         compact(render(anchoragePoint.toJson))
-      }.saveAsTextFile(anchoragesPath)
+      }.saveAsTextFile(anchoragePointsPath)
 
       // And anchorages.
-      val anchorageGroupsPath = config.pipelineOutputPath + "/anchorages"
-      anchorageGroups.map { anchorageGroup =>
-        compact(render(anchorageGroup.toJson))
-      }.saveAsTextFile(anchorageGroupsPath)
+      val anchoragesPath = config.pipelineOutputPath + "/anchorages"
+      anchorages.map { anchorage =>
+        compact(render(anchorage.toJson))
+      }.saveAsTextFile(anchoragesPath)
 
       // Build and output suspected encounters.
       val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"

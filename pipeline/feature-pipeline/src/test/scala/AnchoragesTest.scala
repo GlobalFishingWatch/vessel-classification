@@ -20,9 +20,9 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
   val anchoragePoint2 =
     AnchoragePoint(LatLon(0.0.of[degrees], 1.0.of[degrees]), Seq(VesselMetadata(1)), 0)
 
-  val anchorageGroups = Seq(
-    AnchorageGroup.fromAnchorages(Seq(anchoragePoint1)),
-    AnchorageGroup.fromAnchorages(Seq(anchoragePoint2))
+  val anchorages = Seq(
+    Anchorage.fromAnchoragePoints(Seq(anchoragePoint1)),
+    Anchorage.fromAnchoragePoints(Seq(anchoragePoint2))
   )
 
   val vesselPath = Seq(
@@ -58,21 +58,21 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
   val expected =
     (VesselMetadata(45),
      immutable.Seq(
-       AnchorageGroupVisit(
-         AnchorageGroup(LatLon(0.0.of[degrees], 0.0.of[degrees]), Set(anchoragePoint1)),
+       AnchorageVisit(
+         Anchorage(LatLon(0.0.of[degrees], 0.0.of[degrees]), Set(anchoragePoint1)),
          Instant.parse("2016-01-01T00:00:00.000Z"),
          Instant.parse("2016-01-01T00:08:00.000Z")),
-       AnchorageGroupVisit(
-         AnchorageGroup(LatLon(0.0.of[degrees], 1.0.of[degrees]), Set(anchoragePoint2)),
+       AnchorageVisit(
+         Anchorage(LatLon(0.0.of[degrees], 1.0.of[degrees]), Set(anchoragePoint2)),
          Instant.parse("2016-01-01T02:00:00.000Z"),
          Instant.parse("2016-01-01T02:08:00.000Z"))))
 
   "Vessel" should "visit the correct anchorages" in {
     runWithContext { sc =>
       val vesselRecords = sc.parallelize(Seq((VesselMetadata(45), vesselPath)))
-      val res = Anchorages.findAnchorageGroupVisits(
+      val res = Anchorages.findAnchorageVisits(
         vesselRecords,
-        sc.parallelize(anchorageGroups),
+        sc.parallelize(anchorages),
         Duration.standardMinutes(5)
       )
 
@@ -103,11 +103,11 @@ class AnchoragesGroupingTests extends PipelineSpec with Matchers {
     groupedAnchorages should have size 3
 
     val expected =
-      Seq(AnchorageGroup(LatLon(40.016824742437635.of[degrees], -74.07113588841028.of[degrees]),
+      Seq(Anchorage(LatLon(40.016824742437635.of[degrees], -74.07113588841028.of[degrees]),
                          Set(anchorages(2))),
-          AnchorageGroup(LatLon(39.994377589412146.of[degrees], -74.12517039688245.of[degrees]),
+          Anchorage(LatLon(39.994377589412146.of[degrees], -74.12517039688245.of[degrees]),
                          Set(anchorages(0), anchorages(1))),
-          AnchorageGroup(LatLon(39.96842156104703.of[degrees], -74.0828838592642.of[degrees]),
+          Anchorage(LatLon(39.96842156104703.of[degrees], -74.0828838592642.of[degrees]),
                          Set(anchorages(3), anchorages(4), anchorages(5))))
 
     groupedAnchorages should contain theSameElementsAs expected

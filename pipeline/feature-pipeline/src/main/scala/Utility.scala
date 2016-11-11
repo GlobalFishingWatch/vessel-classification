@@ -164,7 +164,7 @@ case class AnchoragePoint(meanLocation: LatLon,
     meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
 }
 
-case class AnchorageGroup(meanLocation: LatLon, anchoragePoints: Set[AnchoragePoint]) {
+case class Anchorage(meanLocation: LatLon, anchoragePoints: Set[AnchoragePoint]) {
   import STImplicits._
 
   def id: String =
@@ -178,19 +178,19 @@ case class AnchorageGroup(meanLocation: LatLon, anchoragePoints: Set[AnchoragePo
   }
 }
 
-object AnchorageGroup {
-  def fromAnchorages(anchoragePoints: Iterable[AnchoragePoint]) =
-    AnchorageGroup(LatLon.weightedMean(anchoragePoints.map(_.meanLocation),
+object Anchorage {
+  def fromAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]) =
+    Anchorage(LatLon.weightedMean(anchoragePoints.map(_.meanLocation),
                                        anchoragePoints.map(_.vessels.length.toDouble)),
                    anchoragePoints.toSet)
 }
 
-case class AnchorageGroupVisit(anchorageGroup: AnchorageGroup,
+case class AnchorageVisit(anchorage: Anchorage,
                                arrival: Instant,
                                departure: Instant) {
-  def extend(other: AnchorageGroupVisit): immutable.Seq[AnchorageGroupVisit] = {
-    if (anchorageGroup eq other.anchorageGroup) {
-      Vector(AnchorageGroupVisit(anchorageGroup, arrival, other.departure))
+  def extend(other: AnchorageVisit): immutable.Seq[AnchorageVisit] = {
+    if (anchorage eq other.anchorage) {
+      Vector(AnchorageVisit(anchorage, arrival, other.departure))
     } else {
       Vector(this, other)
     }
@@ -199,7 +199,7 @@ case class AnchorageGroupVisit(anchorageGroup: AnchorageGroup,
   def duration = new Duration(arrival, departure)
 
   def toJson =
-    ("anchorageGroup" -> anchorageGroup.id) ~
+    ("anchorage" -> anchorage.id) ~
       ("arrival" -> arrival.toString()) ~
       ("departure" -> departure.toString())
 }
