@@ -232,9 +232,9 @@ object Pipeline extends LazyLogging {
 
       val knownFishingMMSIs = loadFishingMMSIs()
 
-      val anchorages =
+      val anchoragePoints =
         Anchorages.findAnchorageCells(processed, knownFishingMMSIs)
-      val anchorageGroups = Anchorages.buildAnchorageGroups(anchorages)
+      val anchorageGroups = Anchorages.buildAnchorageGroups(anchoragePoints)
 
       val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_group_visits"
 
@@ -252,7 +252,7 @@ object Pipeline extends LazyLogging {
           })
       }.saveAsTextFile(anchorageVisitsPath)
 
-      val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
+      val features = ModelFeatures.buildVesselFeatures(processed, anchorageGroups).map {
         case (md, feature) =>
           (s"${md.mmsi}", feature)
       }
@@ -261,14 +261,14 @@ object Pipeline extends LazyLogging {
       val outputFeaturePath = config.pipelineOutputPath + "/features"
       val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
 
-      // Output anchorages.
-      val anchoragesPath = config.pipelineOutputPath + "/anchorages"
-      anchorages.map { anchorage =>
-        compact(render(anchorage.toJson))
+      // Output anchorages points.
+      val anchoragesPath = config.pipelineOutputPath + "/anchorage_points"
+      anchoragePoints.map { anchoragePoint =>
+        compact(render(anchoragePoint.toJson))
       }.saveAsTextFile(anchoragesPath)
 
-      // And anchorage groups.
-      val anchorageGroupsPath = config.pipelineOutputPath + "/anchorage_groups"
+      // And anchorages.
+      val anchorageGroupsPath = config.pipelineOutputPath + "/anchorages"
       anchorageGroups.map { anchorageGroup =>
         compact(render(anchorageGroup.toJson))
       }.saveAsTextFile(anchorageGroupsPath)

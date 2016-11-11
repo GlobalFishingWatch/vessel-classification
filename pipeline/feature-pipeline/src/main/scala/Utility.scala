@@ -115,25 +115,6 @@ case class VesselLocationRecord(timestamp: Instant,
                                 course: DoubleU[degrees],
                                 heading: DoubleU[degrees])
 
-case class AnchorageGroupVisit(anchorageGroup: AnchorageGroup,
-                               arrival: Instant,
-                               departure: Instant) {
-  def extend(other: AnchorageGroupVisit): immutable.Seq[AnchorageGroupVisit] = {
-    if (anchorageGroup eq other.anchorageGroup) {
-      Vector(AnchorageGroupVisit(anchorageGroup, arrival, other.departure))
-    } else {
-      Vector(this, other)
-    }
-  }
-
-  def duration = new Duration(arrival, departure)
-
-  def toJson =
-    ("anchorageGroup" -> anchorageGroup.id) ~
-      ("arrival" -> arrival.toString()) ~
-      ("departure" -> departure.toString())
-}
-
 case class ResampledVesselLocation(timestamp: Instant,
                                    location: LatLon,
                                    distanceToShore: DoubleU[kilometer],
@@ -163,9 +144,9 @@ case class SingleEncounter(startTime: Instant,
       ("vessel2_point_count" -> vessel2PointCount)
 }
 
-case class Anchorage(meanLocation: LatLon,
-                     vessels: Seq[VesselMetadata],
-                     knownFishingVesselCount: Int) {
+case class AnchoragePoint(meanLocation: LatLon,
+                          vessels: Seq[VesselMetadata],
+                          knownFishingVesselCount: Int) {
   import STImplicits._
 
   def toJson = {
@@ -183,7 +164,7 @@ case class Anchorage(meanLocation: LatLon,
     meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
 }
 
-case class AnchorageGroup(meanLocation: LatLon, anchorages: Set[Anchorage]) {
+case class AnchorageGroup(meanLocation: LatLon, anchoragePoints: Set[AnchoragePoint]) {
   import STImplicits._
 
   def id: String =
@@ -193,15 +174,34 @@ case class AnchorageGroup(meanLocation: LatLon, anchorages: Set[Anchorage]) {
     ("id" -> id) ~
       ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
-      ("anchorages" -> anchorages.toSeq.sortBy(_.id).map(_.id))
+      ("anchorage_points" -> anchoragePoints.toSeq.sortBy(_.id).map(_.id))
   }
 }
 
 object AnchorageGroup {
-  def fromAnchorages(anchorages: Iterable[Anchorage]) =
-    AnchorageGroup(LatLon.weightedMean(anchorages.map(_.meanLocation),
-                                       anchorages.map(_.vessels.length.toDouble)),
-                   anchorages.toSet)
+  def fromAnchorages(anchoragePoints: Iterable[AnchoragePoint]) =
+    AnchorageGroup(LatLon.weightedMean(anchoragePoints.map(_.meanLocation),
+                                       anchoragePoints.map(_.vessels.length.toDouble)),
+                   anchoragePoints.toSet)
+}
+
+case class AnchorageGroupVisit(anchorageGroup: AnchorageGroup,
+                               arrival: Instant,
+                               departure: Instant) {
+  def extend(other: AnchorageGroupVisit): immutable.Seq[AnchorageGroupVisit] = {
+    if (anchorageGroup eq other.anchorageGroup) {
+      Vector(AnchorageGroupVisit(anchorageGroup, arrival, other.departure))
+    } else {
+      Vector(this, other)
+    }
+  }
+
+  def duration = new Duration(arrival, departure)
+
+  def toJson =
+    ("anchorageGroup" -> anchorageGroup.id) ~
+      ("arrival" -> arrival.toString()) ~
+      ("departure" -> departure.toString())
 }
 
 case class VesselEncounters(vessel1: VesselMetadata,

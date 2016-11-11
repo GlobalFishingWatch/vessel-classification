@@ -26,8 +26,8 @@ object ModelFeatures extends LazyLogging {
 
   private case class BoundingAnchorage(startTime: Instant,
                                        endTime: Instant,
-                                       startAnchorage: Anchorage,
-                                       endAnchorage: Anchorage) {
+                                       startAnchorage: AnchorageGroup,
+                                       endAnchorage: AnchorageGroup) {
     def minDistance(location: LatLon): DoubleU[kilometer] = {
       val d1 = startAnchorage.meanLocation.getDistance(location)
       val d2 = endAnchorage.meanLocation.getDistance(location)
@@ -51,7 +51,7 @@ object ModelFeatures extends LazyLogging {
 
   def buildSingleVesselFeatures(
       input: Seq[VesselLocationRecord],
-      anchorageLookup: AdjacencyLookup[Anchorage]): Seq[Array[Double]] = {
+      anchorageLookup: AdjacencyLookup[AnchorageGroup]): Seq[Array[Double]] = {
     val boundingAnchoragesIterator = input.flatMap { vlr =>
       val localAnchorages = anchorageLookup.nearby(vlr.location)
       localAnchorages.headOption.map { la =>
@@ -175,7 +175,7 @@ object ModelFeatures extends LazyLogging {
 
   def buildVesselFeatures(
       input: SCollection[(VesselMetadata, ProcessedLocations)],
-      anchorages: SCollection[Anchorage]): SCollection[(VesselMetadata, SequenceExample)] = {
+      anchorages: SCollection[AnchorageGroup]): SCollection[(VesselMetadata, SequenceExample)] = {
     val siAnchorages = anchorages.asListSideInput
 
     input
@@ -188,7 +188,7 @@ object ModelFeatures extends LazyLogging {
           // TODO(alexwilson): Building the lookup once per vessel is hideously inefficient. It
           // should be once per mapper task.
           val anchorageLookup = AdjacencyLookup(s(siAnchorages),
-                                                (v: Anchorage) => v.meanLocation,
+                                                (v: AnchorageGroup) => v.meanLocation,
                                                 Parameters.anchorageVisitDistanceThreshold,
                                                 Parameters.anchoragesS2Scale)
           val features = buildSingleVesselFeatures(processedLocations.locations, anchorageLookup)

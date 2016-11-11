@@ -18,7 +18,7 @@ import AdditionalUnits._
 
 object Anchorages {
   def findAnchorageCells(input: SCollection[(VesselMetadata, ProcessedLocations)],
-                         knownFishingMMSIs: Set[Int]): SCollection[Anchorage] = {
+                         knownFishingMMSIs: Set[Int]): SCollection[AnchoragePoint] = {
 
     input.flatMap {
       case (md, processedLocations) =>
@@ -34,15 +34,15 @@ object Anchorages {
           knownFishingMMSIs.contains(md.mmsi)
         }.size
 
-        Anchorage(centralPoint, uniqueVessels, fishingVesselCount)
+        AnchoragePoint(centralPoint, uniqueVessels, fishingVesselCount)
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForAnchorage }
   }
 
-  def mergeAdjacentAnchorages(anchorages: Iterable[Anchorage]): Seq[AnchorageGroup] = {
+  def mergeAdjacentAnchorages(anchorages: Iterable[AnchoragePoint]): Seq[AnchorageGroup] = {
     val anchoragesById = anchorages.map(anchorage => (anchorage.id, anchorage)).toMap
 
     // Merge adjacent anchorages.
-    val unionFind = new UnionFind[Anchorage](anchorages.toSet.asJava)
+    val unionFind = new UnionFind[AnchoragePoint](anchorages.toSet.asJava)
     anchorages.foreach { ancorage =>
       val neighbourCells = Array.fill[S2CellId](4) { new S2CellId() }
       ancorage.meanLocation
@@ -65,7 +65,7 @@ object Anchorages {
     }.toSeq
   }
 
-  def buildAnchorageGroups(anchorages: SCollection[Anchorage]): SCollection[AnchorageGroup] =
+  def buildAnchorageGroups(anchorages: SCollection[AnchoragePoint]): SCollection[AnchorageGroup] =
     anchorages
     // TODO(alexwilson): These three lines hackily group all anchorages on one mapper
     .map { a =>
@@ -87,26 +87,26 @@ object Anchorages {
       .withSideInputs(si)
       .map {
         case ((metadata, locations), ctx) => {
-          val anchorageToAnchorageGroup = ctx(si).flatMap { ag =>
-            ag.anchorages.map { a =>
+          val anchoragePointToAnchorageGroup = ctx(si).flatMap { ag =>
+            ag.anchoragePoints.map { a =>
               (a.id, ag)
             }
           }.toMap
           val allPorts = ctx(si).flatMap { ag =>
-            ag.anchorages
+            ag.anchoragePoints
           }
           val lookup =
             AdjacencyLookup(allPorts,
-                            (anchorage: Anchorage) => anchorage.meanLocation,
+                            (anchorage: AnchoragePoint) => anchorage.meanLocation,
                             Parameters.anchorageVisitDistanceThreshold,
                             Parameters.anchoragesS2Scale)
           (metadata,
            locations
              .map((location) => {
-               val anchorages = lookup.nearby(location.location)
-               if (anchorages.length > 0) {
+               val anchoragePoints = lookup.nearby(location.location)
+               if (anchoragePoints.length > 0) {
                  Some(
-                   AnchorageGroupVisit(anchorageToAnchorageGroup(anchorages.head._2.id),
+                   AnchorageGroupVisit(anchoragePointToAnchorageGroup(anchoragePoints.head._2.id),
                                        location.timestamp,
                                        location.timestamp))
                } else {
