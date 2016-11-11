@@ -21,11 +21,9 @@ class Model(ModelBase):
 
     window_size = 3
     stride = 2
-    feature_depth = 50
+    feature_depth = 80
     levels = 10
     batch_size = 64
-
-    fishing_vessel_type_embedding_depth = 8
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
         super(self.__class__, self).__init__(num_feature_dimensions,
@@ -107,13 +105,9 @@ class Model(ModelBase):
 
             concatenated_multiscale_embedding = tf.concat(3, multiscale_layers)
 
-            fishing_pre_outputs = slim.conv2d(
-                    concatenated_multiscale_embedding,
-                    8, [1, 1])
-
             fishing_outputs = tf.squeeze(
                 slim.conv2d(
-                    fishing_pre_outputs, 1, [1, 50],
+                    concatenated_multiscale_embedding, 1, [1, 1],
                     activation_fn=None),
                 squeeze_dims=[1, 3])
 
