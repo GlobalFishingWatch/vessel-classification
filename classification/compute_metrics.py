@@ -706,7 +706,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 temp_dir = os.path.join(this_dir, 'temp')
 
 if __name__ == '__main__':
-    logging.getLogger().setLevel('INFO')
+    logging.getLogger().setLevel('DEBUG')
 
     parser = argparse.ArgumentParser(
         description='Test inference results and output metrics')
