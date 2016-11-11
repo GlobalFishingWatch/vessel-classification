@@ -182,9 +182,9 @@ class FeatureBuilderTests extends PipelineSpec with Matchers {
   import AdditionalUnits._
 
   val anchorageLocations = IndexedSeq(
-    Anchorage(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]), Seq(), 0),
-    Anchorage(LatLon(-1.4686489.of[degrees], 55.2206029.of[degrees]), Seq(), 0),
-    Anchorage(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), Seq(), 0))
+    Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]), Seq(VesselMetadata(1)), 0))),
+    Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4686489.of[degrees], 55.2206029.of[degrees]), Seq(VesselMetadata(1)), 0))),
+    Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), Seq(VesselMetadata(1)), 0))))
 
   val vesselPath = Seq(vlr("2011-07-01T00:00:00Z", -1.4065933, 55.2350923, speed = 1.0),
                        vlr("2011-07-01T00:05:00Z", -1.4218712, 55.2342113, speed = 1.0),
@@ -322,61 +322,3 @@ class CountryCodeTests extends PipelineSpec with Matchers {
 }
 
 
-class AnchorageVisitsTests extends PipelineSpec with Matchers {
-  import TestHelper._
-  import AdditionalUnits._
-
-  val anchorageLocations = IndexedSeq(
-    Anchorage(LatLon(0.0.of[degrees], 0.0.of[degrees]), Seq(), 0),
-    Anchorage(LatLon(0.0.of[degrees], 1.0.of[degrees]), Seq(), 0)
-  )
-
-  val vesselPath = Seq(
-    vlr("2016-01-01T00:00:00Z", 0.008, 0.0, speed = 1.0),
-    vlr("2016-01-01T00:01:00Z", 0.006, 0.0, speed = 1.0),
-    vlr("2016-01-01T00:02:00Z", 0.004, 0.0, speed = 1.0),
-    vlr("2016-01-01T00:03:00Z", 0.002, 0.0, speed = 1.0),
-    vlr("2016-01-01T00:04:00Z", 0.000, 0.0, speed = 1.0),
-    vlr("2016-01-01T00:05:00Z", -0.002, 0.0, speed = 1.0),
-    vlr("2016-01-01T00:06:00Z", -0.004, 0.0, speed = 1.0),
-    vlr("2016-01-01T00:07:00Z", -0.006, 0.0, speed = 1.0),
-    vlr("2016-01-01T00:08:00Z", -0.008, 0.0, speed = 1.0),
-
-    vlr("2016-01-01T01:00:00Z", 0.008, 0.5, speed = 1.0),
-    vlr("2016-01-01T01:01:00Z", 0.006, 0.5, speed = 1.0),
-    vlr("2016-01-01T01:02:00Z", 0.004, 0.5, speed = 1.0),
-    vlr("2016-01-01T01:03:00Z", 0.002, 0.5, speed = 1.0),
-    vlr("2016-01-01T01:04:00Z", 0.000, 0.5, speed = 1.0),
-    vlr("2016-01-01T01:05:00Z", -0.002, 0.5, speed = 1.0),
-    vlr("2016-01-01T01:06:00Z", -0.004, 0.5, speed = 1.0),
-    vlr("2016-01-01T01:07:00Z", -0.006, 0.5, speed = 1.0),
-    vlr("2016-01-01T01:08:00Z", -0.008, 0.5, speed = 1.0),
-
-    vlr("2016-01-01T02:00:00Z", 0.008, 1.0, speed = 1.0),
-    vlr("2016-01-01T02:01:00Z", 0.006, 1.0, speed = 1.0),
-    vlr("2016-01-01T02:02:00Z", 0.004, 1.0, speed = 1.0),
-    vlr("2016-01-01T02:03:00Z", 0.002, 1.0, speed = 1.0),
-    vlr("2016-01-01T02:04:00Z", 0.000, 1.0, speed = 1.0),
-    vlr("2016-01-01T02:05:00Z", -0.002, 1.0, speed = 1.0),
-    vlr("2016-01-01T02:06:00Z", -0.004, 1.0, speed = 1.0),
-    vlr("2016-01-01T02:07:00Z", -0.006, 1.0, speed = 1.0),
-    vlr("2016-01-01T02:08:00Z", -0.008, 1.0, speed = 1.0)
-  )
-
-  val expected = (VesselMetadata(45),
-                  immutable.Seq(
-                    PortVisit(Anchorage(LatLon(0.0.of[degrees],0.0.of[degrees]),List(),0),Instant.parse("2016-01-01T00:00:00.000Z"),Instant.parse("2016-01-01T00:08:00.000Z")),
-                    PortVisit(Anchorage(LatLon(0.0.of[degrees],1.0.of[degrees]),List(),0),Instant.parse("2016-01-01T02:00:00.000Z"),Instant.parse("2016-01-01T02:08:00.000Z"))))
-
-  "Vessel" should "visit the correct anchorages" in {
-    runWithContext { sc =>
-      val vesselRecords = sc.parallelize(Seq((VesselMetadata(45), vesselPath)))
-      val res = Pipeline.findPortVisits(
-        vesselRecords,
-        sc.parallelize(anchorageLocations)
-      )
-
-      res should containSingleValue(expected)
-    }
-  }
-}
