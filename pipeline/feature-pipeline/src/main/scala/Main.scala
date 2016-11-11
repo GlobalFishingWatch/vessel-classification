@@ -233,15 +233,14 @@ object Pipeline extends LazyLogging {
       val knownFishingMMSIs = loadFishingMMSIs()
 
       val anchoragePoints =
-        Anchorages.findAnchorageCells(processed, knownFishingMMSIs)
-      val anchorages = Anchorages.buildAnchorages(anchoragePoints)
+        Anchorages.findAnchoragePointCells(processed, knownFishingMMSIs)
+      val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
 
       val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_group_visits"
 
       val anchorageVisits =
-        Anchorages.findAnchorageVisits(locationRecords,
-                                            anchorages,
-                                            Parameters.minAnchorageVisitDuration)
+        Anchorages
+          .findAnchorageVisits(locationRecords, anchorages, Parameters.minAnchorageVisitDuration)
 
       anchorageVisits.flatMap {
         case (metadata, visits) =>

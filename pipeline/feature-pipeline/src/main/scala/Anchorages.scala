@@ -17,8 +17,8 @@ import scala.collection.JavaConverters._
 import AdditionalUnits._
 
 object Anchorages {
-  def findAnchorageCells(input: SCollection[(VesselMetadata, ProcessedLocations)],
-                         knownFishingMMSIs: Set[Int]): SCollection[AnchoragePoint] = {
+  def findAnchoragePointCells(input: SCollection[(VesselMetadata, ProcessedLocations)],
+                              knownFishingMMSIs: Set[Int]): SCollection[AnchoragePoint] = {
 
     input.flatMap {
       case (md, processedLocations) =>
@@ -38,12 +38,13 @@ object Anchorages {
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForAnchorage }
   }
 
-  def mergeAdjacentAnchorages(anchorages: Iterable[AnchoragePoint]): Seq[Anchorage] = {
-    val anchoragesById = anchorages.map(anchorage => (anchorage.id, anchorage)).toMap
+  def mergeAdjacentAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]): Seq[Anchorage] = {
+    val anchoragesById =
+      anchoragePoints.map(anchoragePoint => (anchoragePoint.id, anchoragePoint)).toMap
 
     // Merge adjacent anchorages.
-    val unionFind = new UnionFind[AnchoragePoint](anchorages.toSet.asJava)
-    anchorages.foreach { ancorage =>
+    val unionFind = new UnionFind[AnchoragePoint](anchoragePoints.toSet.asJava)
+    anchoragePoints.foreach { ancorage =>
       val neighbourCells = Array.fill[S2CellId](4) { new S2CellId() }
       ancorage.meanLocation
         .getS2CellId(Parameters.anchoragesS2Scale)
@@ -57,15 +58,16 @@ object Anchorages {
     }
 
     // Build anchorage groups.
-    anchorages.groupBy { anchorage =>
-      unionFind.find(anchorage).id
+    anchoragePoints.groupBy { anchoragePoint =>
+      unionFind.find(anchoragePoint).id
     }.map {
-      case (_, anchorages) =>
-        Anchorage.fromAnchoragePoints(anchorages)
+      case (_, anchoragePoints) =>
+        Anchorage.fromAnchoragePoints(anchoragePoints)
     }.toSeq
   }
 
-  def buildAnchorages(anchorages: SCollection[AnchoragePoint]): SCollection[Anchorage] =
+  def buildAnchoragesFromAnchoragePoints(
+      anchorages: SCollection[AnchoragePoint]): SCollection[Anchorage] =
     anchorages
     // TODO(alexwilson): These three lines hackily group all anchorages on one mapper
     .map { a =>
@@ -73,7 +75,7 @@ object Anchorages {
     }.groupByKey.map { case (_, anchorages) => anchorages }
     // Build anchorage group list.
     .flatMap { anchorages =>
-      mergeAdjacentAnchorages(anchorages)
+      mergeAdjacentAnchoragePoints(anchorages)
     }
 
   def findAnchorageVisits(
@@ -107,8 +109,8 @@ object Anchorages {
                if (anchoragePoints.length > 0) {
                  Some(
                    AnchorageVisit(anchoragePointToAnchorage(anchoragePoints.head._2.id),
-                                       location.timestamp,
-                                       location.timestamp))
+                                  location.timestamp,
+                                  location.timestamp))
                } else {
                  None
                }

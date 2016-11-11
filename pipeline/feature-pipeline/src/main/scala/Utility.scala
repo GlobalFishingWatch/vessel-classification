@@ -181,13 +181,11 @@ case class Anchorage(meanLocation: LatLon, anchoragePoints: Set[AnchoragePoint])
 object Anchorage {
   def fromAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]) =
     Anchorage(LatLon.weightedMean(anchoragePoints.map(_.meanLocation),
-                                       anchoragePoints.map(_.vessels.length.toDouble)),
-                   anchoragePoints.toSet)
+                                  anchoragePoints.map(_.vessels.length.toDouble)),
+              anchoragePoints.toSet)
 }
 
-case class AnchorageVisit(anchorage: Anchorage,
-                               arrival: Instant,
-                               departure: Instant) {
+case class AnchorageVisit(anchorage: Anchorage, arrival: Instant, departure: Instant) {
   def extend(other: AnchorageVisit): immutable.Seq[AnchorageVisit] = {
     if (anchorage eq other.anchorage) {
       Vector(AnchorageVisit(anchorage, arrival, other.departure))
