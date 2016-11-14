@@ -28,13 +28,13 @@ import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 import org.skytruth.common.{Implicits => STImplicits}
+import org.skytruth.common.ScioContextResource._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConversions._
 
 import com.spotify.scio._
-import ScioContextResource._
 import resource._
 
 object AdditionalUnits {

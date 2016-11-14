@@ -31,6 +31,7 @@ import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 import org.skytruth.common.GcpConfig
+import org.skytruth.common.ScioContextResource._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
@@ -38,7 +39,6 @@ import scala.collection.JavaConversions._
 import scala.math
 
 import resource._
-import ScioContextResource._
 
 import org.apache.commons.lang3.builder.ToStringBuilder._
 
