@@ -8,6 +8,12 @@ import org.joda.time.{Instant}
 import org.skytruth.common.{IteratorWithCurrent}
 import scala.collection.{mutable, immutable}
 
+case class MessageAnnotation(mmsi: Int,
+                             name: String,
+                             startTime: Instant,
+                             endTime: Instant,
+                             value: Double)
+
 object AISAnnotator extends LazyLogging {
 
   // TODO(alexwilson):
@@ -15,12 +21,6 @@ object AISAnnotator extends LazyLogging {
   // * Config for message annotations (JSON + CSV).
   // * Readers for different types of annotations.
   // * YAML config file for job?
-
-  case class MessageAnnotation(mmsi: Int,
-                               name: String,
-                               startTime: Instant,
-                               endTime: Instant,
-                               value: Double)
 
   def annotateVesselMessages(messages: Iterable[TableRow],
                              annotations: Iterable[MessageAnnotation]): Seq[TableRow] = {
@@ -55,11 +55,12 @@ object AISAnnotator extends LazyLogging {
           annotationIterator.getNext()
         }
 
+        val clonedMessage = msg.clone()
         activeAnnotations.map { annotation =>
-          msg.set(annotation.name, annotation.value)
+          clonedMessage.set(annotation.name, annotation.value)
         }
 
-        msg
+        clonedMessage
     }
   }
 
