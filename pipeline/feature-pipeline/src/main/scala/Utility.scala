@@ -27,7 +27,7 @@ import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
-import org.skytruth.common.{Implicits => STImplicits}
+import org.skytruth.common.Implicits._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
@@ -103,7 +103,9 @@ case class VesselMetadata(mmsi: Int) {
   def flagState = CountryCodes.fromMmsi(mmsi)
 }
 
-case class StationaryPeriod(location: LatLon, duration: Duration)
+case class StationaryPeriod(location: LatLon,
+                            duration: Duration,
+                            meanDistanceToShore: DoubleU[kilometer])
 
 case class ProcessedLocations(locations: Seq[VesselLocationRecord],
                               stationaryPeriods: Seq[StationaryPeriod])
@@ -146,9 +148,8 @@ case class SingleEncounter(startTime: Instant,
 
 case class AnchoragePoint(meanLocation: LatLon,
                           vessels: Seq[VesselMetadata],
-                          knownFishingVesselCount: Int) {
-  import STImplicits._
-
+                          knownFishingVesselCount: Int,
+                          meanDistanceToShore: DoubleU[kilometer]) {
   def toJson = {
     val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
     ("id" -> id) ~
@@ -157,16 +158,17 @@ case class AnchoragePoint(meanLocation: LatLon,
       ("unique_vessel_count" -> vessels.size) ~
       ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
       ("flag_state_distribution" -> flagStateDistribution) ~
-      ("mmsis" -> vessels.map(_.mmsi))
+      ("mmsis" -> vessels.map(_.mmsi)) ~
+      ("mean_distance_to_shore_km" -> meanDistanceToShore.value)
   }
 
   def id: String =
     meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
 }
 
-case class Anchorage(meanLocation: LatLon, anchoragePoints: Set[AnchoragePoint]) {
-  import STImplicits._
-
+case class Anchorage(meanLocation: LatLon,
+                     anchoragePoints: Set[AnchoragePoint],
+                     meanDistanceToShore: DoubleU[kilometer]) {
   def id: String =
     meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
 
@@ -174,15 +176,18 @@ case class Anchorage(meanLocation: LatLon, anchoragePoints: Set[AnchoragePoint])
     ("id" -> id) ~
       ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
-      ("anchorage_points" -> anchoragePoints.toSeq.sortBy(_.id).map(_.id))
+      ("anchorage_points" -> anchoragePoints.toSeq.sortBy(_.id).map(_.id)) ~
+      ("mean_distance_to_shore_km" -> meanDistanceToShore.value)
   }
 }
 
 object Anchorage {
-  def fromAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]) =
-    Anchorage(LatLon.weightedMean(anchoragePoints.map(_.meanLocation),
-                                  anchoragePoints.map(_.vessels.length.toDouble)),
-              anchoragePoints.toSet)
+  def fromAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]) = {
+    val weights = anchoragePoints.map(_.vessels.length.toDouble)
+    Anchorage(LatLon.weightedMean(anchoragePoints.map(_.meanLocation), weights),
+              anchoragePoints.toSet,
+              anchoragePoints.map(_.meanDistanceToShore).weightedMean(weights))
+  }
 }
 
 case class AnchorageVisit(anchorage: Anchorage, arrival: Instant, departure: Instant) {
