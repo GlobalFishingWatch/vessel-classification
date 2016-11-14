@@ -69,3 +69,16 @@ case class GcpConfig(startTime: DateTime, projectId: String, private val rootPat
   def dataflowStagingPath = s"$rootPath/pipeline/staging"
   def pipelineOutputPath = s"$rootPath/pipeline/output"
 }
+
+case class IteratorWithCurrent[T](private val iterator: Iterator[T]) {
+  private def nextOption(): Option[T] =
+    if (iterator.hasNext) {
+      Some(iterator.next)
+    } else {
+      None
+    }
+
+  var current: Option[T] = nextOption()
+
+  def getNext() { current = nextOption() }
+}
