@@ -23,7 +23,9 @@ lazy val commonSettings = Seq(
     "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
     "io.github.karols" %% "units" % "0.2.1",
     "joda-time" % "joda-time" % "2.9.4",
-    "org.apache.commons" % "commons-math3" % "3.4"
+    "org.apache.commons" % "commons-math3" % "3.4",
+    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.3",
+    "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % "2.8.3"
   ),
   // Test dependencies.
   libraryDependencies ++= Seq(
@@ -49,7 +51,8 @@ lazy val common = project.in(file("common")).settings(commonSettings: _*)
 // Pipeline for annotating AIS messages with other attributes (such as when
 // fishing, port visits, transhipments or AIS gaps occur).
 lazy val aisAnnotatorPipeline =
-  project.in(file("ais-annotator")).settings(commonSettings: _*).dependsOn(common)
+  project.in(file("ais-annotator")).settings(commonSettings: _*)
+    .dependsOn(common)
 
 // The dataflow feature generation pipeline.
 lazy val featurePipeline =

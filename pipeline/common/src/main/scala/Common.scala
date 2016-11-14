@@ -1,5 +1,8 @@
 package org.skytruth.common
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.spotify.scio._
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.joda.time.{DateTime, DateTimeZone}

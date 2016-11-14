@@ -1,5 +1,8 @@
 package org.skytruth.ais_annotator
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions
 import com.spotify.scio._
@@ -11,9 +14,12 @@ import org.joda.time.{Instant}
 import org.skytruth.common.{GcpConfig, IteratorWithCurrent}
 import org.skytruth.common.ScioContextResource._
 import scala.collection.{mutable, immutable}
+
 import resource._
 
-case class JSONFileAnnotatorConfig(inputFilePattern: String, timerangeFieldName: String)
+case class JSONFileAnnotatorConfig(inputFilePattern: String,
+                                   timeRangeFieldName: String,
+                                   defaultValue: Double)
 
 case class AnnotatorConfig(
     inputFilePatterns: Seq[String],
@@ -29,26 +35,33 @@ case class MessageAnnotation(mmsi: Int,
 
 object AISAnnotator extends LazyLogging {
 
-  // TODO(alexwilson):
-  //
-  // * Config for message annotations (JSON + CSV).
-  // * Readers for different types of annotations.
-  // * YAML config file for job?
+  def readYamlConfig(config: String): AnnotatorConfig = {
+    val mapper: ObjectMapper = new ObjectMapper(new YAMLFactory())
+    mapper.registerModule(DefaultScalaModule)
+
+    mapper.readValue(config, classOf[AnnotatorConfig])
+  }
 
   def jsonAnnotationReader(annotations: SCollection[TableRow],
-                           valueFieldName: String): SCollection[MessageAnnotation] = {
+                           timeRangeFieldName: String,
+                           defaultValue: Double): SCollection[MessageAnnotation] = {
     annotations.flatMap { json =>
       val mmsi = json.getLong("mmsi").toInt
 
-      val valueFieldList =
-        json.getRepeated(valueFieldName).map(_.asInstanceOf[LinkedHashMap[String, Any]])
+      val timeRangeFieldList =
+        json.getRepeated(timeRangeFieldName).map(_.asInstanceOf[LinkedHashMap[String, Any]])
 
-      valueFieldList.map { valueField =>
-        val startTime = Instant.parse(valueField.get("start_time").asInstanceOf[String])
-        val endTime = Instant.parse(valueField.get("end_time").asInstanceOf[String])
-        val value = valueField.get("value").asInstanceOf[Double]
+      timeRangeFieldList.map { timeRangeField =>
+        val startTime = Instant.parse(timeRangeField.get("start_time").asInstanceOf[String])
+        val endTime = Instant.parse(timeRangeField.get("end_time").asInstanceOf[String])
+        val valueField = timeRangeField.get("value")
+        val value = if (valueField != null) {
+          valueField.asInstanceOf[Double]
+        } else {
+          defaultValue
+        }
 
-        MessageAnnotation(mmsi, valueFieldName, startTime, endTime, value)
+        MessageAnnotation(mmsi, timeRangeFieldName, startTime, endTime, value)
       }
     }
   }
@@ -120,6 +133,7 @@ object AISAnnotator extends LazyLogging {
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
     val environment = remaining_args.required("env")
     val jobName = remaining_args.required("job-name")
+    val jobConfigurationFile = remaining_args.required("job-config")
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -127,28 +141,27 @@ object AISAnnotator extends LazyLogging {
     options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
 
-    managed(ScioContext(options)).acquireAndGet((sc) => {
-      // TODO(alexwilson): Read from YAML. See http://stackoverflow.com/questions/19441400/working-with-yaml-for-scala
-      val exampleAnnotatorConfig = AnnotatorConfig(
-        Seq(
-          "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2015-*-*/*.json"),
-        config.pipelineOutputPath + "/annotated",
-        Seq(JSONFileAnnotatorConfig("gs://somewhere-or-other", "fishing"))
-      )
+    val annotatorConfig = managed(scala.io.Source.fromFile(jobConfigurationFile)).acquireAndGet {
+      s =>
+        readYamlConfig(s.mkString)
+    }
 
-      val inputData = exampleAnnotatorConfig.inputFilePatterns.map { path =>
+    managed(ScioContext(options)).acquireAndGet { sc =>
+      val inputData = annotatorConfig.inputFilePatterns.map { path =>
         sc.tableRowJsonFile(path)
       }
 
-      val annotations = exampleAnnotatorConfig.jsonAnnotations.map {
+      val annotations = annotatorConfig.jsonAnnotations.map {
         case annotation =>
           val inputAnnotationFile = sc.tableRowJsonFile(annotation.inputFilePattern)
-          jsonAnnotationReader(inputAnnotationFile, annotation.timerangeFieldName)
+          jsonAnnotationReader(inputAnnotationFile,
+                               annotation.timeRangeFieldName,
+                               annotation.defaultValue)
       }
 
       val annotated = annotateAllMessages(inputData, annotations)
 
-      annotated.saveAsTextFile(exampleAnnotatorConfig.outputFilePath)
-    })
+      annotated.saveAsTextFile(annotatorConfig.outputFilePath)
+    }
   }
 }
