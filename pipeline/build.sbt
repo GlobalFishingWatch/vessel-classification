@@ -45,8 +45,10 @@ lazy val tfExampleProtos = project
 
 lazy val common = project.in(file("common")).settings(commonSettings: _*)
 
-lazy val newProject =
-  project.in(file("new-project")).settings(commonSettings: _*).dependsOn(common)
+// Pipeline for annotating AIS messages with other attributes (such as when
+// fishing, port visits, transhipments or AIS gaps occur).
+lazy val aisAnnotatorPipeline =
+  project.in(file("ais-annotator")).settings(commonSettings: _*).dependsOn(common)
 
 // The dataflow feature generation pipeline.
 lazy val featurePipeline =
@@ -57,9 +59,10 @@ lazy val featurePipeline =
       Seq(
         libraryDependencies ++= Seq("com.opencsv" % "opencsv" % "3.7",
                                     "org.json4s" %% "json4s-native" % "3.3.0",
-                                    "com.jsuereth" %% "scala-arm" % "1.4")
+                                    "com.jsuereth" %% "scala-arm" % "1.4",
+                                    "org.jgrapht" % "jgrapht-core" % "1.0.0")
       ))
     .dependsOn(common, tfExampleProtos)
 
 // An aggregation of all projects.
-lazy val root = (project in file(".")).aggregate(common, newProject, featurePipeline)
+lazy val root = (project in file(".")).aggregate(common, aisAnnotatorPipeline, featurePipeline)

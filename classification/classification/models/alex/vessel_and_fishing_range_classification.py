@@ -4,11 +4,12 @@ import json
 from . import layers
 from classification import utility
 from classification.model import ModelBase
-from classification.objectives import (FishingLocalisationObjectiveMSE,
+from classification.objectives import (FishingLocalizationObjectiveMSE,
                                        RegressionObjective, TrainNetInfo,
                                        VesselMetadataClassificationObjective)
 import logging
 import math
+import numpy as np
 import os
 
 import tensorflow as tf
@@ -29,6 +30,13 @@ class Model(ModelBase):
         super(self.__class__, self).__init__(num_feature_dimensions,
                                              vessel_metadata)
 
+        def length_or_none(mmsi):
+            length = vessel_metadata.vessel_label('length', mmsi)
+            if length == '':
+                return None
+
+            return np.float32(length)
+
         self.classification_training_objectives = [
             VesselMetadataClassificationObjective('is_fishing', 'Fishing',
                                                   vessel_metadata,
@@ -44,10 +52,15 @@ class Model(ModelBase):
                 'Vessel length category',
                 vessel_metadata,
                 utility.VESSEL_LENGTH_CLASSES,
-                transformer=utility.vessel_categorical_length_transformer)
+                transformer=utility.vessel_categorical_length_transformer),
+            RegressionObjective(
+                'length',
+                'Vessel length regression',
+                length_or_none,
+                loss_weight=0.1)
         ]
 
-        self.fishing_localisation_objective = FishingLocalisationObjectiveMSE(
+        self.fishing_localisation_objective = FishingLocalizationObjectiveMSE(
             'fishing_localisation',
             'Fishing localisation',
             vessel_metadata,
