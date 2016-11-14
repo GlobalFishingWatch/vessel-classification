@@ -43,7 +43,7 @@ object AISAnnotator extends LazyLogging {
     sortedMessages.map {
       case (ts, msg) =>
         // Remove annotations from the past.
-        activeAnnotations = activeAnnotations.filter { _.endTime.isAfter(ts) }
+        activeAnnotations = activeAnnotations.filter { !_.endTime.isBefore(ts) }
 
         // Add any newly-active annotations.
         while (annotationIterator.current.isDefined && !ts.isBefore(
