@@ -18,13 +18,13 @@ import threading
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 """ The coarse vessel label set. """
 VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
-                      'Seismic vessel', 'Set gillnets', 'Longliners', 'Reefer',
-                      'Pole and Line', 'Purse seines', 'Pots and Traps',
+                      'Seismic vessel', 'Fixed gear', 'Reefer',
+                      'Drifting longlines', 'Pole and line', 'Purse seines',
                       'Trollers', 'Tug/Pilot/Supply']
 """ The finer vessel label set. """
 VESSEL_CLASS_DETAILED_NAMES = [
     'Squid', 'Trawlers', 'Seismic vessel', 'Set gillnets', 'Reefer',
-    'Pole and Line', 'Purse seines', 'Pots and Traps', 'Trollers', 'Cargo',
+    'Pole and line', 'Purse seines', 'Pots and traps', 'Trollers', 'Cargo',
     'Sailing', 'Supply', 'Set longlines', 'Motor Passenger',
     'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
 ]
