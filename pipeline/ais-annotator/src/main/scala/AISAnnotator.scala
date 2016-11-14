@@ -1,13 +1,25 @@
 package org.skytruth.ais_annotator
 
+import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
+import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import com.spotify.scio.bigquery._
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import java.util.LinkedHashMap
 import org.joda.time.{Instant}
-import org.skytruth.common.{IteratorWithCurrent}
+import org.skytruth.common.{GcpConfig, IteratorWithCurrent}
+import org.skytruth.common.ScioContextResource._
 import scala.collection.{mutable, immutable}
+import resource._
+
+case class JSONFileAnnotatorConfig(inputFilePattern: String, timerangeFieldName: String)
+
+case class AnnotatorConfig(
+    inputFilePatterns: Seq[String],
+    outputFilePath: String,
+    jsonAnnotations: Seq[JSONFileAnnotatorConfig]
+)
 
 case class MessageAnnotation(mmsi: Int,
                              name: String,
@@ -105,6 +117,38 @@ object AISAnnotator extends LazyLogging {
   }
 
   def main(argArray: Array[String]) {
-    logger.info("Hello world!")
+    val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
+    val environment = remaining_args.required("env")
+    val jobName = remaining_args.required("job-name")
+
+    val config = GcpConfig.makeConfig(environment, jobName)
+
+    options.setRunner(classOf[DataflowPipelineRunner])
+    options.setProject(config.projectId)
+    options.setStagingLocation(config.dataflowStagingPath)
+
+    managed(ScioContext(options)).acquireAndGet((sc) => {
+      // TODO(alexwilson): Read from YAML. See http://stackoverflow.com/questions/19441400/working-with-yaml-for-scala
+      val exampleAnnotatorConfig = AnnotatorConfig(
+        Seq(
+          "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment/2015-*-*/*.json"),
+        config.pipelineOutputPath + "/annotated",
+        Seq(JSONFileAnnotatorConfig("gs://somewhere-or-other", "fishing"))
+      )
+
+      val inputData = exampleAnnotatorConfig.inputFilePatterns.map { path =>
+        sc.tableRowJsonFile(path)
+      }
+
+      val annotations = exampleAnnotatorConfig.jsonAnnotations.map {
+        case annotation =>
+          val inputAnnotationFile = sc.tableRowJsonFile(annotation.inputFilePattern)
+          jsonAnnotationReader(inputAnnotationFile, annotation.timerangeFieldName)
+      }
+
+      val annotated = annotateAllMessages(inputData, annotations)
+
+      annotated.saveAsTextFile(exampleAnnotatorConfig.outputFilePath)
+    })
   }
 }

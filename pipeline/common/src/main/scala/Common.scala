@@ -1,9 +1,12 @@
 package org.skytruth.common
 
+import com.spotify.scio._
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
 import scala.collection.{mutable, immutable}
+
+import resource._
 
 object Implicits {
   implicit class RichLogger(val logger: Logger) {
@@ -82,3 +85,11 @@ case class IteratorWithCurrent[T](private val iterator: Iterator[T]) {
 
   def getNext() { current = nextOption() }
 }
+
+
+object ScioContextResource {
+  implicit def scioContextResource[A <: ScioContext] = new Resource[A] {
+    override def close(r: A) = r.close()
+  }
+}
+

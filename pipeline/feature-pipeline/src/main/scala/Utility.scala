@@ -34,13 +34,8 @@ import scala.collection.{mutable, immutable}
 import scala.collection.JavaConversions._
 
 import com.spotify.scio._
+import ScioContextResource._
 import resource._
-
-object ScioContextResource {
-  implicit def scioContextResource[A <: ScioContext] = new Resource[A] {
-    override def close(r: A) = r.close()
-  }
-}
 
 object AdditionalUnits {
   type knots = DefineUnit[_k ~: _n ~: _o ~: _t]
