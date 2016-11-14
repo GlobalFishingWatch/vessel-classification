@@ -22,7 +22,7 @@ class Model(ModelBase):
     window_size = 3
     stride = 2
     feature_depth = 80
-    levels = 10
+    levels = 9
     batch_size = 64
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
@@ -36,7 +36,7 @@ class Model(ModelBase):
 
             return np.float32(length)
 
-        self.classification_training_objectives = [
+        self._classification_training_objectives = [
             VesselMetadataClassificationObjective('is_fishing', 'Fishing',
                                                   vessel_metadata,
                                                   ['Fishing', 'Non-fishing']),
@@ -58,6 +58,7 @@ class Model(ModelBase):
                 length_or_none,
                 loss_weight=0.1)
         ]
+        self.classification_training_objectives = []
 
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
             'fishing_localisation',

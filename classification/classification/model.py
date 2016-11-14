@@ -13,7 +13,7 @@ class ModelBase(object):
 
     batch_size = 32
 
-    feature_duration_days = 11
+    feature_duration_days = 5
     max_sample_frequency_seconds = 5 * 60
     max_window_duration_seconds = feature_duration_days * 24 * 3600
 
@@ -22,7 +22,7 @@ class ModelBase(object):
     # always much more sparse.
     #window_max_points = (max_window_duration_seconds /
     #                     max_sample_frequency_seconds) / 4
-    window_max_points = 1024
+    window_max_points = 512
 
     min_viable_timeslice_length = 500
 

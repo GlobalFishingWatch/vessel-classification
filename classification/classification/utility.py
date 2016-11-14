@@ -588,7 +588,8 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
     for row in lines:
         mmsi = int(row['mmsi'])
         is_fishing = row['is_fishing']
-        if is_fishing == 'Fishing':
+        #if is_fishing == 'Fishing':
+        if True:
             coarse_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
             if mmsi in available_mmsis and coarse_vessel_type:
                 if is_test(mmsi):
