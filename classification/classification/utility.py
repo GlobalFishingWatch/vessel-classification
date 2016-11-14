@@ -22,35 +22,42 @@ categories = {
 'coarse': [
     ['Longliners', ['Drifting longlines', 'Set longlines']], 
     ['Trawlers', ['Trawlers']], 
-    ['Pots and Traps', ['Pots and Traps']], ['Set gillnets', ['Set gillnets']], ['Purse seines', ['Purse seines']], 
-['Squid', ['Squid']], ['Pole and Line', ['Pole and Line']], ['Trollers', ['Trollers']], ['Cargo/Tanker', 
+    ['Fixed gear', ['Pots and traps', 'Set gillnets', 'Set longlines']], 
+    ['Drifting longlines',  ['Drifting longlines']],
+    ['Purse seines', ['Purse seines']], 
+['Squid', ['Squid']], ['Pole and line', ['Pole and line']], ['Trollers', ['Trollers']], ['Cargo/Tanker', 
 ['Cargo', 'Tanker']], ['Reefer', ['Reefer']], ['Passenger', ['Motor Passenger', 'Sailing']], 
 ['Seismic vessel', ['Seismic vessel']], ['Tug/Pilot/Supply', ['Tug', 'Pilot', 'Supply']]], 
 'fishing': [
-    ['Fishing', ['Drifting longlines', 'Set longlines', 'Trawlers', 'Pots and Traps', 'Set gillnets', 'Purse seines', 
-        'Squid', 'Pole and Line', 'Trollers']], 
+    ['Fishing', ['Drifting longlines', 'Set longlines', 'Trawlers', 'Pots and traps', 'Set gillnets', 'Purse seines', 
+        'Squid', 'Pole and line', 'Trollers']], 
     ['Non-fishing', ['Cargo', 'Tanker', 'Reefer', 'Motor Passenger', 'Sailing', 'Seismic vessel', 
         'Tug', 'Pilot', 'Supply']]]}
 
+_OLD_COARSE = set(['Longliners'])
 
 #TODO(bitsofbit): clean up
 """ The coarse vessel label set. """
 _VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
-                      'Seismic vessel', 'Set gillnets', 'Longliners', 'Reefer',
-                      'Pole and Line', 'Purse seines', 'Pots and Traps',
+                      'Seismic vessel', 'Drifting longlines', 'Reefer',
+                      'Pole and line', 'Purse seines', 'Fixed gear',
                       'Trollers', 'Tug/Pilot/Supply']
+
+
 """ The finer vessel label set. """
 _VESSEL_CLASS_DETAILED_NAMES = [
     'Squid', 'Trawlers', 'Seismic vessel', 'Set gillnets', 'Reefer',
-    'Pole and Line', 'Purse seines', 'Pots and Traps', 'Trollers', 'Cargo',
+    'Pole and line', 'Purse seines', 'Pots and traps', 'Trollers', 'Cargo',
     'Sailing', 'Supply', 'Set longlines', 'Motor Passenger',
     'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
 ]
-VESSEL_CLASS_NAMES = [x for (x, _) in categories['coarse']]
+
+VESSEL_CLASS_NAMES = [x for (x, _) in categories['coarse'] if x not in _OLD_COARSE]
 VESSEL_CLASS_DETAILED_NAMES = []
 for coarse, fine_list in categories['coarse']:
     for fine in fine_list:
-        VESSEL_CLASS_DETAILED_NAMES.append(fine)
+        if fine not in VESSEL_CLASS_DETAILED_NAMES:
+            VESSEL_CLASS_DETAILED_NAMES.append(fine)
 
 FISHING_NONFISHING_NAMES = [x for (x, _) in categories['fishing']]
 
@@ -369,7 +376,7 @@ def random_feature_cropping_file_reader(vessel_metadata, filename_queue,
     mmsi = tf.cast(context_features['mmsi'], tf.int32)
     random_state = np.random.RandomState()
 
-    num_slices_per_mmsi = 4
+    num_slices_per_mmsi = 8
 
     def replicate_extract(input, mmsi):
         # Extract several random windows from each vessel track

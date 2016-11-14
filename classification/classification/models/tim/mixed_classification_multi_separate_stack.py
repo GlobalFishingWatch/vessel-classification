@@ -4,11 +4,12 @@ from classification import utility
 from collections import namedtuple
 import tensorflow.contrib.slim as slim
 import logging
+import numpy as np
 
 from classification.model import ModelBase
-from classification.objectives import (
-    TrainNetInfo, VesselMetadataClassificationObjective,
-    FishingLocalizationObjectiveCrossEntropy)
+
+from classification.objectives import (TrainNetInfo, VesselMetadataClassificationObjective, 
+    RegressionObjective, MultiClassificationObjective, FishingLocalizationObjectiveCrossEntropy)
 
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm
@@ -25,44 +26,39 @@ class Model(ModelBase):
     decay_examples = 10000
     momentum = 0.9
 
-    fishing_per_layer = 16
     fishing_dense_layer = 128
 
     tower_params = [
         TowerParams(*x)
-        for x in [(32, [3], 2, 2, 1.0, True)] * 9 + [(32, [3], 2, 2, 0.8, True
-                                                      )]
+        for x in [(32, [3], 2, 2, 1.0, True)] * 10 + [(32, [3], 2, 2, 0.8, True)
+                                                     ]
     ]
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
         super(self.__class__, self).__init__(num_feature_dimensions,
                                              vessel_metadata)
 
-        # TODO(bitsofbits): consider moving these to cached properties instead so we don't need init
-        self.classification_training_objectives = [
-            VesselMetadataClassificationObjective('is_fishing', 'Fishing',
-                                                  vessel_metadata,
-                                                  ['Fishing', 'Non-fishing']),
-            VesselMetadataClassificationObjective('label', 'Vessel class',
-                                                  vessel_metadata,
-                                                  utility.VESSEL_CLASS_NAMES),
-            VesselMetadataClassificationObjective(
-                'sublabel', 'Vessel detailed class', vessel_metadata,
-                utility.VESSEL_CLASS_DETAILED_NAMES),
-            VesselMetadataClassificationObjective(
+
+        def length_or_none(mmsi):
+            length = vessel_metadata.vessel_label('length', mmsi)
+            if length == '':
+                return None
+
+            return np.float32(length)
+
+        self.classification_objective = MultiClassificationObjective("Multiclass", "Vessel detailed class", vessel_metadata)
+
+        self.length_objective = RegressionObjective(
                 'length',
-                'Vessel length category',
-                vessel_metadata,
-                utility.VESSEL_LENGTH_CLASSES,
-                transformer=utility.vessel_categorical_length_transformer)
-        ]
+                'Vessel length regression',
+                length_or_none,
+                loss_weight=0.1)      
 
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
-            'fishing_localisation', 'Fishing localisation', vessel_metadata)
+            'fishing_localisation', 'Fishing localisation', vessel_metadata, loss_weight=100)
 
-        self.training_objectives = self.classification_training_objectives + [
-            self.fishing_localisation_objective
-        ]
+        self.objectives = [self.classification_objective, self.length_objective, self.fishing_localisation_objective]
+
 
     @property
     def window_max_points(self):
@@ -71,18 +67,17 @@ class Model(ModelBase):
             length = length * tp.pool_stride + (tp.pool_size - tp.pool_stride)
         return length
 
-    def build_model(self, is_training, current):
 
-        # Build a tower consisting of stacks of misconception layers in parallel
-        # with size 1 convolutional shortcuts to help train.
+    def build_stack(self, current, is_training, tower_params):
 
-        layers = []
+        stack = [current]
 
-        for i, tp in enumerate(self.tower_params):
+        for i, tp in enumerate(tower_params):
             with tf.variable_scope('tower-segment-{}'.format(i + 1)):
 
                 # Misconception stack
                 mc = current
+
                 for j, w in enumerate(tp.filter_widths):
                     mc = misconception_layer(
                         mc,
@@ -105,9 +100,9 @@ class Model(ModelBase):
                 else:
                     current = mc
 
-                layers.append(current)
+                stack.append(current)
 
-                current = tf.nn.max_pool(
+                current = tf.nn.avg_pool(
                     current, [1, 1, tp.pool_size, 1],
                     [1, 1, tp.pool_stride, 1],
                     padding="VALID")
@@ -116,23 +111,33 @@ class Model(ModelBase):
 
         # Remove extra dimensions
         H, W, C = [int(x) for x in current.get_shape().dims[1:]]
-        current = tf.reshape(current, (-1, C))
+        output = tf.reshape(current, (-1, C))
 
-        # Determine classification logits
-        logit_list = []
-        for cto in self.classification_training_objectives:
-            with tf.variable_scope("prediction-layer-{}".format(
-                    cto.name.replace(' ', '-'))):
-                logit_list.append(cto.build(current))
+        return output, stack
+
+
+    def build_model(self, is_training, current):
+
+        # Build a tower consisting of stacks of misconception layers in parallel
+        # with size 1 convolutional shortcuts to help train.
+
+        with tf.variable_scope('classification-tower'):
+            classification_output, _ = self.build_stack(current, is_training, self.tower_params)
+            self.classification_objective.build(classification_output)
+
+        with tf.variable_scope('length-tower'):
+            length_output, _ = self.build_stack(current, is_training, self.tower_params)
+            self.length_objective.build(length_output)
+
+        with tf.variable_scope('localization-tower'):
+            _, localization_layers = self.build_stack(current, is_training, self.tower_params)
+
 
         # Assemble the fishing score logits
-
         fishing_sublayers = []
-        for l in reversed(layers):
-            l = tf.slice(l, [0, 0, 0, 0], [-1, -1, -1, self.fishing_per_layer])
+        for l in reversed(localization_layers):
             H, W, C = [int(x) for x in l.get_shape().dims[1:]]
             assert self.window_max_points % W == 0
-            logging.debug("SUBLAYERS %s %s %s", H, W, C)
             # Use repeat + tile + reshape to achieve same effect a np.repeat
             l = tf.reshape(l, (-1, 1, W, 1, C))
             l = tf.tile(l, [1, 1, 1, self.window_max_points // W, 1])
@@ -145,42 +150,30 @@ class Model(ModelBase):
                     current, 1, self.fishing_dense_layer, name="fishing1"),
                 is_training))
         current = conv1d_layer(current, 1, 1, name="fishing_logits")
-        fishing_logits = tf.reshape(current, (-1, self.window_max_points))
+        fishing_outputs = tf.reshape(current, (-1, self.window_max_points))
 
-        self.fishing_localisation_objective.build(fishing_logits)
+        self.fishing_localisation_objective.build(fishing_outputs)
 
-        return logit_list, fishing_logits
 
     def build_inference_net(self, features, timestamps, mmsis):
-        self.build_model(tf.constant(False), features)
+
+        self.build_model(
+            tf.constant(False), features)
 
         evaluations = []
-        for i in range(len(self.classification_training_objectives)):
-            to = self.classification_training_objectives[i]
-            evaluations.append(to.build_evaluation(timestamps, mmsis))
-
-        evaluations.append(
-            self.fishing_localisation_objective.build_evaluation(timestamps,
-                                                                 mmsis))
+        for obj in self.objectives:
+            evaluations.append(obj.build_evaluation(timestamps, mmsis))
 
         return evaluations
 
     def build_training_net(self, features, timestamps, mmsis):
 
-        logits_list, fishing_logits = self.build_model(
+        self.build_model(
             tf.constant(True), features)
 
-        # logits_list, fishing_scores = self.misconception_with_fishing_ranges(
-        #     features, mmsis, True)
-
         trainers = []
-        for i in range(len(self.classification_training_objectives)):
-            trainers.append(self.classification_training_objectives[i]
-                            .build_trainer(timestamps, mmsis))
-
-        trainers.append(
-            self.fishing_localisation_objective.build_trainer(timestamps,
-                                                              mmsis))
+        for obj in self.objectives:
+            trainers.append(obj.build_trainer(timestamps, mmsis))
 
         example = slim.get_or_create_global_step() * self.batch_size
 
@@ -189,6 +182,5 @@ class Model(ModelBase):
             self.learning_decay_rate)
 
         optimizer = tf.train.MomentumOptimizer(learning_rate, self.momentum)
-        # optimizer = tf.train.AdamOptimizer(1e-5)
 
         return TrainNetInfo(optimizer, trainers)

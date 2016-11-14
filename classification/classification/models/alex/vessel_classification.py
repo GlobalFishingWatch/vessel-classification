@@ -3,9 +3,11 @@ import argparse
 import json
 from . import layers
 from classification import utility
-from classification.model import ModelBase, TrainNetInfo, make_vessel_label_objective
+from classification.model import ModelBase
+from classification.objectives import TrainNetInfo, VesselMetadataClassificationObjective, RegressionObjective
 import logging
 import math
+import numpy as np
 import os
 
 import tensorflow as tf
@@ -24,20 +26,34 @@ class Model(ModelBase):
         super(self.__class__, self).__init__(num_feature_dimensions,
                                              vessel_metadata)
 
+        def length_or_none(mmsi):
+            length = vessel_metadata.vessel_label('length', mmsi)
+            if length == '':
+                return None
+
+            return np.float32(length)
+
         self.training_objectives = [
-            make_vessel_label_objective(vessel_metadata, 'is_fishing',
-                                        'Fishing', ['Fishing', 'Non-fishing']),
-            make_vessel_label_objective(
-                vessel_metadata, 'label', 'Vessel class',
-                utility.VESSEL_CLASS_NAMES), make_vessel_label_objective(
-                    vessel_metadata, 'sublabel', 'Vessel detailed class',
-                    utility.VESSEL_CLASS_DETAILED_NAMES),
-            make_vessel_label_objective(
-                vessel_metadata,
+            VesselMetadataClassificationObjective('is_fishing', 'Fishing',
+                                                  vessel_metadata,
+                                                  ['Fishing', 'Non-fishing']),
+            VesselMetadataClassificationObjective('label', 'Vessel class',
+                                                  vessel_metadata,
+                                                  utility.VESSEL_CLASS_NAMES),
+            VesselMetadataClassificationObjective(
+                'sublabel', 'Vessel detailed class', vessel_metadata,
+                utility.VESSEL_CLASS_DETAILED_NAMES),
+            VesselMetadataClassificationObjective(
                 'length',
-                'Vessel length',
+                'Vessel length category',
+                vessel_metadata,
                 utility.VESSEL_LENGTH_CLASSES,
-                transformer=utility.vessel_categorical_length_transformer)
+                transformer=utility.vessel_categorical_length_transformer),
+            RegressionObjective(
+                'length',
+                'Vessel length regression',
+                length_or_none,
+                loss_weight=0.1)
         ]
 
     def zero_pad_features(self, features):
@@ -55,14 +71,14 @@ class Model(ModelBase):
 
         features = self.zero_pad_features(features)
 
-        logits_list = layers.misconception_model(
-            features, self.window_size, self.stride, self.feature_depth,
-            self.levels, self.training_objectives, True)
+        layers.misconception_model(features, self.window_size, self.stride,
+                                   self.feature_depth, self.levels,
+                                   self.training_objectives, True)
 
         trainers = []
         for i in range(len(self.training_objectives)):
             trainers.append(self.training_objectives[i].build_trainer(
-                logits_list[i], timestamps, mmsis))
+                timestamps, mmsis))
 
         optimizer = tf.train.AdamOptimizer(1e-5)
 
@@ -72,14 +88,13 @@ class Model(ModelBase):
 
         features = self.zero_pad_features(features)
 
-        logits_list = layers.misconception_model(
-            features, self.window_size, self.stride, self.feature_depth,
-            self.levels, self.training_objectives, False)
+        layers.misconception_model(features, self.window_size, self.stride,
+                                   self.feature_depth, self.levels,
+                                   self.training_objectives, False)
 
         evaluations = []
         for i in range(len(self.training_objectives)):
             to = self.training_objectives[i]
-            logits = logits_list[i]
-            evaluations.append(to.build_evaluation(logits))
+            evaluations.append(to.build_evaluation(timestamps, mmsis))
 
         return evaluations

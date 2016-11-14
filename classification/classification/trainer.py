@@ -5,6 +5,7 @@ import logging
 import math
 import numpy as np
 import os
+from . import evaluation_loop
 from . import utility
 
 import tensorflow as tf
@@ -20,6 +21,7 @@ class Trainer:
     """
 
     max_replication_factor = 100.0
+    num_parallel_readers = 32
 
     def __init__(self, model, base_feature_path, train_scratch_path):
         self.model = model
@@ -28,7 +30,6 @@ class Trainer:
         self.train_scratch_path = train_scratch_path
         self.checkpoint_dir = self.train_scratch_path + '/train'
         self.eval_dir = self.train_scratch_path + '/eval'
-        self.num_parallel_readers = 16
 
     def _feature_files(self, split):
         random_state = np.random.RandomState()
@@ -119,90 +120,38 @@ class Trainer:
 
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
-        # while True:
-        #     try:
 
-        #         with tf.Graph().as_default():
-        #             # This is a mess. The real problem is the slim eval loop is broken, but
-        #             # we recreating a new graph here is UGLY since we are already doing this
-        #             # in run_training
-        #             features, labels = self._feature_data_reader('Test', False)
+        features, timestamps, time_bounds, mmsis = self._feature_data_reader(
+            utility.TEST_SPLIT, False)
 
-        #             logits = self.model.build_inference_net(features)
+        objectives = self.model.build_inference_net(features, timestamps,
+                                                    mmsis)
 
-        #             predictions = tf.cast(tf.argmax(logits, 1), tf.int32)
+        aggregate_metric_maps = [o.build_test_metrics() for o in objectives]
 
-        #             names_to_values, names_to_updates = metrics.aggregate_metric_map({
-        #                 'Test accuracy': metrics.streaming_accuracy(predictions, labels),
-        #                 'Test precision': metrics.streaming_precision(predictions, labels),
-        #             })
+        summary_ops = []
+        update_ops = []
+        for names_to_values, names_to_updates in aggregate_metric_maps:
+            for metric_name, metric_value in names_to_values.iteritems():
+                op = tf.scalar_summary(metric_name, metric_value)
+                op = tf.Print(op, [metric_value], metric_name)
+                summary_ops.append(op)
+            for update_op in names_to_updates.values():
+                update_ops.append(update_op)
 
-        #             # Create the summary ops such that they also print out to std output.
-        #             summary_ops = []
-        #             for metric_name, metric_value in names_to_values.iteritems():
-        #                 op = tf.scalar_summary(metric_name, metric_value)
-        #                 op = tf.Print(op, [metric_value], metric_name)
-        #                 summary_ops.append(op)
+        num_examples = 1024
+        num_evals = math.ceil(num_examples / float(self.model.batch_size))
 
-        #             num_examples = 1024
-        #             num_evals = math.ceil(num_examples / float(self.model.batch_size))
+        # Setup the global step.
+        slim.get_or_create_global_step()
 
-        #             # Setup the global step.
-        #             slim.get_or_create_global_step()
-
-        #             slim.evaluation.evaluation_loop(
-        #                 master,
-        #                 self.checkpoint_dir,
-        #                 self.eval_dir,
-        #                 num_evals=num_evals,
-        #                 eval_op=names_to_updates.values(),
-        #                 summary_op=tf.merge_summary(summary_ops),
-        #                 eval_interval_secs=120)
-
-        #     except (ValueError, errors.NotFoundError) as e:
-        #         logging.warning('Error in evaluation loop: (%s), retrying',
-        #                         str(e))
-        while True:
-            try:
-                with tf.Graph().as_default():
-                    features, timestamps, time_bounds, mmsis = self._feature_data_reader(
-                        utility.TEST_SPLIT, False)
-
-                    objectives = self.model.build_inference_net(features, timestamps,
-                                                                mmsis)
-
-                    aggregate_metric_maps = [o.build_test_metrics(mmsis, timestamps)
-                                             for o in objectives]
-
-                    summary_ops = []
-                    update_ops = []
-                    for names_to_values, names_to_updates in aggregate_metric_maps:
-                        for metric_name, metric_value in names_to_values.iteritems():
-                            op = tf.scalar_summary(metric_name, metric_value)
-                            op = tf.Print(op, [metric_value], metric_name)
-                            summary_ops.append(op)
-                        for update_op in names_to_updates.values():
-                            update_ops.append(update_op)
-
-                    num_examples = 1024
-                    num_evals = math.ceil(num_examples / float(self.model.batch_size))
-
-                    # Setup the global step.
-                    slim.get_or_create_global_step()
-
-                    merged_summary_ops = tf.merge_summary(summary_ops)
-
-                    slim.evaluation.evaluation_loop(
-                        master,
-                        self.checkpoint_dir,
-                        self.eval_dir,
-                        num_evals=num_evals,
-                        eval_op=update_ops,
-                        summary_op=merged_summary_ops,
-                        eval_interval_secs=120)
-            except ValueError as e:
-                logging.warning('Error in evaluation loop: (%s), retrying',
-                                str(e))
-            except errors.NotFoundError as e:
-                logging.warning('Error in evaluation loop: (%s), retrying',
-                                str(e))
+        merged_summary_ops = tf.merge_summary(summary_ops)
+        evaluation_loop.evaluation_loop(
+            master,
+            self.checkpoint_dir,
+            self.eval_dir,
+            num_evals=num_evals,
+            eval_op=update_ops,
+            summary_op=merged_summary_ops,
+            eval_interval_secs=120,
+            timeout=20 * 60)
