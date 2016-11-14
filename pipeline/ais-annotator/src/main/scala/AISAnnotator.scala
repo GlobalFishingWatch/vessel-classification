@@ -4,6 +4,7 @@ import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import com.spotify.scio.bigquery._
 import com.typesafe.scalalogging.{LazyLogging, Logger}
+import java.util.LinkedHashMap
 import org.joda.time.{Instant}
 import org.skytruth.common.{IteratorWithCurrent}
 import scala.collection.{mutable, immutable}
@@ -21,6 +22,24 @@ object AISAnnotator extends LazyLogging {
   // * Config for message annotations (JSON + CSV).
   // * Readers for different types of annotations.
   // * YAML config file for job?
+
+  def jsonAnnotationReader(annotations: SCollection[TableRow],
+                           valueFieldName: String): SCollection[MessageAnnotation] = {
+    annotations.flatMap { json =>
+      val mmsi = json.getLong("mmsi").toInt
+
+      val valueFieldList =
+        json.getRepeated(valueFieldName).map(_.asInstanceOf[LinkedHashMap[String, Any]])
+
+      valueFieldList.map { valueField =>
+        val startTime = Instant.parse(valueField.get("start_time").asInstanceOf[String])
+        val endTime = Instant.parse(valueField.get("end_time").asInstanceOf[String])
+        val value = valueField.get("value").asInstanceOf[Double]
+
+        MessageAnnotation(mmsi, valueFieldName, startTime, endTime, value)
+      }
+    }
+  }
 
   def annotateVesselMessages(messages: Iterable[TableRow],
                              annotations: Iterable[MessageAnnotation]): Seq[TableRow] = {
