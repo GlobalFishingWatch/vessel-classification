@@ -28,11 +28,15 @@ VESSEL_CLASS_DETAILED_NAMES = [
     'Sailing', 'Supply', 'Set longlines', 'Motor passenger',
     'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
 ]
+
+FISHING_NONFISHING_NAMES = ['Fishing', 'Non-fishing']
+
 """ The vessel length classes. """
 VESSEL_LENGTH_CLASSES = [
     '0-12m', '12-18m', '18-24m', '24-36m', '36-50m', '50-75m', '75-100m',
     '100-150m', '150m+'
 ]
+
 
 TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
@@ -555,6 +559,7 @@ def is_test(mmsi):
     return (_hash_mmsi_to_double(mmsi) >= 0.5)
 
 
+
 def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
                                           fishing_range_dict,
                                           fishing_range_training_upweight):
@@ -616,16 +621,33 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
                           fishing_range_training_upweight)
 
 
+def metadata_file_reader(metadata_file):
+    """Add sublabels to missing sublabel fields as appropriate
+
+    Much of the current machinery expects that if a sublabel is
+    missing that field gets the label value, as long as that 
+    label is all a valid detailed name.
+
+    """
+    with open(metadata_file, 'r') as f:
+        reader = csv.DictReader(f)
+        logging.info("Metadata columns: %s", reader.fieldnames)
+        for row in reader:
+            label = row['label'].strip()
+            sublabel =  row['sublabel'].strip()
+            if (sublabel == '') and (label in VESSEL_CLASS_DETAILED_NAMES):
+                row['sublabel'] = label
+            yield row
+
+
 def read_vessel_multiclass_metadata(available_mmsis,
                                     metadata_file,
                                     fishing_range_dict={},
                                     fishing_range_training_upweight=1.0):
-    with open(metadata_file, 'r') as f:
-        reader = csv.DictReader(f)
-        logging.info("Metadata columns: %s", reader.fieldnames)
-        return read_vessel_multiclass_metadata_lines(
-            available_mmsis, reader, fishing_range_dict,
-            fishing_range_training_upweight)
+    reader = metadata_file_reader(metadata_file)
+    return read_vessel_multiclass_metadata_lines(
+        available_mmsis, reader, fishing_range_dict,
+        fishing_range_training_upweight)
 
 
 def find_available_mmsis(feature_path):
