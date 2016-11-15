@@ -25,7 +25,7 @@ VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
 VESSEL_CLASS_DETAILED_NAMES = [
     'Squid', 'Trawlers', 'Seismic vessel', 'Set gillnets', 'Reefer',
     'Pole and line', 'Purse seines', 'Pots and traps', 'Trollers', 'Cargo',
-    'Sailing', 'Supply', 'Set longlines', 'Motor Passenger',
+    'Sailing', 'Supply', 'Set longlines', 'Motor passenger',
     'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
 ]
 """ The vessel length classes. """
