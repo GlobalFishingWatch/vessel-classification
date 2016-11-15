@@ -118,12 +118,9 @@ class MetadataConsistencyTest(tf.test.TestCase):
 
         self.assertEquals(is_fishing_labels, set(utility.FISHING_NONFISHING_NAMES))
 
-        self.assertEquals(coarse_labels, set(utility._VESSEL_CLASS_NAMES))
+        self.assertEquals(coarse_labels, set(utility.VESSEL_CLASS_NAMES))
 
-        self.assertEquals(fine_labels, set(utility._VESSEL_CLASS_DETAILED_NAMES))
-
-
-
+        self.assertEquals(fine_labels, set(utility.VESSEL_CLASS_DETAILED_NAMES))
 
 
 if __name__ == '__main__':
