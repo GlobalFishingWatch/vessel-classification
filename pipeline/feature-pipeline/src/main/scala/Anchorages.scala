@@ -11,12 +11,12 @@ import com.spotify.scio.values.SCollection
 import org.jgrapht.alg.util.UnionFind
 import org.joda.time.{Duration}
 
+import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
+import org.skytruth.common.{AdjacencyLookup, LatLon}
 
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._
-
-import AdditionalUnits._
 
 object Anchorages {
   def findAnchoragePointCells(input: SCollection[(VesselMetadata, ProcessedLocations)],

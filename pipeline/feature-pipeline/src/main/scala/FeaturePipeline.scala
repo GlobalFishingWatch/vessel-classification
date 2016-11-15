@@ -30,10 +30,11 @@ import org.joda.time.format.ISODateTimeFormat
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
-import org.skytruth.common.GcpConfig
+import org.skytruth.common.AdditionalUnits._
+import org.skytruth.common.{GcpConfig, LatLon}
+import org.skytruth.common.Implicits._
 import org.skytruth.common.ScioContextResource._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
-import org.skytruth.common.Implicits._
 
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConversions._
@@ -42,8 +43,6 @@ import scala.math
 import resource._
 
 import org.apache.commons.lang3.builder.ToStringBuilder._
-
-import AdditionalUnits._
 
 case class RangeValidator(valid: Boolean) extends AnyVal {
   def inRange[T <: Ordered[T]](value: T, min: T, max: T) =
@@ -205,6 +204,9 @@ object Pipeline extends LazyLogging {
 
     val environment = remaining_args.required("env")
     val jobName = remaining_args.required("job-name")
+    val generateModelFeatures = remaining_args.boolean("generate-model-features", true)
+    val generateAnchorages = remaining_args.boolean("generate-anchorages", true)
+    val generateEncounters = remaining_args.boolean("generate-encounters", true)
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -259,31 +261,37 @@ object Pipeline extends LazyLogging {
           (s"${md.mmsi}", feature)
       }
 
-      // Output vessel classifier features.
-      val outputFeaturePath = config.pipelineOutputPath + "/features"
-      val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
+      if (generateModelFeatures) {
+        // Output vessel classifier features.
+        val outputFeaturePath = config.pipelineOutputPath + "/features"
+        val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
+      }
 
-      // Output anchorages points.
-      val anchoragePointsPath = config.pipelineOutputPath + "/anchorage_points"
-      anchoragePoints.map { anchoragePoint =>
-        compact(render(anchoragePoint.toJson))
-      }.saveAsTextFile(anchoragePointsPath)
+      if (generateAnchorages) {
+        // Output anchorages points.
+        val anchoragePointsPath = config.pipelineOutputPath + "/anchorage_points"
+        anchoragePoints.map { anchoragePoint =>
+          compact(render(anchoragePoint.toJson))
+        }.saveAsTextFile(anchoragePointsPath)
 
-      // And anchorages.
-      val anchoragesPath = config.pipelineOutputPath + "/anchorages"
-      anchorages.map { anchorage =>
-        compact(render(anchorage.toJson))
-      }.saveAsTextFile(anchoragesPath)
+        // And anchorages.
+        val anchoragesPath = config.pipelineOutputPath + "/anchorages"
+        anchorages.map { anchorage =>
+          compact(render(anchorage.toJson))
+        }.saveAsTextFile(anchoragesPath)
+      }
 
-      // Build and output suspected encounters.
-      val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
-      val encounters =
-        Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
-      encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
+      if (generateEncounters) {
+        // Build and output suspected encounters.
+        val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
+        val encounters =
+          Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
+        encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
+      }
 
       // Get a list of all MMSIs to save to disk to speed up TF training startup.
       val mmsiListPath = config.pipelineOutputPath + "/mmsis"
-      features.keys.saveAsTextFile(mmsiListPath)
+      processed.keys.saveAsTextFile(mmsiListPath)
     })
   }
 }
