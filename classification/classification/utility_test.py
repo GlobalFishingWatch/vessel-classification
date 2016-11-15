@@ -1,4 +1,5 @@
 import csv
+import os
 import model
 import numpy as np
 import utility
@@ -97,7 +98,32 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
 
 class MetadataConsistencyTest(tf.test.TestCase):
     def test_metadata_consistency(self):
-        pass #TODO: test that metadata makes sense
+        from pkg_resources import resource_filename
+        metadata_file = os.path.abspath(
+            resource_filename('data', 'net_training_20161111.csv'))
+        self.assertTrue(os.path.exists(metadata_file))
+
+        is_fishing_labels = set()
+        coarse_labels = set([''])   # By putting '' in these sets we can safely remove it later
+        fine_labels = set([''])
+        for row in utility.metadata_file_reader(metadata_file):
+            is_fishing_labels.add(row['is_fishing'].strip())
+            coarse_labels.add(row['label'].strip())
+            fine_labels.add(row['sublabel'].strip())
+        coarse_labels.remove('')
+        fine_labels.remove('')
+
+        # Is fishing should never be blank
+        self.assertFalse('' in is_fishing_labels)
+
+        self.assertEquals(is_fishing_labels, set(utility.FISHING_NONFISHING_NAMES))
+
+        self.assertEquals(coarse_labels, set(utility._VESSEL_CLASS_NAMES))
+
+        self.assertEquals(fine_labels, set(utility._VESSEL_CLASS_DETAILED_NAMES))
+
+
+
 
 
 if __name__ == '__main__':
