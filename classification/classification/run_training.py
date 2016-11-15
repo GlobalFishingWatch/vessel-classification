@@ -57,7 +57,7 @@ def main(args):
         raise
 
     metadata_file = os.path.abspath(
-        resource_filename('classification.data', 'net_training_20161111.csv'))
+        resource_filename('classification.data', 'net_training_20161115.csv'))
     if not os.path.exists(metadata_file):
         logging.fatal("Could not find metadata file: %s.", metadata_file)
         sys.exit(-1)
