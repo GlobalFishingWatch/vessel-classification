@@ -54,7 +54,6 @@ object AISAnnotator extends LazyLogging {
       timeRangeFieldList.map { timeRangeField =>
         val startTime = Instant.parse(timeRangeField.get("start_time").asInstanceOf[String])
         val endTime = Instant.parse(timeRangeField.get("end_time").asInstanceOf[String])
-        val valueField = timeRangeField.get("value")
         val value =
           Option(timeRangeField.get("value")).map(_.asInstanceOf[Double]).getOrElse(defaultValue)
 

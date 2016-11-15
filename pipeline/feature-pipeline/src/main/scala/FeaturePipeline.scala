@@ -279,7 +279,7 @@ object Pipeline extends LazyLogging {
               visits.map((visit) => {
                 compact(
                   render(("mmsi" -> metadata.mmsi) ~
-                    ("visit" -> visit.toJson)))
+                    ("visits" -> visit.toJson)))
               })
           }.saveAsTextFile(anchorageVisitsPath)
         }

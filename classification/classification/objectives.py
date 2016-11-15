@@ -361,10 +361,12 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                         if last and last[1]:
                             fishing_ranges[-1][1] = ts
                         else:
-                            fishing_ranges.append([ts, ts])
+                            fishing_ranges.append((ts, ts))
                     last = (ts, is_fishing)
 
-                return fishing_ranges
+                return [{'start_time': start_time,
+                         'end_time': end_time}
+                        for (start_time, end_time) in fishing_ranges]
 
         return Evaluation(self.metadata_label, self.name, self.prediction,
                           timestamps, mmsis)
