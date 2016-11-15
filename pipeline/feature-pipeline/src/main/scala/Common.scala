@@ -1,5 +1,9 @@
 package org.skytruth.common
 
+import io.github.karols.units._
+import io.github.karols.units.SI._
+import io.github.karols.units.defining._
+
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
@@ -31,6 +35,30 @@ object Implicits {
     def medianBy[V <% Ordered[V]](fn: T => V): T = {
       val asIndexedSeq = iterable.toIndexedSeq.sortBy(fn)
       asIndexedSeq.apply(asIndexedSeq.size / 2)
+    }
+  }
+
+  implicit class RicherDoubleUIterable[T <: io.github.karols.units.MUnit](
+      val iterable: Iterable[DoubleU[T]]) {
+    def mean: DoubleU[T] = {
+      var acc = 0.0
+      var count = 0
+      iterable.foreach { v =>
+        acc += v.value
+        count += 1
+      }
+      (acc / count.toDouble).of[T]
+    }
+
+    def weightedMean(weights: Iterable[Double]): DoubleU[T] = {
+      var acc = 0.0
+      var weight = 0.0
+      iterable.zip(weights).foreach {
+        case (v, w) =>
+          acc += v.value * w
+          weight += w
+      }
+      (acc / weight).of[T]
     }
   }
 }

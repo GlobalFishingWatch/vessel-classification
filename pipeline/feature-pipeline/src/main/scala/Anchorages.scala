@@ -11,6 +11,8 @@ import com.spotify.scio.values.SCollection
 import org.jgrapht.alg.util.UnionFind
 import org.joda.time.{Duration}
 
+import org.skytruth.common.Implicits._
+
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._
 
@@ -33,8 +35,9 @@ object Anchorages {
         val fishingVesselCount = uniqueVessels.filter { md =>
           knownFishingMMSIs.contains(md.mmsi)
         }.size
+        val meanDistanceToShore = visits.map { _._2.meanDistanceToShore }.mean
 
-        AnchoragePoint(centralPoint, uniqueVessels, fishingVesselCount)
+        AnchoragePoint(centralPoint, uniqueVessels, fishingVesselCount, meanDistanceToShore)
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForAnchorage }
   }
 

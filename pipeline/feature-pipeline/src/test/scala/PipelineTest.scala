@@ -167,8 +167,10 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
                                 vlr("2011-07-14T00:00:00Z", lat = 16, lon = 10))
 
     val expectedStationaryPeriods = Seq(
-      StationaryPeriod(LatLon(10.0.of[degrees], 10.0.of[degrees]), Duration.standardHours(24 * 3)),
-      StationaryPeriod(LatLon(14.0.of[degrees], 10.0.of[degrees]), Duration.standardHours(24 * 3)))
+      StationaryPeriod(LatLon(10.0.of[degrees], 10.0.of[degrees]),
+          Duration.standardHours(24 * 3), 500.0.of[kilometer]),
+      StationaryPeriod(LatLon(14.0.of[degrees], 10.0.of[degrees]),
+          Duration.standardHours(24 * 3), 500.0.of[kilometer]))
 
     val result = Pipeline.removeStationaryPeriods(inputRecords)
 
@@ -182,9 +184,12 @@ class FeatureBuilderTests extends PipelineSpec with Matchers {
   import AdditionalUnits._
 
   val anchorageLocations = IndexedSeq(
-    Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]), Seq(VesselMetadata(1)), 0))),
-    Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4686489.of[degrees], 55.2206029.of[degrees]), Seq(VesselMetadata(1)), 0))),
-    Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), Seq(VesselMetadata(1)), 0))))
+    Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]),
+        Seq(VesselMetadata(1)), 0, 0.0.of[kilometer]))),
+    Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4686489.of[degrees], 55.2206029.of[degrees]),
+        Seq(VesselMetadata(1)), 0, 0.0.of[kilometer]))),
+    Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), 
+        Seq(VesselMetadata(1)), 0, 0.0.of[kilometer]))))
 
   val vesselPath = Seq(vlr("2011-07-01T00:00:00Z", -1.4065933, 55.2350923, speed = 1.0),
                        vlr("2011-07-01T00:05:00Z", -1.4218712, 55.2342113, speed = 1.0),
