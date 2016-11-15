@@ -14,8 +14,8 @@ object Parameters {
 
   // TODO(alexwilson): remove years list when cloud dataflow text source can
   // handle our volume of files.
-  //val allDataYears = List("2012", "2013", "2014", "2015", "2016")
-  val allDataYears = List("2015")
+  val allDataYears = List("2012", "2013", "2014", "2015", "2016")
+  //val allDataYears = List("2015")
   val inputMeasuresPath =
     "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment"
 
