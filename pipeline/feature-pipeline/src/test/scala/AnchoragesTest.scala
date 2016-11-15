@@ -20,12 +20,14 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
     AnchoragePoint(LatLon(0.0.of[degrees], 0.0.of[degrees]),
                    Seq(VesselMetadata(1)),
                    0,
-                   0.0.of[kilometer])
+                   10.0.of[kilometer],
+                   0.1.of[kilometer])
   val anchoragePoint2 =
     AnchoragePoint(LatLon(0.0.of[degrees], 1.0.of[degrees]),
                    Seq(VesselMetadata(1)),
                    0,
-                   0.0.of[kilometer])
+                   20.0.of[kilometer],
+                   0.05.of[kilometer])
 
   val anchorages = Seq(
     Anchorage.fromAnchoragePoints(Seq(anchoragePoint1)),
@@ -66,12 +68,14 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
     (VesselMetadata(45),
      immutable.Seq(AnchorageVisit(Anchorage(LatLon(0.0.of[degrees], 0.0.of[degrees]),
                                             Set(anchoragePoint1),
-                                            0.0.of[kilometer]),
+                                            10.0.of[kilometer],
+                                            0.1.of[kilometer]),
                                   Instant.parse("2016-01-01T00:00:00.000Z"),
                                   Instant.parse("2016-01-01T00:08:00.000Z")),
                    AnchorageVisit(Anchorage(LatLon(0.0.of[degrees], 1.0.of[degrees]),
                                             Set(anchoragePoint2),
-                                            0.0.of[kilometer]),
+                                            20.0.of[kilometer],
+                                            0.05.of[kilometer]),
                                   Instant.parse("2016-01-01T02:00:00.000Z"),
                                   Instant.parse("2016-01-01T02:08:00.000Z"))))
 
@@ -90,8 +94,14 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
 }
 
 class AnchoragesGroupingTests extends PipelineSpec with Matchers {
-  def anchoragePointFromS2CellToken(token: String, vessels: Seq[VesselMetadata]) =
-    AnchoragePoint(LatLon.fromS2CellId(S2CellId.fromToken(token)), vessels, 0, 0.0.of[kilometer])
+  def anchoragePointFromS2CellToken(token: String,
+                                    vessels: Seq[VesselMetadata],
+                                    distanceToShore: DoubleU[kilometer] = 0.0.of[kilometer]) =
+    AnchoragePoint(LatLon.fromS2CellId(S2CellId.fromToken(token)),
+                   vessels,
+                   0,
+                   distanceToShore,
+                   0.0.of[kilometer])
 
   "Anchorage merging" should "work!" in {
     val anchorages = IndexedSeq(
@@ -99,9 +109,15 @@ class AnchoragesGroupingTests extends PipelineSpec with Matchers {
                                     Seq(VesselMetadata(1), VesselMetadata(2), VesselMetadata(3))),
       anchoragePointFromS2CellToken("89c19b64", Seq(VesselMetadata(1), VesselMetadata(2))),
       anchoragePointFromS2CellToken("89c1852c", Seq(VesselMetadata(1))),
-      anchoragePointFromS2CellToken("89c19b04", Seq(VesselMetadata(1), VesselMetadata(2))),
-      anchoragePointFromS2CellToken("89c19bac", Seq(VesselMetadata(1), VesselMetadata(2))),
-      anchoragePointFromS2CellToken("89c19bb4", Seq(VesselMetadata(1), VesselMetadata(2))))
+      anchoragePointFromS2CellToken("89c19b04",
+                                    Seq(VesselMetadata(1), VesselMetadata(2)),
+                                    30.0.of[kilometer]),
+      anchoragePointFromS2CellToken("89c19bac",
+                                    Seq(VesselMetadata(1), VesselMetadata(2)),
+                                    20.0.of[kilometer]),
+      anchoragePointFromS2CellToken("89c19bb4",
+                                    Seq(VesselMetadata(1), VesselMetadata(2)),
+                                    10.0.of[kilometer]))
 
     val groupedAnchorages = Anchorages.mergeAdjacentAnchoragePoints(anchorages)
 
@@ -110,12 +126,15 @@ class AnchoragesGroupingTests extends PipelineSpec with Matchers {
     val expected =
       Seq(Anchorage(LatLon(40.016824742437635.of[degrees], -74.07113588841028.of[degrees]),
                     Set(anchorages(2)),
+                    0.0.of[kilometer],
                     0.0.of[kilometer]),
           Anchorage(LatLon(39.994377589412146.of[degrees], -74.12517039688245.of[degrees]),
                     Set(anchorages(0), anchorages(1)),
+                    0.0.of[kilometer],
                     0.0.of[kilometer]),
           Anchorage(LatLon(39.96842156104703.of[degrees], -74.0828838592642.of[degrees]),
                     Set(anchorages(3), anchorages(4), anchorages(5)),
+                    20.0.of[kilometer],
                     0.0.of[kilometer]))
 
     groupedAnchorages should contain theSameElementsAs expected

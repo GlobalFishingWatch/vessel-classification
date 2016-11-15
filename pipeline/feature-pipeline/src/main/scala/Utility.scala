@@ -44,7 +44,8 @@ case class VesselMetadata(mmsi: Int) {
 
 case class StationaryPeriod(location: LatLon,
                             duration: Duration,
-                            meanDistanceToShore: DoubleU[kilometer])
+                            meanDistanceToShore: DoubleU[kilometer],
+                            meanDriftRadius: DoubleU[kilometer])
 
 case class ProcessedLocations(locations: Seq[VesselLocationRecord],
                               stationaryPeriods: Seq[StationaryPeriod])
@@ -88,7 +89,8 @@ case class SingleEncounter(startTime: Instant,
 case class AnchoragePoint(meanLocation: LatLon,
                           vessels: Seq[VesselMetadata],
                           knownFishingVesselCount: Int,
-                          meanDistanceToShore: DoubleU[kilometer]) {
+                          meanDistanceToShore: DoubleU[kilometer],
+                          meanDriftRadius: DoubleU[kilometer]) {
   def toJson = {
     val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
     ("id" -> id) ~
@@ -107,7 +109,8 @@ case class AnchoragePoint(meanLocation: LatLon,
 
 case class Anchorage(meanLocation: LatLon,
                      anchoragePoints: Set[AnchoragePoint],
-                     meanDistanceToShore: DoubleU[kilometer]) {
+                     meanDistanceToShore: DoubleU[kilometer],
+                     meanDriftRadius: DoubleU[kilometer]) {
   def id: String =
     meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
 
@@ -116,7 +119,8 @@ case class Anchorage(meanLocation: LatLon,
       ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
       ("anchorage_points" -> anchoragePoints.toSeq.sortBy(_.id).map(_.id)) ~
-      ("mean_distance_to_shore_km" -> meanDistanceToShore.value)
+      ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
+      ("mean_drift_radius_km" -> meanDriftRadius.value)
   }
 }
 
@@ -125,7 +129,11 @@ object Anchorage {
     val weights = anchoragePoints.map(_.vessels.length.toDouble)
     Anchorage(LatLon.weightedMean(anchoragePoints.map(_.meanLocation), weights),
               anchoragePoints.toSet,
-              anchoragePoints.map(_.meanDistanceToShore).weightedMean(weights))
+              anchoragePoints.map(_.meanDistanceToShore).weightedMean(weights),
+              // Averaging across multiple anchorage points for drift radius
+              // is perhaps a little statistically dubious, but may still prove
+              // useful to distinguish fixed vs drifting anchorage groups.
+              anchoragePoints.map(_.meanDriftRadius).weightedMean(weights))
   }
 }
 

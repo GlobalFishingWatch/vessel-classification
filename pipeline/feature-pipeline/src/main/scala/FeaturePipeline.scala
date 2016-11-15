@@ -149,7 +149,10 @@ object Pipeline extends LazyLogging {
             val duration = new Duration(periodFirst.timestamp, currentPeriod.last.timestamp)
             val aveLatLon = LatLon.mean(currentPeriod.map { _.location })
             val meanDistanceToShore = currentPeriod.map { _.distanceToShore }.mean
-            stationaryPeriods.append(StationaryPeriod(aveLatLon, duration, meanDistanceToShore))
+            val meanDriftRadius = currentPeriod.map { _.location.getDistance(aveLatLon) }.mean
+
+            stationaryPeriods.append(
+              StationaryPeriod(aveLatLon, duration, meanDistanceToShore, meanDriftRadius))
           } else {
             withoutLongStationaryPeriods ++= currentPeriod
           }
@@ -223,16 +226,13 @@ object Pipeline extends LazyLogging {
         sc.tableRowJsonFile(path)
       }
 
+      val knownFishingMMSIs = loadFishingMMSIs()
+
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
         readJsonRecords(matches)
 
-      val adjacencyAnnotated =
-        Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
-
       val processed =
         filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
-
-      val knownFishingMMSIs = loadFishingMMSIs()
 
       val anchoragePoints =
         Anchorages.findAnchoragePointCells(processed, knownFishingMMSIs)
@@ -252,6 +252,9 @@ object Pipeline extends LazyLogging {
                 ("visit" -> visit.toJson)))
           })
       }.saveAsTextFile(anchorageVisitsPath)
+
+      val adjacencyAnnotated =
+        Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
 
       val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
         case (md, feature) =>
