@@ -30,10 +30,11 @@ import org.joda.time.format.ISODateTimeFormat
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
-import org.skytruth.common.GcpConfig
+import org.skytruth.common.AdditionalUnits._
+import org.skytruth.common.{GcpConfig, LatLon}
+import org.skytruth.common.Implicits._
 import org.skytruth.common.ScioContextResource._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
-import org.skytruth.common.Implicits._
 
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConversions._
@@ -42,8 +43,6 @@ import scala.math
 import resource._
 
 import org.apache.commons.lang3.builder.ToStringBuilder._
-
-import AdditionalUnits._
 
 case class RangeValidator(valid: Boolean) extends AnyVal {
   def inRange[T <: Ordered[T]](value: T, min: T, max: T) =
