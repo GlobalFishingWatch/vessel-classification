@@ -97,7 +97,9 @@ class RegressionObjective(ObjectiveBase):
         expected, mask = self._expected_and_mask(mmsis)
         count = tf.reduce_sum(mask)
         diff = tf.abs(tf.mul(expected - predictions, mask))
-        error = tf.reduce_mean(diff) 
+
+        epsilon = 1e-7
+        error = tf.reduce_sum(diff) / tf.maximum(count, epsilon)
 
         return error
 
