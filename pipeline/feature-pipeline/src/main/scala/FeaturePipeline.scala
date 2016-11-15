@@ -224,11 +224,13 @@ object Pipeline extends LazyLogging {
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
         readJsonRecords(matches)
 
-      val adjacencyAnnotated =
-        Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
+      val adjacencies =
+        Encounters.calculateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
 
       val processed =
-        filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
+        Encounters.annotateAdjecency(
+          filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions),
+          adjacencies)
 
       val knownFishingMMSIs = loadFishingMMSIs()
 
@@ -275,7 +277,7 @@ object Pipeline extends LazyLogging {
       // Build and output suspected encounters.
       val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
       val encounters =
-        Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
+        Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencies)
       encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
 
       // Get a list of all MMSIs to save to disk to speed up TF training startup.
