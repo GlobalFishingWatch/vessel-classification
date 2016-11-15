@@ -32,12 +32,12 @@ categories = {
     ['Drifting longlines',  ['Drifting longlines']],
     ['Purse seines', ['Purse seines']], 
 ['Squid', ['Squid']], ['Pole and line', ['Pole and line']], ['Trollers', ['Trollers']], ['Cargo/Tanker', 
-['Cargo', 'Tanker']], ['Reefer', ['Reefer']], ['Passenger', ['Motor Passenger', 'Sailing']], 
+['Cargo', 'Tanker']], ['Reefer', ['Reefer']], ['Passenger', ['Motor passenger', 'Sailing']], 
 ['Seismic vessel', ['Seismic vessel']], ['Tug/Pilot/Supply', ['Tug', 'Pilot', 'Supply']]], 
 'fishing': [
     ['Fishing', ['Drifting longlines', 'Set longlines', 'Trawlers', 'Pots and traps', 'Set gillnets', 'Purse seines', 
         'Squid', 'Pole and line', 'Trollers']], 
-    ['Non-fishing', ['Cargo', 'Tanker', 'Reefer', 'Motor Passenger', 'Sailing', 'Seismic vessel', 
+    ['Non-fishing', ['Cargo', 'Tanker', 'Reefer', 'Motor passenger', 'Sailing', 'Seismic vessel', 
         'Tug', 'Pilot', 'Supply']]]}
 
 # We use the categories to derive VESSEL_CLASS_NAMES, etc, but we use the old names as a check for now.
@@ -57,7 +57,7 @@ _VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
 _VESSEL_CLASS_DETAILED_NAMES = [
     'Squid', 'Trawlers', 'Seismic vessel', 'Set gillnets', 'Reefer',
     'Pole and line', 'Purse seines', 'Pots and traps', 'Trollers', 'Cargo',
-    'Sailing', 'Supply', 'Set longlines', 'Motor Passenger',
+    'Sailing', 'Supply', 'Set longlines', 'Motor passenger',
     'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
 ]
 
