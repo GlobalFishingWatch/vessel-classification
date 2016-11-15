@@ -18,6 +18,8 @@ object Parameters {
   //val allDataYears = List("2015")
   val inputMeasuresPath =
     "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment"
+  def measuresPathPattern(year: String) =
+      s"${Parameters.inputMeasuresPath}/$year-*-*/*.json"
 
   val knownFishingMMSIs = "feature-pipeline/src/main/data/treniformis_known_fishing_mmsis_2016.txt"
 

@@ -223,7 +223,8 @@ object Pipeline extends LazyLogging {
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
       val matches = (Parameters.allDataYears).map { year =>
-        val path = s"${Parameters.inputMeasuresPath}/$year-*-*/*.json"
+        val path = Parameters.measuresPathPattern(year)
+
         sc.tableRowJsonFile(path)
       }
 
@@ -239,15 +240,12 @@ object Pipeline extends LazyLogging {
         Anchorages.findAnchoragePointCells(processed)
       val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
 
-      val adjacencyAnnotated =
-        Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
-
-      val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
-        case (md, feature) =>
-          (s"${md.mmsi}", feature)
-      }
 
       if (generateModelFeatures) {
+        val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
+          case (md, feature) =>
+            (s"${md.mmsi}", feature)
+        }
         // Output vessel classifier features.
         val outputFeaturePath = config.pipelineOutputPath + "/features"
         val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
@@ -286,6 +284,9 @@ object Pipeline extends LazyLogging {
       }
 
       if (generateEncounters) {
+        val adjacencyAnnotated =
+          Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
+
         // Build and output suspected encounters.
         val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
         val encounters =
