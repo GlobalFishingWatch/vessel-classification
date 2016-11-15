@@ -18,6 +18,12 @@ import threading
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
 #TODO: (bitsofbits) export to config file
+
+# The 'real' categories are the fine categories, which 'coarse' and 'fishing' are defined in
+# terms of. Any number of coarse categories, even with overlapping values can be defined
+# in principle, although at present the interaction between the mulithot and non multihot
+# versions makes that more complicated.
+
 categories = {
 'coarse': [
     ['Longliners', ['Drifting longlines', 'Set longlines']], 
@@ -34,9 +40,12 @@ categories = {
     ['Non-fishing', ['Cargo', 'Tanker', 'Reefer', 'Motor Passenger', 'Sailing', 'Seismic vessel', 
         'Tug', 'Pilot', 'Supply']]]}
 
+# We use the categories to derive VESSEL_CLASS_NAMES, etc, but we use the old names as a check for now.
+# if we ever move to pure multihot encoding we could simplify.
+
+
 _OLD_COARSE = set(['Longliners'])
 
-#TODO(bitsofbit): clean up
 """ The coarse vessel label set. """
 _VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
                       'Seismic vessel', 'Drifting longlines', 'Reefer',
@@ -717,14 +726,6 @@ def read_fishing_ranges(fishing_range_file):
     return fishing_range_dict
 
 
-
-    # The key we compute is:
-    #  key = max(fine_label, 0) + 
-    #           (fine_label == -1) * ((n_fine + max(coarse_label, 0)) + 
-    #                                 (coarse_label == -1) * (n_coarse + fishing_label))
-
-#TODO:(bitsofbit) make four lookup tables, fine, coarse, fishing and combined
-
 def build_multihot_lookup_table():
     # There are three levels of categories we are concerned with fishing / nonfishing, coarse labels, and fine
     # labels. All items should have fishing / nonfishing.
@@ -755,10 +756,19 @@ multihot_lookup_table, multihot_coarse_lookup_table, multihot_fishing_lookup_tab
 
 
 def multihot_encode(is_fishing, coarse, fine):
+    """Multihot encode based on fine, coarse and is_fishing label
+
+    Args:
+        is_fishing: Tensor (int)
+        coarse: Tensor (int)
+        fine: Tensor (int)
+
+    Returns:
+        Tensor with bits set for every allowable vessel type based on the inputs
+
+
     """
-    TODO:(bitsofbits) Explain this!
-    TODO:(bitsofbits) We are assuming that is_fishing always defined. Check this in code
-    """
+    #     TODO:(bitsofbits) We are assuming that is_fishing always defined. Check this in code
     n_fine = len(VESSEL_CLASS_DETAILED_NAMES)
     n_coarse = len(VESSEL_CLASS_NAMES)
     keys = (tf.maximum(fine, 0) + 
