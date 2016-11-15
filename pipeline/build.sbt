@@ -51,8 +51,7 @@ lazy val common = project.in(file("common")).settings(commonSettings: _*)
 // Pipeline for annotating AIS messages with other attributes (such as when
 // fishing, port visits, transhipments or AIS gaps occur).
 lazy val aisAnnotatorPipeline =
-  project.in(file("ais-annotator")).settings(commonSettings: _*)
-    .dependsOn(common)
+  project.in(file("ais-annotator")).settings(commonSettings: _*).dependsOn(common)
 
 // The dataflow feature generation pipeline.
 lazy val featurePipeline =

@@ -33,6 +33,7 @@ import org.json4s.native.JsonMethods._
 import org.skytruth.common.GcpConfig
 import org.skytruth.common.ScioContextResource._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
+import org.skytruth.common.Implicits._
 
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConversions._
@@ -147,10 +148,9 @@ object Pipeline extends LazyLogging {
             }
             val numPoints = currentPeriod.length.toDouble
             val duration = new Duration(periodFirst.timestamp, currentPeriod.last.timestamp)
-            val aveLat = currentPeriod.map { _.location.lat.value }.sum / numPoints
-            val aveLon = currentPeriod.map { _.location.lon.value }.sum / numPoints
-            stationaryPeriods.append(
-              StationaryPeriod(LatLon(aveLat.of[degrees], aveLon.of[degrees]), duration))
+            val aveLatLon = LatLon.mean(currentPeriod.map { _.location })
+            val meanDistanceToShore = currentPeriod.map { _.distanceToShore }.mean
+            stationaryPeriods.append(StationaryPeriod(aveLatLon, duration, meanDistanceToShore))
           } else {
             withoutLongStationaryPeriods ++= currentPeriod
           }

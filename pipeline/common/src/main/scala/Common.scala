@@ -1,9 +1,14 @@
 package org.skytruth.common
 
+import io.github.karols.units._
+import io.github.karols.units.SI._
+import io.github.karols.units.defining._
+
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.spotify.scio._
+
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
@@ -37,6 +42,29 @@ object Implicits {
     def medianBy[V <% Ordered[V]](fn: T => V): T = {
       val asIndexedSeq = iterable.toIndexedSeq.sortBy(fn)
       asIndexedSeq.apply(asIndexedSeq.size / 2)
+    }
+  }
+
+  implicit class RicherDoubleUIterable[T <: MUnit](val iterable: Iterable[DoubleU[T]]) {
+    def mean: DoubleU[T] = {
+      var acc = 0.0
+      var count = 0
+      iterable.foreach { v =>
+        acc += v.value
+        count += 1
+      }
+      (acc / count.toDouble).of[T]
+    }
+
+    def weightedMean(weights: Iterable[Double]): DoubleU[T] = {
+      var acc = 0.0
+      var weight = 0.0
+      iterable.zip(weights).foreach {
+        case (v, w) =>
+          acc += v.value * w
+          weight += w
+      }
+      (acc / weight).of[T]
     }
   }
 }
@@ -79,7 +107,7 @@ case class GcpConfig(startTime: DateTime, projectId: String, private val rootPat
 case class IteratorWithCurrent[T](private val iterator: Iterator[T]) {
   private def nextOption(): Option[T] =
     if (iterator.hasNext) {
-      Some(iterator.next)
+      Some(iterator.next())
     } else {
       None
     }
@@ -89,10 +117,8 @@ case class IteratorWithCurrent[T](private val iterator: Iterator[T]) {
   def getNext() { current = nextOption() }
 }
 
-
 object ScioContextResource {
   implicit def scioContextResource[A <: ScioContext] = new Resource[A] {
     override def close(r: A) = r.close()
   }
 }
-

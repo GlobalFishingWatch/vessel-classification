@@ -55,11 +55,8 @@ object AISAnnotator extends LazyLogging {
         val startTime = Instant.parse(timeRangeField.get("start_time").asInstanceOf[String])
         val endTime = Instant.parse(timeRangeField.get("end_time").asInstanceOf[String])
         val valueField = timeRangeField.get("value")
-        val value = if (valueField != null) {
-          valueField.asInstanceOf[Double]
-        } else {
-          defaultValue
-        }
+        val value =
+          Option(timeRangeField.get("value")).map(_.asInstanceOf[Double]).getOrElse(defaultValue)
 
         MessageAnnotation(mmsi, timeRangeFieldName, startTime, endTime, value)
       }
@@ -84,6 +81,7 @@ object AISAnnotator extends LazyLogging {
     var annotationIterator = IteratorWithCurrent(sortedAnnotations.iterator)
 
     // Annotate each message with any active timerange values.
+    var annotatedRows = mutable.ListBuffer[TableRow]()
     sortedMessages.map {
       case (ts, msg) =>
         // Remove annotations from the past.
@@ -104,8 +102,10 @@ object AISAnnotator extends LazyLogging {
           clonedMessage.set(annotation.name, annotation.value)
         }
 
-        clonedMessage
+        annotatedRows.append(clonedMessage)
     }
+
+    annotatedRows.toSeq
   }
 
   def annotateAllMessages(
@@ -118,7 +118,6 @@ object AISAnnotator extends LazyLogging {
     val filteredByMmsi = aisMessages
     // Keep only records with a location.
       .filter(json => json.containsKey("lat") && json.containsKey("lon"))
-      // Build a typed location record with units of measure.
       .groupBy(_.getLong("mmsi").toInt)
 
     val annotationsByMmsi = SCollection.unionAll(annotationInputs).groupBy(_.mmsi)

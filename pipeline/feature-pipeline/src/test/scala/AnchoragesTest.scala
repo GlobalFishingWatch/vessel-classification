@@ -16,9 +16,15 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
   import AdditionalUnits._
 
   val anchoragePoint1 =
-    AnchoragePoint(LatLon(0.0.of[degrees], 0.0.of[degrees]), Seq(VesselMetadata(1)), 0)
+    AnchoragePoint(LatLon(0.0.of[degrees], 0.0.of[degrees]),
+                   Seq(VesselMetadata(1)),
+                   0,
+                   0.0.of[kilometer])
   val anchoragePoint2 =
-    AnchoragePoint(LatLon(0.0.of[degrees], 1.0.of[degrees]), Seq(VesselMetadata(1)), 0)
+    AnchoragePoint(LatLon(0.0.of[degrees], 1.0.of[degrees]),
+                   Seq(VesselMetadata(1)),
+                   0,
+                   0.0.of[kilometer])
 
   val anchorages = Seq(
     Anchorage.fromAnchoragePoints(Seq(anchoragePoint1)),
@@ -57,13 +63,16 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
 
   val expected =
     (VesselMetadata(45),
-     immutable.Seq(
-       AnchorageVisit(Anchorage(LatLon(0.0.of[degrees], 0.0.of[degrees]), Set(anchoragePoint1)),
-                      Instant.parse("2016-01-01T00:00:00.000Z"),
-                      Instant.parse("2016-01-01T00:08:00.000Z")),
-       AnchorageVisit(Anchorage(LatLon(0.0.of[degrees], 1.0.of[degrees]), Set(anchoragePoint2)),
-                      Instant.parse("2016-01-01T02:00:00.000Z"),
-                      Instant.parse("2016-01-01T02:08:00.000Z"))))
+     immutable.Seq(AnchorageVisit(Anchorage(LatLon(0.0.of[degrees], 0.0.of[degrees]),
+                                            Set(anchoragePoint1),
+                                            0.0.of[kilometer]),
+                                  Instant.parse("2016-01-01T00:00:00.000Z"),
+                                  Instant.parse("2016-01-01T00:08:00.000Z")),
+                   AnchorageVisit(Anchorage(LatLon(0.0.of[degrees], 1.0.of[degrees]),
+                                            Set(anchoragePoint2),
+                                            0.0.of[kilometer]),
+                                  Instant.parse("2016-01-01T02:00:00.000Z"),
+                                  Instant.parse("2016-01-01T02:08:00.000Z"))))
 
   "Vessel" should "visit the correct anchorages" in {
     runWithContext { sc =>
@@ -84,7 +93,7 @@ class AnchoragesGroupingTests extends PipelineSpec with Matchers {
   import AdditionalUnits._
 
   def anchoragePointFromS2CellToken(token: String, vessels: Seq[VesselMetadata]) =
-    AnchoragePoint(LatLon.fromS2CellId(S2CellId.fromToken(token)), vessels, 0)
+    AnchoragePoint(LatLon.fromS2CellId(S2CellId.fromToken(token)), vessels, 0, 0.0.of[kilometer])
 
   "Anchorage merging" should "work!" in {
     val anchorages = IndexedSeq(
@@ -102,11 +111,14 @@ class AnchoragesGroupingTests extends PipelineSpec with Matchers {
 
     val expected =
       Seq(Anchorage(LatLon(40.016824742437635.of[degrees], -74.07113588841028.of[degrees]),
-                    Set(anchorages(2))),
+                    Set(anchorages(2)),
+                    0.0.of[kilometer]),
           Anchorage(LatLon(39.994377589412146.of[degrees], -74.12517039688245.of[degrees]),
-                    Set(anchorages(0), anchorages(1))),
+                    Set(anchorages(0), anchorages(1)),
+                    0.0.of[kilometer]),
           Anchorage(LatLon(39.96842156104703.of[degrees], -74.0828838592642.of[degrees]),
-                    Set(anchorages(3), anchorages(4), anchorages(5))))
+                    Set(anchorages(3), anchorages(4), anchorages(5)),
+                    0.0.of[kilometer]))
 
     groupedAnchorages should contain theSameElementsAs expected
   }
