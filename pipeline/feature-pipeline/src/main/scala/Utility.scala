@@ -90,9 +90,9 @@ case class AnchoragePoint(meanLocation: LatLon,
                           vessels: Set[VesselMetadata],
                           meanDistanceToShore: DoubleU[kilometer],
                           meanDriftRadius: DoubleU[kilometer]) {
-  def knownFishingVesselCount: Int = vessels.filter(_.isFishingVessel).size
   def toJson = {
     val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
+    val knownFishingVesselCount = vessels.filter(_.isFishingVessel).size
     ("id" -> id) ~
       ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
@@ -114,11 +114,12 @@ case class Anchorage(meanLocation: LatLon,
                      meanDriftRadius: DoubleU[kilometer]) {
   def id: String =
     meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
-  def knownFishingVesselCount: Int = vessels.filter(_.isFishingVessel).size
-  lazy val vessels = anchoragePoints.flatMap(_.vessels).toSet
 
   def toJson = {
+    val vessels = anchoragePoints.flatMap(_.vessels).toSet
     val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
+    val knownFishingVesselCount = vessels.filter(_.isFishingVessel).size
+
     ("id" -> id) ~
       ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
