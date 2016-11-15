@@ -206,6 +206,7 @@ object Pipeline extends LazyLogging {
     val jobName = remaining_args.required("job-name")
     val generateModelFeatures = remaining_args.boolean("generate-model-features", true)
     val generateAnchorages = remaining_args.boolean("generate-anchorages", true)
+    val generateAnchorageVisits = remaining_args.boolean("generate-anchorage-visits", true)
     val generateEncounters = remaining_args.boolean("generate-encounters", true)
 
     val config = GcpConfig.makeConfig(environment, jobName)
@@ -238,21 +239,6 @@ object Pipeline extends LazyLogging {
         Anchorages.findAnchoragePointCells(processed, knownFishingMMSIs)
       val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
 
-      val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_group_visits"
-
-      val anchorageVisits =
-        Anchorages
-          .findAnchorageVisits(locationRecords, anchorages, Parameters.minAnchorageVisitDuration)
-
-      anchorageVisits.flatMap {
-        case (metadata, visits) =>
-          visits.map((visit) => {
-            compact(
-              render(("mmsi" -> metadata.mmsi) ~
-                ("visit" -> visit.toJson)))
-          })
-      }.saveAsTextFile(anchorageVisitsPath)
-
       val adjacencyAnnotated =
         Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
 
@@ -279,6 +265,24 @@ object Pipeline extends LazyLogging {
         anchorages.map { anchorage =>
           compact(render(anchorage.toJson))
         }.saveAsTextFile(anchoragesPath)
+
+        val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_group_visits"
+
+        if (generateAnchorageVisits) {
+          val anchorageVisits =
+            Anchorages.findAnchorageVisits(locationRecords,
+                                           anchorages,
+                                           Parameters.minAnchorageVisitDuration)
+
+          anchorageVisits.flatMap {
+            case (metadata, visits) =>
+              visits.map((visit) => {
+                compact(
+                  render(("mmsi" -> metadata.mmsi) ~
+                    ("visit" -> visit.toJson)))
+              })
+          }.saveAsTextFile(anchorageVisitsPath)
+        }
       }
 
       if (generateEncounters) {
