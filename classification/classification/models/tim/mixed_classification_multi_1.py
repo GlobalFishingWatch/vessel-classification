@@ -102,7 +102,7 @@ class Model(ModelBase):
 
                 stack.append(current)
 
-                current = tf.nn.avg_pool(
+                current = tf.nn.max_pool(
                     current, [1, 1, tp.pool_size, 1],
                     [1, 1, tp.pool_stride, 1],
                     padding="VALID")
