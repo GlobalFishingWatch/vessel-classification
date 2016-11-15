@@ -13,7 +13,7 @@ import org.joda.time.{Duration}
 
 import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
-import org.skytruth.common.LatLon
+import org.skytruth.common.{AdjacencyLookup, LatLon}
 
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._

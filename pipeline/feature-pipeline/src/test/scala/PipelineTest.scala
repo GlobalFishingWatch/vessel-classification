@@ -8,7 +8,7 @@ import java.io.File
 import org.joda.time.{Duration, Instant}
 import org.scalatest._
 import org.skytruth.common.AdditionalUnits._
-import org.skytruth.common.LatLon
+import org.skytruth.common.{AdjacencyLookup, LatLon}
 import scala.concurrent._
 import ExecutionContext.Implicits.global
 import org.apache.commons.lang3.builder.ToStringBuilder._

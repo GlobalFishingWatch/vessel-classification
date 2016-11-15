@@ -9,7 +9,7 @@ import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.joda.time.{DateTimeZone, Duration, Instant, LocalDateTime}
 import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
-import org.skytruth.common.LatLon
+import org.skytruth.common.{AdjacencyLookup, LatLon}
 import org.tensorflow.example.{
   Example,
   Feature,

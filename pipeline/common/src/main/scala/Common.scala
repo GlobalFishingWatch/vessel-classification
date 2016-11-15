@@ -103,6 +103,25 @@ object LatLon {
   }
 }
 
+case class AdjacencyLookup[T](values: Seq[T],
+                              locFn: T => LatLon,
+                              maxRadius: DoubleU[kilometer],
+                              level: Int) {
+  private val cellMap = values
+    .flatMap(v => locFn(v).getCapCoveringCells(maxRadius, level).map(cellid => (cellid, v)))
+    .groupBy(_._1)
+    .map { case (cellid, vs) => (cellid, vs.map(_._2)) }
+
+  def nearby(location: LatLon) = {
+    val queryCells = location.getCapCoveringCells(maxRadius, level)
+    val allValues = queryCells.flatMap { cellid =>
+      cellMap.getOrElse(cellid, Seq())
+    }
+
+    allValues.map(v => (locFn(v).getDistance(location), v)).toIndexedSeq.distinct.sortBy(_._1)
+  }
+}
+
 object Implicits {
   implicit class RichLogger(val logger: Logger) {
     def fatal(message: String) = {
