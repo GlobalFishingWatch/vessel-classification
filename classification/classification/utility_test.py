@@ -95,5 +95,10 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
                             'mmsi': '100003'}, 1.0))
 
 
+class MetadataConsistencyTest(tf.test.TestCase):
+    def test_metadata_consistency(self):
+        pass #TODO: test that metadata makes sense
+
+
 if __name__ == '__main__':
     tf.test.main()
