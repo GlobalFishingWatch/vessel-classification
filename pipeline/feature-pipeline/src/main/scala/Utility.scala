@@ -103,7 +103,7 @@ case class StationaryPeriod(location: LatLon,
                             meanDistanceToShore: DoubleU[kilometer])
 
 trait LocationAnnotation
-case class Adjecency(numNeighbours: Int,
+case class Adjacency(numNeighbours: Int,
                      closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)]) extends LocationAnnotation
 
 /* FIXME: To replace the special classes below later... Included here

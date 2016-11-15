@@ -228,7 +228,7 @@ object Pipeline extends LazyLogging {
         Encounters.calculateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
 
       val processed =
-        Encounters.annotateAdjecency(
+        Encounters.annotateAdjacency(
           filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions),
           adjacencies)
 
