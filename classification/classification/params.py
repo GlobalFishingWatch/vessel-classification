@@ -1,1 +1,1 @@
-metaclass_file = "net_training_20161115.csv"
+metadata_file = "net_training_20161115.csv"
