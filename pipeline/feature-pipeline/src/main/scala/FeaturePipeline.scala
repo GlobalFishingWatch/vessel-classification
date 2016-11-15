@@ -65,7 +65,7 @@ object Pipeline extends LazyLogging {
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
   // by ascending timestamp.
-  def readJsonRecords(inputs: Seq[SCollection[TableRow]])
+  def readJsonRecords(inputs: Seq[SCollection[TableRow]], knownFishingMMSIs: Set[Int])
     : SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
 
     val input = SCollection.unionAll(inputs)
@@ -75,7 +75,7 @@ object Pipeline extends LazyLogging {
       // Build a typed location record with units of measure.
       .map(json => {
         val mmsi = json.getLong("mmsi").toInt
-        val metadata = VesselMetadata(mmsi)
+        val metadata = VesselMetadata(mmsi, knownFishingMMSIs.contains(mmsi))
         val record =
           // TODO(alexwilson): Double-check all these units are correct.
           VesselLocationRecord(Instant.parse(json.getString("timestamp")),
@@ -230,13 +230,13 @@ object Pipeline extends LazyLogging {
       val knownFishingMMSIs = loadFishingMMSIs()
 
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
-        readJsonRecords(matches)
+        readJsonRecords(matches, knownFishingMMSIs)
 
       val processed =
         filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
 
       val anchoragePoints =
-        Anchorages.findAnchoragePointCells(processed, knownFishingMMSIs)
+        Anchorages.findAnchoragePointCells(processed)
       val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
 
       val adjacencyAnnotated =

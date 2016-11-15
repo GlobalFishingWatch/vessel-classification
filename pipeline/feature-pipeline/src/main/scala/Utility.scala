@@ -38,7 +38,7 @@ import scala.collection.JavaConversions._
 import com.spotify.scio._
 import resource._
 
-case class VesselMetadata(mmsi: Int) {
+case class VesselMetadata(mmsi: Int, isFishingVessel: Boolean = false) {
   def flagState = CountryCodes.fromMmsi(mmsi)
 }
 
@@ -87,10 +87,10 @@ case class SingleEncounter(startTime: Instant,
 }
 
 case class AnchoragePoint(meanLocation: LatLon,
-                          vessels: Seq[VesselMetadata],
-                          knownFishingVesselCount: Int,
+                          vessels: Set[VesselMetadata],
                           meanDistanceToShore: DoubleU[kilometer],
                           meanDriftRadius: DoubleU[kilometer]) {
+  def knownFishingVesselCount: Int = vessels.filter(_.isFishingVessel).size
   def toJson = {
     val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
     ("id" -> id) ~
@@ -100,7 +100,8 @@ case class AnchoragePoint(meanLocation: LatLon,
       ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
       ("flag_state_distribution" -> flagStateDistribution) ~
       ("mmsis" -> vessels.map(_.mmsi)) ~
-      ("mean_distance_to_shore_km" -> meanDistanceToShore.value)
+      ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
+      ("mean_drift_radius_km" -> meanDriftRadius.value)
   }
 
   def id: String =
@@ -113,11 +114,17 @@ case class Anchorage(meanLocation: LatLon,
                      meanDriftRadius: DoubleU[kilometer]) {
   def id: String =
     meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
+  def knownFishingVesselCount: Int = vessels.filter(_.isFishingVessel).size
+  lazy val vessels = anchoragePoints.flatMap(_.vessels).toSet
 
   def toJson = {
+    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
     ("id" -> id) ~
       ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
+      ("unique_vessel_count" -> vessels.size) ~
+      ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
+      ("flag_state_distribution" -> flagStateDistribution) ~
       ("anchorage_points" -> anchoragePoints.toSeq.sortBy(_.id).map(_.id)) ~
       ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
       ("mean_drift_radius_km" -> meanDriftRadius.value)
@@ -126,7 +133,7 @@ case class Anchorage(meanLocation: LatLon,
 
 object Anchorage {
   def fromAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]) = {
-    val weights = anchoragePoints.map(_.vessels.length.toDouble)
+    val weights = anchoragePoints.map(_.vessels.size.toDouble)
     Anchorage(LatLon.weightedMean(anchoragePoints.map(_.meanLocation), weights),
               anchoragePoints.toSet,
               anchoragePoints.map(_.meanDistanceToShore).weightedMean(weights),

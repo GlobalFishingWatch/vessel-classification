@@ -19,8 +19,7 @@ import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._
 
 object Anchorages {
-  def findAnchoragePointCells(input: SCollection[(VesselMetadata, ProcessedLocations)],
-                              knownFishingMMSIs: Set[Int]): SCollection[AnchoragePoint] = {
+  def findAnchoragePointCells(input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[AnchoragePoint] = {
 
     input.flatMap {
       case (md, processedLocations) =>
@@ -32,15 +31,11 @@ object Anchorages {
       case (cell, visits) =>
         val centralPoint = LatLon.mean(visits.map(_._2.location))
         val uniqueVessels = visits.map(_._1).toIndexedSeq.distinct
-        val fishingVesselCount = uniqueVessels.filter { md =>
-          knownFishingMMSIs.contains(md.mmsi)
-        }.size
         val meanDistanceToShore = visits.map { _._2.meanDistanceToShore }.mean
         val meanDriftRadius = visits.map { _._2.meanDriftRadius }.mean
 
         AnchoragePoint(centralPoint,
-                       uniqueVessels,
-                       fishingVesselCount,
+                       uniqueVessels.toSet,
                        meanDistanceToShore,
                        meanDriftRadius)
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForAnchorage }

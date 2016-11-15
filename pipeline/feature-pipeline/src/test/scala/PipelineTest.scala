@@ -69,7 +69,7 @@ class PipelineTests extends PipelineSpec with Matchers {
           TableRow("mmsi" -> "45", "foo" -> "bar")
         ))
       val locationRecords =
-        Pipeline.readJsonRecords(Seq(input))
+        Pipeline.readJsonRecords(Seq(input), Set())
 
       locationRecords should beEmpty
     }
@@ -83,7 +83,7 @@ class PipelineTests extends PipelineSpec with Matchers {
           buildMessage(mmsi = 12345, timestamp = "2016-01-01T00:00:00Z", lon = 21.3, lat = 4.6)
         ))
       val locationRecords =
-        Pipeline.readJsonRecords(Seq(input))
+        Pipeline.readJsonRecords(Seq(input), Set())
 
       locationRecords should beEmpty
     }
@@ -106,7 +106,7 @@ class PipelineTests extends PipelineSpec with Matchers {
                                        vlr("2016-01-01T00:03:00Z", lat = 68.4, lon = 32.0)))
 
       val locationRecords =
-        Pipeline.readJsonRecords(Seq(input))
+        Pipeline.readJsonRecords(Seq(input), Set())
 
       locationRecords should haveSize(2)
       locationRecords should equalMapOf(correctRecords)
@@ -179,11 +179,11 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
 class FeatureBuilderTests extends PipelineSpec with Matchers {
   val anchorageLocations = IndexedSeq(
     Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]),
-        Seq(VesselMetadata(1)), 0, 0.0.of[kilometer], 0.0.of[kilometer]))),
+        Set(VesselMetadata(1)), 0.0.of[kilometer], 0.0.of[kilometer]))),
     Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4686489.of[degrees], 55.2206029.of[degrees]),
-        Seq(VesselMetadata(1)), 0, 0.0.of[kilometer], 0.0.of[kilometer]))),
+        Set(VesselMetadata(1)), 0.0.of[kilometer], 0.0.of[kilometer]))),
     Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), 
-        Seq(VesselMetadata(1)), 0, 0.0.of[kilometer], 0.0.of[kilometer]))))
+        Set(VesselMetadata(1)), 0.0.of[kilometer], 0.0.of[kilometer]))))
 
   val vesselPath = Seq(vlr("2011-07-01T00:00:00Z", -1.4065933, 55.2350923, speed = 1.0),
                        vlr("2011-07-01T00:05:00Z", -1.4218712, 55.2342113, speed = 1.0),
