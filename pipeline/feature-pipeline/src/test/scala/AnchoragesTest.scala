@@ -8,13 +8,14 @@ import io.github.karols.units.SI._
 
 import org.joda.time.{Duration, Instant}
 import org.scalatest._
+import org.skytruth.common.AdditionalUnits._
+import org.skytruth.common.LatLon
 
 import scala.collection.{mutable, immutable}
 
-class AnchorageVisitsTests extends PipelineSpec with Matchers {
-  import TestHelper._
-  import AdditionalUnits._
+import TestHelper._
 
+class AnchorageVisitsTests extends PipelineSpec with Matchers {
   val anchoragePoint1 =
     AnchoragePoint(LatLon(0.0.of[degrees], 0.0.of[degrees]),
                    Seq(VesselMetadata(1)),
@@ -89,9 +90,6 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
 }
 
 class AnchoragesGroupingTests extends PipelineSpec with Matchers {
-  import TestHelper._
-  import AdditionalUnits._
-
   def anchoragePointFromS2CellToken(token: String, vessels: Seq[VesselMetadata]) =
     AnchoragePoint(LatLon.fromS2CellId(S2CellId.fromToken(token)), vessels, 0, 0.0.of[kilometer])
 

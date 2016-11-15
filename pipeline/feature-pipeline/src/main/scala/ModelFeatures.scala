@@ -7,7 +7,9 @@ import com.google.common.geometry.{S2, S2LatLng}
 import com.spotify.scio.values.SCollection
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.joda.time.{DateTimeZone, Duration, Instant, LocalDateTime}
-import org.skytruth.common.Implicits
+import org.skytruth.common.AdditionalUnits._
+import org.skytruth.common.Implicits._
+import org.skytruth.common.LatLon
 import org.tensorflow.example.{
   Example,
   Feature,
@@ -21,8 +23,6 @@ import org.tensorflow.example.{
 }
 
 object ModelFeatures extends LazyLogging {
-  import AdditionalUnits._
-  import Implicits._
 
   private case class BoundingAnchorage(startTime: Instant,
                                        endTime: Instant,

@@ -7,6 +7,8 @@ import io.github.karols.units.SI._
 import java.io.File
 import org.joda.time.{Duration, Instant}
 import org.scalatest._
+import org.skytruth.common.AdditionalUnits._
+import org.skytruth.common.LatLon
 import scala.concurrent._
 import ExecutionContext.Implicits.global
 import org.apache.commons.lang3.builder.ToStringBuilder._
@@ -14,8 +16,6 @@ import scala.collection.{mutable, immutable}
 import com.spotify.scio.io._
 
 object TestHelper {
-  import AdditionalUnits._
-
   def buildMessage(mmsi: Int,
                    timestamp: String,
                    lat: Double = 0.0,
@@ -58,10 +58,10 @@ def rvl(timestamp: String, lat: Double, lon: Double, pointDensity: Double = 1.0)
                             pointDensity)
 }
 
-class PipelineTests extends PipelineSpec with Matchers {
-  import AdditionalUnits._
-  import TestHelper._
+import TestHelper._
 
+
+class PipelineTests extends PipelineSpec with Matchers {
   "The pipeline" should "filter out messages without location" in {
     runWithContext { sc =>
       val input = sc.parallelize(
@@ -115,9 +115,6 @@ class PipelineTests extends PipelineSpec with Matchers {
 }
 
 class VesselSeriesTests extends PipelineSpec with Matchers {
-  import TestHelper._
-  import AdditionalUnits._
-
   "The pipeline" should "successfully thin points down" in {
     val inputRecords = Seq(vlr("2011-07-01T00:00:00Z", lat = 10.0, lon = 10.0),
                            vlr("2011-07-01T00:02:00Z", lat = 10.0, lon = 10.0),
@@ -180,9 +177,6 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
 }
 
 class FeatureBuilderTests extends PipelineSpec with Matchers {
-  import TestHelper._
-  import AdditionalUnits._
-
   val anchorageLocations = IndexedSeq(
     Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]),
         Seq(VesselMetadata(1)), 0, 0.0.of[kilometer]))),
@@ -278,9 +272,6 @@ class FeatureBuilderTests extends PipelineSpec with Matchers {
 }
 
 class LocationResamplerTests extends PipelineSpec with Matchers {
-  import TestHelper._
-  import AdditionalUnits._
-
   "The resampler" should "resample points, but not if they are too far apart" in {
     val inputRecords = Seq(vlr("2011-06-30T23:58:00Z", lat = 10.0, lon = 10.0),
                            // Pick up the exact value at 00:00:00
