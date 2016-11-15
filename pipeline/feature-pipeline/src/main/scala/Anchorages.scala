@@ -36,8 +36,13 @@ object Anchorages {
           knownFishingMMSIs.contains(md.mmsi)
         }.size
         val meanDistanceToShore = visits.map { _._2.meanDistanceToShore }.mean
+        val meanDriftRadius = visits.map { _._2.meanDriftRadius }.mean
 
-        AnchoragePoint(centralPoint, uniqueVessels, fishingVesselCount, meanDistanceToShore)
+        AnchoragePoint(centralPoint,
+                       uniqueVessels,
+                       fishingVesselCount,
+                       meanDistanceToShore,
+                       meanDriftRadius)
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForAnchorage }
   }
 

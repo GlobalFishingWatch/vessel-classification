@@ -141,36 +141,36 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
   }
 
   "The pipeline" should "remove long stationary periods" in {
-    val inputRecords = Seq(vlr("2011-07-01T00:00:00Z", lat = 10, lon = 10),
-                           vlr("2011-07-02T00:00:00Z", lat = 10, lon = 10),
-                           vlr("2011-07-03T00:00:00Z", lat = 10, lon = 10),
-                           vlr("2011-07-04T00:00:00Z", lat = 10, lon = 10),
+    val inputRecords = Seq(vlr("2011-07-01T00:00:00Z", lat = 10, lon = 10, distanceToShore=400.0),
+                           vlr("2011-07-02T00:00:00Z", lat = 10, lon = 10, distanceToShore=400.0),
+                           vlr("2011-07-03T00:00:00Z", lat = 10, lon = 10, distanceToShore=400.0),
+                           vlr("2011-07-04T00:00:00Z", lat = 10, lon = 10, distanceToShore=400.0),
                            vlr("2011-07-05T00:00:00Z", lat = 11, lon = 10),
                            vlr("2011-07-06T00:00:00Z", lat = 12, lon = 10),
                            vlr("2011-07-07T00:00:00Z", lat = 12, lon = 10),
                            vlr("2011-07-08T00:00:00Z", lat = 13, lon = 10),
                            vlr("2011-07-09T00:00:00Z", lat = 14, lon = 10),
-                           vlr("2011-07-10T00:00:00Z", lat = 14, lon = 10),
-                           vlr("2011-07-12T00:00:00Z", lat = 14, lon = 10),
+                           vlr("2011-07-10T00:00:00Z", lat = 14, lon = 10.001),
+                           vlr("2011-07-12T00:00:00Z", lat = 14, lon = 10.002),
                            vlr("2011-07-13T00:00:00Z", lat = 15, lon = 10),
                            vlr("2011-07-14T00:00:00Z", lat = 16, lon = 10))
 
-    val expectedLocations = Seq(vlr("2011-07-01T00:00:00Z", lat = 10, lon = 10),
-                                vlr("2011-07-04T00:00:00Z", lat = 10, lon = 10),
+    val expectedLocations = Seq(vlr("2011-07-01T00:00:00Z", lat = 10, lon = 10, distanceToShore=400.0),
+                                vlr("2011-07-04T00:00:00Z", lat = 10, lon = 10, distanceToShore=400.0),
                                 vlr("2011-07-05T00:00:00Z", lat = 11, lon = 10),
                                 vlr("2011-07-06T00:00:00Z", lat = 12, lon = 10),
                                 vlr("2011-07-07T00:00:00Z", lat = 12, lon = 10),
                                 vlr("2011-07-08T00:00:00Z", lat = 13, lon = 10),
                                 vlr("2011-07-09T00:00:00Z", lat = 14, lon = 10),
-                                vlr("2011-07-12T00:00:00Z", lat = 14, lon = 10),
+                                vlr("2011-07-12T00:00:00Z", lat = 14, lon = 10.002),
                                 vlr("2011-07-13T00:00:00Z", lat = 15, lon = 10),
                                 vlr("2011-07-14T00:00:00Z", lat = 16, lon = 10))
 
     val expectedStationaryPeriods = Seq(
       StationaryPeriod(LatLon(10.0.of[degrees], 10.0.of[degrees]),
-          Duration.standardHours(24 * 3), 500.0.of[kilometer]),
-      StationaryPeriod(LatLon(14.0.of[degrees], 10.0.of[degrees]),
-          Duration.standardHours(24 * 3), 500.0.of[kilometer]))
+          Duration.standardHours(24 * 3), 400.0.of[kilometer], 0.0.of[kilometer]),
+      StationaryPeriod(LatLon(14.0.of[degrees], 10.001.of[degrees]),
+          Duration.standardHours(24 * 3), 500.0.of[kilometer], 0.07188281512413591.of[kilometer]))
 
     val result = Pipeline.removeStationaryPeriods(inputRecords)
 
@@ -185,11 +185,11 @@ class FeatureBuilderTests extends PipelineSpec with Matchers {
 
   val anchorageLocations = IndexedSeq(
     Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]),
-        Seq(VesselMetadata(1)), 0, 0.0.of[kilometer]))),
+        Seq(VesselMetadata(1)), 0, 0.0.of[kilometer], 0.0.of[kilometer]))),
     Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4686489.of[degrees], 55.2206029.of[degrees]),
-        Seq(VesselMetadata(1)), 0, 0.0.of[kilometer]))),
+        Seq(VesselMetadata(1)), 0, 0.0.of[kilometer], 0.0.of[kilometer]))),
     Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), 
-        Seq(VesselMetadata(1)), 0, 0.0.of[kilometer]))))
+        Seq(VesselMetadata(1)), 0, 0.0.of[kilometer], 0.0.of[kilometer]))))
 
   val vesselPath = Seq(vlr("2011-07-01T00:00:00Z", -1.4065933, 55.2350923, speed = 1.0),
                        vlr("2011-07-01T00:05:00Z", -1.4218712, 55.2342113, speed = 1.0),
