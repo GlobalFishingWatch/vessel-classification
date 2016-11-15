@@ -8,6 +8,7 @@ from pkg_resources import resource_filename
 import sys
 from . import model
 from . import utility
+from . import params
 from .trainer import Trainer
 import importlib
 import tensorflow as tf
@@ -57,7 +58,7 @@ def main(args):
         raise
 
     metadata_file = os.path.abspath(
-        resource_filename('classification.data', 'net_training_20161115.csv'))
+        resource_filename('classification.data', params.metadata_file))
     if not os.path.exists(metadata_file):
         logging.fatal("Could not find metadata file: %s.", metadata_file)
         sys.exit(-1)
