@@ -4,10 +4,17 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.spotify.scio._
+
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
 import scala.collection.{mutable, immutable}
+
+import resource._
 
 object Implicits {
   implicit class RichLogger(val logger: Logger) {
@@ -38,8 +45,7 @@ object Implicits {
     }
   }
 
-  implicit class RicherDoubleUIterable[T <: io.github.karols.units.MUnit](
-      val iterable: Iterable[DoubleU[T]]) {
+  implicit class RicherDoubleUIterable[T <: MUnit](val iterable: Iterable[DoubleU[T]]) {
     def mean: DoubleU[T] = {
       var acc = 0.0
       var count = 0
@@ -96,4 +102,23 @@ object GcpConfig extends LazyLogging {
 case class GcpConfig(startTime: DateTime, projectId: String, private val rootPath: String) {
   def dataflowStagingPath = s"$rootPath/pipeline/staging"
   def pipelineOutputPath = s"$rootPath/pipeline/output"
+}
+
+case class IteratorWithCurrent[T](private val iterator: Iterator[T]) {
+  private def nextOption(): Option[T] =
+    if (iterator.hasNext) {
+      Some(iterator.next())
+    } else {
+      None
+    }
+
+  var current: Option[T] = nextOption()
+
+  def getNext() { current = nextOption() }
+}
+
+object ScioContextResource {
+  implicit def scioContextResource[A <: ScioContext] = new Resource[A] {
+    override def close(r: A) = r.close()
+  }
 }
