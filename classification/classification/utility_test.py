@@ -100,7 +100,7 @@ class MetadataConsistencyTest(tf.test.TestCase):
     def test_metadata_consistency(self):
         from pkg_resources import resource_filename
         metadata_file = os.path.abspath(
-            resource_filename('data', 'net_training_20161111.csv'))
+            resource_filename('data', 'net_training_20161115.csv'))
         self.assertTrue(os.path.exists(metadata_file))
 
         is_fishing_labels = set()
