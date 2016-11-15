@@ -103,8 +103,10 @@ case class StationaryPeriod(location: LatLon,
                             meanDistanceToShore: DoubleU[kilometer])
 
 trait LocationAnnotation
-case class Adjacency(numNeighbours: Int,
-                     closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)]) extends LocationAnnotation
+case class Adjacency(
+    numNeighbours: Int,
+    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)])
+    extends LocationAnnotation
 
 /* FIXME: To replace the special classes below later... Included here
    to illustrate how LocationAnnotation subclasses are intended to be
@@ -116,7 +118,7 @@ case class InstantaneousInfo(speed: DoubleU[knots],
                              heading: DoubleU[degrees]) extends LocationAnnotation
 case class AtAnchorage(anchorage: Anchorage) extends LocationAnnotation
 case class InAnchorageVisit(visit: AnchorageVisit) extends LocationAnnotation
-*/
+ */
 
 case class ProcessedLocations(locations: Seq[VesselLocationRecord],
                               stationaryPeriods: Seq[StationaryPeriod])

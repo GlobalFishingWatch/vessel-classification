@@ -106,36 +106,41 @@ object Encounters extends LazyLogging {
     }
   }
 
-  def annotateAdjacency(locations: SCollection[(VesselMetadata, ProcessedLocations)],
-                        adjecencies: SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])])
+  def annotateAdjacency(
+      locations: SCollection[(VesselMetadata, ProcessedLocations)],
+      adjecencies: SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])])
     : SCollection[(VesselMetadata, ProcessedLocations)] = {
-    locations.join(adjecencies).map({
-      case (vessel, (locations, resampled)) => {
-        val resampledIter = resampled.iterator.buffered
-        var current = resampledIter.next()
-        (
-          vessel,
-          locations.copy(
-            locations = locations.locations.map(location => {
-              while (  abs(new Duration(current.locationRecord.timestamp, location.timestamp).getMillis())
-                     < abs(new Duration(resampledIter.head.locationRecord.timestamp, location.timestamp).getMillis())) {
-                current = resampledIter.next()
-              }
-              location.copy(annotations = (
-                Adjacency(
-                  current.numNeighbours,
-                  current.closestNeighbour
-                )
-                +: location.annotations))
-            })
+    locations
+      .join(adjecencies)
+      .map({
+        case (vessel, (locations, resampled)) => {
+          val resampledIter = resampled.iterator.buffered
+          var current = resampledIter.next()
+          (
+            vessel,
+            locations.copy(
+              locations = locations.locations.map(location => {
+                while (abs(new Duration(current.locationRecord.timestamp, location.timestamp)
+                         .getMillis())
+                         < abs(new Duration(resampledIter.head.locationRecord.timestamp,
+                                            location.timestamp).getMillis())) {
+                  current = resampledIter.next()
+                }
+                location.copy(
+                  annotations = (Adjacency(
+                      current.numNeighbours,
+                      current.closestNeighbour
+                    )
+                      +: location.annotations))
+              })
+            )
           )
-        )
-      }
-    })
+        }
+      })
   }
 
   def calculateAdjacency(interpolateIncrementSeconds: Duration,
-                        vesselSeries: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
+                         vesselSeries: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
     : SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])] = {
     val s2Level = 12
 
