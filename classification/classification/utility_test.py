@@ -100,7 +100,7 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
 def _get_metadata_file():
     from pkg_resources import resource_filename
     return os.path.abspath(
-            resource_filename('classification.data', params.metaclass_file))
+            resource_filename('classification.data', params.metadata_file))
 
 
 class MetadataConsistencyTest(tf.test.TestCase):
