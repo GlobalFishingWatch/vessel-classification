@@ -91,7 +91,11 @@ case class AnchoragePoint(meanLocation: LatLon,
                           meanDistanceToShore: DoubleU[kilometer],
                           meanDriftRadius: DoubleU[kilometer]) {
   def toJson = {
-    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
+    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2).map {
+      case (name, count) =>
+        ("name" -> name) ~
+          ("count" -> count)
+    }
     val knownFishingVesselCount = vessels.filter(_.isFishingVessel).size
     ("id" -> id) ~
       ("latitude" -> meanLocation.lat.value) ~
@@ -117,7 +121,11 @@ case class Anchorage(meanLocation: LatLon,
 
   def toJson = {
     val vessels = anchoragePoints.flatMap(_.vessels).toSet
-    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
+    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2).map {
+      case (name, count) =>
+        ("name" -> name) ~
+          ("count" -> count)
+    }
     val knownFishingVesselCount = vessels.filter(_.isFishingVessel).size
 
     ("id" -> id) ~
