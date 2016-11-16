@@ -67,7 +67,7 @@ object TestHelper {
                            speed.of[knots],
                            course.of[degrees],
                            heading.of[degrees]),
-      Adjacency(0, None))
+      Adjacency(numNeighbours, closestNeighbour))
 
   def rvl(timestamp: String, lat: Double, lon: Double, pointDensity: Double = 1.0) =
     ResampledVesselLocation(ts(timestamp),

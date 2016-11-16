@@ -124,7 +124,7 @@ object Encounters extends LazyLogging {
                 while (resampledIter.hasNext
                        && abs(new Duration(current.locationRecord.timestamp, location.timestamp)
                          .getMillis())
-                          < abs(new Duration(resampledIter.head.locationRecord.timestamp,
+                          > abs(new Duration(resampledIter.head.locationRecord.timestamp,
                                             location.timestamp).getMillis())) {
                   current = resampledIter.next()
                 }
