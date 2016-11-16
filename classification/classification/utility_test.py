@@ -108,8 +108,9 @@ class MetadataConsistencyTest(tf.test.TestCase):
         metadata_file = _get_metadata_file()
         self.assertTrue(os.path.exists(metadata_file))
         is_fishing_labels = set()
+        # By putting '' in these sets we can safely remove it later
         coarse_labels = set(
-            [''])  # By putting '' in these sets we can safely remove it later
+            [''])  
         fine_labels = set([''])
         for row in utility.metadata_file_reader(metadata_file):
             is_fishing_labels.add(row['is_fishing'].strip())
@@ -133,7 +134,7 @@ class MetadataConsistencyTest(tf.test.TestCase):
 class MultihotLabelConsistencyTest(tf.test.TestCase):
     def test_fine_label_consistency(self):
         names = []
-        for name, category in utility.vessel_categories.items():
+        for name, category in utility.VESSEL_CATEGORIES.items():
             for coarse, fine_list in category:
                 for fine in fine_list:
                     if fine not in names:
@@ -142,14 +143,14 @@ class MultihotLabelConsistencyTest(tf.test.TestCase):
             sorted(names), sorted(utility.VESSEL_CLASS_DETAILED_NAMES))
 
     def test_coarse_label_consistency(self):
-        names = set([c for (c, _) in utility.vessel_categories['coarse']])
+        names = set([c for (c, _) in utility.VESSEL_CATEGORIES['coarse']])
         # Longliners is still a valid category in multihot since we
         # support overlapping categories, but not in regular.
         names.remove('Longliners')
         self.assertEquals(names, set(utility.VESSEL_CLASS_NAMES))
 
     def test_fishing_label_consistency(self):
-        names = set([c for (c, _) in utility.vessel_categories['fishing']])
+        names = set([c for (c, _) in utility.VESSEL_CATEGORIES['fishing']])
         self.assertEquals(names, set(utility.FISHING_NONFISHING_NAMES))
 
 

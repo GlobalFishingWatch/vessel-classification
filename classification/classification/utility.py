@@ -17,14 +17,17 @@ import threading
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
-#TODO: (bitsofbits) export to config file
+#TODO: (bitsofbits) think about extracting to config file
 
 # The 'real' categories for multihotness are the fine categories, which 'coarse' and 'fishing' 
 # are defined in terms of. Any number of coarse categories, even with overlapping values can 
 # be defined in principle, although at present the interaction between the mulithot and non multihot
 # versions makes that more complicated.
 
-vessel_categories = {
+#TODO: (bitsofbits) replace the lists of (name, list) with ordered dicts. And/or consider other ways
+# to express the treelike structure so that it is more clear.
+
+VESSEL_CATEGORIES = {
     'coarse': [
         ['Longliners', ['Drifting longlines', 'Set longlines']],
         ['Trawlers', ['Trawlers']],
@@ -734,8 +737,8 @@ def build_multihot_lookup_table():
     # There are three levels of categories we are concerned with fishing / nonfishing, coarse labels, and fine
     # labels. All items should have fishing / nonfishing.
     n_fine = len(VESSEL_CLASS_DETAILED_NAMES)
-    n_coarse = len(vessel_categories['coarse'])
-    n_fishing = len(vessel_categories['fishing'])
+    n_coarse = len(VESSEL_CATEGORIES['coarse'])
+    n_fishing = len(VESSEL_CATEGORIES['fishing'])
     assert n_fishing == 2
     # Items with a fine label go in [0, n_fine), with a coarse label in [n_fine, n_fine + n_coarse), 
     # while fishing/ non-fishing for in [n_fine + n_coarse, n_fine + n_coarse + 2)
@@ -743,11 +746,11 @@ def build_multihot_lookup_table():
         [n_fine + n_coarse + 2, n_fine], dtype=np.int32)
     for i in range(n_fine):
         multihot_lookup_table[i, i] = 1
-    for i, (clbl, fine_labels) in enumerate(vessel_categories['coarse']):
+    for i, (clbl, fine_labels) in enumerate(VESSEL_CATEGORIES['coarse']):
         for flbl in fine_labels:
             j = VESSEL_CLASS_DETAILED_NAMES.index(flbl)
             multihot_lookup_table[n_fine + i, j] = 1
-    for i, (clbl, fine_labels) in enumerate(vessel_categories['fishing']):
+    for i, (clbl, fine_labels) in enumerate(VESSEL_CATEGORIES['fishing']):
         for flbl in fine_labels:
             j = VESSEL_CLASS_DETAILED_NAMES.index(flbl)
             multihot_lookup_table[n_fine + n_coarse + i, j] = 1
