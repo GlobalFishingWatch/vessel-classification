@@ -30,7 +30,7 @@ class Model(ModelBase):
 
     tower_params = [
         TowerParams(*x)
-        for x in [(32, [3], 2, 2, 1.0, True)] * 10 + [(32, [3], 2, 2, 0.8, True)
+        for x in [(32, [3], 2, 2, 1.0, True)] * 10 + [(32, [2], 2, 2, 0.8, True)
                                                      ]
     ]
 
@@ -79,6 +79,7 @@ class Model(ModelBase):
                 mc = current
 
                 for j, w in enumerate(tp.filter_widths):
+                    H, W, C = [int(x) for x in mc.get_shape().dims[1:]]    
                     mc = misconception_layer(
                         mc,
                         tp.filter_count,
