@@ -3,15 +3,15 @@ import tensorflow as tf
 
 from classification import utility
 from alex import vessel_classification, vessel_and_fishing_range_classification
-from tim import mixed_classification_multi_1
+from tim import mixed_classification_1, mixed_classification_multi_1
 
 # TODO(alexwilson): Feed some data in. Also check evaluation.build_json_results
 
 
 class ModelsTest(tf.test.TestCase):
     num_feature_dimensions = 11
-    model_classes = [mixed_classification_multi_1.Model, vessel_classification.Model,
-                     vessel_and_fishing_range_classification.Model]
+    model_classes = [mixed_classification_1.Model, mixed_classification_multi_1.Model, 
+                     vessel_classification.Model, vessel_and_fishing_range_classification.Model]
 
     def _build_model_input(self, model):
         feature = [0.0] * model.num_feature_dimensions
@@ -39,18 +39,20 @@ class ModelsTest(tf.test.TestCase):
         return model.build_inference_net(features, timestamps, mmsis)
 
     def test_model_training_nets(self):
-        for model_class in self.model_classes:
+        for i, model_class in enumerate(self.model_classes):
             with self.test_session():
-                optimizer, trainers = self._build_model_training_net(
-                    model_class)
+                with tf.variable_scope("training-test-{}".format(i)):
+                    optimizer, trainers = self._build_model_training_net(
+                        model_class)
 
     def test_model_inference_nets(self):
-        for model_class in self.model_classes:
+        for i, model_class in enumerate(self.model_classes):
             with self.test_session():
-                evaluations = self._build_model_inference_net(model_class)
+                with tf.variable_scope("inference-test-{}".format(i)):
+                    evaluations = self._build_model_inference_net(model_class)
 
-                for e in evaluations:
-                    e.build_test_metrics()
+                    for e in evaluations:
+                        e.build_test_metrics()
 
 
 if __name__ == '__main__':
