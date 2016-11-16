@@ -58,7 +58,7 @@ def main(args):
         raise
 
     metadata_file = os.path.abspath(
-        resource_filename('classification.data', params.metaclass_file))
+        resource_filename('classification.data', params.metadata_file))
     if not os.path.exists(metadata_file):
         logging.fatal("Could not find metadata file: %s.", metadata_file)
         sys.exit(-1)
