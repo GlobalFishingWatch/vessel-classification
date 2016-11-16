@@ -25,22 +25,28 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 # versions makes that more complicated.
 
 vessel_categories = {
-'coarse': [
-    ['Longliners', ['Drifting longlines', 'Set longlines']], 
-    ['Trawlers', ['Trawlers']], 
-    ['Fixed gear', ['Pots and traps', 'Set gillnets', 'Set longlines']], 
-    ['Drifting longlines',  ['Drifting longlines']],
-    ['Purse seines', ['Purse seines']], 
-['Squid', ['Squid']], ['Pole and line', ['Pole and line']], ['Trollers', ['Trollers']], ['Cargo/Tanker', 
-['Cargo', 'Tanker']], ['Reefer', ['Reefer']], ['Passenger', ['Motor passenger', 'Sailing']], 
-['Seismic vessel', ['Seismic vessel']], ['Tug/Pilot/Supply', ['Tug', 'Pilot', 'Supply']]], 
-'fishing': [
-    ['Fishing', ['Drifting longlines', 'Set longlines', 'Trawlers', 'Pots and traps', 'Set gillnets', 'Purse seines', 
-        'Squid', 'Pole and line', 'Trollers']], 
-    ['Non-fishing', ['Cargo', 'Tanker', 'Reefer', 'Motor passenger', 'Sailing', 'Seismic vessel', 
-        'Tug', 'Pilot', 'Supply']]]}
-
-
+    'coarse': [
+        ['Longliners', ['Drifting longlines', 'Set longlines']],
+        ['Trawlers', ['Trawlers']],
+        ['Fixed gear', ['Pots and traps', 'Set gillnets', 'Set longlines']],
+        ['Drifting longlines', ['Drifting longlines']],
+        ['Purse seines', ['Purse seines']], ['Squid', ['Squid']],
+        ['Pole and line', ['Pole and line']], ['Trollers', ['Trollers']], [
+            'Cargo/Tanker', ['Cargo', 'Tanker']
+        ], ['Reefer', ['Reefer']],
+        ['Passenger', ['Motor passenger', 'Sailing']],
+        ['Seismic vessel', ['Seismic vessel']],
+        ['Tug/Pilot/Supply', ['Tug', 'Pilot', 'Supply']]
+    ],
+    'fishing': [
+        ['Fishing', ['Drifting longlines', 'Set longlines', 'Trawlers',
+                     'Pots and traps', 'Set gillnets', 'Purse seines', 'Squid',
+                     'Pole and line', 'Trollers']],
+        ['Non-fishing',
+         ['Cargo', 'Tanker', 'Reefer', 'Motor passenger', 'Sailing',
+          'Seismic vessel', 'Tug', 'Pilot', 'Supply']]
+    ]
+}
 """ The coarse vessel label set. """
 VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
                       'Seismic vessel', 'Fixed gear', 'Reefer',
@@ -55,13 +61,11 @@ VESSEL_CLASS_DETAILED_NAMES = [
 ]
 
 FISHING_NONFISHING_NAMES = ['Fishing', 'Non-fishing']
-
 """ The vessel length classes. """
 VESSEL_LENGTH_CLASSES = [
     '0-12m', '12-18m', '18-24m', '24-36m', '36-50m', '50-75m', '75-100m',
     '100-150m', '150m+'
 ]
-
 
 TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
@@ -584,7 +588,6 @@ def is_test(mmsi):
     return (_hash_mmsi_to_double(mmsi) >= 0.5)
 
 
-
 def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
                                           fishing_range_dict,
                                           fishing_range_training_upweight):
@@ -659,7 +662,7 @@ def metadata_file_reader(metadata_file):
         logging.info("Metadata columns: %s", reader.fieldnames)
         for row in reader:
             label = row['label'].strip()
-            sublabel =  row['sublabel'].strip()
+            sublabel = row['sublabel'].strip()
             if (sublabel == '') and (label in VESSEL_CLASS_DETAILED_NAMES):
                 row['sublabel'] = label
             yield row
@@ -727,7 +730,6 @@ def read_fishing_ranges(fishing_range_file):
     return fishing_range_dict
 
 
-
 def build_multihot_lookup_table():
     # There are three levels of categories we are concerned with fishing / nonfishing, coarse labels, and fine
     # labels. All items should have fishing / nonfishing.
@@ -737,7 +739,8 @@ def build_multihot_lookup_table():
     assert n_fishing == 2
     # Items with a fine label go in [0, n_fine), with a coarse label in [n_fine, n_fine + n_coarse), 
     # while fishing/ non-fishing for in [n_fine + n_coarse, n_fine + n_coarse + 2)
-    multihot_lookup_table = np.zeros([n_fine + n_coarse + 2, n_fine], dtype=np.int32)
+    multihot_lookup_table = np.zeros(
+        [n_fine + n_coarse + 2, n_fine], dtype=np.int32)
     for i in range(n_fine):
         multihot_lookup_table[i, i] = 1
     for i, (clbl, fine_labels) in enumerate(vessel_categories['coarse']):
@@ -748,11 +751,13 @@ def build_multihot_lookup_table():
         for flbl in fine_labels:
             j = VESSEL_CLASS_DETAILED_NAMES.index(flbl)
             multihot_lookup_table[n_fine + n_coarse + i, j] = 1
-    return (multihot_lookup_table, 
-        multihot_lookup_table[n_fine:n_fine + n_coarse], 
-        multihot_lookup_table[n_fine + n_coarse:])
+    return (multihot_lookup_table,
+            multihot_lookup_table[n_fine:n_fine + n_coarse],
+            multihot_lookup_table[n_fine + n_coarse:])
 
-multihot_lookup_table, multihot_coarse_lookup_table, multihot_fishing_lookup_table = build_multihot_lookup_table()
+
+multihot_lookup_table, multihot_coarse_lookup_table, multihot_fishing_lookup_table = build_multihot_lookup_table(
+)
 
 
 def multihot_encode(is_fishing, coarse, fine):
@@ -771,11 +776,9 @@ def multihot_encode(is_fishing, coarse, fine):
     #     TODO:(bitsofbits) We are assuming that is_fishing always defined. Check this in code
     n_fine = len(VESSEL_CLASS_DETAILED_NAMES)
     n_coarse = len(VESSEL_CLASS_NAMES)
-    keys = (tf.maximum(fine, 0) + 
-            tf.to_int32(tf.equal(fine, -1)) * (n_fine + tf.maximum(coarse, 0) +
-            tf.to_int32(tf.equal(coarse, -1)) * (n_coarse + is_fishing)))
+    keys = (
+        tf.maximum(fine, 0) + tf.to_int32(tf.equal(fine, -1)) *
+        (n_fine + tf.maximum(coarse, 0) + tf.to_int32(tf.equal(coarse, -1)) *
+         (n_coarse + is_fishing)))
     tf_multihot_lookup_table = tf.convert_to_tensor(multihot_lookup_table)
     return tf.gather(tf_multihot_lookup_table, keys)
-
-
-

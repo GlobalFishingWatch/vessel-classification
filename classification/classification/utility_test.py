@@ -100,7 +100,7 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
 def _get_metadata_file():
     from pkg_resources import resource_filename
     return os.path.abspath(
-            resource_filename('classification.data', params.metadata_file))
+        resource_filename('classification.data', params.metadata_file))
 
 
 class MetadataConsistencyTest(tf.test.TestCase):
@@ -108,7 +108,8 @@ class MetadataConsistencyTest(tf.test.TestCase):
         metadata_file = _get_metadata_file()
         self.assertTrue(os.path.exists(metadata_file))
         is_fishing_labels = set()
-        coarse_labels = set([''])   # By putting '' in these sets we can safely remove it later
+        coarse_labels = set(
+            [''])  # By putting '' in these sets we can safely remove it later
         fine_labels = set([''])
         for row in utility.metadata_file_reader(metadata_file):
             is_fishing_labels.add(row['is_fishing'].strip())
@@ -120,15 +121,16 @@ class MetadataConsistencyTest(tf.test.TestCase):
         # Is fishing should never be blank
         self.assertFalse('' in is_fishing_labels)
 
-        self.assertEquals(is_fishing_labels, set(utility.FISHING_NONFISHING_NAMES))
+        self.assertEquals(is_fishing_labels,
+                          set(utility.FISHING_NONFISHING_NAMES))
 
         self.assertEquals(coarse_labels, set(utility.VESSEL_CLASS_NAMES))
 
-        self.assertEquals(fine_labels, set(utility.VESSEL_CLASS_DETAILED_NAMES))
+        self.assertEquals(fine_labels,
+                          set(utility.VESSEL_CLASS_DETAILED_NAMES))
 
 
 class MultihotLabelConsistencyTest(tf.test.TestCase):
-
     def test_fine_label_consistency(self):
         names = []
         for name, category in utility.categories.items():
@@ -136,7 +138,8 @@ class MultihotLabelConsistencyTest(tf.test.TestCase):
                 for fine in fine_list:
                     if fine not in names:
                         names.append(fine)
-        self.assertEquals(sorted(names), sorted(utility.VESSEL_CLASS_DETAILED_NAMES))
+        self.assertEquals(
+            sorted(names), sorted(utility.VESSEL_CLASS_DETAILED_NAMES))
 
     def test_coarse_label_consistency(self):
         names = set([c for (c, _) in utility.categories['coarse']])
@@ -149,9 +152,7 @@ class MultihotLabelConsistencyTest(tf.test.TestCase):
         names = set([c for (c, _) in utility.categories['fishing']])
         self.assertEquals(names, set(utility.FISHING_NONFISHING_NAMES))
 
-
 # _OLD_COARSE = set(['Longliners'])
-
 
 # VESSEL_CLASS_NAMES = [x for (x, _) in categories['coarse'] if x not in _OLD_COARSE]
 # VESSEL_CLASS_DETAILED_NAMES = []
@@ -163,7 +164,6 @@ class MultihotLabelConsistencyTest(tf.test.TestCase):
 # FISHING_NONFISHING_NAMES = [x for (x, _) in categories['fishing']]
 
 # assert sorted(VESSEL_CLASS_NAMES) == sorted(_VESSEL_CLASS_NAMES), VESSEL_CLASS_NAMES
-
 
 if __name__ == '__main__':
     tf.test.main()

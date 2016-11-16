@@ -10,8 +10,10 @@ from tim import mixed_classification_1, mixed_classification_multi_1
 
 class ModelsTest(tf.test.TestCase):
     num_feature_dimensions = 11
-    model_classes = [mixed_classification_1.Model, mixed_classification_multi_1.Model, 
-                     vessel_classification.Model, vessel_and_fishing_range_classification.Model]
+    model_classes = [mixed_classification_1.Model,
+                     mixed_classification_multi_1.Model,
+                     vessel_classification.Model,
+                     vessel_and_fishing_range_classification.Model]
 
     def _build_model_input(self, model):
         feature = [0.0] * model.num_feature_dimensions
