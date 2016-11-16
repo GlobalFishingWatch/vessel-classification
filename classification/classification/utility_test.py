@@ -1,7 +1,5 @@
 import os
 import csv
-import os
-import sys
 import model
 import numpy as np
 import utility
