@@ -1,9 +1,11 @@
 import csv
 import os
+import sys
 import model
 import numpy as np
 import utility
 import tensorflow as tf
+from . import params
 
 
 class PythonFixedTimeExtractTest(tf.test.TestCase):
@@ -96,13 +98,16 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
                             'mmsi': '100003'}, 1.0))
 
 
+def _get_metadata_file():
+    from pkg_resources import resource_filename
+    return os.path.abspath(
+            resource_filename('classification.data', params.metadata_file))
+
+
 class MetadataConsistencyTest(tf.test.TestCase):
     def test_metadata_consistency(self):
-        from pkg_resources import resource_filename
-        metadata_file = os.path.abspath(
-            resource_filename('data', 'net_training_20161115.csv'))
+        metadata_file = _get_metadata_file()
         self.assertTrue(os.path.exists(metadata_file))
-
         is_fishing_labels = set()
         coarse_labels = set([''])   # By putting '' in these sets we can safely remove it later
         fine_labels = set([''])
