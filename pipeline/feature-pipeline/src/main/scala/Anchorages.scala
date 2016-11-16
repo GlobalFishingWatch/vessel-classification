@@ -13,7 +13,7 @@ import org.joda.time.{Duration}
 
 import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
-import org.skytruth.common.{AdjacencyLookup, LatLon}
+import org.skytruth.common.{AdjacencyLookup, LatLon, ValueCache}
 
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._
@@ -85,31 +85,35 @@ object Anchorages {
       minVisitDuration: Duration
   ): SCollection[(VesselMetadata, immutable.Seq[AnchorageVisit])] = {
     val si = anchorages.asListSideInput
+    val anchoragePointIdToAnchorageCache = ValueCache[Map[String, Anchorage]]()
+    val anchorageLookupCache = ValueCache[AdjacencyLookup[AnchoragePoint]]()
 
     locationEvents
       .withSideInputs(si)
       .map {
         case ((metadata, locations), ctx) => {
-          val anchoragePointToAnchorage = ctx(si).flatMap { ag =>
-            ag.anchoragePoints.map { a =>
-              (a.id, ag)
-            }
-          }.toMap
-          val allPorts = ctx(si).flatMap { ag =>
-            ag.anchoragePoints
+          val anchoragePointIdToAnchorage = anchoragePointIdToAnchorageCache.get { () =>
+            ctx(si).flatMap { ag =>
+              ag.anchoragePoints.map { a =>
+                (a.id, ag)
+              }
+            }.toMap
           }
-          val lookup =
-            AdjacencyLookup(allPorts,
+
+          val lookup = anchorageLookupCache.get { () =>
+            AdjacencyLookup(ctx(si).flatMap(_.anchoragePoints),
                             (anchorage: AnchoragePoint) => anchorage.meanLocation,
                             Parameters.anchorageVisitDistanceThreshold,
                             Parameters.anchoragesS2Scale)
+          }
+
           (metadata,
            locations
              .map((location) => {
                val anchoragePoints = lookup.nearby(location.location)
                if (anchoragePoints.length > 0) {
                  Some(
-                   AnchorageVisit(anchoragePointToAnchorage(anchoragePoints.head._2.id),
+                   AnchorageVisit(anchoragePointIdToAnchorage(anchoragePoints.head._2.id),
                                   location.timestamp,
                                   location.timestamp))
                } else {

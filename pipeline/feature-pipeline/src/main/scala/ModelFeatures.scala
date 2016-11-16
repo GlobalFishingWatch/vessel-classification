@@ -9,7 +9,7 @@ import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.joda.time.{DateTimeZone, Duration, Instant, LocalDateTime}
 import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
-import org.skytruth.common.{AdjacencyLookup, LatLon}
+import org.skytruth.common.{AdjacencyLookup, LatLon, ValueCache}
 import org.tensorflow.example.{
   Example,
   Feature,
@@ -178,6 +178,7 @@ object ModelFeatures extends LazyLogging {
       anchorages: SCollection[Anchorage]): SCollection[(VesselMetadata, SequenceExample)] = {
     val siAnchorages = anchorages.asListSideInput
 
+    val anchorageLookupCache = ValueCache[AdjacencyLookup[Anchorage]]()
     input
       .withSideInputs(siAnchorages)
       .filter {
@@ -185,12 +186,12 @@ object ModelFeatures extends LazyLogging {
       }
       .map {
         case ((metadata, processedLocations), s) =>
-          // TODO(alexwilson): Building the lookup once per vessel is hideously inefficient. It
-          // should be once per mapper task.
-          val anchorageLookup = AdjacencyLookup(s(siAnchorages),
-                                                (v: Anchorage) => v.meanLocation,
-                                                Parameters.anchorageVisitDistanceThreshold,
-                                                Parameters.anchoragesS2Scale)
+          lazy val anchorageLookup = anchorageLookupCache.get { () =>
+            AdjacencyLookup(s(siAnchorages),
+                            (v: Anchorage) => v.meanLocation,
+                            Parameters.anchorageVisitDistanceThreshold,
+                            Parameters.anchoragesS2Scale)
+          }
           val features = buildSingleVesselFeatures(processedLocations.locations, anchorageLookup)
           val featuresAsTFExample = buildTFExampleProto(metadata, features)
           (metadata, featuresAsTFExample)

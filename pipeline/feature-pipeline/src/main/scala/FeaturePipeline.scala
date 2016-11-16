@@ -31,7 +31,7 @@ import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 import org.skytruth.common.AdditionalUnits._
-import org.skytruth.common.{GcpConfig, LatLon}
+import org.skytruth.common.{GcpConfig, LatLon, ValueCache}
 import org.skytruth.common.Implicits._
 import org.skytruth.common.ScioContextResource._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
@@ -107,11 +107,18 @@ object Pipeline extends LazyLogging {
     // performance of the pipeline. Doing this with countByKey is much faster than
     // doing this via a groupBy.
     val mmsisWithSufficientPoints =
-      validRecords.countByKey.filter(_._2 >= minRequiredPositions).asMapSideInput
+      validRecords.countByKey.filter(_._2 >= minRequiredPositions).map(_._1).asListSideInput
 
+    val allowedMMSIs = ValueCache[Set[VesselMetadata]]()
+    var cachedMap: Option[Set[VesselMetadata]] = None
     val filteredValidRecords = validRecords
       .withSideInputs(mmsisWithSufficientPoints)
-      .filter { case ((vmd, _), ctx) => ctx(mmsisWithSufficientPoints).contains(vmd) }
+      .filter {
+        case ((vmd, _), ctx) =>
+          val mmsiSet = allowedMMSIs.get(() => ctx(mmsisWithSufficientPoints).toSet)
+
+          mmsiSet.contains(vmd)
+      }
       .toSCollection
 
     filteredValidRecords.groupByKey.map {
