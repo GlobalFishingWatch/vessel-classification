@@ -50,12 +50,14 @@ object ModelFeatures extends LazyLogging {
   }
 
   def buildSingleVesselFeatures(
-      input: Seq[VesselLocationRecord],
+      input: Seq[(Adjacency, VesselLocationRecord)],
       anchorageLookup: AdjacencyLookup[Anchorage]): Seq[Array[Double]] = {
-    val boundingAnchoragesIterator = input.flatMap { vlr =>
-      val localAnchorages = anchorageLookup.nearby(vlr.location)
-      localAnchorages.headOption.map { la =>
-        (vlr.timestamp, la)
+    val boundingAnchoragesIterator = input.flatMap {
+      case (adj, vlr) => {
+        val localAnchorages = anchorageLookup.nearby(vlr.location)
+        localAnchorages.headOption.map { la =>
+          (vlr.timestamp, la)
+        }
       }
     }.sliding(2).filter(_.size == 2).map {
       case Seq((startTime, la1), (endTime, la2)) =>
@@ -66,7 +68,7 @@ object ModelFeatures extends LazyLogging {
     input
       .sliding(3)
       .map {
-        case Seq(p0, p1, p2) =>
+        case Seq((a0, p0), (a1, p1), (a2, p2)) =>
           if (p0 == p1) {
             logger.fatal(s"p0 and p1 are the same: $p0, $p1")
           }
@@ -135,7 +137,8 @@ object ModelFeatures extends LazyLogging {
                                       integratedCogDeltaDegrees / 180.0,
                                       math.log(1.0 + distanceToShoreKm),
                                       math.log(1.0 + distanceToBoundingAnchorageKm),
-                                      math.log(1.0 + timeToBoundingAnchorageS))
+                                      math.log(1.0 + timeToBoundingAnchorageS),
+                                      a0.numNeighbours)
 
           feature.foreach { v =>
             if (v.isNaN || v.isInfinite) {
@@ -174,7 +177,7 @@ object ModelFeatures extends LazyLogging {
   }
 
   def buildVesselFeatures(
-      input: SCollection[(VesselMetadata, ProcessedLocations)],
+      input: SCollection[(VesselMetadata, ProcessedAdjacencyLocations)],
       anchorages: SCollection[Anchorage]): SCollection[(VesselMetadata, SequenceExample)] = {
     val siAnchorages = anchorages.asListSideInput
 

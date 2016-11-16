@@ -109,7 +109,7 @@ object Encounters extends LazyLogging {
   def annotateAdjacency(
       locations: SCollection[(VesselMetadata, ProcessedLocations)],
       adjecencies: SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])])
-    : SCollection[(VesselMetadata, ProcessedLocations)] = {
+    : SCollection[(VesselMetadata, ProcessedAdjacencyLocations)] = {
     locations
       .join(adjecencies)
       .map({
@@ -118,7 +118,8 @@ object Encounters extends LazyLogging {
           var current = resampledIter.next()
           (
             vessel,
-            locations.copy(
+            ProcessedAdjacencyLocations(
+              stationaryPeriods = locations.stationaryPeriods,
               locations = locations.locations.map(location => {
                 while (abs(new Duration(current.locationRecord.timestamp, location.timestamp)
                          .getMillis())
@@ -126,12 +127,13 @@ object Encounters extends LazyLogging {
                                             location.timestamp).getMillis())) {
                   current = resampledIter.next()
                 }
-                location.copy(
-                  annotations = (Adjacency(
-                      current.numNeighbours,
-                      current.closestNeighbour
-                    )
-                      +: location.annotations))
+                (
+                  Adjacency(
+                    current.numNeighbours,
+                    current.closestNeighbour
+                  ),
+                  location
+                )
               })
             )
           )

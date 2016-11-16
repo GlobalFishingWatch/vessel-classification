@@ -228,9 +228,8 @@ object Pipeline extends LazyLogging {
         Encounters.calculateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
 
       val processed =
-        Encounters.annotateAdjacency(
-          filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions),
-          adjacencies)
+        filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
+      val processedWithAdjecency = Encounters.annotateAdjacency(processed, adjacencies)
 
       val knownFishingMMSIs = loadFishingMMSIs()
 
@@ -253,7 +252,7 @@ object Pipeline extends LazyLogging {
           })
       }.saveAsTextFile(anchorageVisitsPath)
 
-      val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
+      val features = ModelFeatures.buildVesselFeatures(processedWithAdjecency, anchorages).map {
         case (md, feature) =>
           (s"${md.mmsi}", feature)
       }
