@@ -106,11 +106,15 @@ case class Adjacency(
     numNeighbours: Int,
     closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)])
 
+case class VesselLocationRecordWithAdjacency(
+    location: VesselLocationRecord,
+    adjacency: Adjacency)
+
 case class ProcessedLocations(locations: Seq[VesselLocationRecord],
                               stationaryPeriods: Seq[StationaryPeriod])
 
 case class ProcessedAdjacencyLocations(
-  locations: Seq[(Adjacency, VesselLocationRecord)],
+  locations: Seq[VesselLocationRecordWithAdjacency],
   stationaryPeriods: Seq[StationaryPeriod])
 
 case class VesselLocationRecord(timestamp: Instant,

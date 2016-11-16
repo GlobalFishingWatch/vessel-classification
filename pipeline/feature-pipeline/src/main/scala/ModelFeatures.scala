@@ -50,13 +50,13 @@ object ModelFeatures extends LazyLogging {
   }
 
   def buildSingleVesselFeatures(
-      input: Seq[(Adjacency, VesselLocationRecord)],
+      input: Seq[VesselLocationRecordWithAdjacency],
       anchorageLookup: AdjacencyLookup[Anchorage]): Seq[Array[Double]] = {
     val boundingAnchoragesIterator = input.flatMap {
-      case (adj, vlr) => {
-        val localAnchorages = anchorageLookup.nearby(vlr.location)
+      case vlra => {
+        val localAnchorages = anchorageLookup.nearby(vlra.location.location)
         localAnchorages.headOption.map { la =>
-          (vlr.timestamp, la)
+          (vlra.location.timestamp, la)
         }
       }
     }.sliding(2).filter(_.size == 2).map {
@@ -68,7 +68,10 @@ object ModelFeatures extends LazyLogging {
     input
       .sliding(3)
       .map {
-        case Seq((a0, p0), (a1, p1), (a2, p2)) =>
+        case Seq(
+          VesselLocationRecordWithAdjacency(p0, a0),
+          VesselLocationRecordWithAdjacency(p1, a1),
+          VesselLocationRecordWithAdjacency(p2, a2)) =>
           if (p0 == p1) {
             logger.fatal(s"p0 and p1 are the same: $p0, $p1")
           }

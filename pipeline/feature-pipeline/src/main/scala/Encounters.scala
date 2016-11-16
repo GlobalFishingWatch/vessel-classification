@@ -127,12 +127,12 @@ object Encounters extends LazyLogging {
                                             location.timestamp).getMillis())) {
                   current = resampledIter.next()
                 }
-                (
+                VesselLocationRecordWithAdjacency(
+                  location,
                   Adjacency(
                     current.numNeighbours,
                     current.closestNeighbour
-                  ),
-                  location
+                  )
                 )
               })
             )
