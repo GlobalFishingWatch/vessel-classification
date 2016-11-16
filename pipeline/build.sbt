@@ -25,8 +25,7 @@ lazy val commonSettings = Seq(
     "joda-time" % "joda-time" % "2.9.4",
     "org.apache.commons" % "commons-math3" % "3.4",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.3",
-    "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % "2.8.3",
-    "com.chuusai" %% "shapeless" % "2.3.2"
+    "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % "2.8.3"
   ),
   // Test dependencies.
   libraryDependencies ++= Seq(

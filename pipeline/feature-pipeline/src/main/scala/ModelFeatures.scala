@@ -186,7 +186,7 @@ object ModelFeatures extends LazyLogging {
       }
       .map {
         case ((metadata, processedLocations), s) =>
-          lazy val anchorageLookup = anchorageLookupCache.get { () =>
+          val anchorageLookup = anchorageLookupCache.get { () =>
             AdjacencyLookup(s(siAnchorages),
                             (v: Anchorage) => v.meanLocation,
                             Parameters.anchorageVisitDistanceThreshold,
