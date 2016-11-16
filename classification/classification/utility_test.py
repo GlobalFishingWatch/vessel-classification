@@ -109,8 +109,7 @@ class MetadataConsistencyTest(tf.test.TestCase):
         self.assertTrue(os.path.exists(metadata_file))
         is_fishing_labels = set()
         # By putting '' in these sets we can safely remove it later
-        coarse_labels = set(
-            [''])  
+        coarse_labels = set([''])
         fine_labels = set([''])
         for row in utility.metadata_file_reader(metadata_file):
             is_fishing_labels.add(row['is_fishing'].strip())
@@ -152,7 +151,6 @@ class MultihotLabelConsistencyTest(tf.test.TestCase):
     def test_fishing_label_consistency(self):
         names = set([c for (c, _) in utility.VESSEL_CATEGORIES['fishing']])
         self.assertEquals(names, set(utility.FISHING_NONFISHING_NAMES))
-
 
 
 if __name__ == '__main__':
