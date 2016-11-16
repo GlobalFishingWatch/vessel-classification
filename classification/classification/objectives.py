@@ -293,12 +293,12 @@ class MultiClassificationObjective(ObjectiveBase):
 
 
         # Look up the labels for each mmsi.
-        fishing_inds = {k: i for (i, (k, _)) in enumerate(utility.categories['fishing'])}
+        fishing_inds = {k: i for (i, (k, _)) in enumerate(utility.vessel_categories['fishing'])}
         is_fishing = tf.reshape(
             tf.py_func(lambda x: labels_from_mmsis(x, 'is_fishing', fishing_inds), [mmsis], [tf.int32]),
             shape=tf.shape(mmsis))
 
-        coarse_inds = {k: i for (i, (k, _)) in enumerate(utility.categories['coarse'])}
+        coarse_inds = {k: i for (i, (k, _)) in enumerate(utility.vessel_categories['coarse'])}
         coarse = tf.reshape(
             tf.py_func(lambda x: labels_from_mmsis(x, 'label', coarse_inds), [mmsis], [tf.int32]),
             shape=tf.shape(mmsis))
@@ -366,7 +366,7 @@ class MultiClassificationObjective(ObjectiveBase):
 
 
 
-                coarse_inds = {k: i for (i, (k, _)) in enumerate(utility.categories['coarse'])}
+                coarse_inds = {k: i for (i, (k, _)) in enumerate(utility.vessel_categories['coarse'])}
                 coarse_labels = tf.reshape(
                     tf.py_func(lambda x: labels_from_mmsis(x, 'label', coarse_inds), [self.mmsis], [tf.int32]),
                     shape=tf.shape(self.mmsis))
@@ -379,7 +379,7 @@ class MultiClassificationObjective(ObjectiveBase):
                     tf.batch_matmul(coarse_lookup, 
                         tf.reshape(self.prediction, 
                             [batch_size, len(utility.VESSEL_CLASS_DETAILED_NAMES), 1])),
-                                [batch_size, len(utility.categories['coarse'])])
+                                [batch_size, len(utility.vessel_categories['coarse'])])
 
                 coarse_prediction = tf.cast(tf.argmax(raw_coarse_prediction, 1), tf.int32)
 
@@ -389,7 +389,7 @@ class MultiClassificationObjective(ObjectiveBase):
                     tf.ones_like(coarse_labels))
 
 
-                fishing_inds = {k: i for (i, (k, _)) in enumerate(utility.categories['fishing'])}
+                fishing_inds = {k: i for (i, (k, _)) in enumerate(utility.vessel_categories['fishing'])}
                 is_fishing = tf.reshape(
                     tf.py_func(lambda x: labels_from_mmsis(x, 'is_fishing', fishing_inds), [self.mmsis], [tf.int32]),
                     shape=tf.shape(self.mmsis))
@@ -405,7 +405,7 @@ class MultiClassificationObjective(ObjectiveBase):
                     tf.batch_matmul(fishing_lookup, 
                         tf.reshape(self.prediction, 
                             [batch_size, len(utility.VESSEL_CLASS_DETAILED_NAMES), 1])),
-                                [batch_size, len(utility.categories['fishing'])])
+                                [batch_size, len(utility.vessel_categories['fishing'])])
 
                 fishing_prediction = tf.cast(tf.argmax(raw_fishing_prediction, 1), tf.int32)
 
