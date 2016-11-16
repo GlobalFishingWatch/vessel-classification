@@ -138,7 +138,9 @@ object ModelFeatures extends LazyLogging {
                                       math.log(1.0 + distanceToShoreKm),
                                       math.log(1.0 + distanceToBoundingAnchorageKm),
                                       math.log(1.0 + timeToBoundingAnchorageS),
-                                      a0.numNeighbours)
+                                      a0.numNeighbours,
+                                      a1.numNeighbours,
+                                      a2.numNeighbours)
 
           feature.foreach { v =>
             if (v.isNaN || v.isInfinite) {
