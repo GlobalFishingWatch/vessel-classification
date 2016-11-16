@@ -46,7 +46,7 @@ def evaluation_loop(master,
         with sv.managed_session(master, start_standard_services=False) as sess:
             try:
                 sv.saver.restore(sess, checkpoint_path)
-            except tf.erorrs.NotFoundError:
+            except tf.errors.NotFoundError:
                 logging.warning("Could not load check point, skipping")
                 continue
             sv.start_queue_runners(sess)
