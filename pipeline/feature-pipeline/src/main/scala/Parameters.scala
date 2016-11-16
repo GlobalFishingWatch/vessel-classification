@@ -6,6 +6,7 @@ import io.github.karols.units.SI._
 import org.joda.time.{Duration, Instant}
 
 object Parameters {
+  // TODO(alexwilson): This should be per year.
   val minRequiredPositions = 1000
   val minTimeBetweenPoints = Duration.standardMinutes(5)
 
@@ -19,7 +20,7 @@ object Parameters {
   val inputMeasuresPath =
     "gs://new-benthos-pipeline/data-production/measures-pipeline/st-segment"
   def measuresPathPattern(year: String) =
-      s"${Parameters.inputMeasuresPath}/$year-*-*/*.json"
+    s"${Parameters.inputMeasuresPath}/$year-*-*/*.json"
 
   val knownFishingMMSIs = "feature-pipeline/src/main/data/treniformis_known_fishing_mmsis_2016.txt"
 

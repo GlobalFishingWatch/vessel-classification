@@ -65,12 +65,14 @@ object Pipeline extends LazyLogging {
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
   // by ascending timestamp.
-  def readJsonRecords(inputs: Seq[SCollection[TableRow]], knownFishingMMSIs: Set[Int])
-    : SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
+  def readJsonRecords(
+      inputs: Seq[SCollection[TableRow]],
+      knownFishingMMSIs: Set[Int],
+      minRequiredPositions: Long): SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
 
     val input = SCollection.unionAll(inputs)
     // Keep only records with a location.
-    input
+    val validRecords = input
       .filter(json => json.containsKey("lat") && json.containsKey("lon"))
       // Build a typed location record with units of measure.
       .map(json => {
@@ -100,14 +102,25 @@ object Pipeline extends LazyLogging {
             .inRange(record.heading, -180.0.of[degrees], 180.of[degrees])
             .valid
       }
-      .groupByKey
-      .map {
-        case (metadata, records) =>
-          (metadata,
-           records.toIndexedSeq
-           // On occasion the same message seems to appear twice in the record. Remove.
-           .distinct.sortBy(_.timestamp.getMillis))
-      }
+
+    // Do an early filtering of MMSIs with insufficient points, to improve the downstream
+    // performance of the pipeline. Doing this with countByKey is much faster than
+    // doing this via a groupBy.
+    val mmsisWithSufficientPoints =
+      validRecords.countByKey.filter(_._2 >= minRequiredPositions).asMapSideInput
+
+    val filteredValidRecords = validRecords
+      .withSideInputs(mmsisWithSufficientPoints)
+      .filter { case ((vmd, _), ctx) => ctx(mmsisWithSufficientPoints).contains(vmd) }
+      .toSCollection
+
+    filteredValidRecords.groupByKey.map {
+      case (metadata, records) =>
+        (metadata,
+         records.toIndexedSeq
+         // On occasion the same message seems to appear twice in the record. Remove.
+         .distinct.sortBy(_.timestamp.getMillis))
+    }
   }
 
   def thinPoints(records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
@@ -169,16 +182,9 @@ object Pipeline extends LazyLogging {
   }
 
   def filterAndProcessVesselRecords(
-      input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
-      minRequiredPositions: Int): SCollection[(VesselMetadata, ProcessedLocations)] = {
-    // Remove vessels with insufficient locations.
-    val vesselsWithSufficientData = input.filter {
-      case (_, records) => records.length > minRequiredPositions
-    }
-
-    // TODO(alexwilson): Perhaps we should do the insufficient locations filtering
-    // after thinning and stationary point removal?
-    vesselsWithSufficientData.map {
+      input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
+    : SCollection[(VesselMetadata, ProcessedLocations)] = {
+    input.map {
       case (metadata, records) =>
         val thinnedPoints = thinPoints(records)
         val processedLocations = removeStationaryPeriods(thinnedPoints)
@@ -230,16 +236,16 @@ object Pipeline extends LazyLogging {
 
       val knownFishingMMSIs = loadFishingMMSIs()
 
+      val minValidLocations = 200
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
-        readJsonRecords(matches, knownFishingMMSIs)
+        readJsonRecords(matches, knownFishingMMSIs, Parameters.minRequiredPositions)
 
       val processed =
-        filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
+        filterAndProcessVesselRecords(locationRecords)
 
       val anchoragePoints =
         Anchorages.findAnchoragePointCells(processed)
       val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
-
 
       if (generateModelFeatures) {
         val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
