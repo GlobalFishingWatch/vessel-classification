@@ -51,6 +51,22 @@ object TestHelper {
                          course.of[degrees],
                          heading.of[degrees])
 
+  def vlra(timestamp: String,
+          lat: Double,
+          lon: Double,
+          distanceToShore: Double = 500.0,
+          speed: Double = 0.0,
+          course: Double = 0.0,
+          heading: Double = 0.0) =
+    VesselLocationRecordWithAdjacency(
+      VesselLocationRecord(ts(timestamp),
+                           LatLon(lat.of[degrees], lon.of[degrees]),
+                           distanceToShore.of[kilometer],
+                           speed.of[knots],
+                           course.of[degrees],
+                           heading.of[degrees]),
+      Adjacency(0, None))
+
 def rvl(timestamp: String, lat: Double, lon: Double, pointDensity: Double = 1.0) =
     ResampledVesselLocation(ts(timestamp),
                             LatLon(lat.of[degrees], lon.of[degrees]),
@@ -191,22 +207,22 @@ class FeatureBuilderTests extends PipelineSpec with Matchers {
     Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), 
         Seq(VesselMetadata(1)), 0, 0.0.of[kilometer]))))
 
-  val vesselPath = Seq(vlr("2011-07-01T00:00:00Z", -1.4065933, 55.2350923, speed = 1.0),
-                       vlr("2011-07-01T00:05:00Z", -1.4218712, 55.2342113, speed = 1.0),
-                       vlr("2011-07-01T00:10:00Z", -1.4467621, 55.2334282, speed = 1.0),
-                       vlr("2011-07-01T00:15:00Z", -1.4623833, 55.2310789, speed = 1.0),
-                       vlr("2011-07-01T00:20:00Z", -1.469593, 55.2287294, speed = 1.0),
-                       vlr("2011-07-01T00:25:00Z", -1.471138, 55.2267713, speed = 1.0),
-                       vlr("2011-07-01T00:30:00Z", -1.470623, 55.2236383, speed = 1.0),
-                       vlr("2011-07-01T00:35:00Z", -1.4704514, 55.2206029, speed = 1.0),
-                       vlr("2011-07-01T00:40:00Z", -1.4704514, 55.218057, speed = 1.0),
-                       vlr("2011-07-01T00:45:00Z", -1.4704514, 55.215217, speed = 1.0),
-                       vlr("2011-07-01T00:50:00Z", -1.4728546, 55.2116913, speed = 1.0),
-                       vlr("2011-07-01T01:00:00Z", -1.4718246, 55.2088509, speed = 1.0),
-                       vlr("2011-07-01T01:10:00Z", -1.4474487, 55.2057165, speed = 1.0),
-                       vlr("2011-07-01T01:20:00Z", -1.4278793, 55.2040512, speed = 1.0),
-                       vlr("2011-07-01T01:30:00Z", -1.4084816, 55.2036594, speed = 1.0),
-                       vlr("2011-07-01T01:40:00Z", -1.3998985, 55.2037573, speed = 1.0))
+  val vesselPath = Seq(vlra("2011-07-01T00:00:00Z", -1.4065933, 55.2350923, speed = 1.0),
+                       vlra("2011-07-01T00:05:00Z", -1.4218712, 55.2342113, speed = 1.0),
+                       vlra("2011-07-01T00:10:00Z", -1.4467621, 55.2334282, speed = 1.0),
+                       vlra("2011-07-01T00:15:00Z", -1.4623833, 55.2310789, speed = 1.0),
+                       vlra("2011-07-01T00:20:00Z", -1.469593, 55.2287294, speed = 1.0),
+                       vlra("2011-07-01T00:25:00Z", -1.471138, 55.2267713, speed = 1.0),
+                       vlra("2011-07-01T00:30:00Z", -1.470623, 55.2236383, speed = 1.0),
+                       vlra("2011-07-01T00:35:00Z", -1.4704514, 55.2206029, speed = 1.0),
+                       vlra("2011-07-01T00:40:00Z", -1.4704514, 55.218057, speed = 1.0),
+                       vlra("2011-07-01T00:45:00Z", -1.4704514, 55.215217, speed = 1.0),
+                       vlra("2011-07-01T00:50:00Z", -1.4728546, 55.2116913, speed = 1.0),
+                       vlra("2011-07-01T01:00:00Z", -1.4718246, 55.2088509, speed = 1.0),
+                       vlra("2011-07-01T01:10:00Z", -1.4474487, 55.2057165, speed = 1.0),
+                       vlra("2011-07-01T01:20:00Z", -1.4278793, 55.2040512, speed = 1.0),
+                       vlra("2011-07-01T01:30:00Z", -1.4084816, 55.2036594, speed = 1.0),
+                       vlra("2011-07-01T01:40:00Z", -1.3998985, 55.2037573, speed = 1.0))
 
   "Adjacency lookup" should "correctly return the nearest locations" in {
     val anchorageLookup =

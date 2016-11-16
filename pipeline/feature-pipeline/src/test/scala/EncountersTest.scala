@@ -49,7 +49,7 @@ class EncountersTest extends PipelineSpec with Matchers {
 
   "The pipeline" should "annotate with adjacency" in {
     runWithContext { sc =>
-      val result = Encounters.annotateAdjacency(Duration.standardMinutes(10), sc.parallelize(pathData)).flatMap {
+      val result = Encounters.calculateAdjacency(Duration.standardMinutes(10), sc.parallelize(pathData)).flatMap {
         case (md, locs) =>
           locs.map { l =>
             (md, l)
@@ -115,7 +115,7 @@ class EncountersTest extends PipelineSpec with Matchers {
   // TODO(alexwilson): As well as adjacency check we get encounters.
   "The pipeline" should "find encounters" in {
     runWithContext { sc =>
-      val annotated = Encounters.annotateAdjacency(Duration.standardMinutes(10), sc.parallelize(pathData))
+      val annotated = Encounters.calculateAdjacency(Duration.standardMinutes(10), sc.parallelize(pathData))
       val encounters = Encounters.calculateEncounters(Duration.standardMinutes(30), annotated)
 
       val expected = Seq(
@@ -146,7 +146,7 @@ class RealEncounterTest extends PipelineSpec with Matchers {
   "The pipeline" should "find encounters in real data" in {
     runWithContext { sc =>
       val pathData = Seq((VesselMetadata(441910000), seriesToLRs(series1)), (VesselMetadata(563418000), seriesToLRs(series2)))
-      val annotated = Encounters.annotateAdjacency(Duration.standardMinutes(10), sc.parallelize(pathData))
+      val annotated = Encounters.calculateAdjacency(Duration.standardMinutes(10), sc.parallelize(pathData))
       val encounters = Encounters.calculateEncounters(Duration.standardHours(2), annotated)
 
         val expected = Seq(
