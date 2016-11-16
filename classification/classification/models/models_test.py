@@ -43,6 +43,7 @@ class ModelsTest(tf.test.TestCase):
     def test_model_training_nets(self):
         for i, model_class in enumerate(self.model_classes):
             with self.test_session():
+                # This protects against multiple model using same variable names
                 with tf.variable_scope("training-test-{}".format(i)):
                     optimizer, trainers = self._build_model_training_net(
                         model_class)
@@ -50,6 +51,7 @@ class ModelsTest(tf.test.TestCase):
     def test_model_inference_nets(self):
         for i, model_class in enumerate(self.model_classes):
             with self.test_session():
+                # This protects against multiple model using same variable names
                 with tf.variable_scope("inference-test-{}".format(i)):
                     evaluations = self._build_model_inference_net(model_class)
 
