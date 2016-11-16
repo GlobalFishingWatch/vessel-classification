@@ -47,7 +47,60 @@ class EncountersTest extends PipelineSpec with Matchers {
 
   val pathData = Seq((VesselMetadata(1), path1), (VesselMetadata(2), path2))
 
-  "The pipeline" should "annotate with adjacency" in {
+  "The pipeline" should "annotate raw tracks with adjacency" in {
+    runWithContext { sc =>
+      val meta = VesselMetadata(1)
+      val locations = Seq(
+        (
+          meta,
+          ProcessedLocations(
+            Seq(
+              vlr("2016-01-01T00:00:20Z"),
+              vlr("2016-01-01T00:00:40Z"),
+              vlr("2016-01-01T00:01:20Z"),
+              vlr("2016-01-01T00:01:40Z"),
+              vlr("2016-01-01T00:02:20Z"),
+              vlr("2016-01-01T00:02:40Z")
+            ),
+            Seq()
+          )
+        )
+      )
+      val adjacencies = Seq(
+        (
+          meta,
+          Seq(
+            rvla("2016-01-01T00:01:00Z", numNeighbours = 0),
+            rvla("2016-01-01T00:02:00Z", numNeighbours = 1),
+            rvla("2016-01-01T00:03:00Z", numNeighbours = 2)
+          )
+        )
+      )
+
+      val expected = (
+        meta,
+        ProcessedAdjacencyLocations(
+          Seq(
+            vlra("2016-01-01T00:00:20Z", numNeighbours = 0),
+            vlra("2016-01-01T00:00:40Z", numNeighbours = 0),
+            vlra("2016-01-01T00:01:20Z", numNeighbours = 0),
+            vlra("2016-01-01T00:01:40Z", numNeighbours = 1),
+            vlra("2016-01-01T00:02:20Z", numNeighbours = 1),
+            vlra("2016-01-01T00:02:40Z", numNeighbours = 2)
+          ),
+          Seq()
+        )
+      )
+
+      val res = Encounters.annotateAdjacency(
+       sc.parallelize(locations),
+       sc.parallelize(adjacencies))
+
+      res should containSingleValue(expected)
+    }
+  }
+
+  "The pipeline" should "annotate resampled tracks with adjacency" in {
     runWithContext { sc =>
       val result = Encounters.calculateAdjacency(Duration.standardMinutes(10), sc.parallelize(pathData)).flatMap {
         case (md, locs) =>

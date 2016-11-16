@@ -37,9 +37,9 @@ object TestHelper {
 
   def ts(timestamp: String) = Instant.parse(timestamp)
 
-  def vlr(timestamp: String,
-          lat: Double,
-          lon: Double,
+  def vlr(timestamp: String = "1970-01-01T00:00:00Z",
+          lat: Double = 0.0,
+          lon: Double = 0.0,
           distanceToShore: Double = 500.0,
           speed: Double = 0.0,
           course: Double = 0.0,
@@ -50,14 +50,16 @@ object TestHelper {
                          speed.of[knots],
                          course.of[degrees],
                          heading.of[degrees])
-
-  def vlra(timestamp: String,
-          lat: Double,
-          lon: Double,
+ 
+  def vlra(timestamp: String = "1970-01-01T00:00:00Z",
+          lat: Double = 0.0,
+          lon: Double = 0.0,
           distanceToShore: Double = 500.0,
           speed: Double = 0.0,
           course: Double = 0.0,
-          heading: Double = 0.0) =
+          heading: Double = 0.0,
+          numNeighbours: Int = 0,
+          closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)] = None) =
     VesselLocationRecordWithAdjacency(
       VesselLocationRecord(ts(timestamp),
                            LatLon(lat.of[degrees], lon.of[degrees]),
@@ -67,11 +69,23 @@ object TestHelper {
                            heading.of[degrees]),
       Adjacency(0, None))
 
-def rvl(timestamp: String, lat: Double, lon: Double, pointDensity: Double = 1.0) =
+  def rvl(timestamp: String, lat: Double, lon: Double, pointDensity: Double = 1.0) =
     ResampledVesselLocation(ts(timestamp),
                             LatLon(lat.of[degrees], lon.of[degrees]),
                             500.0.of[kilometer],
                             pointDensity)
+
+  def rvla(timestamp: String = "1970-01-01T00:00:00Z",
+         lat: Double = 0.0,
+         lon: Double = 0.0,
+         pointDensity: Double = 1.0,
+         numNeighbours: Int = 0,
+         closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)] = None) =
+    ResampledVesselLocationWithAdjacency(
+      rvl(timestamp, lat, lon, pointDensity),
+      numNeighbours = numNeighbours,
+      closestNeighbour = closestNeighbour)
+
 }
 
 class PipelineTests extends PipelineSpec with Matchers {
