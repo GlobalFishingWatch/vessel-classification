@@ -143,9 +143,6 @@ class MultihotLabelConsistencyTest(tf.test.TestCase):
 
     def test_coarse_label_consistency(self):
         names = set([c for (c, _) in utility.VESSEL_CATEGORIES['coarse']])
-        # Longliners is still a valid category in multihot since we
-        # support overlapping categories, but not in regular.
-        names.remove('Longliners')
         self.assertEquals(names, set(utility.VESSEL_CLASS_NAMES))
 
     def test_fishing_label_consistency(self):

@@ -69,61 +69,6 @@ def launch(environment, model_name, job_name):
     return job_id
 
 
-LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-
-
-def print_logs(job_id, level="INFO"):
-    print('Printing logs of', level, "and above")
-
-    if level not in LEVELS:
-        raise ValueError("unknown log level", level)
-    level_n = LEVELS.index(level)
-
-    # The API for checking a job's progress.
-    # TODO: update this to beta interface.
-    # credentials = GoogleCredentials.get_application_default()
-    # cloudml = discovery.build('ml', 'v1alpha3', credentials=credentials,
-    #                   discoveryServiceUrl='https://storage.googleapis.com/cloud-ml/discovery/ml_v1alpha3_discovery.json')
-    # op_name = ('projects/%s/operations/%s' % (project_id, job_id))
-
-    tail = [
-        'gcloud', 'beta', 'logging', 'read', '--format=json',
-        'labels."ml.googleapis.com/job_id"="%s"' % (job_id, )
-    ]
-    while True:
-        entries = json.loads(subprocess.check_output(tail))
-
-        if not entries:
-            time.sleep(10)
-            continue
-
-        # The entries aren't guaranteed to be in sorted order
-        entries.sort(key=lambda e: e['timestamp'])
-
-        for entry in entries:
-            try:
-                entry_level_n = LEVELS.index(entry.get("severity"))
-            except:
-                continue
-            if entry_level_n >= level_n:
-                if 'jsonPayload' in entry:
-                    text = entry['jsonPayload']['message']
-                elif 'textPayload' in entry:
-                    text = entry['textPayload']
-                else:
-                    print("Uninterpretable log entry:", entry)
-                    continue
-                print(text)
-                if text.strip() in [
-                        "Job failed.", "Job completed successfully."
-                ]:
-                    return
-        last_timestamp = entries[-1]['timestamp']
-
-        tail[-1] = ('labels."ml.googleapis.com/job_id"="%s" AND '
-                    'timestamp>"%s"' % (job_id, last_timestamp))
-
-
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Deploy ML Training.')
@@ -133,5 +78,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    job_id = launch(args.env, args.model_name, args.job_name) + '_2'
-    print_logs(job_id)
+    launch(args.env, args.model_name, args.job_name)

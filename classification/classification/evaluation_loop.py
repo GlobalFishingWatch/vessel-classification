@@ -44,7 +44,11 @@ def evaluation_loop(master,
             '%Y-%m-%d-%H:%M:%S', time.gmtime()))
 
         with sv.managed_session(master, start_standard_services=False) as sess:
-            sv.saver.restore(sess, checkpoint_path)
+            try:
+                sv.saver.restore(sess, checkpoint_path)
+            except tf.erorrs.NotFoundError:
+                logging.warning("Could not load check point, skipping")
+                continue
             sv.start_queue_runners(sess)
             final_op_value = slim.evaluation.evaluation(
                 sess,

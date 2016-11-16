@@ -29,7 +29,6 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
 VESSEL_CATEGORIES = {
     'coarse': [
-        ['Longliners', ['Drifting longlines', 'Set longlines']],
         ['Trawlers', ['Trawlers']],
         ['Fixed gear', ['Pots and traps', 'Set gillnets', 'Set longlines']],
         ['Drifting longlines', ['Drifting longlines']],
@@ -759,8 +758,9 @@ def build_multihot_lookup_table():
             multihot_lookup_table[n_fine + n_coarse:])
 
 
-multihot_lookup_table, multihot_coarse_lookup_table, multihot_fishing_lookup_table = build_multihot_lookup_table(
-)
+(multihot_lookup_table,
+ multihot_coarse_lookup_table,
+ multihot_fishing_lookup_table) = build_multihot_lookup_table()
 
 
 def multihot_encode(is_fishing, coarse, fine):
