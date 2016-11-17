@@ -110,8 +110,13 @@ class EncountersTest extends PipelineSpec with Matchers {
       }
       
       def rvlwa(mmsi: Int, locationRecord: ResampledVesselLocation, numNeighbours: Int, other: Option[(Int, Double, ResampledVesselLocation)]) =
-        (VesselMetadata(mmsi), ResampledVesselLocationWithAdjacency(locationRecord, numNeighbours,
-          other.map { case(ommsi, dist, other_loc) => (VesselMetadata(ommsi), dist.of[kilometer], other_loc)}))
+        (
+          VesselMetadata(mmsi),
+          ResampledVesselLocationWithAdjacency(
+            locationRecord,
+            Adjacency(
+              numNeighbours,
+              other.map { case(ommsi, dist, other_loc) => (VesselMetadata(ommsi), dist.of[kilometer], other_loc)})))
 
 
       val expected = Seq(

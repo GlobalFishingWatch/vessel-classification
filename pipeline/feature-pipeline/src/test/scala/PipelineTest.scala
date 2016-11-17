@@ -83,9 +83,7 @@ object TestHelper {
          closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)] = None) =
     ResampledVesselLocationWithAdjacency(
       rvl(timestamp, lat, lon, pointDensity),
-      numNeighbours = numNeighbours,
-      closestNeighbour = closestNeighbour)
-
+      Adjacency(numNeighbours, closestNeighbour))
 }
 
 class PipelineTests extends PipelineSpec with Matchers {

@@ -68,10 +68,9 @@ object ModelFeatures extends LazyLogging {
     input
       .sliding(3)
       .map {
-        case Seq(
-          VesselLocationRecordWithAdjacency(p0, a0),
-          VesselLocationRecordWithAdjacency(p1, a1),
-          VesselLocationRecordWithAdjacency(p2, a2)) =>
+        case Seq(VesselLocationRecordWithAdjacency(p0, a0),
+                 VesselLocationRecordWithAdjacency(p1, a1),
+                 VesselLocationRecordWithAdjacency(p2, a2)) =>
           if (p0 == p1) {
             logger.fatal(s"p0 and p1 are the same: $p0, $p1")
           }
