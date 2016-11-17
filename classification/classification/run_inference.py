@@ -24,11 +24,10 @@ class Inferer(object):
         self.model_checkpoint_path = model_checkpoint_path
         self.root_feature_path = root_feature_path
         self.batch_size = self.model.batch_size
-        self.min_points_for_classification = int(1000.0 / (
-            360.0 / model.feature_duration_days))
+        self.min_points_for_classification = 250
         self.mmsis = mmsis
 
-        def _build_starts_quarterly():
+        def _build_starts():
             today = datetime.datetime.now(pytz.utc)
             months = [1, 4, 7, 10]
             year = 2012
@@ -40,15 +39,6 @@ class Inferer(object):
                     if dt > today:
                         return time_starts
                 year += 1
-
-        def _build_starts():
-            today = datetime.datetime.now(pytz.utc)
-            time_starts = []
-            iter = datetime.datetime(2012, 1, 1, tzinfo=pytz.utc)
-            while iter < today:
-                time_starts.append(int(time.mktime(iter.timetuple())))
-                iter += datetime.timedelta(days=model.feature_duration_days)
-            return time_starts
 
         time_starts = _build_starts()
 
@@ -67,7 +57,7 @@ class Inferer(object):
             matching_files, shuffle=False, num_epochs=1)
 
         readers = []
-        for _ in range(inference_parallelism * 2):
+        for _ in range(inference_parallelism):
             reader = utility.cropping_all_slice_feature_file_reader(
                 filename_queue, self.model.num_feature_dimensions + 1,
                 self.time_ranges, self.model.window_max_points,
@@ -156,20 +146,14 @@ def main(args):
         if args.dataset_split in ['Training', 'Test']:
             metadata_file = os.path.abspath(
                 resource_filename('classification.data',
-                                   params.metadata_file))
-            fishing_range_file = os.path.abspath(
-                resource_filename('classification.data',
-                                   params.fishing_ranges_file))
+                                  'net_training_20161016.csv'))
             if not os.path.exists(metadata_file):
                 logging.fatal("Could not find metadata file: %s.",
                               metadata_file)
                 sys.exit(-1)
 
-            fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
             vessel_metadata = utility.read_vessel_multiclass_metadata(
-                all_available_mmsis,
-                metadata_file,
-                fishing_range_dict=fishing_ranges)
+                all_available_mmsis, metadata_file)
 
             mmsis = set(vessel_metadata.mmsis_for_split(args.dataset_split))
         else:
