@@ -156,10 +156,10 @@ def main(args):
         if args.dataset_split in ['Training', 'Test']:
             metadata_file = os.path.abspath(
                 resource_filename('classification.data',
-                                  'net_training_20161016.csv'))
+                                   params.metadata_file))
             fishing_range_file = os.path.abspath(
                 resource_filename('classification.data',
-                                  'combined_fishing_ranges.csv'))
+                                   params.fishing_ranges_file))
             if not os.path.exists(metadata_file):
                 logging.fatal("Could not find metadata file: %s.",
                               metadata_file)
