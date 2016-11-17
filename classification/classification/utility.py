@@ -698,7 +698,7 @@ def find_available_mmsis(feature_path):
             "Finding matching features files. May take a few minutes...")
         matching_files = tf.train.match_filenames_once(feature_path +
                                                        "/*.tfrecord")
-        sess.run(tf.initialize_all_variables())
+        sess.run(tf.global_variables_initializer())
 
         all_feature_files = sess.run(matching_files)
         if len(all_feature_files) == 0:

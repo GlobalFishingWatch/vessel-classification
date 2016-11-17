@@ -108,7 +108,7 @@ class RegressionObjective(ObjectiveBase):
 
         update_ops = []
         update_ops.append(
-            tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
+            tf.summary.scalar('%s/Training loss' % self.name, raw_loss))
 
         loss = raw_loss * self.loss_weight
 
@@ -200,12 +200,12 @@ class ClassificationObjective(ObjectiveBase):
 
         update_ops = []
         update_ops.append(
-            tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
+            tf.summary.scalar('%s/Training loss' % self.name, raw_loss))
 
         accuracy = slim.metrics.accuracy(
             labels, class_predictions, weights=label_weights)
         update_ops.append(
-            tf.scalar_summary('%s/Training accuracy' % self.name, accuracy))
+            tf.summary.scalar('%s/Training accuracy' % self.name, accuracy))
 
         return Trainer(loss, update_ops)
 
@@ -332,7 +332,7 @@ class MultiClassificationObjective(ObjectiveBase):
 
         update_ops = []
         update_ops.append(
-            tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
+            tf.summary.scalar('%s/Training loss' % self.name, raw_loss))
 
         return Trainer(loss, update_ops)
 
@@ -523,7 +523,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
 
         raw_loss = self.loss_function(dense_labels)
         update_ops.append(
-            tf.scalar_summary('%s/Training loss' % self.name, raw_loss))
+            tf.summary.scalar('%s/Training loss' % self.name, raw_loss))
 
         loss = raw_loss * self.loss_weight
 
