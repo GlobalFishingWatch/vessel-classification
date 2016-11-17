@@ -18,14 +18,12 @@ import TestHelper._
 class AnchorageVisitsTests extends PipelineSpec with Matchers {
   val anchoragePoint1 =
     AnchoragePoint(LatLon(0.0.of[degrees], 0.0.of[degrees]),
-                   Seq(VesselMetadata(1)),
-                   0,
+                   Set(VesselMetadata(1)),
                    10.0.of[kilometer],
                    0.1.of[kilometer])
   val anchoragePoint2 =
     AnchoragePoint(LatLon(0.0.of[degrees], 1.0.of[degrees]),
-                   Seq(VesselMetadata(1)),
-                   0,
+                   Set(VesselMetadata(1)),
                    20.0.of[kilometer],
                    0.05.of[kilometer])
 
@@ -95,28 +93,27 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
 
 class AnchoragesGroupingTests extends PipelineSpec with Matchers {
   def anchoragePointFromS2CellToken(token: String,
-                                    vessels: Seq[VesselMetadata],
+                                    vessels: Set[VesselMetadata],
                                     distanceToShore: DoubleU[kilometer] = 0.0.of[kilometer]) =
     AnchoragePoint(LatLon.fromS2CellId(S2CellId.fromToken(token)),
                    vessels,
-                   0,
                    distanceToShore,
                    0.0.of[kilometer])
 
   "Anchorage merging" should "work!" in {
     val anchorages = IndexedSeq(
       anchoragePointFromS2CellToken("89c19c9c",
-                                    Seq(VesselMetadata(1), VesselMetadata(2), VesselMetadata(3))),
-      anchoragePointFromS2CellToken("89c19b64", Seq(VesselMetadata(1), VesselMetadata(2))),
-      anchoragePointFromS2CellToken("89c1852c", Seq(VesselMetadata(1))),
+                                    Set(VesselMetadata(1), VesselMetadata(2), VesselMetadata(3))),
+      anchoragePointFromS2CellToken("89c19b64", Set(VesselMetadata(1), VesselMetadata(2))),
+      anchoragePointFromS2CellToken("89c1852c", Set(VesselMetadata(1))),
       anchoragePointFromS2CellToken("89c19b04",
-                                    Seq(VesselMetadata(1), VesselMetadata(2)),
+                                    Set(VesselMetadata(1), VesselMetadata(2)),
                                     30.0.of[kilometer]),
       anchoragePointFromS2CellToken("89c19bac",
-                                    Seq(VesselMetadata(1), VesselMetadata(2)),
+                                    Set(VesselMetadata(1), VesselMetadata(2)),
                                     20.0.of[kilometer]),
       anchoragePointFromS2CellToken("89c19bb4",
-                                    Seq(VesselMetadata(1), VesselMetadata(2)),
+                                    Set(VesselMetadata(1), VesselMetadata(2)),
                                     10.0.of[kilometer]))
 
     val groupedAnchorages = Anchorages.mergeAdjacentAnchoragePoints(anchorages)
