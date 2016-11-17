@@ -274,13 +274,11 @@ object Pipeline extends LazyLogging {
                                            anchorages,
                                            Parameters.minAnchorageVisitDuration)
 
-          anchorageVisits.flatMap {
+          anchorageVisits.map {
             case (metadata, visits) =>
-              visits.map((visit) => {
-                compact(
-                  render(("mmsi" -> metadata.mmsi) ~
-                    ("visit" -> visit.toJson)))
-              })
+              compact(
+                render(("mmsi" -> metadata.mmsi) ~
+                  ("visits" -> visits.map(_.toJson))))
           }.saveAsTextFile(anchorageVisitsPath)
         }
       }
