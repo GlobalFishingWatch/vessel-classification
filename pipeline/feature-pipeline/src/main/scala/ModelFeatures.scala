@@ -140,9 +140,12 @@ object ModelFeatures extends LazyLogging {
                                       math.log(1.0 + distanceToShoreKm),
                                       math.log(1.0 + distanceToBoundingAnchorageKm),
                                       math.log(1.0 + timeToBoundingAnchorageS),
-                                      a0.numNeighbours,
-                                      a1.numNeighbours,
-                                      a2.numNeighbours)
+                                      /* We should probably add
+                                         distance to closest neighbour
+                                         here too - but what value
+                                         should we use if one does not
+                                         exist? */
+                                      a0.numNeighbours)
 
           feature.foreach { v =>
             if (v.isNaN || v.isInfinite) {
