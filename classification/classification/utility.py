@@ -572,11 +572,14 @@ class VesselMetadata(object):
         return replicated_mmsis
 
     def fishing_range_only_list(self, random_state, split,
-                               max_replication_factor):
+                                max_replication_factor):
         replicated_mmsis = []
         fishing_mmsi_set = set(self.fishing_ranges_map.keys())
-        fishing_range_only_mmsis = [mmsi for mmsi in self.mmsis_for_split(split) if mmsi in fishing_mmsi_set]
-        logging.info("Fishing range training mmsis: %d", len(fishing_range_only_mmsis))
+        fishing_range_only_mmsis = [mmsi
+                                    for mmsi in self.mmsis_for_split(split)
+                                    if mmsi in fishing_mmsi_set]
+        logging.info("Fishing range training mmsis: %d",
+                     len(fishing_range_only_mmsis))
         for mmsi in fishing_range_only_mmsis:
             weight = min(self.vessel_weight(mmsi), max_replication_factor)
 
@@ -590,7 +593,6 @@ class VesselMetadata(object):
         logging.info("Replicated training mmsis: %d", len(replicated_mmsis))
 
         return replicated_mmsis
-
 
 
 def is_test(mmsi):

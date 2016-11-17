@@ -53,7 +53,6 @@ class ModelBase(object):
             for mmsi in training_mmsis
         ]
 
-
     @abc.abstractmethod
     def build_training_net(self, features, timestamps, mmsis):
         """Build net suitable for training model

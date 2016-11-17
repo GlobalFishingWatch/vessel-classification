@@ -53,7 +53,8 @@ class Trainer:
                 4. A tensor of mmsis for the features, of dimesion [batch_size].
 
         """
-        input_files = self.model.build_training_file_list(self.base_feature_path, split)
+        input_files = self.model.build_training_file_list(
+            self.base_feature_path, split)
         filename_queue = tf.train.input_producer(input_files, shuffle=True)
         capacity = 1000
         min_size_after_deque = capacity - self.model.batch_size * 4
