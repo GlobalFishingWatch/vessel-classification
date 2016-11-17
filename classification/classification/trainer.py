@@ -20,7 +20,6 @@ class Trainer:
         model.
     """
 
-    max_replication_factor = 100.0
     num_parallel_readers = 32
 
     def __init__(self, model, base_feature_path, train_scratch_path):
@@ -30,15 +29,6 @@ class Trainer:
         self.train_scratch_path = train_scratch_path
         self.checkpoint_dir = self.train_scratch_path + '/train'
         self.eval_dir = self.train_scratch_path + '/eval'
-
-    def _feature_files(self, split):
-        random_state = np.random.RandomState()
-        training_mmsis = self.model.vessel_metadata.weighted_training_list(
-            random_state, split, self.max_replication_factor)
-        return [
-            '%s/%d.tfrecord' % (self.base_feature_path, mmsi)
-            for mmsi in training_mmsis
-        ]
 
     def _feature_data_reader(self, split, is_training):
         """ Concurrent feature data reader.
@@ -63,7 +53,7 @@ class Trainer:
                 4. A tensor of mmsis for the features, of dimesion [batch_size].
 
         """
-        input_files = self._feature_files(split)
+        input_files = self.model.build_training_file_list(self.base_feature_path, split)
         filename_queue = tf.train.input_producer(input_files, shuffle=True)
         capacity = 1000
         min_size_after_deque = capacity - self.model.batch_size * 4

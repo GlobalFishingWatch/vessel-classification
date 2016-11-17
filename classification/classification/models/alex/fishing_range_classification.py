@@ -22,7 +22,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     window_size = 3
     stride = 2
     feature_depth = 50
-    levels = 8
+    levels = 6
 
     @property
     def max_window_duration_seconds(self):
@@ -48,7 +48,17 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             vessel_metadata,
             loss_weight=50.0)
 
+        self.classification_training_objectives = []
         self.training_objectives = [self.fishing_localisation_objective]
+
+    def build_training_file_list(self, base_feature_path, split):
+        random_state = np.random.RandomState()
+        training_mmsis = self.vessel_metadata.fishing_range_only_list(
+            random_state, split, self.max_replication_factor)
+        return [
+            '%s/%d.tfrecord' % (base_feature_path, mmsi)
+            for mmsi in training_mmsis
+        ]
 
     def build_training_net(self, features, timestamps, mmsis):
         features = self.zero_pad_features(features)

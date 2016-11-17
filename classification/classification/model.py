@@ -27,8 +27,12 @@ class ModelBase(object):
         return None
 
     @property
-    def min_viable_timeslice_length():
-        return self.window_max_points() / 4
+    def min_viable_timeslice_length(self):
+        return self.window_max_points / 4
+
+    @property
+    def max_replication_factor(self):
+        return 100.0
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
         self.num_feature_dimensions = num_feature_dimensions
@@ -39,6 +43,16 @@ class ModelBase(object):
             self.vessel_metadata = None
             self.fishing_ranges_map = None
         self.training_objectives = None
+
+    def build_training_file_list(self, base_feature_path, split):
+        random_state = np.random.RandomState()
+        training_mmsis = self.vessel_metadata.weighted_training_list(
+            random_state, split, self.max_replication_factor)
+        return [
+            '%s/%d.tfrecord' % (base_feature_path, mmsi)
+            for mmsi in training_mmsis
+        ]
+
 
     @abc.abstractmethod
     def build_training_net(self, features, timestamps, mmsis):
