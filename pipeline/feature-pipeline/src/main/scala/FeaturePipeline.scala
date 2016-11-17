@@ -314,9 +314,6 @@ object Pipeline extends LazyLogging {
       }
 
       if (generateEncounters) {
-        val adjacencyAnnotated =
-          Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
-
         // Build and output suspected encounters.
         val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
         val encounters =
