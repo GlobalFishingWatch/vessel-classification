@@ -211,26 +211,32 @@ def np_pad_repeat_slice(slice, window_size):
     reps = int(np.ceil(window_size / float(slice_length)))
     return np.concatenate([slice] * reps, axis=0)[:window_size]
 
+def np_array_random_fixed_length_extract(random_state, input_series, output_length):
+    
+    cropped = input_series[start_offset:end_offset]
+
+    return np_pad_repeat_slice(cropped, output_length)
+
 
 def np_array_random_fixed_time_extract(random_state, input_series,
                                        max_time_delta, output_length,
                                        min_timeslice_size):
     """ Extracts a random fixed-time slice from a 2d numpy array.
     
-  The input array must be 2d, representing a time series, with the first    
-  column representing a timestamp (sorted ascending). Any values in the series    
-  with a time greater than (first time + max_time_delta) are removed and the    
-  prefix series repeated into the window to pad.    
+   The input array must be 2d, representing a time series, with the first    
+   column representing a timestamp (sorted ascending). Any values in the series    
+   with a time greater than (first time + max_time_delta) are removed and the    
+   prefix series repeated into the window to pad.    
     
-  Args:
-    random_state: a numpy randomstate object.
-    input_series: the input series. A 2d array first column representing an
-      ascending time.   
-    max_time_delta: the maximum duration of the returned timeseries in seconds.
-    output_length: the number of points in the output series. Input series    
-      shorter than this will be repeated into the output series.   
-    min_timeslice_size: the minimum number of points in a timeslice for the
-      series to be considered meaningful. 
+   Args:
+        random_state: a numpy randomstate object.
+        input_series: the input series. A 2d array first column representing an
+            ascending time.   
+        max_time_delta: the maximum duration of the returned timeseries in seconds.
+        output_length: the number of points in the output series. Input series    
+            shorter than this will be repeated into the output series.   
+        min_timeslice_size: the minimum number of points in a timeslice for the
+            series to be considered meaningful. 
     
   Returns:    
     An array of the same depth as the input, but altered width, representing
@@ -238,25 +244,31 @@ def np_array_random_fixed_time_extract(random_state, input_series,
   """
 
     input_length = len(input_series)
-    start_time = input_series[0][0]
-    end_time = input_series[-1][0]
-    max_time_offset = max((end_time - start_time) - max_time_delta, 0)
-    if max_time_offset == 0:
-        time_offset = 0
+    if max_time_delta == 0:
+        # Pick a random fixed-length window rather than fixed-time.
+        max_offset = max(input_length - output_length, 0)
+        start_index = random_state.randint(0, max_offset)
+        end_index = min(start_index + output_length, input_length)
     else:
-        time_offset = random_state.randint(0, max_time_offset)
-    start_index = np.searchsorted(
-        input_series[:, 0], start_time + time_offset, side='left')
+        start_time = input_series[0][0]
+        end_time = input_series[-1][0]
+        max_time_offset = max((end_time - start_time) - max_time_delta, 0)
+        if max_time_offset == 0:
+            time_offset = 0
+        else:
+            time_offset = random_state.randint(0, max_time_offset)
+        start_index = np.searchsorted(
+            input_series[:, 0], start_time + time_offset, side='left')
 
-    # Should not start closer than min_timeslice_size points from the end lest the 
-    # series have too few points to be meaningful.
-    start_index = min(start_index, max(0, input_length - min_timeslice_size))
-    crop_end_time = min(input_series[start_index][0] + max_time_delta,
-                        end_time)
+        # Should not start closer than min_timeslice_size points from the end lest the 
+        # series have too few points to be meaningful.
+        start_index = min(start_index, max(0, input_length - min_timeslice_size))
+        crop_end_time = min(input_series[start_index][0] + max_time_delta,
+                            end_time)
 
-    end_index = min(start_index + output_length,
-                    np.searchsorted(
-                        input_series[:, 0], crop_end_time, side='right'))
+        end_index = min(start_index + output_length,
+                        np.searchsorted(
+                            input_series[:, 0], crop_end_time, side='right'))
 
     cropped = input_series[start_index:end_index]
     output_series = np_pad_repeat_slice(cropped, output_length)
