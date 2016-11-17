@@ -75,6 +75,13 @@ def duplicate_double_pad(input):
                       [int(batch_size), 1, int(width * 2), int(depth)])
 
 
+def repeat_tensor(input, n):
+    batch_size, _, width, depth = input.get_shape()
+    repeated = tf.concat(3, [input] * n)
+    return tf.reshape(repeated,
+                      [int(batch_size), 1, int(width) * n, int(depth)])
+
+
 FishingRange = namedtuple('FishingRange',
                           ['start_time', 'end_time', 'is_fishing'])
 
@@ -285,10 +292,6 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
 
     start_time = int(features[0][0])
     end_time = int(features[-1][0])
-
-    # Roll the features randomly to give different offsets.
-    #roll = random_state.randint(0, window_size)
-    #features = np.roll(features, roll, axis=0)
 
     # Drop the first (timestamp) column.
     timestamps = features[:, 0].astype(np.int32)

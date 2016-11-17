@@ -48,10 +48,7 @@ class MisconceptionWithFishingRangesModel(MisconceptionModel):
             multiscale_layers = []
             for i in range(self.levels):
                 with tf.variable_scope("layer_%d" % i):
-                    ddp = net
-                    for j in range(i):
-                        ddp = utility.duplicate_double_pad(ddp)
-                    multiscale_layers.append(ddp)
+                    multiscale_layers.append(utility.repeat_tensor(net, 2**i))
 
                     net = layers.misconception_with_bypass(
                         net, self.window_size, self.stride, self.feature_depth,
