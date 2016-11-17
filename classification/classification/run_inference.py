@@ -66,7 +66,7 @@ class Inferer(object):
             matching_files, shuffle=False, num_epochs=1)
 
         readers = []
-        for _ in range(inference_parallelism):
+        for _ in range(inference_parallelism*2):
             reader = utility.cropping_all_slice_feature_file_reader(
                 filename_queue, self.model.num_feature_dimensions + 1,
                 self.time_ranges, self.model.window_max_points,
@@ -156,13 +156,17 @@ def main(args):
             metadata_file = os.path.abspath(
                 resource_filename('classification.data',
                                   'net_training_20161016.csv'))
+            fishing_range_file = os.path.abspath(
+                resource_filename('classification.data',
+                                  'combined_fishing_ranges.csv'))
             if not os.path.exists(metadata_file):
                 logging.fatal("Could not find metadata file: %s.",
                               metadata_file)
                 sys.exit(-1)
 
+            fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
             vessel_metadata = utility.read_vessel_multiclass_metadata(
-                all_available_mmsis, metadata_file)
+                all_available_mmsis, metadata_file, fishing_range_dict=fishing_ranges)
 
             mmsis = set(vessel_metadata.mmsis_for_split(args.dataset_split))
         else:
