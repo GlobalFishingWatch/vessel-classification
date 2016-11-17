@@ -47,8 +47,17 @@ case class StationaryPeriod(location: LatLon,
                             meanDistanceToShore: DoubleU[kilometer],
                             meanDriftRadius: DoubleU[kilometer])
 
+case class Adjacency(
+    numNeighbours: Int,
+    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)])
+
+case class VesselLocationRecordWithAdjacency(location: VesselLocationRecord, adjacency: Adjacency)
+
 case class ProcessedLocations(locations: Seq[VesselLocationRecord],
                               stationaryPeriods: Seq[StationaryPeriod])
+
+case class ProcessedAdjacencyLocations(locations: Seq[VesselLocationRecordWithAdjacency],
+                                       stationaryPeriods: Seq[StationaryPeriod])
 
 case class VesselLocationRecord(timestamp: Instant,
                                 location: LatLon,
@@ -62,10 +71,8 @@ case class ResampledVesselLocation(timestamp: Instant,
                                    distanceToShore: DoubleU[kilometer],
                                    pointDensity: Double)
 
-case class ResampledVesselLocationWithAdjacency(
-    locationRecord: ResampledVesselLocation,
-    numNeighbours: Int,
-    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)])
+case class ResampledVesselLocationWithAdjacency(locationRecord: ResampledVesselLocation,
+                                                adjacency: Adjacency)
 
 case class SingleEncounter(startTime: Instant,
                            endTime: Instant,
