@@ -1,8 +1,10 @@
+import os
 import csv
 import model
 import numpy as np
 import utility
 import tensorflow as tf
+from . import params
 
 
 class PythonFixedTimeExtractTest(tf.test.TestCase):
@@ -93,6 +95,59 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
                           ({'label': 'Longliner',
                             'length': '7.0',
                             'mmsi': '100003'}, 1.0))
+
+
+def _get_metadata_file():
+    from pkg_resources import resource_filename
+    return os.path.abspath(
+        resource_filename('classification.data', params.metadata_file))
+
+
+class MetadataConsistencyTest(tf.test.TestCase):
+    def test_metadata_consistency(self):
+        metadata_file = _get_metadata_file()
+        self.assertTrue(os.path.exists(metadata_file))
+        is_fishing_labels = set()
+        # By putting '' in these sets we can safely remove it later
+        coarse_labels = set([''])
+        fine_labels = set([''])
+        for row in utility.metadata_file_reader(metadata_file):
+            is_fishing_labels.add(row['is_fishing'].strip())
+            coarse_labels.add(row['label'].strip())
+            fine_labels.add(row['sublabel'].strip())
+        coarse_labels.remove('')
+        fine_labels.remove('')
+
+        # Is fishing should never be blank
+        self.assertFalse('' in is_fishing_labels)
+
+        self.assertEquals(is_fishing_labels,
+                          set(utility.FISHING_NONFISHING_NAMES))
+
+        self.assertEquals(coarse_labels, set(utility.VESSEL_CLASS_NAMES))
+
+        self.assertEquals(fine_labels,
+                          set(utility.VESSEL_CLASS_DETAILED_NAMES))
+
+
+class MultihotLabelConsistencyTest(tf.test.TestCase):
+    def test_fine_label_consistency(self):
+        names = []
+        for name, category in utility.VESSEL_CATEGORIES.items():
+            for coarse, fine_list in category:
+                for fine in fine_list:
+                    if fine not in names:
+                        names.append(fine)
+        self.assertEquals(
+            sorted(names), sorted(utility.VESSEL_CLASS_DETAILED_NAMES))
+
+    def test_coarse_label_consistency(self):
+        names = set([c for (c, _) in utility.VESSEL_CATEGORIES['coarse']])
+        self.assertEquals(names, set(utility.VESSEL_CLASS_NAMES))
+
+    def test_fishing_label_consistency(self):
+        names = set([c for (c, _) in utility.VESSEL_CATEGORIES['fishing']])
+        self.assertEquals(names, set(utility.FISHING_NONFISHING_NAMES))
 
 
 if __name__ == '__main__':
