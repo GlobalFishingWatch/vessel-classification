@@ -86,6 +86,18 @@ case class SingleEncounter(startTime: Instant,
       ("vessel2_point_count" -> vessel2PointCount)
 }
 
+case class VesselEncounters(vessel1: VesselMetadata,
+                            vessel2: VesselMetadata,
+                            encounters: Seq[SingleEncounter]) {
+  def toJson =
+    ("vessel1_mmsi" -> vessel1.mmsi) ~
+      ("vessel2_mmsi" -> vessel2.mmsi) ~
+      ("vessel1_flag_state" -> vessel1.flagState) ~
+      ("vessel2_flag_state" -> vessel2.flagState) ~
+      ("encounters" -> encounters.map(_.toJson))
+
+}
+
 case class AnchoragePoint(meanLocation: LatLon,
                           vessels: Set[VesselMetadata],
                           meanDistanceToShore: DoubleU[kilometer],
@@ -166,20 +178,8 @@ case class AnchorageVisit(anchorage: Anchorage, arrival: Instant, departure: Ins
 
   def toJson =
     ("anchorage" -> anchorage.id) ~
-      ("arrival" -> arrival.toString()) ~
-      ("departure" -> departure.toString())
-}
-
-case class VesselEncounters(vessel1: VesselMetadata,
-                            vessel2: VesselMetadata,
-                            encounters: Seq[SingleEncounter]) {
-  def toJson =
-    ("vessel1_mmsi" -> vessel1.mmsi) ~
-      ("vessel2_mmsi" -> vessel2.mmsi) ~
-      ("vessel1_flag_state" -> vessel1.flagState) ~
-      ("vessel2_flag_state" -> vessel2.flagState) ~
-      ("encounters" -> encounters.map(_.toJson))
-
+      ("start_time" -> arrival.toString()) ~
+      ("end_time" -> departure.toString())
 }
 
 object Utility extends LazyLogging {
