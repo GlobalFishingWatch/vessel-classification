@@ -41,23 +41,27 @@ def evaluation_loop(master,
         logging.info('Starting evaluation at ' + time.strftime(
             '%Y-%m-%d-%H:%M:%S', time.gmtime()))
 
-        try:
-            with sv.managed_session(master, start_standard_services=False) as sess:
 
+        with sv.managed_session(master, start_standard_services=False) as sess:
+            try:
                 sv.saver.restore(sess, checkpoint_path)
-                sv.start_queue_runners(sess)
-                final_op_value = slim.evaluation.evaluation(
-                    sess,
-                    num_evals=num_evals,
-                    eval_op=eval_op,
-                    summary_op=summary_op,
-                    summary_writer=summary_writer,
-                    global_step=global_step)
+            except ValueError as e:
+                logging.warning('Could not load check point, skipping: %s', str(e))
+                continue
+            except tf.errors.NotFoundError as e:
+                logging.warning('Could not load check point, skipping: %s', str(e))
+                continue
+            sv.start_queue_runners(sess)
+            final_op_value = slim.evaluation.evaluation(
+                sess,
+                num_evals=num_evals,
+                eval_op=eval_op,
+                summary_op=summary_op,
+                summary_writer=summary_writer,
+                global_step=global_step)
 
-            logging.info('Finished evaluation at ' + time.strftime(
-                '%Y-%m-%d-%H:%M:%S', time.gmtime()))
-        except ValueError as e:
-            logging.warn('Evaluation error: %s', str(e))
+        logging.info('Finished evaluation at ' + time.strftime(
+            '%Y-%m-%d-%H:%M:%S', time.gmtime()))
 
     logging.info(
         'Timed-out waiting for new checkpoint file. Exiting evaluation loop.')

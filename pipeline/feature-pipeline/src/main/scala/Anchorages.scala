@@ -11,10 +11,12 @@ import com.spotify.scio.values.SCollection
 import org.jgrapht.alg.util.UnionFind
 import org.joda.time.{Duration}
 
+import org.skytruth.common.AdditionalUnits._
+import org.skytruth.common.Implicits._
+import org.skytruth.common.{AdjacencyLookup, LatLon}
+
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._
-
-import AdditionalUnits._
 
 object Anchorages {
   def findAnchoragePointCells(input: SCollection[(VesselMetadata, ProcessedLocations)],
@@ -33,8 +35,14 @@ object Anchorages {
         val fishingVesselCount = uniqueVessels.filter { md =>
           knownFishingMMSIs.contains(md.mmsi)
         }.size
+        val meanDistanceToShore = visits.map { _._2.meanDistanceToShore }.mean
+        val meanDriftRadius = visits.map { _._2.meanDriftRadius }.mean
 
-        AnchoragePoint(centralPoint, uniqueVessels, fishingVesselCount)
+        AnchoragePoint(centralPoint,
+                       uniqueVessels,
+                       fishingVesselCount,
+                       meanDistanceToShore,
+                       meanDriftRadius)
     }.filter { _.vessels.size >= Parameters.minUniqueVesselsForAnchorage }
   }
 

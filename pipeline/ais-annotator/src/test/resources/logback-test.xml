@@ -5,7 +5,7 @@
         </encoder>
     </appender>
 
-    <logger name="com.google.cloud.dataflow" level="info"/>
+    <logger name="com.google.cloud.dataflow" level="warn"/>
 
     <root level="info">
       <appender-ref ref="STDOUT" />

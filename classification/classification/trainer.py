@@ -133,7 +133,7 @@ class Trainer:
         update_ops = []
         for names_to_values, names_to_updates in aggregate_metric_maps:
             for metric_name, metric_value in names_to_values.iteritems():
-                op = tf.scalar_summary(metric_name, metric_value)
+                op = tf.summary.scalar(metric_name, metric_value)
                 op = tf.Print(op, [metric_value], metric_name)
                 summary_ops.append(op)
             for update_op in names_to_updates.values():
@@ -145,7 +145,7 @@ class Trainer:
         # Setup the global step.
         slim.get_or_create_global_step()
 
-        merged_summary_ops = tf.merge_summary(summary_ops)
+        merged_summary_ops = tf.summary.merge(summary_ops)
         evaluation_loop.evaluation_loop(
             master,
             self.checkpoint_dir,

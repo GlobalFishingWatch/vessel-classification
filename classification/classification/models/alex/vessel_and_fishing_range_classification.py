@@ -36,10 +36,10 @@ class Model(ModelBase):
 
             return np.float32(length)
 
-        self._classification_training_objectives = [
-            VesselMetadataClassificationObjective('is_fishing', 'Fishing',
-                                                  vessel_metadata,
-                                                  ['Fishing', 'Non-fishing']),
+        self.classification_training_objectives = [
+            VesselMetadataClassificationObjective(
+                'is_fishing', 'Fishing', vessel_metadata,
+                utility.FISHING_NONFISHING_NAMES),
             VesselMetadataClassificationObjective('label', 'Vessel class',
                                                   vessel_metadata,
                                                   utility.VESSEL_CLASS_NAMES),

@@ -30,7 +30,10 @@ import org.joda.time.format.ISODateTimeFormat
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
-import org.skytruth.common.GcpConfig
+import org.skytruth.common.AdditionalUnits._
+import org.skytruth.common.{GcpConfig, LatLon}
+import org.skytruth.common.Implicits._
+import org.skytruth.common.ScioContextResource._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
@@ -38,11 +41,8 @@ import scala.collection.JavaConversions._
 import scala.math
 
 import resource._
-import ScioContextResource._
 
 import org.apache.commons.lang3.builder.ToStringBuilder._
-
-import AdditionalUnits._
 
 case class RangeValidator(valid: Boolean) extends AnyVal {
   def inRange[T <: Ordered[T]](value: T, min: T, max: T) =
@@ -147,10 +147,12 @@ object Pipeline extends LazyLogging {
             }
             val numPoints = currentPeriod.length.toDouble
             val duration = new Duration(periodFirst.timestamp, currentPeriod.last.timestamp)
-            val aveLat = currentPeriod.map { _.location.lat.value }.sum / numPoints
-            val aveLon = currentPeriod.map { _.location.lon.value }.sum / numPoints
+            val aveLatLon = LatLon.mean(currentPeriod.map { _.location })
+            val meanDistanceToShore = currentPeriod.map { _.distanceToShore }.mean
+            val meanDriftRadius = currentPeriod.map { _.location.getDistance(aveLatLon) }.mean
+
             stationaryPeriods.append(
-              StationaryPeriod(LatLon(aveLat.of[degrees], aveLon.of[degrees]), duration))
+              StationaryPeriod(aveLatLon, duration, meanDistanceToShore, meanDriftRadius))
           } else {
             withoutLongStationaryPeriods ++= currentPeriod
           }
@@ -202,6 +204,10 @@ object Pipeline extends LazyLogging {
 
     val environment = remaining_args.required("env")
     val jobName = remaining_args.required("job-name")
+    val generateModelFeatures = remaining_args.boolean("generate-model-features", true)
+    val generateAnchorages = remaining_args.boolean("generate-anchorages", true)
+    val generateAnchorageVisits = remaining_args.boolean("generate-anchorage-visits", true)
+    val generateEncounters = remaining_args.boolean("generate-encounters", true)
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -221,66 +227,73 @@ object Pipeline extends LazyLogging {
         sc.tableRowJsonFile(path)
       }
 
+      val knownFishingMMSIs = loadFishingMMSIs()
+
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
         readJsonRecords(matches)
 
-      val adjacencyAnnotated =
-        Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
-
       val processed =
         filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
-
-      val knownFishingMMSIs = loadFishingMMSIs()
 
       val anchoragePoints =
         Anchorages.findAnchoragePointCells(processed, knownFishingMMSIs)
       val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
 
-      val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_group_visits"
-
-      val anchorageVisits =
-        Anchorages
-          .findAnchorageVisits(locationRecords, anchorages, Parameters.minAnchorageVisitDuration)
-
-      anchorageVisits.flatMap {
-        case (metadata, visits) =>
-          visits.map((visit) => {
-            compact(
-              render(("mmsi" -> metadata.mmsi) ~
-                ("visit" -> visit.toJson)))
-          })
-      }.saveAsTextFile(anchorageVisitsPath)
+      val adjacencyAnnotated =
+        Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
 
       val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
         case (md, feature) =>
           (s"${md.mmsi}", feature)
       }
 
-      // Output vessel classifier features.
-      val outputFeaturePath = config.pipelineOutputPath + "/features"
-      val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
+      if (generateModelFeatures) {
+        // Output vessel classifier features.
+        val outputFeaturePath = config.pipelineOutputPath + "/features"
+        val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
+      }
 
-      // Output anchorages points.
-      val anchoragePointsPath = config.pipelineOutputPath + "/anchorage_points"
-      anchoragePoints.map { anchoragePoint =>
-        compact(render(anchoragePoint.toJson))
-      }.saveAsTextFile(anchoragePointsPath)
+      if (generateAnchorages) {
+        // Output anchorages points.
+        val anchoragePointsPath = config.pipelineOutputPath + "/anchorage_points"
+        anchoragePoints.map { anchoragePoint =>
+          compact(render(anchoragePoint.toJson))
+        }.saveAsTextFile(anchoragePointsPath)
 
-      // And anchorages.
-      val anchoragesPath = config.pipelineOutputPath + "/anchorages"
-      anchorages.map { anchorage =>
-        compact(render(anchorage.toJson))
-      }.saveAsTextFile(anchoragesPath)
+        // And anchorages.
+        val anchoragesPath = config.pipelineOutputPath + "/anchorages"
+        anchorages.map { anchorage =>
+          compact(render(anchorage.toJson))
+        }.saveAsTextFile(anchoragesPath)
 
-      // Build and output suspected encounters.
-      val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
-      val encounters =
-        Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
-      encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
+        val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_group_visits"
+
+        if (generateAnchorageVisits) {
+          val anchorageVisits =
+            Anchorages.findAnchorageVisits(locationRecords,
+                                           anchorages,
+                                           Parameters.minAnchorageVisitDuration)
+
+          anchorageVisits.map {
+            case (metadata, visits) =>
+              compact(
+                render(("mmsi" -> metadata.mmsi) ~
+                  ("visits" -> visits.map(_.toJson))))
+          }.saveAsTextFile(anchorageVisitsPath)
+        }
+      }
+
+      if (generateEncounters) {
+        // Build and output suspected encounters.
+        val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
+        val encounters =
+          Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
+        encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
+      }
 
       // Get a list of all MMSIs to save to disk to speed up TF training startup.
       val mmsiListPath = config.pipelineOutputPath + "/mmsis"
-      features.keys.saveAsTextFile(mmsiListPath)
+      processed.keys.saveAsTextFile(mmsiListPath)
     })
   }
 }

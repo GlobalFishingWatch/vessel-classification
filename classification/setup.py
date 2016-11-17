@@ -1,4 +1,6 @@
 import setuptools
+from classification import params
+
 setuptools.setup(
     name='vessel_classification',
     version='1.0',
@@ -6,7 +8,7 @@ setuptools.setup(
     author_email='alexwilson@google.com',
     package_data={
         'classification.data':
-        ['net_training_20161016.csv', 'combined_fishing_ranges.csv']
+        [params.metadata_file, 'combined_fishing_ranges.csv']
     },
     packages=[
         'common', 'classification', 'classification.data',

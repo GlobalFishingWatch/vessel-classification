@@ -256,12 +256,12 @@ def ydump_fishing_localisation(doc, results):
 
     header = ["Gear Type", "Precision", "Recall", "Accuracy", "F1-Score"]
     rows = []
-    logging.info("Overall localisation accuracy %s", metrics.accuracy_score(
-        y_true, y_pred))
-    logging.info("Overall localisation precision %s", metrics.precision_score(
-        y_true, y_pred))
-    logging.info("Overall localisation recall %s", metrics.recall_score(
-        y_true, y_pred))
+    logging.info("Overall localisation accuracy %s",
+                 metrics.accuracy_score(y_true, y_pred))
+    logging.info("Overall localisation precision %s",
+                 metrics.precision_score(y_true, y_pred))
+    logging.info("Overall localisation recall %s",
+                 metrics.recall_score(y_true, y_pred))
 
     for cls in sorted(set(results.label_map.values())):
         true_chunks = []
