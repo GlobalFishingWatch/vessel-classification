@@ -31,7 +31,7 @@ import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 import org.skytruth.common.AdditionalUnits._
-import org.skytruth.common.{GcpConfig, LatLon}
+import org.skytruth.common.{GcpConfig, LatLon, ValueCache}
 import org.skytruth.common.Implicits._
 import org.skytruth.common.ScioContextResource._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
@@ -65,17 +65,19 @@ object Pipeline extends LazyLogging {
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
   // by ascending timestamp.
-  def readJsonRecords(inputs: Seq[SCollection[TableRow]])
-    : SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
+  def readJsonRecords(
+      inputs: Seq[SCollection[TableRow]],
+      knownFishingMMSIs: Set[Int],
+      minRequiredPositions: Long): SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
 
     val input = SCollection.unionAll(inputs)
     // Keep only records with a location.
-    input
+    val validRecords = input
       .filter(json => json.containsKey("lat") && json.containsKey("lon"))
       // Build a typed location record with units of measure.
       .map(json => {
         val mmsi = json.getLong("mmsi").toInt
-        val metadata = VesselMetadata(mmsi)
+        val metadata = VesselMetadata(mmsi, knownFishingMMSIs.contains(mmsi))
         val record =
           // TODO(alexwilson): Double-check all these units are correct.
           VesselLocationRecord(Instant.parse(json.getString("timestamp")),
@@ -100,14 +102,32 @@ object Pipeline extends LazyLogging {
             .inRange(record.heading, -180.0.of[degrees], 180.of[degrees])
             .valid
       }
-      .groupByKey
-      .map {
-        case (metadata, records) =>
-          (metadata,
-           records.toIndexedSeq
-           // On occasion the same message seems to appear twice in the record. Remove.
-           .distinct.sortBy(_.timestamp.getMillis))
+
+    // Do an early filtering of MMSIs with insufficient points, to improve the downstream
+    // performance of the pipeline. Doing this with countByKey is much faster than
+    // doing this via a groupBy.
+    val mmsisWithSufficientPoints =
+      validRecords.countByKey.filter(_._2 >= minRequiredPositions).map(_._1).asListSideInput
+
+    val allowedMMSIs = ValueCache[Set[VesselMetadata]]()
+    var cachedMap: Option[Set[VesselMetadata]] = None
+    val filteredValidRecords = validRecords
+      .withSideInputs(mmsisWithSufficientPoints)
+      .filter {
+        case ((vmd, _), ctx) =>
+          val mmsiSet = allowedMMSIs.get(() => ctx(mmsisWithSufficientPoints).toSet)
+
+          mmsiSet.contains(vmd)
       }
+      .toSCollection
+
+    filteredValidRecords.groupByKey.map {
+      case (metadata, records) =>
+        (metadata,
+         records.toIndexedSeq
+         // On occasion the same message seems to appear twice in the record. Remove.
+         .distinct.sortBy(_.timestamp.getMillis))
+    }
   }
 
   def thinPoints(records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
@@ -169,16 +189,9 @@ object Pipeline extends LazyLogging {
   }
 
   def filterAndProcessVesselRecords(
-      input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
-      minRequiredPositions: Int): SCollection[(VesselMetadata, ProcessedLocations)] = {
-    // Remove vessels with insufficient locations.
-    val vesselsWithSufficientData = input.filter {
-      case (_, records) => records.length > minRequiredPositions
-    }
-
-    // TODO(alexwilson): Perhaps we should do the insufficient locations filtering
-    // after thinning and stationary point removal?
-    vesselsWithSufficientData.map {
+      input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
+    : SCollection[(VesselMetadata, ProcessedLocations)] = {
+    input.map {
       case (metadata, records) =>
         val thinnedPoints = thinPoints(records)
         val processedLocations = removeStationaryPeriods(thinnedPoints)
@@ -223,31 +236,29 @@ object Pipeline extends LazyLogging {
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
       val matches = (Parameters.allDataYears).map { year =>
-        val path = s"${Parameters.inputMeasuresPath}/$year-*-*/*.json"
+        val path = Parameters.measuresPathPattern(year)
+
         sc.tableRowJsonFile(path)
       }
 
       val knownFishingMMSIs = loadFishingMMSIs()
 
+      val minValidLocations = 200
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
-        readJsonRecords(matches)
+        readJsonRecords(matches, knownFishingMMSIs, Parameters.minRequiredPositions)
 
       val processed =
-        filterAndProcessVesselRecords(locationRecords, Parameters.minRequiredPositions)
+        filterAndProcessVesselRecords(locationRecords)
 
       val anchoragePoints =
-        Anchorages.findAnchoragePointCells(processed, knownFishingMMSIs)
+        Anchorages.findAnchoragePointCells(processed)
       val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
 
-      val adjacencyAnnotated =
-        Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
-
-      val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
-        case (md, feature) =>
-          (s"${md.mmsi}", feature)
-      }
-
       if (generateModelFeatures) {
+        val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
+          case (md, feature) =>
+            (s"${md.mmsi}", feature)
+        }
         // Output vessel classifier features.
         val outputFeaturePath = config.pipelineOutputPath + "/features"
         val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
@@ -284,6 +295,9 @@ object Pipeline extends LazyLogging {
       }
 
       if (generateEncounters) {
+        val adjacencyAnnotated =
+          Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
+
         // Build and output suspected encounters.
         val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
         val encounters =

@@ -223,6 +223,18 @@ case class IteratorWithCurrent[T](private val iterator: Iterator[T]) {
   def getNext() { current = nextOption() }
 }
 
+case class ValueCache[T]() {
+  private var value : Option[T] = None
+
+  def get(getter: () => T) = {
+    if (!value.isDefined) {
+      value = Some(getter())
+    }
+
+    value.get
+  }
+}
+
 object ScioContextResource {
   implicit def scioContextResource[A <: ScioContext] = new Resource[A] {
     override def close(r: A) = r.close()

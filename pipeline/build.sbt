@@ -64,7 +64,7 @@ lazy val featurePipeline =
                                     "org.json4s" %% "json4s-native" % "3.3.0",
                                     "org.jgrapht" % "jgrapht-core" % "1.0.0")
       ))
-    .dependsOn(common, tfExampleProtos)
+    .dependsOn(tfExampleProtos, common)
 
 // An aggregation of all projects.
 lazy val root = (project in file(".")).aggregate(common, aisAnnotatorPipeline, featurePipeline)
