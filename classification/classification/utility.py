@@ -597,7 +597,8 @@ def is_test(mmsi):
     return (_hash_mmsi_to_double(mmsi) >= 0.5)
 
 
-def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
+def read_vessel_multiclass_metadata_lines(available_mmsis,
+                                          lines,
                                           fishing_range_dict,
                                           fishing_range_training_upweight,
                                           fishing_only=False,

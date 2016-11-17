@@ -4,9 +4,9 @@ import json
 from . import layers
 from classification import utility
 from classification.model import ModelBase
-from classification.objectives import (FishingLocalizationObjectiveCrossEntropy,
-                                       RegressionObjective, TrainNetInfo,
-                                       VesselMetadataClassificationObjective)
+from classification.objectives import (
+    FishingLocalizationObjectiveCrossEntropy, RegressionObjective,
+    TrainNetInfo, VesselMetadataClassificationObjective)
 import logging
 import math
 import numpy as np
@@ -108,7 +108,8 @@ class Model(ModelBase):
 
             fishing_outputs = tf.squeeze(
                 slim.conv2d(
-                    concatenated_multiscale_embedding, 1, [1, 1],
+                    concatenated_multiscale_embedding,
+                    1, [1, 1],
                     activation_fn=None),
                 squeeze_dims=[1, 3])
 

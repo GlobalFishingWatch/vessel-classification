@@ -24,7 +24,8 @@ class Inferer(object):
         self.model_checkpoint_path = model_checkpoint_path
         self.root_feature_path = root_feature_path
         self.batch_size = self.model.batch_size
-        self.min_points_for_classification = int(1000.0 / (360.0 / model.feature_duration_days))
+        self.min_points_for_classification = int(1000.0 / (
+            360.0 / model.feature_duration_days))
         self.mmsis = mmsis
 
         def _build_starts_quarterly():
@@ -66,7 +67,7 @@ class Inferer(object):
             matching_files, shuffle=False, num_epochs=1)
 
         readers = []
-        for _ in range(inference_parallelism*2):
+        for _ in range(inference_parallelism * 2):
             reader = utility.cropping_all_slice_feature_file_reader(
                 filename_queue, self.model.num_feature_dimensions + 1,
                 self.time_ranges, self.model.window_max_points,
@@ -166,7 +167,9 @@ def main(args):
 
             fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
             vessel_metadata = utility.read_vessel_multiclass_metadata(
-                all_available_mmsis, metadata_file, fishing_range_dict=fishing_ranges)
+                all_available_mmsis,
+                metadata_file,
+                fishing_range_dict=fishing_ranges)
 
             mmsis = set(vessel_metadata.mmsis_for_split(args.dataset_split))
         else:
