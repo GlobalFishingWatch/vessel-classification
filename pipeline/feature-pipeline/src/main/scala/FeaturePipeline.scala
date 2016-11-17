@@ -247,15 +247,34 @@ object Pipeline extends LazyLogging {
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
         readJsonRecords(matches, knownFishingMMSIs, Parameters.minRequiredPositions)
 
+      val adjacencies =
+        Encounters.calculateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
+
       val processed =
         filterAndProcessVesselRecords(locationRecords)
+      val processedWithAdjecency = Encounters.annotateAdjacency(processed, adjacencies)
 
       val anchoragePoints =
         Anchorages.findAnchoragePointCells(processed)
       val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
 
+      val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_group_visits"
+
+      val anchorageVisits =
+        Anchorages
+          .findAnchorageVisits(locationRecords, anchorages, Parameters.minAnchorageVisitDuration)
+
+      anchorageVisits.flatMap {
+        case (metadata, visits) =>
+          visits.map((visit) => {
+            compact(
+              render(("mmsi" -> metadata.mmsi) ~
+                ("visit" -> visit.toJson)))
+          })
+      }.saveAsTextFile(anchorageVisitsPath)
+
       if (generateModelFeatures) {
-        val features = ModelFeatures.buildVesselFeatures(processed, anchorages).map {
+        val features = ModelFeatures.buildVesselFeatures(processedWithAdjecency, anchorages).map {
           case (md, feature) =>
             (s"${md.mmsi}", feature)
         }
@@ -295,13 +314,10 @@ object Pipeline extends LazyLogging {
       }
 
       if (generateEncounters) {
-        val adjacencyAnnotated =
-          Encounters.annotateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
-
         // Build and output suspected encounters.
         val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
         val encounters =
-          Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencyAnnotated)
+          Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencies)
         encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
       }
 
