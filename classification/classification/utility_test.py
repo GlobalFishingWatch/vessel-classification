@@ -7,6 +7,24 @@ import tensorflow as tf
 from . import params
 
 
+class PythonReshapePadTest(tf.test.TestCase):
+    def testRepeatTensor(self):
+        with self.test_session():
+            batch_size = 1
+            depth = 3
+            width = 4
+            input_data = tf.constant(
+                np.array([[[[1., 2.], [4., 5.], [7., 8.]]]]))
+
+            double_padded = utility.repeat_tensor(input_data, 3)
+
+            expected = np.array([[[[1., 2.], [1., 2.], [1., 2.], [4., 5.],
+                                   [4., 5.], [4., 5.], [7., 8.], [7., 8.],
+                                   [7., 8.]]]])
+
+            self.assertAllEqual(double_padded.eval(), expected)
+
+
 class PythonFixedTimeExtractTest(tf.test.TestCase):
     def test_cropped_extract(self):
         with self.test_session():

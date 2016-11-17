@@ -1,10 +1,11 @@
 from __future__ import absolute_import
 import argparse
 import json
+from . import abstract_models
 from . import layers
 from classification import utility
-from classification.model import ModelBase
-from classification.objectives import TrainNetInfo, VesselMetadataClassificationObjective, RegressionObjective
+from classification.objectives import (
+    TrainNetInfo, VesselMetadataClassificationObjective, RegressionObjective)
 import logging
 import math
 import numpy as np
@@ -15,16 +16,23 @@ import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 
 
-class Model(ModelBase):
+class Model(abstract_models.MisconceptionModel):
 
     window_size = 3
     stride = 2
     feature_depth = 50
-    levels = 10
+    levels = 9
+
+    @property
+    def max_window_duration_seconds(self):
+        return 90 * 24 * 3600
+
+    @property
+    def window_max_points(self):
+        return 4096
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
-        super(self.__class__, self).__init__(num_feature_dimensions,
-                                             vessel_metadata)
+        super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
 
         def length_or_none(mmsi):
             length = vessel_metadata.vessel_label('length', mmsi)
@@ -42,30 +50,12 @@ class Model(ModelBase):
                                                   utility.VESSEL_CLASS_NAMES),
             VesselMetadataClassificationObjective(
                 'sublabel', 'Vessel detailed class', vessel_metadata,
-                utility.VESSEL_CLASS_DETAILED_NAMES),
-            VesselMetadataClassificationObjective(
-                'length',
-                'Vessel length category',
-                vessel_metadata,
-                utility.VESSEL_LENGTH_CLASSES,
-                transformer=utility.vessel_categorical_length_transformer),
-            RegressionObjective(
-                'length',
-                'Vessel length regression',
-                length_or_none,
-                loss_weight=0.1)
+                utility.VESSEL_CLASS_DETAILED_NAMES), RegressionObjective(
+                    'length',
+                    'Vessel length regression',
+                    length_or_none,
+                    loss_weight=0.1)
         ]
-
-    def zero_pad_features(self, features):
-        """ Zero-pad features in the depth dimension to match requested feature depth. """
-
-        feature_pad_size = self.feature_depth - self.num_feature_dimensions
-        assert (feature_pad_size >= 0)
-        zero_padding = tf.zeros(
-            [self.batch_size, 1, self.window_max_points, feature_pad_size])
-        padded = tf.concat(3, [features, zero_padding])
-
-        return padded
 
     def build_training_net(self, features, timestamps, mmsis):
 

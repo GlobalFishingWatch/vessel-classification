@@ -63,28 +63,16 @@ VESSEL_CLASS_DETAILED_NAMES = [
 ]
 
 FISHING_NONFISHING_NAMES = ['Fishing', 'Non-fishing']
-""" The vessel length classes. """
-VESSEL_LENGTH_CLASSES = [
-    '0-12m', '12-18m', '18-24m', '24-36m', '36-50m', '50-75m', '75-100m',
-    '100-150m', '150m+'
-]
 
 TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
 
 
-def vessel_categorical_length_transformer(vessel_length_string):
-    """ A transformer from continuous vessel lengths to discrete categories. """
-    ranges = [12.0, 18.0, 24.0, 36.0, 50.0, 75.0, 100.0, 150.0]
-
-    if vessel_length_string == '':
-        return ''
-
-    vessel_length = float(vessel_length_string)
-    for i in range(len(ranges)):
-        if vessel_length < ranges[i]:
-            return VESSEL_LENGTH_CLASSES[i]
-    return VESSEL_LENGTH_CLASSES[-1]
+def repeat_tensor(input, n):
+    batch_size, _, width, depth = input.get_shape()
+    repeated = tf.concat(3, [input] * n)
+    return tf.reshape(repeated,
+                      [int(batch_size), 1, int(width) * n, int(depth)])
 
 
 FishingRange = namedtuple('FishingRange',
@@ -297,10 +285,6 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
 
     start_time = int(features[0][0])
     end_time = int(features[-1][0])
-
-    # Roll the features randomly to give different offsets.
-    roll = random_state.randint(0, window_size)
-    features = np.roll(features, roll, axis=0)
 
     # Drop the first (timestamp) column.
     timestamps = features[:, 0].astype(np.int32)
@@ -583,6 +567,29 @@ class VesselMetadata(object):
 
         return replicated_mmsis
 
+    def fishing_range_only_list(self, random_state, split,
+                                max_replication_factor):
+        replicated_mmsis = []
+        fishing_mmsi_set = set(self.fishing_ranges_map.keys())
+        fishing_range_only_mmsis = [mmsi
+                                    for mmsi in self.mmsis_for_split(split)
+                                    if mmsi in fishing_mmsi_set]
+        logging.info("Fishing range training mmsis: %d",
+                     len(fishing_range_only_mmsis))
+        for mmsi in fishing_range_only_mmsis:
+            weight = min(self.vessel_weight(mmsi), max_replication_factor)
+
+            int_n = int(weight)
+            replicated_mmsis += ([mmsi] * int_n)
+            frac_n = weight - float(int_n)
+            if (random_state.uniform(0.0, 1.0) <= frac_n):
+                replicated_mmsis.append(mmsi)
+
+        random_state.shuffle(replicated_mmsis)
+        logging.info("Replicated training mmsis: %d", len(replicated_mmsis))
+
+        return replicated_mmsis
+
 
 def is_test(mmsi):
     """Is this mmsi in the test set?
@@ -590,7 +597,8 @@ def is_test(mmsi):
     return (_hash_mmsi_to_double(mmsi) >= 0.5)
 
 
-def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
+def read_vessel_multiclass_metadata_lines(available_mmsis,
+                                          lines,
                                           fishing_range_dict,
                                           fishing_range_training_upweight):
     """ For a set of vessels, read metadata and calculate class weights.

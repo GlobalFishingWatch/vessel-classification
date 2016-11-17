@@ -533,12 +533,9 @@ def load_predicted_fishing_ranges_by_mmsi(inference_path, mmsi_set):
     # Faster than using dateutil
     def parse(x):
         # 2014-08-28T13:56:16+00:00
-        dt = datetime.datetime.strptime(x[:-6], "%Y-%m-%dT%H:%M:%S")
-        assert x[-6:] == "+00:00"
-        return dt.replace(tzinfo=pytz.UTC)
-
-    def parse2(x):
-        # 2014-08-28T13:56:16
+        # TODO: fix generation to generate consistent datetimes
+        if x[-6:] == "+00:00":
+            x = x[:-6]
         dt = datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S")
         return dt.replace(tzinfo=pytz.UTC)
 
@@ -553,9 +550,8 @@ def load_predicted_fishing_ranges_by_mmsi(inference_path, mmsi_set):
                 rng = [(parse(a), parse(b))
                        for (a, b) in row['labels']['fishing_localisation']]
                 ranges_by_mmsi[mmsi].extend(rng)
-                #TODO: fix generation to generate consistent datetimes
                 coverage_by_mmsi[mmsi].append(
-                    (parse2(row['start_time']), parse2(row['end_time'])))
+                    (parse(row['start_time']), parse(row['end_time'])))
     return ranges_by_mmsi, coverage_by_mmsi
 
 

@@ -11,19 +11,28 @@ import utility
 class ModelBase(object):
     __metaclass__ = abc.ABCMeta
 
-    batch_size = 32
+    @property
+    def batch_size(self):
+        return 64
 
-    feature_duration_days = 45
-    max_sample_frequency_seconds = 5 * 60
-    max_window_duration_seconds = feature_duration_days * 24 * 3600
+    @property
+    def max_window_duration_seconds(self):
+        return None
 
-    # We allocate a much smaller buffer than would fit the specified time
+    # We often allocate a much smaller buffer than would fit the specified time
     # sampled at 5 mins intervals, on the basis that the sample is almost
     # always much more sparse.
-    window_max_points = (max_window_duration_seconds /
-                         max_sample_frequency_seconds) / 4
+    @property
+    def window_max_points(self):
+        return None
 
-    min_viable_timeslice_length = 500
+    @property
+    def min_viable_timeslice_length(self):
+        return self.window_max_points / 4
+
+    @property
+    def max_replication_factor(self):
+        return 100.0
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
         self.num_feature_dimensions = num_feature_dimensions
@@ -34,6 +43,15 @@ class ModelBase(object):
             self.vessel_metadata = None
             self.fishing_ranges_map = None
         self.training_objectives = None
+
+    def build_training_file_list(self, base_feature_path, split):
+        random_state = np.random.RandomState()
+        training_mmsis = self.vessel_metadata.weighted_training_list(
+            random_state, split, self.max_replication_factor)
+        return [
+            '%s/%d.tfrecord' % (base_feature_path, mmsi)
+            for mmsi in training_mmsis
+        ]
 
     @abc.abstractmethod
     def build_training_net(self, features, timestamps, mmsis):

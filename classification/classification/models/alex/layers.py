@@ -39,7 +39,7 @@ def misconception_with_bypass(input,
                               is_training,
                               scope=None):
     """ A misconception_layer added to its ave-pool down-sampled input (a la ResNet).
-  """
+    """
     with tf.name_scope(scope):
         misconception = misconception_layer(input, window_size, stride, depth,
                                             is_training, scope)

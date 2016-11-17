@@ -21,16 +21,16 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
     window_size = 3
     stride = 2
-    feature_depth = 80
-    levels = 9
+    feature_depth = 50
+    levels = 6
 
     @property
     def max_window_duration_seconds(self):
-        return 90 * 24 * 3600
+        return 11 * 24 * 3600
 
     @property
     def window_max_points(self):
-        return 4096
+        return 512
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
@@ -42,44 +42,32 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
             return np.float32(length)
 
-        self.classification_training_objectives = [
-            VesselMetadataClassificationObjective(
-                'is_fishing', 'Fishing', vessel_metadata,
-                utility.FISHING_NONFISHING_NAMES),
-            VesselMetadataClassificationObjective('label', 'Vessel class',
-                                                  vessel_metadata,
-                                                  utility.VESSEL_CLASS_NAMES),
-            VesselMetadataClassificationObjective(
-                'sublabel', 'Vessel detailed class', vessel_metadata,
-                utility.VESSEL_CLASS_DETAILED_NAMES), RegressionObjective(
-                    'length',
-                    'Vessel length regression',
-                    length_or_none,
-                    loss_weight=0.1)
-        ]
-
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
             'fishing_localisation',
             'Fishing localisation',
             vessel_metadata,
             loss_weight=50.0)
 
-        self.training_objectives = self.classification_training_objectives + [
-            self.fishing_localisation_objective
+        self.classification_training_objectives = []
+        self.training_objectives = [self.fishing_localisation_objective]
+
+    def build_training_file_list(self, base_feature_path, split):
+        random_state = np.random.RandomState()
+        training_mmsis = self.vessel_metadata.fishing_range_only_list(
+            random_state, split, self.max_replication_factor)
+        return [
+            '%s/%d.tfrecord' % (base_feature_path, mmsi)
+            for mmsi in training_mmsis
         ]
 
     def build_training_net(self, features, timestamps, mmsis):
         features = self.zero_pad_features(features)
         self.misconception_with_fishing_ranges(features, mmsis, True)
 
-        trainers = []
-        for i in range(len(self.classification_training_objectives)):
-            trainers.append(self.classification_training_objectives[i]
-                            .build_trainer(timestamps, mmsis))
-
-        trainers.append(
+        trainers = [
             self.fishing_localisation_objective.build_trainer(timestamps,
-                                                              mmsis))
+                                                              mmsis)
+        ]
 
         optimizer = tf.train.AdamOptimizer(1e-4)
 
@@ -89,13 +77,9 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         features = self.zero_pad_features(features)
         self.misconception_with_fishing_ranges(features, mmsis, False)
 
-        evaluations = []
-        for i in range(len(self.classification_training_objectives)):
-            to = self.classification_training_objectives[i]
-            evaluations.append(to.build_evaluation(timestamps, mmsis))
-
-        evaluations.append(
+        evaluations = [
             self.fishing_localisation_objective.build_evaluation(timestamps,
-                                                                 mmsis))
+                                                                 mmsis)
+        ]
 
         return evaluations
