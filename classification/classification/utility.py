@@ -68,13 +68,6 @@ TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
 
 
-def duplicate_double_pad(input):
-    batch_size, _, width, depth = input.get_shape()
-    doubled = tf.concat(3, [input, input])
-    return tf.reshape(doubled,
-                      [int(batch_size), 1, int(width * 2), int(depth)])
-
-
 def repeat_tensor(input, n):
     batch_size, _, width, depth = input.get_shape()
     repeated = tf.concat(3, [input] * n)
@@ -607,9 +600,7 @@ def is_test(mmsi):
 def read_vessel_multiclass_metadata_lines(available_mmsis,
                                           lines,
                                           fishing_range_dict,
-                                          fishing_range_training_upweight,
-                                          fishing_only=False,
-                                          fishing_ranges_only=False):
+                                          fishing_range_training_upweight):
     """ For a set of vessels, read metadata and calculate class weights.
 
     Args:

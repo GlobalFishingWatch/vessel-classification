@@ -8,23 +8,6 @@ from . import params
 
 
 class PythonReshapePadTest(tf.test.TestCase):
-    def testReshapePad(self):
-        with self.test_session():
-            batch_size = 1
-            depth = 3
-            width = 4
-            input_data = tf.constant(
-                np.array([[[[1., 2., 3.], [4., 5., 6.], [7., 8., 9.],
-                            [10., 11., 12.]]]]))
-
-            double_padded = utility.duplicate_double_pad(input_data)
-
-            expected = np.array([[[[1., 2., 3.], [1., 2., 3.], [4., 5., 6.],
-                                   [4., 5., 6.], [7., 8., 9.], [7., 8., 9.],
-                                   [10., 11., 12.], [10., 11., 12.]]]])
-
-            self.assertAllEqual(double_padded.eval(), expected)
-
     def testRepeatTensor(self):
         with self.test_session():
             batch_size = 1
