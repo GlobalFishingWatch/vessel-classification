@@ -63,11 +63,6 @@ VESSEL_CLASS_DETAILED_NAMES = [
 ]
 
 FISHING_NONFISHING_NAMES = ['Fishing', 'Non-fishing']
-""" The vessel length classes. """
-VESSEL_LENGTH_CLASSES = [
-    '0-12m', '12-18m', '18-24m', '24-36m', '36-50m', '50-75m', '75-100m',
-    '100-150m', '150m+'
-]
 
 TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
@@ -78,20 +73,6 @@ def duplicate_double_pad(input):
     doubled = tf.concat(3, [input, input])
     return tf.reshape(doubled,
                       [int(batch_size), 1, int(width * 2), int(depth)])
-
-
-def vessel_categorical_length_transformer(vessel_length_string):
-    """ A transformer from continuous vessel lengths to discrete categories. """
-    ranges = [12.0, 18.0, 24.0, 36.0, 50.0, 75.0, 100.0, 150.0]
-
-    if vessel_length_string == '':
-        return ''
-
-    vessel_length = float(vessel_length_string)
-    for i in range(len(ranges)):
-        if vessel_length < ranges[i]:
-            return VESSEL_LENGTH_CLASSES[i]
-    return VESSEL_LENGTH_CLASSES[-1]
 
 
 FishingRange = namedtuple('FishingRange',

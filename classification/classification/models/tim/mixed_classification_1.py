@@ -48,13 +48,7 @@ class Model(ModelBase):
                                                   utility.VESSEL_CLASS_NAMES),
             VesselMetadataClassificationObjective(
                 'sublabel', 'Vessel detailed class', vessel_metadata,
-                utility.VESSEL_CLASS_DETAILED_NAMES),
-            VesselMetadataClassificationObjective(
-                'length',
-                'Vessel length category',
-                vessel_metadata,
-                utility.VESSEL_LENGTH_CLASSES,
-                transformer=utility.vessel_categorical_length_transformer)
+                utility.VESSEL_CLASS_DETAILED_NAMES)
         ]
 
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(

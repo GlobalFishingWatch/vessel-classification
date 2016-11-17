@@ -2,7 +2,8 @@ import numpy as np
 import tensorflow as tf
 
 from classification import utility
-from alex import vessel_classification, vessel_and_fishing_range_classification
+from alex import (fishing_range_classification, vessel_classification,
+                  vessel_and_fishing_range_classification)
 from tim import mixed_classification_1, mixed_classification_multi_1
 
 # TODO(alexwilson): Feed some data in. Also check evaluation.build_json_results
