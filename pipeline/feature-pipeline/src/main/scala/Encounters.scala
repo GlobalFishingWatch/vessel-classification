@@ -8,15 +8,14 @@ import com.google.common.geometry.S2CellId
 import com.typesafe.scalalogging.LazyLogging
 import com.spotify.scio.values.SCollection
 import org.joda.time.{Duration, Instant}
-import org.skytruth.common.Implicits
+import org.skytruth.common.AdditionalUnits._
+import org.skytruth.common.Implicits._
+import org.skytruth.common.LatLon
 
 import scala.collection.{mutable, immutable}
 import scala.math._
 
-import AdditionalUnits._
-
 object Encounters extends LazyLogging {
-  import Implicits._
 
   def calculateEncounters(
       minDurationForEncounter: Duration,
@@ -169,7 +168,7 @@ object Encounters extends LazyLogging {
         val vesselLocationMap = mutable.Map.empty[VesselMetadata, ResampledVesselLocation]
         vesselLocations.foreach {
           case (md, vl) =>
-            val cells = Utility.getCapCoveringCells(vl.location, 1.0.of[kilometer], s2Level)
+            val cells = vl.location.getCapCoveringCells(1.0.of[kilometer], s2Level)
             cells.foreach { cell =>
               if (!cellMap.contains(cell)) {
                 cellMap(cell) = mutable.ListBuffer.empty[(VesselMetadata, ResampledVesselLocation)]

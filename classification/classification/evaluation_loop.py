@@ -37,14 +37,20 @@ def evaluation_loop(master,
 
     for checkpoint_path in slim.evaluation.checkpoints_iterator(
             checkpoint_dir, eval_interval_secs, timeout):
-        logging.info(
-            'New checkpoint found. Sleeping to ensure completely written')
-        time.sleep(10)
         logging.info('Starting evaluation at ' + time.strftime(
             '%Y-%m-%d-%H:%M:%S', time.gmtime()))
 
         with sv.managed_session(master, start_standard_services=False) as sess:
-            sv.saver.restore(sess, checkpoint_path)
+            try:
+                sv.saver.restore(sess, checkpoint_path)
+            except ValueError as e:
+                logging.warning('Could not load check point, skipping: %s',
+                                str(e))
+                continue
+            except tf.errors.NotFoundError as e:
+                logging.warning('Could not load check point, skipping: %s',
+                                str(e))
+                continue
             sv.start_queue_runners(sess)
             final_op_value = slim.evaluation.evaluation(
                 sess,

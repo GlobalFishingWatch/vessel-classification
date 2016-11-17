@@ -4,7 +4,6 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
-import com.google.common.geometry.{S2, S2Cap, S2CellId, S2LatLng, S2RegionCoverer}
 import com.google.protobuf.{ByteString, MessageLite}
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.io.{FileBasedSink, Write}
@@ -27,8 +26,10 @@ import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
+import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
 import org.skytruth.common.ScioContextResource._
+import org.skytruth.common.{LatLon}
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
@@ -37,70 +38,14 @@ import scala.collection.JavaConversions._
 import com.spotify.scio._
 import resource._
 
-object AdditionalUnits {
-  type knots = DefineUnit[_k ~: _n ~: _o ~: _t]
-  type meters_per_second = meter / second
-
-  type degrees = DefineUnit[_d ~: _e ~: _g]
-  type radians = DefineUnit[_r ~: _a ~: _d]
-
-  implicit val knots_to_mps = one[knots].contains(0.514444)[meters_per_second]
-  implicit val radians_to_degrees = one[degrees].contains(MathUtils.TWO_PI / 360.0)[radians]
-}
-
-import AdditionalUnits._
-
-case class LatLon(lat: DoubleU[degrees], lon: DoubleU[degrees]) {
-  def getS2LatLng() = S2LatLng.fromDegrees(lat.value, lon.value)
-
-  def getDistance(other: LatLon): DoubleU[kilometer] =
-    getS2LatLng().getEarthDistance(other.getS2LatLng()).toDouble.of[meter].convert[kilometer]
-
-  def getS2CellId(level: Int): S2CellId = {
-    val cell = S2CellId.fromLatLng(getS2LatLng())
-    cell.parent(level)
-  }
-}
-
-object LatLon {
-  def fromS2CellId(cell: S2CellId) = {
-    val loc = cell.toLatLng()
-    LatLon(loc.latDegrees().of[degrees], loc.lngDegrees().of[degrees])
-  }
-
-  def mean(locations: Iterable[LatLon]): LatLon = {
-    var lat = 0.0
-    var lon = 0.0
-    var count = 0
-    locations.foreach { l =>
-      lat += l.lat.value
-      lon += l.lon.value
-      count += 1
-    }
-    LatLon((lat / count.toDouble).of[degrees], (lon / count.toDouble).of[degrees])
-  }
-
-  def weightedMean(locations: Iterable[LatLon], weights: Iterable[Double]): LatLon = {
-    var lat = 0.0
-    var lon = 0.0
-    var weight = 0.0
-    (locations zip weights).foreach {
-      case (l, w) =>
-        lat += l.lat.value * w
-        lon += l.lon.value * w
-        weight += w
-    }
-    LatLon((lat / weight).of[degrees], (lon / weight).of[degrees])
-  }
-}
-
-case class VesselMetadata(mmsi: Int) {
+case class VesselMetadata(mmsi: Int, isFishingVessel: Boolean = false) {
   def flagState = CountryCodes.fromMmsi(mmsi)
 }
 
 case class StationaryPeriod(location: LatLon,
                             duration: Duration,
-                            meanDistanceToShore: DoubleU[kilometer])
+                            meanDistanceToShore: DoubleU[kilometer],
+                            meanDriftRadius: DoubleU[kilometer])
 
 case class Adjacency(
     numNeighbours: Int,
@@ -148,12 +93,29 @@ case class SingleEncounter(startTime: Instant,
       ("vessel2_point_count" -> vessel2PointCount)
 }
 
+case class VesselEncounters(vessel1: VesselMetadata,
+                            vessel2: VesselMetadata,
+                            encounters: Seq[SingleEncounter]) {
+  def toJson =
+    ("vessel1_mmsi" -> vessel1.mmsi) ~
+      ("vessel2_mmsi" -> vessel2.mmsi) ~
+      ("vessel1_flag_state" -> vessel1.flagState) ~
+      ("vessel2_flag_state" -> vessel2.flagState) ~
+      ("encounters" -> encounters.map(_.toJson))
+
+}
+
 case class AnchoragePoint(meanLocation: LatLon,
-                          vessels: Seq[VesselMetadata],
-                          knownFishingVesselCount: Int,
-                          meanDistanceToShore: DoubleU[kilometer]) {
+                          vessels: Set[VesselMetadata],
+                          meanDistanceToShore: DoubleU[kilometer],
+                          meanDriftRadius: DoubleU[kilometer]) {
   def toJson = {
-    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2)
+    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2).map {
+      case (name, count) =>
+        ("name" -> name) ~
+          ("count" -> count)
+    }
+    val knownFishingVesselCount = vessels.filter(_.isFishingVessel).size
     ("id" -> id) ~
       ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
@@ -161,7 +123,8 @@ case class AnchoragePoint(meanLocation: LatLon,
       ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
       ("flag_state_distribution" -> flagStateDistribution) ~
       ("mmsis" -> vessels.map(_.mmsi)) ~
-      ("mean_distance_to_shore_km" -> meanDistanceToShore.value)
+      ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
+      ("mean_drift_radius_km" -> meanDriftRadius.value)
   }
 
   def id: String =
@@ -170,25 +133,42 @@ case class AnchoragePoint(meanLocation: LatLon,
 
 case class Anchorage(meanLocation: LatLon,
                      anchoragePoints: Set[AnchoragePoint],
-                     meanDistanceToShore: DoubleU[kilometer]) {
+                     meanDistanceToShore: DoubleU[kilometer],
+                     meanDriftRadius: DoubleU[kilometer]) {
   def id: String =
     meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
 
   def toJson = {
+    val vessels = anchoragePoints.flatMap(_.vessels).toSet
+    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2).map {
+      case (name, count) =>
+        ("name" -> name) ~
+          ("count" -> count)
+    }
+    val knownFishingVesselCount = vessels.filter(_.isFishingVessel).size
+
     ("id" -> id) ~
       ("latitude" -> meanLocation.lat.value) ~
       ("longitude" -> meanLocation.lon.value) ~
+      ("unique_vessel_count" -> vessels.size) ~
+      ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
+      ("flag_state_distribution" -> flagStateDistribution) ~
       ("anchorage_points" -> anchoragePoints.toSeq.sortBy(_.id).map(_.id)) ~
-      ("mean_distance_to_shore_km" -> meanDistanceToShore.value)
+      ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
+      ("mean_drift_radius_km" -> meanDriftRadius.value)
   }
 }
 
 object Anchorage {
   def fromAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]) = {
-    val weights = anchoragePoints.map(_.vessels.length.toDouble)
+    val weights = anchoragePoints.map(_.vessels.size.toDouble)
     Anchorage(LatLon.weightedMean(anchoragePoints.map(_.meanLocation), weights),
               anchoragePoints.toSet,
-              anchoragePoints.map(_.meanDistanceToShore).weightedMean(weights))
+              anchoragePoints.map(_.meanDistanceToShore).weightedMean(weights),
+              // Averaging across multiple anchorage points for drift radius
+              // is perhaps a little statistically dubious, but may still prove
+              // useful to distinguish fixed vs drifting anchorage groups.
+              anchoragePoints.map(_.meanDriftRadius).weightedMean(weights))
   }
 }
 
@@ -205,40 +185,8 @@ case class AnchorageVisit(anchorage: Anchorage, arrival: Instant, departure: Ins
 
   def toJson =
     ("anchorage" -> anchorage.id) ~
-      ("arrival" -> arrival.toString()) ~
-      ("departure" -> departure.toString())
-}
-
-case class VesselEncounters(vessel1: VesselMetadata,
-                            vessel2: VesselMetadata,
-                            encounters: Seq[SingleEncounter]) {
-  def toJson =
-    ("vessel1_mmsi" -> vessel1.mmsi) ~
-      ("vessel2_mmsi" -> vessel2.mmsi) ~
-      ("vessel1_flag_state" -> vessel1.flagState) ~
-      ("vessel2_flag_state" -> vessel2.flagState) ~
-      ("encounters" -> encounters.map(_.toJson))
-
-}
-
-case class AdjacencyLookup[T](values: Seq[T],
-                              locFn: T => LatLon,
-                              maxRadius: DoubleU[kilometer],
-                              level: Int) {
-  private val cellMap = values
-    .flatMap(v =>
-      Utility.getCapCoveringCells(locFn(v), maxRadius, level).map(cellid => (cellid, v)))
-    .groupBy(_._1)
-    .map { case (cellid, vs) => (cellid, vs.map(_._2)) }
-
-  def nearby(location: LatLon) = {
-    val queryCells = Utility.getCapCoveringCells(location, maxRadius, level)
-    val allValues = queryCells.flatMap { cellid =>
-      cellMap.getOrElse(cellid, Seq())
-    }
-
-    allValues.map(v => (locFn(v).getDistance(location), v)).toIndexedSeq.distinct.sortBy(_._1)
-  }
+      ("start_time" -> arrival.toString()) ~
+      ("end_time" -> departure.toString())
 }
 
 object Utility extends LazyLogging {
@@ -281,34 +229,6 @@ object Utility extends LazyLogging {
 
         finalPath
     }
-  }
-
-  // For a given radius of cap on the sphere, a given location and a given S2 cell level, return
-  // all the S2 cells required to cover the cap.
-  def getCapCoveringCells(location: LatLon,
-                          radius: DoubleU[kilometer],
-                          level: Int): Seq[S2CellId] = {
-    val earthRadiusKm = S2LatLng.EARTH_RADIUS_METERS / 1000.0
-    val capRadiusOnUnitSphere = radius.value / earthRadiusKm
-    val coverer = new S2RegionCoverer()
-    coverer.setMinLevel(level)
-    coverer.setMaxLevel(level)
-
-    // S2 cap requires an axis (location on unit sphere) and the height of the cap (the cap is
-    // a planar cut on the unit sphere). The cap height is 1 - (sqrt(r^2 - a^2)/r) where r is
-    // the radius of the circle (1.0 after we've normalized) and a is the radius of the cap itself.
-    val axis = location.getS2LatLng().normalized().toPoint()
-    val capHeight = 1.0 - (math.sqrt(1.0 - capRadiusOnUnitSphere * capRadiusOnUnitSphere))
-    val cap = S2Cap.fromAxisHeight(axis, capHeight)
-
-    val coverCells = new java.util.ArrayList[S2CellId]()
-    coverer.getCovering(cap, coverCells)
-
-    coverCells.foreach { cc =>
-      assert(cc.level() == level)
-    }
-
-    coverCells.toList
   }
 
   def resampleVesselSeries(increment: Duration,

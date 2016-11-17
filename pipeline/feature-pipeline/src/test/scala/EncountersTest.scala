@@ -5,12 +5,12 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import org.joda.time.{Duration, Instant}
 import org.scalatest._
+import org.skytruth.common.AdditionalUnits._
+import org.skytruth.common.LatLon
 
+import TestHelper._
 
 class EncountersTest extends PipelineSpec with Matchers {
-  import AdditionalUnits._
-  import TestHelper._
-
   val path1 = Seq(vlr("2011-01-01T15:40:00Z", -1.5032387, 55.2340155),
                   vlr("2011-01-01T15:50:00Z", -1.4869308, 55.232743),
                   vlr("2011-01-01T16:00:00Z", -1.4752579, 55.2292189),
@@ -198,9 +198,6 @@ class EncountersTest extends PipelineSpec with Matchers {
 }
 
 class RealEncounterTest extends PipelineSpec with Matchers {
-  import AdditionalUnits._
-  import TestHelper._
-
   "The pipeline" should "find encounters in real data" in {
     runWithContext { sc =>
       val pathData = Seq((VesselMetadata(441910000), seriesToLRs(series1)), (VesselMetadata(563418000), seriesToLRs(series2)))
