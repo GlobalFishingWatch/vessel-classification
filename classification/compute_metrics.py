@@ -23,7 +23,7 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.utility import vessel_categorical_length_transformer, is_test
+from classification.utility import is_test
 import gzip
 import dateutil.parser
 import datetime
@@ -416,14 +416,6 @@ def confusion_matrix(results):
     return ConfusionMatrix(cm_raw, cm_normalized)
 
 
-#TODO: remove
-def remap_lengths(len_map):
-    map = {}
-    for k, v in len_map.items():
-        map[k] = vessel_categorical_length_transformer(v)
-    return map
-
-
 def load_inferred(inference_path, label_map, field):
     """Load inferred data and generate comparison data
 
@@ -650,19 +642,22 @@ def compute_results(args):
 
     results = {}
 
-    results['localisation'] = LocalisationResults(
-        true_fishing_by_mmsi, pred_fishing_by_mmsi, maps['label'])
+    if args.compute_localisation_metrics:
+        results['localisation'] = LocalisationResults(
+            true_fishing_by_mmsi, pred_fishing_by_mmsi, maps['label'])
 
-    results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
-                                       'is_fishing')
+    if args.compute_class_metrics or args.dump_labels_to:
+        results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
+                                           'is_fishing')
 
-    results['coarse'] = load_inferred(inference_path, maps['label'], 'label')
+        results['coarse'] = load_inferred(inference_path, maps['label'], 'label')
 
-    results['fine'] = load_inferred(inference_path, maps['sublabel'],
-                                    'sublabel')
+        results['fine'] = load_inferred(inference_path, maps['sublabel'],
+                                        'sublabel')
 
-    results['length'] = load_lengths(inference_path, maps['length'],
-                                     maps['label'])
+    if args.compute_length_metrics:
+        results['length'] = load_lengths(inference_path, maps['length'],
+                                         maps['label'])
 
     return results
 
@@ -680,18 +675,22 @@ def dump_html(args, results):
     with doc.tag("style", type="text/css"):
         doc.asis(css)
 
-    for key, heading in classification_metrics:
-        doc.line('h2', heading)
-        ydump_metrics(doc, results[key])
+
+    if args.compute_class_metrics:
+        for key, heading in classification_metrics:
+            doc.line('h2', heading)
+            ydump_metrics(doc, results[key])
+            doc.stag('hr')
+
+    if args.compute_length_metrics:
+        doc.line('h2', 'Length Inference')
+        ydump_length(doc, results['length'])
         doc.stag('hr')
 
-    doc.line('h2', 'Length Inference')
-    ydump_length(doc, results['length'])
-    doc.stag('hr')
-
-    doc.line('h2', 'Fishing Localisation')
-    ydump_fishing_localisation(doc, results['localisation'])
-    doc.stag('hr')
+    if args.compute_localisation_metrics:
+        doc.line('h2', 'Fishing Localisation')
+        ydump_fishing_localisation(doc, results['localisation'])
+        doc.stag('hr')
 
     with open(args.dest_path, 'w') as f:
         f.write(yattag.indent(doc.getvalue(), indent_text=True))
@@ -709,7 +708,8 @@ if __name__ == '__main__':
     logging.getLogger().setLevel('INFO')
 
     parser = argparse.ArgumentParser(
-        description='Test inference results and output metrics')
+        description='Test inference results and output metrics.\n'
+                    'Specify one or more `--compute` options below.')
     parser.add_argument(
         '--inference-path', help='path to inference results', required=True)
     parser.add_argument(
@@ -718,10 +718,21 @@ if __name__ == '__main__':
         '--fishing-ranges', help='path to fishing range data', required=True)
     parser.add_argument(
         '--dest-path', help='path to write results to', required=True)
+    # Specify which things to dump to output file
+    parser.add_argument(
+        '--compute-class-metrics', action='store_true')
+    parser.add_argument(
+        '--compute-localisation-metrics', action='store_true')
+    parser.add_argument(
+        '--compute-length-metrics', action='store_true')
+    # It's convenient to be able to dump the consolidated gear types
     parser.add_argument(
         '--dump-labels-to',
         help='dump csv file mapping csv to consolidated gear-type labels')
     args = parser.parse_args()
+
+    if not (args.compute_class_metrics or args.compute_localisation_metrics or args.compute_length_metrics):
+        print("Warning: no `--compute` option specified, not html file will be generated")
 
     results = compute_results(args)
 
