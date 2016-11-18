@@ -177,6 +177,8 @@ def main(args):
             with open(mmsis_file, 'r') as f:
                 mmsis.intersection_update([int(m) for m in f])
 
+    logging.info("Running inference with %d mmsis", len(mmsis))
+
     module = "classification.models.{}".format(args.model_name)
     try:
         Model = importlib.import_module(module).Model
