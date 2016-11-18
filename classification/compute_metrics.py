@@ -650,7 +650,8 @@ def compute_results(args):
         results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
                                            'is_fishing')
 
-        results['coarse'] = load_inferred(inference_path, maps['label'], 'label')
+        results['coarse'] = load_inferred(inference_path, maps['label'],
+                                          'label')
 
         results['fine'] = load_inferred(inference_path, maps['sublabel'],
                                         'sublabel')
@@ -674,7 +675,6 @@ def dump_html(args, results):
 
     with doc.tag("style", type="text/css"):
         doc.asis(css)
-
 
     if args.compute_class_metrics:
         for key, heading in classification_metrics:
@@ -709,7 +709,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
         description='Test inference results and output metrics.\n'
-                    'Specify one or more `--compute` options below.')
+        'Specify one or more `--compute` options below.')
     parser.add_argument(
         '--inference-path', help='path to inference results', required=True)
     parser.add_argument(
@@ -719,20 +719,19 @@ if __name__ == '__main__':
     parser.add_argument(
         '--dest-path', help='path to write results to', required=True)
     # Specify which things to dump to output file
-    parser.add_argument(
-        '--compute-class-metrics', action='store_true')
-    parser.add_argument(
-        '--compute-localisation-metrics', action='store_true')
-    parser.add_argument(
-        '--compute-length-metrics', action='store_true')
+    parser.add_argument('--compute-class-metrics', action='store_true')
+    parser.add_argument('--compute-localisation-metrics', action='store_true')
+    parser.add_argument('--compute-length-metrics', action='store_true')
     # It's convenient to be able to dump the consolidated gear types
     parser.add_argument(
         '--dump-labels-to',
         help='dump csv file mapping csv to consolidated gear-type labels')
     args = parser.parse_args()
 
-    if not (args.compute_class_metrics or args.compute_localisation_metrics or args.compute_length_metrics):
-        print("Warning: no `--compute` option specified, not html file will be generated")
+    if not (args.compute_class_metrics or args.compute_localisation_metrics or
+            args.compute_length_metrics):
+        print(
+            "Warning: no `--compute` option specified, not html file will be generated")
 
     results = compute_results(args)
 
