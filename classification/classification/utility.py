@@ -501,8 +501,8 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
 def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
                                       window_size):
     slices = []
-    input_length = len(input)
-    for end_index in range(input_length, 0, window_size):
+    input_length = len(input_series)
+    for end_index in range(input_length, 0, -window_size):
         start_index = max(0, end_index - window_size)
         cropped = input_series[start_index:end_index]
         start_time = int(cropped[0][0])
@@ -546,10 +546,9 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
     movement_features = sequence_features['movement_features']
     mmsi = tf.cast(context_features['mmsi'], tf.int32)
 
-    random_state = np.random.RandomState()
 
-    def replicate_extract(input, mmsi):
-        return np_array_extract_all_fixed_slices(input, num_features, mmsi,
+    def replicate_extract(input_series, mmsi):
+        return np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
                                                  window_size)
 
     features_list, timeseries, time_bounds_list, mmsis = tf.py_func(
@@ -775,9 +774,7 @@ def find_available_mmsis(feature_path):
     with tf.Session() as sess:
         logging.info('Reading mmsi list file.')
         mmsi_list_tensor = tf.read_file(feature_path + '/mmsis.txt')
-        #sess.run(tf.global_variables_initializer())
         els = sess.run(mmsi_list_tensor).split('\n')
-        print(els[:10])
         mmsi_list = [int(mmsi) for mmsi in els if mmsi != '']
 
         logging.info('Found %d mmsis.', len(mmsi_list))

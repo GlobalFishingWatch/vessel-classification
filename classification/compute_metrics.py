@@ -23,7 +23,7 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.utility import vessel_categorical_length_transformer, is_test
+from classification.utility import is_test
 import gzip
 import dateutil.parser
 import datetime
@@ -416,14 +416,6 @@ def confusion_matrix(results):
     return ConfusionMatrix(cm_raw, cm_normalized)
 
 
-#TODO: remove
-def remap_lengths(len_map):
-    map = {}
-    for k, v in len_map.items():
-        map[k] = vessel_categorical_length_transformer(v)
-    return map
-
-
 def load_inferred(inference_path, label_map, field):
     """Load inferred data and generate comparison data
 
@@ -534,6 +526,7 @@ def load_predicted_fishing_ranges_by_mmsi(inference_path, mmsi_set):
     def parse(x):
         # 2014-08-28T13:56:16+00:00
         # TODO: fix generation to generate consistent datetimes
+        print(x)
         if x[-6:] == "+00:00":
             x = x[:-6]
         dt = datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S")
@@ -547,8 +540,8 @@ def load_predicted_fishing_ranges_by_mmsi(inference_path, mmsi_set):
                     continue
                 if not is_test(mmsi):
                     info.warning("%s is not a test mmsi", mmsi)
-                rng = [(parse(a), parse(b))
-                       for (a, b) in row['labels']['fishing_localisation']]
+                rng = [(parse(v['start_time']), parse(v['end_time']))
+                       for v in row['labels']['fishing_localisation']]
                 ranges_by_mmsi[mmsi].extend(rng)
                 coverage_by_mmsi[mmsi].append(
                     (parse(row['start_time']), parse(row['end_time'])))
@@ -653,16 +646,16 @@ def compute_results(args):
     results['localisation'] = LocalisationResults(
         true_fishing_by_mmsi, pred_fishing_by_mmsi, maps['label'])
 
-    results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
-                                       'is_fishing')
+    #results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
+    #                                   'is_fishing')
 
-    results['coarse'] = load_inferred(inference_path, maps['label'], 'label')
+    #results['coarse'] = load_inferred(inference_path, maps['label'], 'label')
 
-    results['fine'] = load_inferred(inference_path, maps['sublabel'],
-                                    'sublabel')
+    #results['fine'] = load_inferred(inference_path, maps['sublabel'],
+    #                                'sublabel')
 
-    results['length'] = load_lengths(inference_path, maps['length'],
-                                     maps['label'])
+    #results['length'] = load_lengths(inference_path, maps['length'],
+    #                                 maps['label'])
 
     return results
 
@@ -680,14 +673,14 @@ def dump_html(args, results):
     with doc.tag("style", type="text/css"):
         doc.asis(css)
 
-    for key, heading in classification_metrics:
-        doc.line('h2', heading)
-        ydump_metrics(doc, results[key])
-        doc.stag('hr')
+    #for key, heading in classification_metrics:
+    #    doc.line('h2', heading)
+    #    ydump_metrics(doc, results[key])
+    #    doc.stag('hr')
 
-    doc.line('h2', 'Length Inference')
-    ydump_length(doc, results['length'])
-    doc.stag('hr')
+    #doc.line('h2', 'Length Inference')
+    #ydump_length(doc, results['length'])
+    #doc.stag('hr')
 
     doc.line('h2', 'Fishing Localisation')
     ydump_fishing_localisation(doc, results['localisation'])
