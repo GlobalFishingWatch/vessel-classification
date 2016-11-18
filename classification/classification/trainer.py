@@ -144,7 +144,7 @@ class Trainer:
         # Setup the global step.
         slim.get_or_create_global_step()
 
-        merged_summary_ops = tf.summary.merge(summary_ops)
+        merged_summary_ops = tf.merge_summary(summary_ops)
         evaluation_loop.evaluation_loop(
             master,
             self.checkpoint_dir,

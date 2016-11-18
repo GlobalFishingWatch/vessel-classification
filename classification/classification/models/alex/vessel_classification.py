@@ -20,16 +20,16 @@ class Model(abstract_models.MisconceptionModel):
 
     window_size = 3
     stride = 2
-    feature_depth = 50
+    feature_depth = 80
     levels = 9
 
     @property
     def max_window_duration_seconds(self):
-        return 90 * 24 * 3600
+        return 180 * 24 * 3600
 
     @property
     def window_max_points(self):
-        return 4096
+        return (self.max_window_duration_seconds / (5 * 60)) / 4
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
@@ -50,7 +50,8 @@ class Model(abstract_models.MisconceptionModel):
                                                   utility.VESSEL_CLASS_NAMES),
             VesselMetadataClassificationObjective(
                 'sublabel', 'Vessel detailed class', vessel_metadata,
-                utility.VESSEL_CLASS_DETAILED_NAMES), RegressionObjective(
+                utility.VESSEL_CLASS_DETAILED_NAMES),
+            RegressionObjective(
                     'length',
                     'Vessel length regression',
                     length_or_none,

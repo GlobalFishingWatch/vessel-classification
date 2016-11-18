@@ -772,6 +772,18 @@ def find_available_mmsis(feature_path):
     # GCS is far from ideal. However the alternative is to bring in additional
     # libraries with explicit auth that may or may not play nicely with CloudML.
     # Improve later...
+    with tf.Session() as sess:
+        logging.info('Reading mmsi list file.')
+        mmsi_list_tensor = tf.read_file(feature_path + '/mmsis.txt')
+        #sess.run(tf.global_variables_initializer())
+        els = sess.run(mmsi_list_tensor).split('\n')
+        print(els[:10])
+        mmsi_list = [int(mmsi) for mmsi in els if mmsi != '']
+
+        logging.info('Found %d mmsis.', len(mmsi_list))
+        return set(mmsi_list)
+
+
     mmsi_cache_filename = "available_mmsis.cache"
     if os.path.exists(mmsi_cache_filename):
         with nlj.open(mmsi_cache_filename, 'r') as cache:
