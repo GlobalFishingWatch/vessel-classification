@@ -10,6 +10,7 @@ import numpy as np
 import os
 from pkg_resources import resource_filename
 import pytz
+import sys
 import tensorflow.contrib.slim as slim
 import tensorflow as tf
 import time
@@ -122,17 +123,18 @@ class Inferer(object):
                         end_time = datetime.datetime.utcfromtimestamp(
                             end_time_seconds)
 
-                        labels = dict(
+                        output = dict(
                             [(o.metadata_label,
                               o.build_json_results(p, timestamps_array))
                              for (o, p) in zip(objectives, predictions_array)])
 
-                        output_nlj.write({
+                        output.update({
                             'mmsi': int(mmsi),
                             'start_time': start_time.isoformat(),
-                            'end_time': end_time.isoformat(),
-                            'labels': labels
+                            'end_time': end_time.isoformat()
                         })
+
+                        output_nlj.write(output)
 
 
 def main(args):
@@ -144,7 +146,7 @@ def main(args):
     inference_results_path = args.inference_results_path
     inference_parallelism = args.inference_parallelism
 
-    all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
+    mmsis = utility.find_available_mmsis(args.root_feature_path)
 
     if args.dataset_split:
         if args.dataset_split in ['Training', 'Test']:
@@ -164,7 +166,7 @@ def main(args):
                 metadata_file,
                 fishing_range_dict=fishing_ranges)
 
-            mmsis = set(vessel_metadata.mmsis_for_split(args.dataset_split))
+            mmsis.intersection_update(vessel_metadata.mmsis_for_split(args.dataset_split))
         else:
             mmsis_file = os.path.abspath(
                 resource_filename('classification.data', args.dataset_split))
@@ -173,9 +175,7 @@ def main(args):
                               args.dataset_split)
                 sys.exit(-1)
             with open(mmsis_file, 'r') as f:
-                mmsis = set([int(m) for m in f])
-    else:
-        mmsis = all_available_mmsis
+                mmsis.intersection_update([int(m) for m in f])
 
     module = "classification.models.{}".format(args.model_name)
     try:
