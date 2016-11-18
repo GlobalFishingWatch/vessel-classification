@@ -14,6 +14,7 @@ import tensorflow.contrib.slim as slim
 import tensorflow as tf
 import time
 from . import model
+from . import params
 from . import utility
 
 
@@ -24,36 +25,8 @@ class Inferer(object):
         self.model_checkpoint_path = model_checkpoint_path
         self.root_feature_path = root_feature_path
         self.batch_size = self.model.batch_size
-        self.min_points_for_classification = int(1000.0 / (
-            360.0 / model.feature_duration_days))
+        self.min_points_for_classification = model.min_viable_timeslice_length
         self.mmsis = mmsis
-
-        def _build_starts_quarterly():
-            today = datetime.datetime.now(pytz.utc)
-            months = [1, 4, 7, 10]
-            year = 2012
-            time_starts = []
-            while True:
-                for month in months:
-                    dt = datetime.datetime(year, month, 1, tzinfo=pytz.utc)
-                    time_starts.append(int(time.mktime(dt.timetuple())))
-                    if dt > today:
-                        return time_starts
-                year += 1
-
-        def _build_starts():
-            today = datetime.datetime.now(pytz.utc)
-            time_starts = []
-            iter = datetime.datetime(2012, 1, 1, tzinfo=pytz.utc)
-            while iter < today:
-                time_starts.append(int(time.mktime(iter.timetuple())))
-                iter += datetime.timedelta(days=model.feature_duration_days)
-            return time_starts
-
-        time_starts = _build_starts()
-
-        self.time_ranges = [(s, e)
-                            for (s, e) in zip(time_starts, time_starts[2:])]
 
     def _feature_files(self, split):
         return [
@@ -61,18 +34,39 @@ class Inferer(object):
             for mmsi in self.mmsis
         ]
 
+    def _build_starts(interval_length_seconds):
+        today = datetime.datetime.now(pytz.utc)
+        time_starts = []
+        iter = datetime.datetime(2012, 1, 1, tzinfo=pytz.utc)
+        while iter < today:
+            time_starts.append(int(time.mktime(iter.timetuple())))
+            iter += datetime.timedelta(seconds=interval_length_seconds)
+        return time_starts
+
     def run_inference(self, inference_parallelism, inference_results_path):
         matching_files = self._feature_files(self.mmsis)
         filename_queue = tf.train.input_producer(
             matching_files, shuffle=False, num_epochs=1)
 
         readers = []
-        for _ in range(inference_parallelism * 2):
-            reader = utility.cropping_all_slice_feature_file_reader(
-                filename_queue, self.model.num_feature_dimensions + 1,
-                self.time_ranges, self.model.window_max_points,
-                self.min_points_for_classification)
-            readers.append(reader)
+        if self.model.max_window_duration_seconds != 0:
+            time_starts = _build_starts(self.model.max_window_duration_seconds)
+
+            self.time_ranges = [(s, e)
+                                for (s, e) in zip(time_starts, time_starts[2:])
+                                ]
+            for _ in range(inference_parallelism * 2):
+                reader = utility.cropping_all_slice_feature_file_reader(
+                    filename_queue, self.model.num_feature_dimensions + 1,
+                    self.time_ranges, self.model.window_max_points,
+                    self.min_points_for_classification)
+                readers.append(reader)
+        else:
+            for _ in range(inference_parallelism * 2):
+                reader = utility.all_fixed_window_feature_file_reader(
+                    filename_queue, self.model.num_feature_dimensions + 1,
+                    self.model.window_max_points)
+                readers.append(reader)
 
         features, timestamps, time_ranges, mmsis = tf.train.batch_join(
             readers,
@@ -155,11 +149,10 @@ def main(args):
     if args.dataset_split:
         if args.dataset_split in ['Training', 'Test']:
             metadata_file = os.path.abspath(
-                resource_filename('classification.data',
-                                   params.metadata_file))
+                resource_filename('classification.data', params.metadata_file))
             fishing_range_file = os.path.abspath(
                 resource_filename('classification.data',
-                                   params.fishing_ranges_file))
+                                  params.fishing_ranges_file))
             if not os.path.exists(metadata_file):
                 logging.fatal("Could not find metadata file: %s.",
                               metadata_file)

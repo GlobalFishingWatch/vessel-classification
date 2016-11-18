@@ -64,8 +64,7 @@ def main(args):
         sys.exit(-1)
 
     fishing_range_file = os.path.abspath(
-        resource_filename('classification.data',
-                           params.fishing_ranges_file))
+        resource_filename('classification.data', params.fishing_ranges_file))
     if not os.path.exists(fishing_range_file):
         logging.fatal("Could not find fishing range file: %s.",
                       fishing_range_file)

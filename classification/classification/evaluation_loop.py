@@ -20,10 +20,9 @@ def evaluation_loop(master,
                     eval_op=None,
                     summary_op=None,
                     eval_interval_secs=160,
-                    timeout=None):
+                    timeout=None,
+                    saver=None):
     global_step = variables.get_or_create_global_step()
-
-    saver = tf_saver.Saver(variables.get_variables_to_restore())
 
     summary_writer = summary_io.SummaryWriter(logdir)
 
