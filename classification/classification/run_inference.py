@@ -166,7 +166,8 @@ def main(args):
                 metadata_file,
                 fishing_range_dict=fishing_ranges)
 
-            mmsis.intersection_update(vessel_metadata.mmsis_for_split(args.dataset_split))
+            mmsis.intersection_update(
+                vessel_metadata.mmsis_for_split(args.dataset_split))
         else:
             mmsis_file = os.path.abspath(
                 resource_filename('classification.data', args.dataset_split))

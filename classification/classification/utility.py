@@ -546,10 +546,9 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
     movement_features = sequence_features['movement_features']
     mmsi = tf.cast(context_features['mmsi'], tf.int32)
 
-
     def replicate_extract(input_series, mmsi):
-        return np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
-                                                 window_size)
+        return np_array_extract_all_fixed_slices(input_series, num_features,
+                                                 mmsi, window_size)
 
     features_list, timeseries, time_bounds_list, mmsis = tf.py_func(
         replicate_extract, [movement_features, mmsi],
@@ -779,7 +778,6 @@ def find_available_mmsis(feature_path):
 
         logging.info('Found %d mmsis.', len(mmsi_list))
         return set(mmsi_list)
-
 
     mmsi_cache_filename = "available_mmsis.cache"
     if os.path.exists(mmsi_cache_filename):

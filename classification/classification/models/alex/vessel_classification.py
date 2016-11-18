@@ -50,8 +50,7 @@ class Model(abstract_models.MisconceptionModel):
                                                   utility.VESSEL_CLASS_NAMES),
             VesselMetadataClassificationObjective(
                 'sublabel', 'Vessel detailed class', vessel_metadata,
-                utility.VESSEL_CLASS_DETAILED_NAMES),
-            RegressionObjective(
+                utility.VESSEL_CLASS_DETAILED_NAMES), RegressionObjective(
                     'length',
                     'Vessel length regression',
                     length_or_none,

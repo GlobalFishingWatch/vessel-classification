@@ -85,7 +85,9 @@ class Trainer:
 
     def _make_saver(self):
         if tf.__version__ == '0.11.0rc2':
-            return tf.train.Saver(variables.get_variables_to_restore(), write_version=tf.train.SaverDef.V1)
+            return tf.train.Saver(
+                variables.get_variables_to_restore(),
+                write_version=tf.train.SaverDef.V1)
         else:
             return tf.train.Saver(variables.get_variables_to_restore())
 
