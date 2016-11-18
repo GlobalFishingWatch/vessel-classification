@@ -526,7 +526,6 @@ def load_predicted_fishing_ranges_by_mmsi(inference_path, mmsi_set):
     def parse(x):
         # 2014-08-28T13:56:16+00:00
         # TODO: fix generation to generate consistent datetimes
-        print(x)
         if x[-6:] == "+00:00":
             x = x[:-6]
         dt = datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S")
@@ -646,16 +645,17 @@ def compute_results(args):
     results['localisation'] = LocalisationResults(
         true_fishing_by_mmsi, pred_fishing_by_mmsi, maps['label'])
 
-    #results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
-    #                                   'is_fishing')
+    if False:
+        results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
+                                           'is_fishing')
 
-    #results['coarse'] = load_inferred(inference_path, maps['label'], 'label')
+        results['coarse'] = load_inferred(inference_path, maps['label'], 'label')
 
-    #results['fine'] = load_inferred(inference_path, maps['sublabel'],
-    #                                'sublabel')
+        results['fine'] = load_inferred(inference_path, maps['sublabel'],
+                                        'sublabel')
 
-    #results['length'] = load_lengths(inference_path, maps['length'],
-    #                                 maps['label'])
+        results['length'] = load_lengths(inference_path, maps['length'],
+                                         maps['label'])
 
     return results
 
@@ -673,14 +673,15 @@ def dump_html(args, results):
     with doc.tag("style", type="text/css"):
         doc.asis(css)
 
-    #for key, heading in classification_metrics:
-    #    doc.line('h2', heading)
-    #    ydump_metrics(doc, results[key])
-    #    doc.stag('hr')
+    if False:
+        for key, heading in classification_metrics:
+            doc.line('h2', heading)
+            ydump_metrics(doc, results[key])
+            doc.stag('hr')
 
-    #doc.line('h2', 'Length Inference')
-    #ydump_length(doc, results['length'])
-    #doc.stag('hr')
+        doc.line('h2', 'Length Inference')
+        ydump_length(doc, results['length'])
+        doc.stag('hr')
 
     doc.line('h2', 'Fishing Localisation')
     ydump_fishing_localisation(doc, results['localisation'])
