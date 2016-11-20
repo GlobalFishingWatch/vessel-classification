@@ -147,6 +147,7 @@ object AISAnnotator extends LazyLogging {
         annotateVesselMessages(messages, annotations)
     }
   }
+  
 
   def main(argArray: Array[String]) {
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
