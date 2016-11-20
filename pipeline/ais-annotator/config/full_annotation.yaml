@@ -4,7 +4,7 @@ inputFilePatterns:
   - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2014-*-*/*-of-*"
   - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2015-*-*/*-of-*"
   - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2016-*-*/*-of-*"
-outputFilePath: "gs://world-fishing-827/scratch/alex/annotation_test_full"
+outputFilePath: "gs://world-fishing-827/scratch/alex/annotation_likely_fishing_full"
 jsonAnnotations:
   - inputFilePattern: "gs://world-fishing-827/scratch/alex/fishing_annotation.json"
     timeRangeFieldName: "fishing_localisation"
