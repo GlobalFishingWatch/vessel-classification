@@ -138,7 +138,12 @@ object AISAnnotator extends LazyLogging {
     .filter { case (_, json) => json.containsKey("lat") && json.containsKey("lon") }.groupByKey
 
     filteredGroupedByMmsi.join(annotationsByMmsi).flatMap {
-      case (mmsi, (messages, annotations)) =>
+      case (mmsi, (messagesIt, annotationsIt)) =>
+        val messages = messagesIt.toSeq
+        val annotations = annotationsIt.toSeq
+        logger.info(s"Join processing: $mmsi")
+        logger.info(s"Num annotations: ${annotations.length}")
+        logger.info(s"Num messages: ${messages.length}")
         annotateVesselMessages(messages, annotations)
     }
   }
