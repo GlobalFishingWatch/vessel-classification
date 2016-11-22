@@ -43,6 +43,14 @@ LocalisationResults = namedtuple('LocalisationResults',
 
 ConfusionMatrix = namedtuple('ConfusionMatrix', ['raw', 'scaled'])
 
+
+CLASSIFICATION_METRICS = [
+    ('fishing', 'is_fishing', 'Is Fishing'),
+    ('coarse', 'label', 'Coarse Labels'),
+    ('fine', 'sublabel', 'Fine Labels') 
+]
+
+
 css = """
 
 table {
@@ -416,72 +424,116 @@ def confusion_matrix(results):
     return ConfusionMatrix(cm_raw, cm_normalized)
 
 
-def load_inferred(inference_path, label_map, field):
+def load_inferred(inference_path, extractors):
     """Load inferred data and generate comparison data
 
     """
-    start_dates = []
-    inferred_labels = []
-    true_labels = []
-    scores = []
-    mmsi_list = []
-    all_labels = set()
     with gzip.GzipFile(inference_path) as f:
         with nlj.open(f) as src:
             for row in src:
-                mmsi = row['mmsi']
-                if mmsi in label_map:
-                    lbl = label_map[mmsi]
-                    if lbl == 'Unknown':
-                        continue
-                    mmsi_list.append(mmsi)
-                    label_scores = row['labels'][field]['label_scores']
-                    all_labels |= set(label_scores.keys())
-                    start_dates.append(
-                        dateutil.parser.parse(row['start_time']))
-                    true_labels.append(label_map[mmsi])
-                    inferred_labels.append(row['labels'][field]['max_label'])
-                    scores.append(label_scores)
-    inferred_labels = np.array(inferred_labels)
-    true_labels = np.array(true_labels)
-    start_dates = np.array(start_dates)
-    scores = np.array(scores)
-    label_list = sorted(all_labels)
-    mmsi_list = np.array(mmsi_list)
-    return InferenceResults(mmsi_list, inferred_labels, true_labels,
-                            start_dates, scores, label_list)
+                for ext in extractors:
+                    ext.extract(row)
+    for ext in extractors:
+        ext.finalize()
 
 
-def load_lengths(inference_path, length_map, label_map):
-    """Load inferred data and generate comparison data
+class ClassificationExtractor(object):
+    def __init__(self, field, label_map):
+        self.field = field
+        self.label_map = label_map
+        self.mmsi = []
+        self.inferred_labels = []
+        self.true_labels = []
+        self.start_dates = []
+        self.scores = []
+        self.all_labels = set()
+   
+    def extract(self, row):
+        mmsi = row['mmsi']
+        lbl = self.label_map.get(mmsi, "Unknown")
+        if lbl == "Unknown":
+            return
+        self.mmsi.append(mmsi)
+        label_scores = row['labels'][self.field]['label_scores']
+        self.all_labels |= set(label_scores.keys())
+        self.start_dates.append(
+            dateutil.parser.parse(row['start_time']))
+        self.true_labels.append(self.label_map[mmsi])
+        self.inferred_labels.append(row['labels'][self.field]['max_label'])
+        self.scores.append(label_scores)
 
-    """
-    start_dates = []
-    inferred_lengths = []
-    true_lengths = []
-    true_labels = []
-    mmsi_list = []
-    with gzip.GzipFile(inference_path) as f:
-        with nlj.open(f) as src:
-            for row in src:
-                mmsi = row['mmsi']
-                if mmsi in length_map:
-                    lbl = label_map[mmsi]
-                    if lbl == 'Unknown':
-                        continue
-                    mmsi_list.append(mmsi)
-                    start_dates.append(
-                        dateutil.parser.parse(row['start_time']))
-                    true_lengths.append(float(length_map[mmsi]))
-                    true_labels.append(label_map.get(mmsi, 'Unknown'))
-                    inferred_lengths.append(row['labels']['length']['value'])
-    inferred_lengths = np.array(inferred_lengths)
-    true_lengths = np.array(true_lengths)
-    start_dates = np.array(start_dates)
-    mmsi_list = np.array(mmsi_list)
-    true_labels = np.array(true_labels)
-    return LengthResults(mmsi_list, inferred_lengths, true_lengths,
-                         true_labels, start_dates)
+    def finalize(self):
+        self.inferred_labels = np.array(self.inferred_labels)
+        self.true_labels = np.array(self.true_labels)
+        self.start_dates = np.array(self.start_dates)
+        self.scores = np.array(self.scores)
+        self.label_list = sorted(self.all_labels)
+        self.mmsi = np.array(self.mmsi)
+
+    def __nonzero__(self):
+        return len(self.mmsi) > 0
+
+
+class LengthExtractor(object):
+    def __init__(self, length_map, label_map):
+        self.length_map = length_map
+        self.label_map = label_map
+        self.mmsi = []
+        self.inferred_lengths = []
+        self.true_lengths = []
+        self.true_labels = []
+        self.start_dates = []
+
+    def extract(self, row):
+        mmsi = row['mmsi']
+        lbl = self.label_map.get(mmsi, "Unknown")
+        if lbl == "Unknown" or mmsi not in self.length_map:
+            return
+        self.mmsi.append(mmsi)
+        self.start_dates.append(
+            dateutil.parser.parse(row['start_time']))
+        self.true_lengths.append(float(self.length_map[mmsi]))
+        self.true_labels.append(self.label_map.get(mmsi, 'Unknown'))
+        self.inferred_lengths.append(row['labels']['length']['value'])
+
+    def finalize(self):
+        self.inferred_lengths = np.array(self.inferred_lengths)
+        self.true_lengths = np.array(self.true_lengths)
+        self.start_dates = np.array(self.start_dates)
+        self.mmsi = np.array(self.mmsi)
+        self.true_labels = np.array(self.true_labels)
+
+    def __nonzero__(self):
+        return len(self.mmsi) > 0
+
+class FishingRangeExtractor(object):
+    def __init__(self):
+        self.ranges_by_mmsi = defaultdict(list)
+        self.coverage_by_mmsi = defaultdict(list)
+
+    # Faster than using dateutil
+    @staticmethod
+    def _parse(x):
+        # 2014-08-28T13:56:16+00:00
+        # TODO: fix generation to generate consistent datetimes
+        if x[-6:] == "+00:00":
+            x = x[:-6]
+        dt = datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S")
+        return dt.replace(tzinfo=pytz.UTC)
+
+    def extract(self, row):
+        mmsi = row['mmsi']
+        rng = [(self._parse(a), self._parse(b))
+               for (a, b) in row['labels']['fishing_localisation']]
+        self.ranges_by_mmsi[mmsi].extend(rng)
+        self.coverage_by_mmsi[mmsi].append(
+            (self._parse(row['start_time']), self._parse(row['end_time'])))
+
+    def finalize(self):
+        pass
+
+    def __nonzero__(self):
+        return len(self.ranges_by_mmsi) > 0
 
 
 def get_local_inference_path(args):
@@ -518,34 +570,6 @@ def load_true_fishing_ranges_by_mmsi(fishing_range_path):
     return ranges_by_mmsi
 
 
-def load_predicted_fishing_ranges_by_mmsi(inference_path, mmsi_set):
-    ranges_by_mmsi = defaultdict(list)
-    coverage_by_mmsi = defaultdict(list)
-
-    # Faster than using dateutil
-    def parse(x):
-        # 2014-08-28T13:56:16+00:00
-        # TODO: fix generation to generate consistent datetimes
-        if x[-6:] == "+00:00":
-            x = x[:-6]
-        dt = datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S")
-        return dt.replace(tzinfo=pytz.UTC)
-
-    with gzip.GzipFile(inference_path) as f:
-        with nlj.open(f) as src:
-            for row in src:
-                mmsi = row['mmsi']
-                if mmsi not in mmsi_set:
-                    continue
-                if not is_test(mmsi):
-                    info.warning("%s is not a test mmsi", mmsi)
-                rng = [(parse(a), parse(b))
-                       for (a, b) in row['labels']['fishing_localisation']]
-                ranges_by_mmsi[mmsi].extend(rng)
-                coverage_by_mmsi[mmsi].append(
-                    (parse(row['start_time']), parse(row['end_time'])))
-    return ranges_by_mmsi, coverage_by_mmsi
-
 
 def datetime_to_minute(dt):
     timestamp = (dt - datetime.datetime(
@@ -553,13 +577,12 @@ def datetime_to_minute(dt):
     return int(timestamp // 60)
 
 
-def compare_fishing_localisation(inference_path, fishing_range_path):
+def compare_fishing_localisation(extracted_ranges, fishing_range_path, label_map):
 
     logging.debug("loading fishing ranges")
     true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(fishing_range_path)
-    logging.debug("loading predicted fishing")
-    pred_ranges_by_mmsi, pred_coverage_by_mmsi = load_predicted_fishing_ranges_by_mmsi(
-        inference_path, set(true_ranges_by_mmsi.keys()))
+    pred_ranges_by_mmsi = {k: extracted_ranges.ranges_by_mmsi[k] for k in true_ranges_by_mmsi}
+    pred_coverage_by_mmsi = {k: extracted_ranges.coverage_by_mmsi[k] for k in true_ranges_by_mmsi}
 
     true_by_mmsi = {}
     pred_by_mmsi = {}
@@ -621,15 +644,19 @@ def compare_fishing_localisation(inference_path, fishing_range_path):
             true_by_mmsi[mmsi] = minutes[mask, 0]
             pred_by_mmsi[mmsi] = minutes[mask, 1]
 
-    return true_by_mmsi, pred_by_mmsi
+
+    return LocalisationResults(
+            true_by_mmsi, pred_by_mmsi, label_map)
+
+
+
+
 
 
 def compute_results(args):
     inference_path = get_local_inference_path(args)
 
-    true_fishing_by_mmsi, pred_fishing_by_mmsi = compare_fishing_localisation(
-        inference_path, args.fishing_ranges)
-
+    logging.info('Loading label maps')
     maps = defaultdict(dict)
     with open(args.label_path) as f:
         for row in csv.DictReader(f):
@@ -642,52 +669,54 @@ def compute_results(args):
 
     results = {}
 
-    if args.compute_localisation_metrics:
-        results['localisation'] = LocalisationResults(
-            true_fishing_by_mmsi, pred_fishing_by_mmsi, maps['label'])
 
-    if args.compute_class_metrics or args.dump_labels_to:
-        results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
-                                           'is_fishing')
+    if not args.skip_localisation_metrics:
+        ext = FishingRangeExtractor()
+        results['fishing_ranges'] = ext
 
-        results['coarse'] = load_inferred(inference_path, maps['label'],
-                                          'label')
+    if (not args.skip_class_metrics) or args.dump_labels_to:
+        for key, field, name in CLASSIFICATION_METRICS:
+            ext = ClassificationExtractor(field, maps[field])
+            results[key] = ext
 
-        results['fine'] = load_inferred(inference_path, maps['sublabel'],
-                                        'sublabel')
+    if not args.skip_length_metrics:
+        ext = LengthExtractor(maps['length'], maps['label'])
+        results['length'] = ext
 
-    if args.compute_length_metrics:
-        results['length'] = load_lengths(inference_path, maps['length'],
-                                         maps['label'])
+    logging.info('Loading inference data')
+    load_inferred(inference_path, results.values())
+
+
+
+    if not args.skip_localisation_metrics:
+        logging.info('Comparing localisation')
+        results['localisation'] = compare_fishing_localisation(results['fishing_ranges'], args.fishing_ranges,
+            maps['label'])
+
 
     return results
 
 
 def dump_html(args, results):
 
-    classification_metrics = [
-        ('fishing', 'Is Fishing'),
-        ('coarse', 'Coarse Labels'),
-        ('fine', "Fine Labels")  #, ('length', 'Lengths')
-    ]
-
     doc = yattag.Doc()
 
     with doc.tag("style", type="text/css"):
         doc.asis(css)
 
-    if args.compute_class_metrics:
-        for key, heading in classification_metrics:
-            doc.line('h2', heading)
-            ydump_metrics(doc, results[key])
-            doc.stag('hr')
+    if not args.skip_class_metrics:
+        for key, field, heading in CLASSIFICATION_METRICS:
+            if results[key]:
+                doc.line('h2', heading)
+                ydump_metrics(doc, results[key])
+                doc.stag('hr')
 
-    if args.compute_length_metrics:
+    if not args.skip_length_metrics and results['length']:
         doc.line('h2', 'Length Inference')
         ydump_length(doc, results['length'])
         doc.stag('hr')
 
-    if args.compute_localisation_metrics:
+    if not args.skip_localisation_metrics and results['localisation']:
         doc.line('h2', 'Fishing Localisation')
         ydump_fishing_localisation(doc, results['localisation'])
         doc.stag('hr')
@@ -708,30 +737,24 @@ if __name__ == '__main__':
     logging.getLogger().setLevel('INFO')
 
     parser = argparse.ArgumentParser(
-        description='Test inference results and output metrics.\n'
-        'Specify one or more `--compute` options below.')
+        description='Test inference results and output metrics.\n')
     parser.add_argument(
         '--inference-path', help='path to inference results', required=True)
     parser.add_argument(
         '--label-path', help='path to test data', required=True)
     parser.add_argument(
-        '--fishing-ranges', help='path to fishing range data', required=True)
+        '--fishing-ranges', help='path to fishing range data')
     parser.add_argument(
         '--dest-path', help='path to write results to', required=True)
     # Specify which things to dump to output file
-    parser.add_argument('--compute-class-metrics', action='store_true')
-    parser.add_argument('--compute-localisation-metrics', action='store_true')
-    parser.add_argument('--compute-length-metrics', action='store_true')
+    parser.add_argument('--skip-class-metrics', action='store_true')
+    parser.add_argument('--skip-localisation-metrics', action='store_true')
+    parser.add_argument('--skip-length-metrics', action='store_true')
     # It's convenient to be able to dump the consolidated gear types
     parser.add_argument(
         '--dump-labels-to',
         help='dump csv file mapping csv to consolidated gear-type labels')
     args = parser.parse_args()
-
-    if not (args.compute_class_metrics or args.compute_localisation_metrics or
-            args.compute_length_metrics):
-        print(
-            "Warning: no `--compute` option specified, not html file will be generated")
 
     results = compute_results(args)
 
