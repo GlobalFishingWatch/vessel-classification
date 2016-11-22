@@ -82,7 +82,7 @@ class EncountersTest extends PipelineSpec with Matchers {
 
       val expected = (
         meta,
-        ProcessedLocations[PointInfo::Adjacency::HNil](
+        ProcessedLocations[Adjacency::PointInfo::HNil](
           Seq(
             vlra("2016-01-01T00:00:20Z", numNeighbours = 0),
             vlra("2016-01-01T00:00:40Z", numNeighbours = 0),
@@ -99,7 +99,7 @@ class EncountersTest extends PipelineSpec with Matchers {
        sc.parallelize(locations),
        sc.parallelize(adjacencies))
 
-      //res should containSingleValue(expected)
+      res should containSingleValue(expected)
     }
   }
 

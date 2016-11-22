@@ -65,9 +65,10 @@ object TestHelper {
             ::HNil])] = None) =
       VesselLocationRecord(ts(timestamp),
                            LatLon(lat.of[degrees], lon.of[degrees]),
-                           distanceToShore.of[kilometer], PointInfo(speed.of[knots],
+                           distanceToShore.of[kilometer], Adjacency(numNeighbours, closestNeighbour)::
+                           PointInfo(speed.of[knots],
                            course.of[degrees],
-                           heading.of[degrees])::Adjacency(numNeighbours, closestNeighbour)::HNil)
+                           heading.of[degrees])::HNil)
 
   def rvl(timestamp: String, lat: Double, lon: Double, pointDensity: Double = 1.0) =
     VesselLocationRecord(ts(timestamp),
