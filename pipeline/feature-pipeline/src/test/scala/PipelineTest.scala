@@ -46,8 +46,7 @@ object TestHelper {
           heading: Double = 0.0) =
     VesselLocationRecord(ts(timestamp),
                          LatLon(lat.of[degrees], lon.of[degrees]),
-                         distanceToShore.of[kilometer],
-                         speed.of[knots],
+                         distanceToShore.of[kilometer]) + PointInfo(speed.of[knots],
                          course.of[degrees],
                          heading.of[degrees])
  
@@ -59,31 +58,25 @@ object TestHelper {
           course: Double = 0.0,
           heading: Double = 0.0,
           numNeighbours: Int = 0,
-          closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)] = None) =
-    VesselLocationRecordWithAdjacency(
+          closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], VesselLocationRecord)] = None) =
       VesselLocationRecord(ts(timestamp),
                            LatLon(lat.of[degrees], lon.of[degrees]),
-                           distanceToShore.of[kilometer],
-                           speed.of[knots],
+                           distanceToShore.of[kilometer]) + PointInfo(speed.of[knots],
                            course.of[degrees],
-                           heading.of[degrees]),
-      Adjacency(numNeighbours, closestNeighbour))
+                           heading.of[degrees]) + Adjacency(numNeighbours, closestNeighbour)
 
   def rvl(timestamp: String, lat: Double, lon: Double, pointDensity: Double = 1.0) =
-    ResampledVesselLocation(ts(timestamp),
-                            LatLon(lat.of[degrees], lon.of[degrees]),
-                            500.0.of[kilometer],
-                            pointDensity)
+    VesselLocationRecord(ts(timestamp),
+                         LatLon(lat.of[degrees], lon.of[degrees]),
+                         500.0.of[kilometer]) + Resampling(pointDensity)
 
   def rvla(timestamp: String = "1970-01-01T00:00:00Z",
          lat: Double = 0.0,
          lon: Double = 0.0,
          pointDensity: Double = 1.0,
          numNeighbours: Int = 0,
-         closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)] = None) =
-    ResampledVesselLocationWithAdjacency(
-      rvl(timestamp, lat, lon, pointDensity),
-      Adjacency(numNeighbours, closestNeighbour))
+         closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], VesselLocationRecord)] = None) =
+    rvl(timestamp, lat, lon, pointDensity) + Adjacency(numNeighbours, closestNeighbour)
 }
 
 import TestHelper._
