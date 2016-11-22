@@ -106,7 +106,7 @@ object ModelFeatures extends LazyLogging {
           val offsetTimezone = DateTimeZone.forOffsetMillis(longitudeTzOffsetSeconds.toInt * 1000)
           val localTime = new LocalDateTime(timestampSeconds, offsetTimezone)
           val localTodFeature = ((localTime
-              .getHourOfDay() * (localTime.getMinuteOfHour() / 60.0)) - 12.0) / 12.0
+              .getHourOfDay() + (localTime.getMinuteOfHour() / 60.0)) - 12.0) / 12.0
           val localMonthOfYearFeature = (localTime.getMonthOfYear() - 6.0) / 6.0
 
           val (distanceToBoundingAnchorageKm, timeToBoundingAnchorageS) =
