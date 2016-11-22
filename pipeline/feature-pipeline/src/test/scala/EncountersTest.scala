@@ -79,7 +79,7 @@ class EncountersTest extends PipelineSpec with Matchers {
 
       val expected = (
         meta,
-        ProcessedAdjacencyLocations(
+        ProcessedLocations(
           Seq(
             vlra("2016-01-01T00:00:20Z", numNeighbours = 0),
             vlra("2016-01-01T00:00:40Z", numNeighbours = 0),
@@ -109,14 +109,12 @@ class EncountersTest extends PipelineSpec with Matchers {
           }
       }
       
-      def rvlwa(mmsi: Int, locationRecord: ResampledVesselLocation, numNeighbours: Int, other: Option[(Int, Double, ResampledVesselLocation)]) =
+      def rvlwa(mmsi: Int, locationRecord: VesselLocationRecord, numNeighbours: Int, other: Option[(Int, Double, VesselLocationRecord)]) =
         (
           VesselMetadata(mmsi),
-          ResampledVesselLocationWithAdjacency(
-            locationRecord,
-            Adjacency(
+          locationRecord + Adjacency(
               numNeighbours,
-              other.map { case(ommsi, dist, other_loc) => (VesselMetadata(ommsi), dist.of[kilometer], other_loc)})))
+              other.map { case(ommsi, dist, other_loc) => (VesselMetadata(ommsi), dist.of[kilometer], other_loc)}))
 
 
       val expected = Seq(
@@ -233,8 +231,7 @@ class RealEncounterTest extends PipelineSpec with Matchers {
       val distanceToShore = (els(3).toDouble/1000.0).of[kilometer]
       VesselLocationRecord(timestamp,
                          LatLon(lat, lon),
-                         distanceToShore,
-                         0.0.of[knots],
+                         distanceToShore) + PointInfo(0.0.of[knots],
                          0.0.of[degrees],
                          0.0.of[degrees])
 
