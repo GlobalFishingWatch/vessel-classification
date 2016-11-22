@@ -18,9 +18,13 @@ import org.skytruth.common.{AdjacencyLookup, LatLon, ValueCache}
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._
 
+import shapeless._
+import ops.hlist._
+
 object Anchorages {
-  def findAnchoragePointCells(
-      input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[AnchoragePoint] = {
+  def findAnchoragePointCells[Annotations <: HList](
+      input: SCollection[(VesselMetadata, ProcessedLocations[Annotations])])
+    : SCollection[AnchoragePoint] = {
 
     input.flatMap {
       case (md, processedLocations) =>
@@ -79,8 +83,8 @@ object Anchorages {
       mergeAdjacentAnchoragePoints(anchorages)
     }
 
-  def findAnchorageVisits(
-      locationEvents: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
+  def findAnchorageVisits[AS <: HList](
+      locationEvents: SCollection[(VesselMetadata, Seq[VesselLocationRecord[AS]])],
       anchorages: SCollection[Anchorage],
       minVisitDuration: Duration
   ): SCollection[(VesselMetadata, immutable.Seq[AnchorageVisit])] = {

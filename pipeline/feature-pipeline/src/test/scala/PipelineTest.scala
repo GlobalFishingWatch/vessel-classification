@@ -15,6 +15,9 @@ import org.apache.commons.lang3.builder.ToStringBuilder._
 import scala.collection.{mutable, immutable}
 import com.spotify.scio.io._
 
+import shapeless._
+import ops.hlist._
+
 object TestHelper {
   def buildMessage(mmsi: Int,
                    timestamp: String,
@@ -46,9 +49,9 @@ object TestHelper {
           heading: Double = 0.0) =
     VesselLocationRecord(ts(timestamp),
                          LatLon(lat.of[degrees], lon.of[degrees]),
-                         distanceToShore.of[kilometer]) + PointInfo(speed.of[knots],
+                         distanceToShore.of[kilometer], PointInfo(speed.of[knots],
                          course.of[degrees],
-                         heading.of[degrees])
+                         heading.of[degrees]) :: HNil)
  
   def vlra(timestamp: String = "1970-01-01T00:00:00Z",
           lat: Double = 0.0,
@@ -58,25 +61,26 @@ object TestHelper {
           course: Double = 0.0,
           heading: Double = 0.0,
           numNeighbours: Int = 0,
-          closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], VesselLocationRecord)] = None) =
+          closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], VesselLocationRecord[Resampling
+            ::HNil])] = None) =
       VesselLocationRecord(ts(timestamp),
                            LatLon(lat.of[degrees], lon.of[degrees]),
-                           distanceToShore.of[kilometer]) + PointInfo(speed.of[knots],
+                           distanceToShore.of[kilometer], PointInfo(speed.of[knots],
                            course.of[degrees],
-                           heading.of[degrees]) + Adjacency(numNeighbours, closestNeighbour)
+                           heading.of[degrees])::Adjacency(numNeighbours, closestNeighbour)::HNil)
 
   def rvl(timestamp: String, lat: Double, lon: Double, pointDensity: Double = 1.0) =
     VesselLocationRecord(ts(timestamp),
                          LatLon(lat.of[degrees], lon.of[degrees]),
-                         500.0.of[kilometer]) + Resampling(pointDensity)
+                         500.0.of[kilometer], Resampling(pointDensity)::HNil)
 
   def rvla(timestamp: String = "1970-01-01T00:00:00Z",
          lat: Double = 0.0,
          lon: Double = 0.0,
          pointDensity: Double = 1.0,
          numNeighbours: Int = 0,
-         closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], VesselLocationRecord)] = None) =
-    rvl(timestamp, lat, lon, pointDensity) + Adjacency(numNeighbours, closestNeighbour)
+         closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], VesselLocationRecord[Resampling::HNil])] = None) =
+    rvl(timestamp, lat, lon, pointDensity).addAnnotation(Adjacency(numNeighbours, closestNeighbour))
 }
 
 import TestHelper._
@@ -236,7 +240,6 @@ class FeatureBuilderTests extends PipelineSpec with Matchers {
   }
 
   "The pipeline" should "correctly build single vessel features" in {
-    val locations = Seq[VesselLocationRecord]()
     val anchorages = Seq[Anchorage]()
 
     val anchorageLookup =

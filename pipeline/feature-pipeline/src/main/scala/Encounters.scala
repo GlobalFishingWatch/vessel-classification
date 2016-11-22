@@ -15,12 +15,16 @@ import org.skytruth.common.LatLon
 import scala.collection.{mutable, immutable}
 import scala.math._
 
+import shapeless._
+import ops.hlist._
+
 object Encounters extends LazyLogging {
 
-  def calculateEncounters(
+  def calculateEncounters[Annotations <: HList](
       minDurationForEncounter: Duration,
-      input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
-    : SCollection[VesselEncounters] = {
+      input: SCollection[(VesselMetadata, Seq[VesselLocationRecord[Annotations]])])(
+      implicit resamplingSelector: Selector[Annotations, Resampling],
+      adjacencySelector: Selector[Annotations, Adjacency]): SCollection[VesselEncounters] = {
 
     input.flatMap {
       case (md, locationSeries) =>
@@ -28,9 +32,11 @@ object Encounters extends LazyLogging {
           mutable.Map.empty[(VesselMetadata, VesselMetadata), mutable.ArrayBuffer[SingleEncounter]]
 
         var currentEncounterVessel: Option[VesselMetadata] = None
-        val currentRun = mutable.ArrayBuffer.empty[VesselLocationRecord]
+        val currentRun = mutable.ArrayBuffer.empty[VesselLocationRecord[Annotations]]
 
-        def tryAddEncounter(newEncounterVessel: Option[VesselMetadata]) = {
+        def tryAddEncounter(newEncounterVessel: Option[VesselMetadata])(
+            implicit resamplingSelector: Selector[Annotations, Resampling],
+            adjacencySelector: Selector[Annotations, Adjacency]) = {
           if (currentEncounterVessel.isDefined && currentRun.size >= 2) {
             val startTime = currentRun.head.timestamp
             val endTime = currentRun.last.timestamp
@@ -50,16 +56,23 @@ object Encounters extends LazyLogging {
                 }
                 .toSeq
 
-              val medianDistance = currentRun.map { _.annotation(classOf[Adjacency]).closestNeighbour.get._2 }
-                .medianBy(_.value)
+              val medianDistance = currentRun.map {
+                _.annotation[Adjacency].closestNeighbour.get._2
+              }.medianBy(_.value)
               val meanLocation = LatLon.mean(currentRun.map(_.location))
 
               val medianSpeed =
                 impliedSpeeds.medianBy(Predef.identity).of[meters_per_second].convert[knots]
 
-              val vessel1Points = currentRun.map(_.annotation(classOf[Resampling]).pointDensity).sum.toInt
+              val vessel1Points = currentRun.map(_.annotation[Resampling].pointDensity).sum.toInt
               val vessel2Points =
-                currentRun.map(_.annotation(classOf[Adjacency]).closestNeighbour.get._3.annotation(classOf[Resampling]).pointDensity).sum.toInt
+                currentRun
+                  .map(
+                    _.annotation[Adjacency].closestNeighbour.get._3
+                      .annotation[Resampling]
+                      .pointDensity)
+                  .sum
+                  .toInt
 
               val key = (md, currentEncounterVessel.get)
               if (!encounters.contains(key)) {
@@ -82,11 +95,11 @@ object Encounters extends LazyLogging {
         locationSeries.foreach { l =>
           val possibleEncounterPoint =
             l.distanceToShore > Parameters.minDistanceToShoreForEncounter &&
-              l.annotation(classOf[Adjacency]).closestNeighbour.isDefined &&
-              l.annotation(classOf[Adjacency]).closestNeighbour.get._2 < Parameters.maxDistanceForEncounter
+              l.annotation[Adjacency].closestNeighbour.isDefined &&
+              l.annotation[Adjacency].closestNeighbour.get._2 < Parameters.maxDistanceForEncounter
 
           if (possibleEncounterPoint) {
-            val closestNeighbour = l.annotation(classOf[Adjacency]).closestNeighbour.get._1
+            val closestNeighbour = l.annotation[Adjacency].closestNeighbour.get._1
             if (currentEncounterVessel.isDefined && currentEncounterVessel.get.mmsi != closestNeighbour.mmsi) {
               tryAddEncounter(Some(closestNeighbour))
             }
@@ -107,10 +120,10 @@ object Encounters extends LazyLogging {
     }
   }
 
-  def annotateAdjacency(
-      locations: SCollection[(VesselMetadata, ProcessedLocations)],
-      adjacencies: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
-    : SCollection[(VesselMetadata, ProcessedLocations)] = {
+  def annotateAdjacency[LocationAnnotations <: HList, AdjacencyAnnotations <: HList](
+      locations: SCollection[(VesselMetadata, ProcessedLocations[LocationAnnotations])],
+      adjacencies: SCollection[(VesselMetadata, Seq[VesselLocationRecord[AdjacencyAnnotations]])])(
+      implicit adjacencySelector: Selector[AdjacencyAnnotations, Adjacency]) = {
     locations.join(adjacencies).map {
       case (vessel, (locations, resampled)) => {
         val resampledIter = resampled.iterator.buffered
@@ -118,31 +131,31 @@ object Encounters extends LazyLogging {
         (
           vessel,
           locations.copy(
-            locations = locations.locations.map(location => {
+            locations = locations.locations.map { location =>
               while (resampledIter.hasNext
-                     && abs(new Duration(current.timestamp, location.timestamp)
-                       .getMillis())
-                       > abs(new Duration(resampledIter.head.timestamp,
-                                          location.timestamp).getMillis())) {
+                     && abs(new Duration(current.timestamp, location.timestamp).getMillis())
+                       > abs(new Duration(resampledIter.head.timestamp, location.timestamp)
+                         .getMillis())) {
                 current = resampledIter.next()
               }
-              location + Adjacency(
-                current.annotation(classOf[Adjacency]).numNeighbours,
-                current.annotation(classOf[Adjacency]).closestNeighbour
-              )
-            })
+
+              location.addAnnotation(current.annotation[Adjacency])
+            }
           )
         )
       }
     }
   }
 
-  def calculateAdjacency(interpolateIncrementSeconds: Duration,
-                         vesselSeries: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
-    : SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
+  def calculateAdjacency[Annotations <: HList](
+      interpolateIncrementSeconds: Duration,
+      vesselSeries: SCollection[(VesselMetadata, Seq[VesselLocationRecord[Annotations]])])
+    : SCollection[(VesselMetadata, Seq[VesselLocationRecord[Adjacency :: Resampling :: HNil]])] = {
     val s2Level = 12
 
-    val resampled: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = vesselSeries.map {
+    type ResampledLocation = VesselLocationRecord[Resampling :: HNil]
+
+    val resampled = vesselSeries.map {
       case (md, locations) =>
         (md, Utility.resampleVesselSeries(interpolateIncrementSeconds, locations))
     }
@@ -158,16 +171,16 @@ object Encounters extends LazyLogging {
       case (time, vesselLocations) =>
         // First, segment vessels by S2 cell to decrease the computational overhead of the
         // distance calculations.
-        val cellMap = mutable.Map
-          .empty[S2CellId, mutable.ListBuffer[(VesselMetadata, VesselLocationRecord)]]
+        val cellMap =
+          mutable.Map.empty[S2CellId, mutable.ListBuffer[(VesselMetadata, ResampledLocation)]]
 
-        val vesselLocationMap = mutable.Map.empty[VesselMetadata, VesselLocationRecord]
+        val vesselLocationMap = mutable.Map.empty[VesselMetadata, ResampledLocation]
         vesselLocations.foreach {
           case (md, vl) =>
             val cells = vl.location.getCapCoveringCells(1.0.of[kilometer], s2Level)
             cells.foreach { cell =>
               if (!cellMap.contains(cell)) {
-                cellMap(cell) = mutable.ListBuffer.empty[(VesselMetadata, VesselLocationRecord)]
+                cellMap(cell) = mutable.ListBuffer.empty[(VesselMetadata, ResampledLocation)]
               }
               cellMap(cell).append((md, vl))
             }
@@ -212,7 +225,8 @@ object Encounters extends LazyLogging {
             val number = closestN.size
 
             val res =
-              (md, vl + Adjacency(number, closestNeighbour))
+              (md, vl.addAnnotation(Adjacency(number, closestNeighbour)))
+
             res
         }.toSeq
     }

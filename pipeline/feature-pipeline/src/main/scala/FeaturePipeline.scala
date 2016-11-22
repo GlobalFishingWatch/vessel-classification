@@ -44,6 +44,9 @@ import resource._
 
 import org.apache.commons.lang3.builder.ToStringBuilder._
 
+import shapeless._
+import ops.hlist._
+
 case class RangeValidator(valid: Boolean) extends AnyVal {
   def inRange[T <: Ordered[T]](value: T, min: T, max: T) =
     RangeValidator(valid && (value >= min && value < max))
@@ -65,10 +68,10 @@ object Pipeline extends LazyLogging {
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
   // by ascending timestamp.
-  def readJsonRecords(
-      inputs: Seq[SCollection[TableRow]],
-      knownFishingMMSIs: Set[Int],
-      minRequiredPositions: Long): SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
+  def readJsonRecords(inputs: Seq[SCollection[TableRow]],
+                      knownFishingMMSIs: Set[Int],
+                      minRequiredPositions: Long)
+    : SCollection[(VesselMetadata, Seq[VesselLocationRecord[PointInfo :: HNil]])] = {
 
     val input = SCollection.unionAll(inputs)
     // Keep only records with a location.
@@ -80,13 +83,14 @@ object Pipeline extends LazyLogging {
         val metadata = VesselMetadata(mmsi, knownFishingMMSIs.contains(mmsi))
         val record =
           // TODO(alexwilson): Double-check all these units are correct.
-          (VesselLocationRecord(Instant.parse(json.getString("timestamp")),
-                                LatLon(Utility.angleNormalize(json.getDouble("lat").of[degrees]),
-                                       Utility.angleNormalize(json.getDouble("lon").of[degrees])),
-                                (json.getDouble("distance_from_shore") / 1000.0).of[kilometer])
-           + PointInfo(json.getDouble("speed").of[knots],
-                       Utility.angleNormalize(json.getDouble("course").of[degrees]),
-                       Utility.angleNormalize(json.getDouble("heading").of[degrees])))
+          VesselLocationRecord(
+            Instant.parse(json.getString("timestamp")),
+            LatLon(Utility.angleNormalize(json.getDouble("lat").of[degrees]),
+                   Utility.angleNormalize(json.getDouble("lon").of[degrees])),
+            (json.getDouble("distance_from_shore") / 1000.0).of[kilometer],
+            PointInfo(json.getDouble("speed").of[knots],
+                      Utility.angleNormalize(json.getDouble("course").of[degrees]),
+                      Utility.angleNormalize(json.getDouble("heading").of[degrees])) :: HNil)
         (metadata, record)
       })
       .filter { case (metadata, _) => !blacklistedMmsis.contains(metadata.mmsi) }
@@ -97,9 +101,9 @@ object Pipeline extends LazyLogging {
             .inRange(record.location.lat, -90.0.of[degrees], 90.0.of[degrees])
             .inRange(record.location.lon, -180.0.of[degrees], 180.of[degrees])
             .inRange(record.distanceToShore, 0.0.of[kilometer], 20000.0.of[kilometer])
-            .inRange(record.annotation(classOf[PointInfo]).speed, 0.0.of[knots], 100.0.of[knots])
-            .inRange(record.annotation(classOf[PointInfo]).course, -180.0.of[degrees], 180.of[degrees])
-            .inRange(record.annotation(classOf[PointInfo]).heading, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.annotation[PointInfo].speed, 0.0.of[knots], 100.0.of[knots])
+            .inRange(record.annotation[PointInfo].course, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.annotation[PointInfo].heading, -180.0.of[degrees], 180.of[degrees])
             .valid
       }
 
@@ -130,8 +134,9 @@ object Pipeline extends LazyLogging {
     }
   }
 
-  def thinPoints(records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
-    val thinnedPoints = mutable.ListBuffer.empty[VesselLocationRecord]
+  def thinPoints[Annotations <: HList](records: Iterable[VesselLocationRecord[Annotations]])
+    : Iterable[VesselLocationRecord[Annotations]] = {
+    val thinnedPoints = mutable.ListBuffer.empty[VesselLocationRecord[Annotations]]
 
     // Thin locations down to a minimum time between each.
     records.foreach { vr =>
@@ -144,19 +149,22 @@ object Pipeline extends LazyLogging {
     thinnedPoints
   }
 
-  def removeStationaryPeriods(records: Iterable[VesselLocationRecord]): ProcessedLocations = {
+  def removeStationaryPeriods[Annotations <: HList](
+      records: Iterable[VesselLocationRecord[Annotations]])(
+      implicit pointInfoSelector: Selector[Annotations, PointInfo])
+    : ProcessedLocations[Annotations] = {
     // Remove long stationary periods from the record: anything over the threshold
     // time will be reduced to just the start and end points of the period.
     // TODO(alexwilson): Tim points out that leaves vessels sitting around for t - delta looking
     // significantly different from those sitting around for t + delta. Consider his scheme of just
     // cropping all excess time over the threshold instead.
-    val withoutLongStationaryPeriods = mutable.ListBuffer.empty[VesselLocationRecord]
+    val withoutLongStationaryPeriods = mutable.ListBuffer.empty[VesselLocationRecord[Annotations]]
     val stationaryPeriods = mutable.ListBuffer.empty[StationaryPeriod]
-    val currentPeriod = mutable.Queue.empty[VesselLocationRecord]
+    val currentPeriod = mutable.Queue.empty[VesselLocationRecord[Annotations]]
     records.foreach { vr =>
       if (!currentPeriod.isEmpty) {
         val periodFirst = currentPeriod.front
-        val speed = vr.annotation(classOf[PointInfo]).speed
+        val speed = vr.annotation[PointInfo].speed
         val distanceDelta = vr.location.getDistance(periodFirst.location)
         if (distanceDelta > Parameters.stationaryPeriodMaxDistance) {
           if (vr.timestamp.isAfter(
@@ -188,9 +196,10 @@ object Pipeline extends LazyLogging {
     ProcessedLocations(withoutLongStationaryPeriods.toIndexedSeq, stationaryPeriods.toIndexedSeq)
   }
 
-  def filterAndProcessVesselRecords(
-      input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
-    : SCollection[(VesselMetadata, ProcessedLocations)] = {
+  def filterAndProcessVesselRecords[Annotations <: HList](
+      input: SCollection[(VesselMetadata, Seq[VesselLocationRecord[Annotations]])])(
+      implicit pointInfoSelector: Selector[Annotations, PointInfo])
+    : SCollection[(VesselMetadata, ProcessedLocations[Annotations])] = {
     input.map {
       case (metadata, records) =>
         val thinnedPoints = thinPoints(records)
@@ -244,7 +253,7 @@ object Pipeline extends LazyLogging {
       val knownFishingMMSIs = loadFishingMMSIs()
 
       val minValidLocations = 200
-      val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
+      val locationRecords =
         readJsonRecords(matches, knownFishingMMSIs, Parameters.minRequiredPositions)
 
       val adjacencies =
@@ -252,7 +261,7 @@ object Pipeline extends LazyLogging {
 
       val processed =
         filterAndProcessVesselRecords(locationRecords)
-      val processedWithAdjecency = Encounters.annotateAdjacency(processed, adjacencies)
+      val processedWithAdjacency = Encounters.annotateAdjacency(processed, adjacencies)
 
       val anchoragePoints =
         Anchorages.findAnchoragePointCells(processed)
@@ -274,7 +283,7 @@ object Pipeline extends LazyLogging {
       }.saveAsTextFile(anchorageVisitsPath)
 
       if (generateModelFeatures) {
-        val features = ModelFeatures.buildVesselFeatures(processedWithAdjecency, anchorages).map {
+        val features = ModelFeatures.buildVesselFeatures(processedWithAdjacency, anchorages).map {
           case (md, feature) =>
             (s"${md.mmsi}", feature)
         }

@@ -18,11 +18,16 @@ object RecordsTest {
   def printString[AS <: HList](vw: ValueWrapper[AS])
       (implicit selector: Selector[AS, StringAnnotation]) {
     println(vw.annotation[StringAnnotation])
-  }  
+  }
+
+  def appendAnnotation[AS <: HList, T](inputWrapper: ValueWrapper[AS], a: T): ValueWrapper[T::AS] = {
+    ValueWrapper(inputWrapper.value, a::inputWrapper.annotations)
+  }
 
   def test() = {
     val a = ValueWrapper(4, StringAnnotation("foo") :: IntAnnotation(4) :: HNil)
     val b = ValueWrapper(10, IntAnnotation(6):: StringAnnotation("bar") :: HNil)
+    val c = appendAnnotation(ValueWrapper(12, HNil), 7.0)
 
     printString(a)
     printString(b)

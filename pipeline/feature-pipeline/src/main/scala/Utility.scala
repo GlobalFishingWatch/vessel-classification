@@ -38,18 +38,19 @@ import scala.collection.JavaConversions._
 import com.spotify.scio._
 import resource._
 
+import shapeless._
+import ops.hlist._
+
 class Annotation
 
 case class Annotated(annotations: Map[Class[_], Annotation] = Map[Class[_], Annotation]()) {
-  def annotation[T](cls : Class[T]) : T  = {
+  def annotation[T](cls: Class[T]): T = {
     annotations.get(cls).get.asInstanceOf[T]
   }
-  def +(annotation: Annotation) : Annotated = {
+  def +(annotation: Annotation): Annotated = {
     copy(annotations = annotations + (annotation.getClass -> annotation))
   }
 }
-
-
 
 case class VesselMetadata(mmsi: Int, isFishingVessel: Boolean = false) {
   def flagState = CountryCodes.fromMmsi(mmsi)
@@ -60,27 +61,27 @@ case class StationaryPeriod(location: LatLon,
                             meanDistanceToShore: DoubleU[kilometer],
                             meanDriftRadius: DoubleU[kilometer])
 
-case class PointInfo(
-    speed: DoubleU[knots],
-    course: DoubleU[degrees],
-    heading: DoubleU[degrees]) extends Annotation
+case class PointInfo(speed: DoubleU[knots], course: DoubleU[degrees], heading: DoubleU[degrees])
 
 case class Adjacency(
     numNeighbours: Int,
-    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], VesselLocationRecord)]) extends Annotation
+    closestNeighbour: Option[
+      (VesselMetadata, DoubleU[kilometer], VesselLocationRecord[Resampling :: HNil])])
 
-case class Resampling(
-    pointDensity: Double) extends Annotation
+case class Resampling(pointDensity: Double)
 
-case class ProcessedLocations(locations: Seq[VesselLocationRecord],
-                              stationaryPeriods: Seq[StationaryPeriod])
+case class ProcessedLocations[Annotations <: HList](
+    locations: Seq[VesselLocationRecord[Annotations]],
+    stationaryPeriods: Seq[StationaryPeriod])
 
-case class VesselLocationRecord(timestamp: Instant,
-                                location: LatLon,
-                                distanceToShore: DoubleU[kilometer],
-                                annotations: Annotated = Annotated()) {
-  def annotation[T](cls : Class[T]) : T  = annotations.annotation(cls)
-  def +(annotation: Annotation) : VesselLocationRecord = copy(annotations = annotations + annotation)
+case class VesselLocationRecord[Annotations <: HList](timestamp: Instant,
+                                                      location: LatLon,
+                                                      distanceToShore: DoubleU[kilometer],
+                                                      annotations: Annotations) {
+  def annotation[T](implicit selector: Selector[Annotations, T]) = annotations.select[T]
+  def addAnnotation[T](annotation: T) =
+    VesselLocationRecord(timestamp, location, distanceToShore, annotation :: annotations)
+  def withoutAnnotations = VesselLocationRecord(timestamp, location, distanceToShore, HNil)
 }
 
 case class SingleEncounter(startTime: Instant,
@@ -240,8 +241,9 @@ object Utility extends LazyLogging {
     }
   }
 
-  def resampleVesselSeries(increment: Duration,
-                           input: Seq[VesselLocationRecord]): Seq[VesselLocationRecord] = {
+  def resampleVesselSeries(
+      increment: Duration,
+      input: Seq[VesselLocationRecord[_]]): Seq[VesselLocationRecord[Resampling :: HNil]] = {
     val incrementSeconds = increment.getStandardSeconds()
     val maxInterpolateGapSeconds = Parameters.maxInterpolateGap.getStandardSeconds()
     def tsToUnixSeconds(timestamp: Instant): Long = (timestamp.getMillis / 1000L)
@@ -253,12 +255,12 @@ object Utility extends LazyLogging {
 
     var iterLocation = input.iterator
 
-    val interpolatedSeries = mutable.ListBuffer.empty[VesselLocationRecord]
-    var lastLocationRecord: Option[VesselLocationRecord] = None
+    val interpolatedSeries = mutable.ListBuffer.empty[VesselLocationRecord[Resampling :: HNil]]
+    var lastLocationRecord: Option[VesselLocationRecord[_]] = None
     var currentLocationRecord = iterLocation.next()
     while (iterTime <= endTime) {
       while (tsToUnixSeconds(currentLocationRecord.timestamp) < iterTime && iterLocation.hasNext) {
-        lastLocationRecord = Some(currentLocationRecord)
+        lastLocationRecord = Some(currentLocationRecord.withoutAnnotations)
         currentLocationRecord = iterLocation.next()
       }
 
@@ -284,7 +286,8 @@ object Utility extends LazyLogging {
           interpolatedSeries.append(
             VesselLocationRecord(new Instant(iterTime * 1000),
                                  LatLon(interpLat.of[degrees], interpLon.of[degrees]),
-                                 interpDistFromShore.of[kilometer]) + Resampling(pointDensity))
+                                 interpDistFromShore.of[kilometer],
+                                 Resampling(pointDensity) :: HNil))
         }
       }
 
