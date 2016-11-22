@@ -41,17 +41,6 @@ import resource._
 import shapeless._
 import ops.hlist._
 
-class Annotation
-
-case class Annotated(annotations: Map[Class[_], Annotation] = Map[Class[_], Annotation]()) {
-  def annotation[T](cls: Class[T]): T = {
-    annotations.get(cls).get.asInstanceOf[T]
-  }
-  def +(annotation: Annotation): Annotated = {
-    copy(annotations = annotations + (annotation.getClass -> annotation))
-  }
-}
-
 case class VesselMetadata(mmsi: Int, isFishingVessel: Boolean = false) {
   def flagState = CountryCodes.fromMmsi(mmsi)
 }
