@@ -38,6 +38,19 @@ import scala.collection.JavaConversions._
 import com.spotify.scio._
 import resource._
 
+class Annotation
+
+case class Annotated(annotations: Map[Class[_], Annotation] = Map[Class[_], Annotation]()) {
+  def annotation[T](cls : Class[T]) : T  = {
+    annotations.get(cls).get.asInstanceOf[T]
+  }
+  def +(annotation: Annotation) : Annotated = {
+    copy(annotations = annotations + (annotation.getClass -> annotation))
+  }
+}
+
+
+
 case class VesselMetadata(mmsi: Int, isFishingVessel: Boolean = false) {
   def flagState = CountryCodes.fromMmsi(mmsi)
 }
@@ -47,32 +60,28 @@ case class StationaryPeriod(location: LatLon,
                             meanDistanceToShore: DoubleU[kilometer],
                             meanDriftRadius: DoubleU[kilometer])
 
+case class PointInfo(
+    speed: DoubleU[knots],
+    course: DoubleU[degrees],
+    heading: DoubleU[degrees]) extends Annotation
+
 case class Adjacency(
     numNeighbours: Int,
-    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)])
+    closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], VesselLocationRecord)]) extends Annotation
 
-case class VesselLocationRecordWithAdjacency(location: VesselLocationRecord, adjacency: Adjacency)
+case class Resampling(
+    pointDensity: Double) extends Annotation
 
 case class ProcessedLocations(locations: Seq[VesselLocationRecord],
                               stationaryPeriods: Seq[StationaryPeriod])
 
-case class ProcessedAdjacencyLocations(locations: Seq[VesselLocationRecordWithAdjacency],
-                                       stationaryPeriods: Seq[StationaryPeriod])
-
 case class VesselLocationRecord(timestamp: Instant,
                                 location: LatLon,
                                 distanceToShore: DoubleU[kilometer],
-                                speed: DoubleU[knots],
-                                course: DoubleU[degrees],
-                                heading: DoubleU[degrees])
-
-case class ResampledVesselLocation(timestamp: Instant,
-                                   location: LatLon,
-                                   distanceToShore: DoubleU[kilometer],
-                                   pointDensity: Double)
-
-case class ResampledVesselLocationWithAdjacency(locationRecord: ResampledVesselLocation,
-                                                adjacency: Adjacency)
+                                annotations: Annotated = Annotated()) {
+  def annotation[T](cls : Class[T]) : T  = annotations.annotation(cls)
+  def +(annotation: Annotation) : VesselLocationRecord = copy(annotations = annotations + annotation)
+}
 
 case class SingleEncounter(startTime: Instant,
                            endTime: Instant,
@@ -232,7 +241,7 @@ object Utility extends LazyLogging {
   }
 
   def resampleVesselSeries(increment: Duration,
-                           input: Seq[VesselLocationRecord]): Seq[ResampledVesselLocation] = {
+                           input: Seq[VesselLocationRecord]): Seq[VesselLocationRecord] = {
     val incrementSeconds = increment.getStandardSeconds()
     val maxInterpolateGapSeconds = Parameters.maxInterpolateGap.getStandardSeconds()
     def tsToUnixSeconds(timestamp: Instant): Long = (timestamp.getMillis / 1000L)
@@ -244,7 +253,7 @@ object Utility extends LazyLogging {
 
     var iterLocation = input.iterator
 
-    val interpolatedSeries = mutable.ListBuffer.empty[ResampledVesselLocation]
+    val interpolatedSeries = mutable.ListBuffer.empty[VesselLocationRecord]
     var lastLocationRecord: Option[VesselLocationRecord] = None
     var currentLocationRecord = iterLocation.next()
     while (iterTime <= endTime) {
@@ -273,10 +282,9 @@ object Utility extends LazyLogging {
               llr.distanceToShore.value * (1.0 - mix)
 
           interpolatedSeries.append(
-            ResampledVesselLocation(new Instant(iterTime * 1000),
-                                    LatLon(interpLat.of[degrees], interpLon.of[degrees]),
-                                    interpDistFromShore.of[kilometer],
-                                    pointDensity))
+            VesselLocationRecord(new Instant(iterTime * 1000),
+                                 LatLon(interpLat.of[degrees], interpLon.of[degrees]),
+                                 interpDistFromShore.of[kilometer]) + Resampling(pointDensity))
         }
       }
 
