@@ -114,7 +114,7 @@ class ClusterNodeConfig(object):
         return ClusterNodeConfig({
             "cluster": {},
             "task": {
-                "type": "master",
+                "type": "worker",
                 "index": 0
             }
         })
@@ -621,23 +621,23 @@ class VesselMetadata(object):
         return self.metadata_by_split[split].keys()
 
     def weighted_training_list(self, random_state, split,
-                               max_replication_factor):
+                               max_replication_factor, row_filter = lambda row: True):
         replicated_mmsis = []
         logging.info("Training mmsis: %d", len(self.mmsis_for_split(split)))
         fishing_ranges_mmsis = []
-        for mmsi, (rows, weight) in self.metadata_by_split[split].iteritems():
+        for mmsi, (row, weight) in self.metadata_by_split[split].iteritems():
+            if row_filter(row):
+                if mmsi in self.fishing_ranges_map:
+                    fishing_ranges_mmsis.append(mmsi)
+                    weight = weight * self.fishing_range_training_upweight
 
-            if mmsi in self.fishing_ranges_map:
-                fishing_ranges_mmsis.append(mmsi)
-                weight = weight * self.fishing_range_training_upweight
+                weight = min(weight, max_replication_factor)
 
-            weight = min(weight, max_replication_factor)
-
-            int_n = int(weight)
-            replicated_mmsis += ([mmsi] * int_n)
-            frac_n = weight - float(int_n)
-            if (random_state.uniform(0.0, 1.0) <= frac_n):
-                replicated_mmsis.append(mmsi)
+                int_n = int(weight)
+                replicated_mmsis += ([mmsi] * int_n)
+                frac_n = weight - float(int_n)
+                if (random_state.uniform(0.0, 1.0) <= frac_n):
+                    replicated_mmsis.append(mmsi)
 
         random_state.shuffle(replicated_mmsis)
         logging.info("Replicated training mmsis: %d", len(replicated_mmsis))
