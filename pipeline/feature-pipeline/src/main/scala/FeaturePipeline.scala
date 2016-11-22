@@ -80,13 +80,13 @@ object Pipeline extends LazyLogging {
         val metadata = VesselMetadata(mmsi, knownFishingMMSIs.contains(mmsi))
         val record =
           // TODO(alexwilson): Double-check all these units are correct.
-          VesselLocationRecord(Instant.parse(json.getString("timestamp")),
-                               LatLon(Utility.angleNormalize(json.getDouble("lat").of[degrees]),
-                                      Utility.angleNormalize(json.getDouble("lon").of[degrees])),
-                               (json.getDouble("distance_from_shore") / 1000.0).of[kilometer],
-                               json.getDouble("speed").of[knots],
-                               Utility.angleNormalize(json.getDouble("course").of[degrees]),
-                               Utility.angleNormalize(json.getDouble("heading").of[degrees]))
+          (VesselLocationRecord(Instant.parse(json.getString("timestamp")),
+                                LatLon(Utility.angleNormalize(json.getDouble("lat").of[degrees]),
+                                       Utility.angleNormalize(json.getDouble("lon").of[degrees])),
+                                (json.getDouble("distance_from_shore") / 1000.0).of[kilometer])
+           + PointInfo(json.getDouble("speed").of[knots],
+                       Utility.angleNormalize(json.getDouble("course").of[degrees]),
+                       Utility.angleNormalize(json.getDouble("heading").of[degrees])))
         (metadata, record)
       })
       .filter { case (metadata, _) => !blacklistedMmsis.contains(metadata.mmsi) }
@@ -97,9 +97,9 @@ object Pipeline extends LazyLogging {
             .inRange(record.location.lat, -90.0.of[degrees], 90.0.of[degrees])
             .inRange(record.location.lon, -180.0.of[degrees], 180.of[degrees])
             .inRange(record.distanceToShore, 0.0.of[kilometer], 20000.0.of[kilometer])
-            .inRange(record.speed, 0.0.of[knots], 100.0.of[knots])
-            .inRange(record.course, -180.0.of[degrees], 180.of[degrees])
-            .inRange(record.heading, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.annotation(classOf[PointInfo]).speed, 0.0.of[knots], 100.0.of[knots])
+            .inRange(record.annotation(classOf[PointInfo]).course, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.annotation(classOf[PointInfo]).heading, -180.0.of[degrees], 180.of[degrees])
             .valid
       }
 
@@ -156,7 +156,7 @@ object Pipeline extends LazyLogging {
     records.foreach { vr =>
       if (!currentPeriod.isEmpty) {
         val periodFirst = currentPeriod.front
-        val speed = vr.speed
+        val speed = vr.annotation(classOf[PointInfo]).speed
         val distanceDelta = vr.location.getDistance(periodFirst.location)
         if (distanceDelta > Parameters.stationaryPeriodMaxDistance) {
           if (vr.timestamp.isAfter(

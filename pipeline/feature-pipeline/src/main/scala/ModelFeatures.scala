@@ -50,13 +50,13 @@ object ModelFeatures extends LazyLogging {
   }
 
   def buildSingleVesselFeatures(
-      input: Seq[VesselLocationRecordWithAdjacency],
+      input: Seq[VesselLocationRecord],
       anchorageLookup: AdjacencyLookup[Anchorage]): Seq[Array[Double]] = {
     val boundingAnchoragesIterator = input.flatMap {
-      case vlra => {
-        val localAnchorages = anchorageLookup.nearby(vlra.location.location)
+      case vlr => {
+        val localAnchorages = anchorageLookup.nearby(vlr.location)
         localAnchorages.headOption.map { la =>
-          (vlra.location.timestamp, la)
+          (vlr.timestamp, la)
         }
       }
     }.sliding(2).filter(_.size == 2).map {
@@ -68,9 +68,10 @@ object ModelFeatures extends LazyLogging {
     input
       .sliding(3)
       .map {
-        case Seq(VesselLocationRecordWithAdjacency(p0, a0),
-                 VesselLocationRecordWithAdjacency(p1, a1),
-                 VesselLocationRecordWithAdjacency(p2, a2)) =>
+        case Seq(p0, p1, p2) =>
+          val a0 = p0.annotation(classOf[Adjacency])
+          val a1 = p1.annotation(classOf[Adjacency])
+          val a2 = p2.annotation(classOf[Adjacency])
           if (p0 == p1) {
             logger.fatal(s"p0 and p1 are the same: $p0, $p1")
           }
@@ -87,9 +88,9 @@ object ModelFeatures extends LazyLogging {
           val timestampSeconds = p1.timestamp.getMillis / 1000
           val timestampDeltaSeconds = p1.timestamp.getMillis / 1000 - p0.timestamp.getMillis / 1000
           val distanceDeltaMeters = p1.location.getDistance(p0.location).value
-          val speedMps = p1.speed.convert[meters_per_second].value
+          val speedMps = p1.annotation(classOf[PointInfo]).speed.convert[meters_per_second].value
           val integratedSpeedMps = distanceDeltaMeters / timestampDeltaSeconds
-          val cogDeltaDegrees = Utility.angleNormalize((p1.course - p0.course)).value
+          val cogDeltaDegrees = Utility.angleNormalize((p1.annotation(classOf[PointInfo]).course - p0.annotation(classOf[PointInfo]).course)).value
           val integratedCogDeltaDegrees = S2
             .turnAngle(ll0.normalized().toPoint(),
                        ll1.normalized().toPoint(),
@@ -184,7 +185,7 @@ object ModelFeatures extends LazyLogging {
   }
 
   def buildVesselFeatures(
-      input: SCollection[(VesselMetadata, ProcessedAdjacencyLocations)],
+      input: SCollection[(VesselMetadata, ProcessedLocations)],
       anchorages: SCollection[Anchorage]): SCollection[(VesselMetadata, SequenceExample)] = {
     val siAnchorages = anchorages.asListSideInput
 
