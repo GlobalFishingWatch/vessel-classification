@@ -83,8 +83,8 @@ object Anchorages {
       mergeAdjacentAnchoragePoints(anchorages)
     }
 
-  def findAnchorageVisits[AS <: HList](
-      locationEvents: SCollection[(VesselMetadata, Seq[VesselLocationRecord[AS]])],
+  def findAnchorageVisits[Annotations <: HList](
+      locationEvents: SCollection[(VesselMetadata, Seq[VesselLocationRecord[Annotations]])],
       anchorages: SCollection[Anchorage],
       minVisitDuration: Duration
   ): SCollection[(VesselMetadata, immutable.Seq[AnchorageVisit])] = {
