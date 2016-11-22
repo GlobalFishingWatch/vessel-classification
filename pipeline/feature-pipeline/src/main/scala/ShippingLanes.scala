@@ -64,7 +64,7 @@ case class ShippingInfo(coursex : StdDev = StdDev(), coursey : StdDev = StdDev()
 
 object ShippingInfo {
   def fromLocation(location : VesselLocationRecord) : ShippingInfo = {
-    val course = location.course.convert[radians].value
+    val course = location.annotation(classOf[PointInfo]).course.convert[radians].value
     ShippingInfo(StdDev() + math.cos(course), StdDev() + math.sin(course))
   }
 }
