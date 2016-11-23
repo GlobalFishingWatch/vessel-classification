@@ -1,22 +1,119 @@
-package org.skytruth.feature_pipeline
+package org.skytruth.anchorages
 
 import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
+
+import org.json4s._
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
 
 import com.google.common.geometry.{S2CellId}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 
 import org.jgrapht.alg.util.UnionFind
-import org.joda.time.{Duration}
+import org.joda.time.{Duration, Instant}
 
-import org.skytruth.common.AdditionalUnits._
+import org.skytruth.common._
 import org.skytruth.common.Implicits._
-import org.skytruth.common.{AdjacencyLookup, LatLon, ValueCache}
 
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._
+
+object Parameters {
+  // Around 1km^2
+  val anchoragesS2Scale = 13
+  val minUniqueVesselsForAnchorage = 20
+  val anchorageVisitDistanceThreshold = 0.5.of[kilometer]
+  val minAnchorageVisitDuration = Duration.standardMinutes(60)
+
+}
+
+
+case class AnchoragePoint(meanLocation: LatLon,
+                          vessels: Set[VesselMetadata],
+                          meanDistanceToShore: DoubleU[kilometer],
+                          meanDriftRadius: DoubleU[kilometer]) {
+  def toJson = {
+    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2).map {
+      case (name, count) =>
+        ("name" -> name) ~
+          ("count" -> count)
+    }
+    val knownFishingVesselCount = vessels.filter(_.isFishingVessel).size
+    ("id" -> id) ~
+      ("latitude" -> meanLocation.lat.value) ~
+      ("longitude" -> meanLocation.lon.value) ~
+      ("unique_vessel_count" -> vessels.size) ~
+      ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
+      ("flag_state_distribution" -> flagStateDistribution) ~
+      ("mmsis" -> vessels.map(_.mmsi)) ~
+      ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
+      ("mean_drift_radius_km" -> meanDriftRadius.value)
+  }
+
+  def id: String =
+    meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
+}
+
+case class Anchorage(meanLocation: LatLon,
+                     anchoragePoints: Set[AnchoragePoint],
+                     meanDistanceToShore: DoubleU[kilometer],
+                     meanDriftRadius: DoubleU[kilometer]) {
+  def id: String =
+    meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
+
+  def toJson = {
+    val vessels = anchoragePoints.flatMap(_.vessels).toSet
+    val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2).map {
+      case (name, count) =>
+        ("name" -> name) ~
+          ("count" -> count)
+    }
+    val knownFishingVesselCount = vessels.filter(_.isFishingVessel).size
+
+    ("id" -> id) ~
+      ("latitude" -> meanLocation.lat.value) ~
+      ("longitude" -> meanLocation.lon.value) ~
+      ("unique_vessel_count" -> vessels.size) ~
+      ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
+      ("flag_state_distribution" -> flagStateDistribution) ~
+      ("anchorage_points" -> anchoragePoints.toSeq.sortBy(_.id).map(_.id)) ~
+      ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
+      ("mean_drift_radius_km" -> meanDriftRadius.value)
+  }
+}
+
+object Anchorage {
+  def fromAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]) = {
+    val weights = anchoragePoints.map(_.vessels.size.toDouble)
+    Anchorage(LatLon.weightedMean(anchoragePoints.map(_.meanLocation), weights),
+              anchoragePoints.toSet,
+              anchoragePoints.map(_.meanDistanceToShore).weightedMean(weights),
+              // Averaging across multiple anchorage points for drift radius
+              // is perhaps a little statistically dubious, but may still prove
+              // useful to distinguish fixed vs drifting anchorage groups.
+              anchoragePoints.map(_.meanDriftRadius).weightedMean(weights))
+  }
+}
+
+case class AnchorageVisit(anchorage: Anchorage, arrival: Instant, departure: Instant) {
+  def extend(other: AnchorageVisit): immutable.Seq[AnchorageVisit] = {
+    if (anchorage eq other.anchorage) {
+      Vector(AnchorageVisit(anchorage, arrival, other.departure))
+    } else {
+      Vector(this, other)
+    }
+  }
+
+  def duration = new Duration(arrival, departure)
+
+  def toJson =
+    ("anchorage" -> anchorage.id) ~
+      ("start_time" -> arrival.toString()) ~
+      ("end_time" -> departure.toString())
+}
 
 object Anchorages {
   def findAnchoragePointCells(
