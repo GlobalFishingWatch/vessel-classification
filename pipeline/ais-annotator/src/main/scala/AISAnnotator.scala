@@ -141,9 +141,6 @@ object AISAnnotator extends LazyLogging {
       case (mmsi, (messagesIt, annotationsIt)) =>
         val messages = messagesIt.toSeq
         val annotations = annotationsIt.toSeq
-        logger.info(s"Join processing: $mmsi")
-        logger.info(s"Num annotations: ${annotations.length}")
-        logger.info(s"Num messages: ${messages.length}")
         annotateVesselMessages(messages, annotations)
     }
   }
