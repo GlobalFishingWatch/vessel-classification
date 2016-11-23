@@ -645,18 +645,17 @@ def compute_results(args):
     results['localisation'] = LocalisationResults(
         true_fishing_by_mmsi, pred_fishing_by_mmsi, maps['label'])
 
-    if False:
-        results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
-                                           'is_fishing')
+    results['fishing'] = load_inferred(inference_path, maps['is_fishing'],
+                                       'is_fishing')
 
-        results['coarse'] = load_inferred(inference_path, maps['label'],
-                                          'label')
+    results['coarse'] = load_inferred(inference_path, maps['label'],
+                                      'label')
 
-        results['fine'] = load_inferred(inference_path, maps['sublabel'],
-                                        'sublabel')
+    results['fine'] = load_inferred(inference_path, maps['sublabel'],
+                                    'sublabel')
 
-        results['length'] = load_lengths(inference_path, maps['length'],
-                                         maps['label'])
+    results['length'] = load_lengths(inference_path, maps['length'],
+                                     maps['label'])
 
     return results
 
@@ -674,15 +673,14 @@ def dump_html(args, results):
     with doc.tag("style", type="text/css"):
         doc.asis(css)
 
-    if False:
-        for key, heading in classification_metrics:
-            doc.line('h2', heading)
-            ydump_metrics(doc, results[key])
-            doc.stag('hr')
-
-        doc.line('h2', 'Length Inference')
-        ydump_length(doc, results['length'])
+    for key, heading in classification_metrics:
+        doc.line('h2', heading)
+        ydump_metrics(doc, results[key])
         doc.stag('hr')
+
+    doc.line('h2', 'Length Inference')
+    ydump_length(doc, results['length'])
+    doc.stag('hr')
 
     doc.line('h2', 'Fishing Localisation')
     ydump_fishing_localisation(doc, results['localisation'])
@@ -701,7 +699,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 temp_dir = os.path.join(this_dir, 'temp')
 
 if __name__ == '__main__':
-    logging.getLogger().setLevel('DEBUG')
+    logging.getLogger().setLevel('INFO')
 
     parser = argparse.ArgumentParser(
         description='Test inference results and output metrics')

@@ -228,7 +228,8 @@ def np_array_random_fixed_time_extract(random_state, input_series,
    The input array must be 2d, representing a time series, with the first    
    column representing a timestamp (sorted ascending). Any values in the series    
    with a time greater than (first time + max_time_delta) are removed and the    
-   prefix series repeated into the window to pad.    
+   prefix series repeated into the window to pad. If max time delta is 0,
+   instead extract a fixed length extract of length output_length.
     
    Args:
         random_state: a numpy randomstate object.

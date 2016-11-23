@@ -84,6 +84,8 @@ class Trainer:
         return features, timestamps, time_bounds, mmsis
 
     def _make_saver(self):
+        # TODO(alexwilson): The saver in 0.11.0rc2 is broken. Remove when
+        # Cloud ML advances from 0.11.0rc2.
         if tf.__version__ == '0.11.0rc2':
             return tf.train.Saver(
                 variables.get_variables_to_restore(),
