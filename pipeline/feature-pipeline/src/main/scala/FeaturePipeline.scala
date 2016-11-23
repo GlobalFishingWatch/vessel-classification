@@ -30,8 +30,9 @@ import org.joda.time.format.ISODateTimeFormat
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
+import org.skytruth.anchorages._
+import org.skytruth.common._
 import org.skytruth.common.AdditionalUnits._
-import org.skytruth.common.{GcpConfig, LatLon, ValueCache}
 import org.skytruth.common.Implicits._
 import org.skytruth.common.ScioContextResource._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
@@ -252,38 +253,13 @@ object Pipeline extends LazyLogging {
 
       val processed =
         filterAndProcessVesselRecords(locationRecords)
-      val processedWithAdjecency = Encounters.annotateAdjacency(processed, adjacencies)
+      val processedWithAdjacency = Encounters.annotateAdjacency(processed, adjacencies)
 
-      val anchoragePoints =
-        Anchorages.findAnchoragePointCells(processed)
-      val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
+      val anchorages = if (generateAnchorages) {
+        val anchoragePoints =
+          Anchorages.findAnchoragePointCells(processed)
+        val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
 
-      val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_group_visits"
-
-      val anchorageVisits =
-        Anchorages
-          .findAnchorageVisits(locationRecords, anchorages, Parameters.minAnchorageVisitDuration)
-
-      anchorageVisits.flatMap {
-        case (metadata, visits) =>
-          visits.map((visit) => {
-            compact(
-              render(("mmsi" -> metadata.mmsi) ~
-                ("visit" -> visit.toJson)))
-          })
-      }.saveAsTextFile(anchorageVisitsPath)
-
-      if (generateModelFeatures) {
-        val features = ModelFeatures.buildVesselFeatures(processedWithAdjecency, anchorages).map {
-          case (md, feature) =>
-            (s"${md.mmsi}", feature)
-        }
-        // Output vessel classifier features.
-        val outputFeaturePath = config.pipelineOutputPath + "/features"
-        val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
-      }
-
-      if (generateAnchorages) {
         // Output anchorages points.
         val anchoragePointsPath = config.pipelineOutputPath + "/anchorage_points"
         anchoragePoints.map { anchoragePoint =>
@@ -296,13 +272,12 @@ object Pipeline extends LazyLogging {
           compact(render(anchorage.toJson))
         }.saveAsTextFile(anchoragesPath)
 
-        val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_group_visits"
-
         if (generateAnchorageVisits) {
+          val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_visits"
           val anchorageVisits =
             Anchorages.findAnchorageVisits(locationRecords,
                                            anchorages,
-                                           Parameters.minAnchorageVisitDuration)
+                                           AnchorageParameters.minAnchorageVisitDuration)
 
           anchorageVisits.map {
             case (metadata, visits) =>
@@ -311,6 +286,10 @@ object Pipeline extends LazyLogging {
                   ("visits" -> visits.map(_.toJson))))
           }.saveAsTextFile(anchorageVisitsPath)
         }
+
+        anchorages
+      } else {
+        sc.parallelize(Seq.empty[Anchorage])
       }
 
       if (generateEncounters) {
@@ -320,6 +299,18 @@ object Pipeline extends LazyLogging {
           Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencies)
         encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
       }
+
+      if (generateModelFeatures) {
+        val features = ModelFeatures.buildVesselFeatures(processedWithAdjacency, anchorages).map {
+          case (md, feature) =>
+            (s"${md.mmsi}", feature)
+        }
+        // Output vessel classifier features.
+        val outputFeaturePath = config.pipelineOutputPath + "/features"
+        val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
+      }
+
+
 
       // Get a list of all MMSIs to save to disk to speed up TF training startup.
       val mmsiListPath = config.pipelineOutputPath + "/mmsis"

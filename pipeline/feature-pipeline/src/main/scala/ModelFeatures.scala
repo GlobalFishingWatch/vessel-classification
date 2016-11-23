@@ -7,9 +7,11 @@ import com.google.common.geometry.{S2, S2LatLng}
 import com.spotify.scio.values.SCollection
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.joda.time.{DateTimeZone, Duration, Instant, LocalDateTime}
+import org.skytruth.anchorages._
+import org.skytruth.common._
 import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
-import org.skytruth.common.{AdjacencyLookup, LatLon, ValueCache}
+
 import org.tensorflow.example.{
   Example,
   Feature,
@@ -199,8 +201,8 @@ object ModelFeatures extends LazyLogging {
           val anchorageLookup = anchorageLookupCache.get { () =>
             AdjacencyLookup(s(siAnchorages),
                             (v: Anchorage) => v.meanLocation,
-                            Parameters.anchorageVisitDistanceThreshold,
-                            Parameters.anchoragesS2Scale)
+                            AnchorageParameters.anchorageVisitDistanceThreshold,
+                            AnchorageParameters.anchoragesS2Scale)
           }
           val features = buildSingleVesselFeatures(processedLocations.locations, anchorageLookup)
           val featuresAsTFExample = buildTFExampleProto(metadata, features)

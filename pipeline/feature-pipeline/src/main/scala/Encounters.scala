@@ -8,9 +8,9 @@ import com.google.common.geometry.S2CellId
 import com.typesafe.scalalogging.LazyLogging
 import com.spotify.scio.values.SCollection
 import org.joda.time.{Duration, Instant}
+import org.skytruth.common._
 import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
-import org.skytruth.common.LatLon
 
 import scala.collection.{mutable, immutable}
 import scala.math._

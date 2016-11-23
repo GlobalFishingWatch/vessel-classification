@@ -5,8 +5,8 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import org.joda.time.{Duration, Instant}
 import org.scalatest._
+import org.skytruth.common._
 import org.skytruth.common.AdditionalUnits._
-import org.skytruth.common.LatLon
 
 import TestHelper._
 

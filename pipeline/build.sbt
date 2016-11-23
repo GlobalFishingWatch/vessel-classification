@@ -62,7 +62,7 @@ lazy val anchorages =
 // The dataflow feature generation pipeline.
 lazy val features =
   project
-    .in(file("features"))
+    .in(file("feature-pipeline"))
     .settings(commonSettings: _*)
     .dependsOn(tfExampleProtos, anchorages, common)
 

@@ -21,7 +21,7 @@ import org.skytruth.common.Implicits._
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._
 
-object Parameters {
+object AnchorageParameters {
   // Around 1km^2
   val anchoragesS2Scale = 13
   val minUniqueVesselsForAnchorage = 20
@@ -54,7 +54,7 @@ case class AnchoragePoint(meanLocation: LatLon,
   }
 
   def id: String =
-    meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
+    meanLocation.getS2CellId(AnchorageParameters.anchoragesS2Scale).toToken
 }
 
 case class Anchorage(meanLocation: LatLon,
@@ -62,7 +62,7 @@ case class Anchorage(meanLocation: LatLon,
                      meanDistanceToShore: DoubleU[kilometer],
                      meanDriftRadius: DoubleU[kilometer]) {
   def id: String =
-    meanLocation.getS2CellId(Parameters.anchoragesS2Scale).toToken
+    meanLocation.getS2CellId(AnchorageParameters.anchoragesS2Scale).toToken
 
   def toJson = {
     val vessels = anchoragePoints.flatMap(_.vessels).toSet
@@ -122,7 +122,7 @@ object Anchorages {
     input.flatMap {
       case (md, processedLocations) =>
         processedLocations.stationaryPeriods.map { pl =>
-          val cell = pl.location.getS2CellId(Parameters.anchoragesS2Scale)
+          val cell = pl.location.getS2CellId(AnchorageParameters.anchoragesS2Scale)
           (cell, (md, pl))
         }
     }.groupByKey.map {
@@ -133,7 +133,7 @@ object Anchorages {
         val meanDriftRadius = visits.map { _._2.meanDriftRadius }.mean
 
         AnchoragePoint(centralPoint, uniqueVessels.toSet, meanDistanceToShore, meanDriftRadius)
-    }.filter { _.vessels.size >= Parameters.minUniqueVesselsForAnchorage }
+    }.filter { _.vessels.size >= AnchorageParameters.minUniqueVesselsForAnchorage }
   }
 
   def mergeAdjacentAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]): Seq[Anchorage] = {
@@ -145,7 +145,7 @@ object Anchorages {
     anchoragePoints.foreach { ancorage =>
       val neighbourCells = Array.fill[S2CellId](4) { new S2CellId() }
       ancorage.meanLocation
-        .getS2CellId(Parameters.anchoragesS2Scale)
+        .getS2CellId(AnchorageParameters.anchoragesS2Scale)
         .getEdgeNeighbors(neighbourCells)
 
       neighbourCells.flatMap { nc =>
@@ -200,8 +200,8 @@ object Anchorages {
           val lookup = anchorageLookupCache.get { () =>
             AdjacencyLookup(ctx(si).flatMap(_.anchoragePoints),
                             (anchorage: AnchoragePoint) => anchorage.meanLocation,
-                            Parameters.anchorageVisitDistanceThreshold,
-                            Parameters.anchoragesS2Scale)
+                            AnchorageParameters.anchorageVisitDistanceThreshold,
+                            AnchorageParameters.anchoragesS2Scale)
           }
 
           (metadata,

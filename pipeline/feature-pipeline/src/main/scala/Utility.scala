@@ -29,7 +29,7 @@ import org.json4s.native.JsonMethods._
 import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
 import org.skytruth.common.ScioContextResource._
-import org.skytruth.common.{LatLon}
+import org.skytruth.common._
 import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
