@@ -64,7 +64,7 @@ lazy val features =
   project
     .in(file("feature-pipeline"))
     .settings(commonSettings: _*)
-    .dependsOn(tfExampleProtos, anchorages, common)
+    .dependsOn(tfExampleProtos, anchorages, common % "compile->compile;test->test")
 
 // An aggregation of all projects.
 lazy val root = (project in file(".")).aggregate(common, anchorages, aisAnnotator, features)

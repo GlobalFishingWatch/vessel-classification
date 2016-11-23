@@ -91,7 +91,7 @@ object ModelFeatures extends LazyLogging {
           val distanceDeltaMeters = p1.location.getDistance(p0.location).value
           val speedMps = p1.speed.convert[meters_per_second].value
           val integratedSpeedMps = distanceDeltaMeters / timestampDeltaSeconds
-          val cogDeltaDegrees = Utility.angleNormalize((p1.course - p0.course)).value
+          val cogDeltaDegrees = AISDataProcessing.angleNormalize((p1.course - p0.course)).value
           val integratedCogDeltaDegrees = S2
             .turnAngle(ll0.normalized().toPoint(),
                        ll1.normalized().toPoint(),

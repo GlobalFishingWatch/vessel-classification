@@ -4,6 +4,14 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
+import com.google.cloud.dataflow.sdk.options.{
+  DataflowPipelineOptions,
+  PipelineOptions,
+  PipelineOptionsFactory
+}
+import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
+import com.typesafe.scalalogging.{LazyLogging, Logger}
+
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
@@ -17,9 +25,12 @@ import org.joda.time.{Duration, Instant}
 
 import org.skytruth.common._
 import org.skytruth.common.Implicits._
+import org.skytruth.common.ScioContextResource._
 
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._
+
+import resource._
 
 object AnchorageParameters {
   // Around 1km^2
@@ -114,7 +125,7 @@ case class AnchorageVisit(anchorage: Anchorage, arrival: Instant, departure: Ins
       ("end_time" -> departure.toString())
 }
 
-object Anchorages {
+object Anchorages extends LazyLogging {
   def findAnchoragePointCells(
       input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[AnchoragePoint] = {
 
@@ -237,7 +248,7 @@ object Anchorages {
       }
       .toSCollection
   }
-  /*
+
   def main(argArray: Array[String]) {
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
 
@@ -248,28 +259,28 @@ object Anchorages {
     logger.info(s"Pipeline output path: ${config.pipelineOutputPath}")
 
     options.setRunner(classOf[DataflowPipelineRunner])
-    options.setProject(config.projectId)g
+    options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
 
-    managed(ScioContext(options)).acquireAndGet((sc) => {
-
+    managed(ScioContext(options)).acquireAndGet { sc =>
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
-      val matches = (Parameters.allDataYears).map { year =>
-        val path = Parameters.measuresPathPattern(year)
+      val matches = (InputDataParameters.allDataYears).map { year =>
+        val path = InputDataParameters.measuresPathPattern(year)
 
         sc.tableRowJsonFile(path)
       }
 
-      val knownFishingMMSIs = loadFishingMMSIs()
+      val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
 
       val minValidLocations = 200
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
-        readJsonRecords(matches, knownFishingMMSIs, Parameters.minRequiredPositions)
+        AISDataProcessing
+          .readJsonRecords(matches, knownFishingMMSIs, InputDataParameters.minRequiredPositions)
 
       val processed =
-        filterAndProcessVesselRecords(locationRecords)
+        AISDataProcessing.filterAndProcessVesselRecords(locationRecords)
 
       val anchoragePoints =
         Anchorages.findAnchoragePointCells(processed)
@@ -300,5 +311,5 @@ object Anchorages {
               ("visits" -> visits.map(_.toJson))))
       }.saveAsTextFile(anchorageVisitsPath)
     }
-  }*/
+  }
 }
