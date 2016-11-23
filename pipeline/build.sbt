@@ -18,12 +18,15 @@ lazy val commonSettings = Seq(
   ),
   // Main project dependencies.
   libraryDependencies ++= Seq(
+    "com.opencsv" % "opencsv" % "3.7",
     "com.spotify" % "scio-core_2.11" % "0.2.6",
     "com.jsuereth" %% "scala-arm" % "1.4",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
     "io.github.karols" %% "units" % "0.2.1",
     "joda-time" % "joda-time" % "2.9.4",
     "org.apache.commons" % "commons-math3" % "3.4",
+    "org.json4s" %% "json4s-native" % "3.3.0",
+    "org.jgrapht" % "jgrapht-core" % "1.0.0",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.3",
     "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % "2.8.3"
   ),
@@ -50,21 +53,18 @@ lazy val common = project.in(file("common")).settings(commonSettings: _*)
 
 // Pipeline for annotating AIS messages with other attributes (such as when
 // fishing, port visits, transhipments or AIS gaps occur).
-lazy val aisAnnotatorPipeline =
+lazy val aisAnnotator =
   project.in(file("ais-annotator")).settings(commonSettings: _*).dependsOn(common)
 
+lazy val anchorages =
+  project.in(file("anchorages")).settings(commonSettings: _*).dependsOn(common)
+
 // The dataflow feature generation pipeline.
-lazy val featurePipeline =
+lazy val features =
   project
     .in(file("feature-pipeline"))
     .settings(commonSettings: _*)
-    .settings(
-      Seq(
-        libraryDependencies ++= Seq("com.opencsv" % "opencsv" % "3.7",
-                                    "org.json4s" %% "json4s-native" % "3.3.0",
-                                    "org.jgrapht" % "jgrapht-core" % "1.0.0")
-      ))
-    .dependsOn(tfExampleProtos, common)
+    .dependsOn(tfExampleProtos, anchorages, common)
 
 // An aggregation of all projects.
-lazy val root = (project in file(".")).aggregate(common, aisAnnotatorPipeline, featurePipeline)
+lazy val root = (project in file(".")).aggregate(common, anchorages, aisAnnotator, features)
