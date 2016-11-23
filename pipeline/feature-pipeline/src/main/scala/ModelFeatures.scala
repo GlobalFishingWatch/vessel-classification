@@ -7,9 +7,11 @@ import com.google.common.geometry.{S2, S2LatLng}
 import com.spotify.scio.values.SCollection
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.joda.time.{DateTimeZone, Duration, Instant, LocalDateTime}
+import org.skytruth.anchorages._
+import org.skytruth.common._
 import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
-import org.skytruth.common.{AdjacencyLookup, LatLon, ValueCache}
+
 import org.tensorflow.example.{
   Example,
   Feature,
@@ -184,7 +186,7 @@ object ModelFeatures extends LazyLogging {
   }
 
   def buildVesselFeatures(
-      input: SCollection[(VesselMetadata, ProcessedAdjacencyLocations)],
+      input: SCollection[(VesselMetadata, Seq[VesselLocationRecordWithAdjacency])],
       anchorages: SCollection[Anchorage]): SCollection[(VesselMetadata, SequenceExample)] = {
     val siAnchorages = anchorages.asListSideInput
 
@@ -192,17 +194,17 @@ object ModelFeatures extends LazyLogging {
     input
       .withSideInputs(siAnchorages)
       .filter {
-        case ((metadata, processedLocations), _) => processedLocations.locations.size >= 3
+        case ((metadata, locations), _) => locations.size >= 3
       }
       .map {
-        case ((metadata, processedLocations), s) =>
+        case ((metadata, locations), s) =>
           val anchorageLookup = anchorageLookupCache.get { () =>
             AdjacencyLookup(s(siAnchorages),
                             (v: Anchorage) => v.meanLocation,
-                            Parameters.anchorageVisitDistanceThreshold,
-                            Parameters.anchoragesS2Scale)
+                            AnchorageParameters.anchorageVisitDistanceThreshold,
+                            AnchorageParameters.anchoragesS2Scale)
           }
-          val features = buildSingleVesselFeatures(processedLocations.locations, anchorageLookup)
+          val features = buildSingleVesselFeatures(locations, anchorageLookup)
           val featuresAsTFExample = buildTFExampleProto(metadata, features)
           (metadata, featuresAsTFExample)
       }

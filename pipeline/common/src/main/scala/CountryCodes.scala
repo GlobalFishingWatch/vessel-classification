@@ -1,4 +1,4 @@
-package org.skytruth.feature_pipeline
+package org.skytruth.common
 
 object CountryCodes {
   def fromMmsi(mmsi: Int) = {
