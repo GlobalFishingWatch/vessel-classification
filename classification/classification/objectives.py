@@ -522,7 +522,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
             tf.shape(self.prediction), timestamps, mmsis)
         thresholded_prediction = tf.to_int32(self.prediction > 0.5)
         valid = tf.to_int32(tf.not_equal(dense_labels, -1))
-        ones = tf.to_int32(tf.equal(dense_labels, 1))
+        ones = tf.to_int32(dense_labels > 0.5)
         weights = tf.to_float(valid)
 
         raw_loss = self.loss_function(dense_labels)
@@ -553,7 +553,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                     tf.shape(self.prediction), self.timestamps, self.mmsis)
                 thresholded_prediction = tf.to_int32(self.prediction > 0.5)
                 valid = tf.to_int32(tf.not_equal(dense_labels, -1))
-                ones = tf.to_int32(tf.equal(dense_labels, 1))
+                ones = tf.to_int32(dense_labels > 0.5)
                 weights = tf.to_float(valid)
 
                 raw_metrics = {

@@ -54,8 +54,7 @@ class Inferer(object):
             time_starts = _build_starts(self.model.max_window_duration_seconds)
 
             self.time_ranges = [(s, e)
-                                for (s, e) in zip(time_starts, time_starts[2:])
-                                ]
+                                for (s, e) in zip(time_starts, time_starts[1:])]
             for _ in range(inference_parallelism * 2):
                 reader = utility.cropping_all_slice_feature_file_reader(
                     filename_queue, self.model.num_feature_dimensions + 1,
