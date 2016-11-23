@@ -13,7 +13,6 @@ import org.skytruth.common.AdditionalUnits._
 
 import scala.collection.{mutable, immutable}
 
-
 class AnchorageVisitsTests extends PipelineSpec with Matchers {
   def ts(timestamp: String) = Instant.parse(timestamp)
 

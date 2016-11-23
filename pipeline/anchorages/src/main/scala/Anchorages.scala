@@ -30,7 +30,6 @@ object AnchorageParameters {
 
 }
 
-
 case class AnchoragePoint(meanLocation: LatLon,
                           vessels: Set[VesselMetadata],
                           meanDistanceToShore: DoubleU[kilometer],

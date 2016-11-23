@@ -248,12 +248,8 @@ object Pipeline extends LazyLogging {
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
         readJsonRecords(matches, knownFishingMMSIs, Parameters.minRequiredPositions)
 
-      val adjacencies =
-        Encounters.calculateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
-
       val processed =
         filterAndProcessVesselRecords(locationRecords)
-      val processedWithAdjacency = Encounters.annotateAdjacency(processed, adjacencies)
 
       val anchorages = if (generateAnchorages) {
         val anchoragePoints =
@@ -292,16 +288,29 @@ object Pipeline extends LazyLogging {
         sc.parallelize(Seq.empty[Anchorage])
       }
 
-      if (generateEncounters) {
+      val locationsWithAdjacency = if (generateEncounters) {
+        val adjacencies =
+          Encounters.calculateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
+
         // Build and output suspected encounters.
         val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
         val encounters =
           Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencies)
         encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
+
+        Encounters.annotateAdjacency(processed, adjacencies)
+      } else {
+        processed.map {
+          case (vmd, pl) =>
+            val locationsWithEmptyAdjacency =
+              pl.locations.map(vlr => VesselLocationRecordWithAdjacency(vlr, Adjacency(0, None)))
+
+            (vmd, locationsWithEmptyAdjacency)
+        }
       }
 
       if (generateModelFeatures) {
-        val features = ModelFeatures.buildVesselFeatures(processedWithAdjacency, anchorages).map {
+        val features = ModelFeatures.buildVesselFeatures(locationsWithAdjacency, anchorages).map {
           case (md, feature) =>
             (s"${md.mmsi}", feature)
         }
@@ -309,8 +318,6 @@ object Pipeline extends LazyLogging {
         val outputFeaturePath = config.pipelineOutputPath + "/features"
         val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
       }
-
-
 
       // Get a list of all MMSIs to save to disk to speed up TF training startup.
       val mmsiListPath = config.pipelineOutputPath + "/mmsis"

@@ -41,7 +41,6 @@ case class GcpConfig(startTime: DateTime, projectId: String, private val rootPat
   def pipelineOutputPath = s"$rootPath/pipeline/output"
 }
 
-
 object ScioContextResource {
   implicit def scioContextResource[A <: ScioContext] = new Resource[A] {
     override def close(r: A) = r.close()

@@ -79,16 +79,13 @@ class EncountersTest extends PipelineSpec with Matchers {
 
       val expected = (
         meta,
-        ProcessedAdjacencyLocations(
-          Seq(
-            vlra("2016-01-01T00:00:20Z", numNeighbours = 0),
-            vlra("2016-01-01T00:00:40Z", numNeighbours = 0),
-            vlra("2016-01-01T00:01:20Z", numNeighbours = 0),
-            vlra("2016-01-01T00:01:40Z", numNeighbours = 1),
-            vlra("2016-01-01T00:02:20Z", numNeighbours = 1),
-            vlra("2016-01-01T00:02:40Z", numNeighbours = 2)
-          ),
-          Seq()
+        Seq(
+          vlra("2016-01-01T00:00:20Z", numNeighbours = 0),
+          vlra("2016-01-01T00:00:40Z", numNeighbours = 0),
+          vlra("2016-01-01T00:01:20Z", numNeighbours = 0),
+          vlra("2016-01-01T00:01:40Z", numNeighbours = 1),
+          vlra("2016-01-01T00:02:20Z", numNeighbours = 1),
+          vlra("2016-01-01T00:02:40Z", numNeighbours = 2)
         )
       )
 

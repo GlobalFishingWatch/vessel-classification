@@ -38,15 +38,11 @@ import scala.collection.JavaConversions._
 import com.spotify.scio._
 import resource._
 
-
 case class Adjacency(
     numNeighbours: Int,
     closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)])
 
 case class VesselLocationRecordWithAdjacency(location: VesselLocationRecord, adjacency: Adjacency)
-
-case class ProcessedAdjacencyLocations(locations: Seq[VesselLocationRecordWithAdjacency],
-                                       stationaryPeriods: Seq[StationaryPeriod])
 
 case class ResampledVesselLocation(timestamp: Instant,
                                    location: LatLon,
@@ -86,7 +82,6 @@ case class VesselEncounters(vessel1: VesselMetadata,
       ("encounters" -> encounters.map(_.toJson))
 
 }
-
 
 object Utility extends LazyLogging {
   // Normalize from -180 to + 180

@@ -155,7 +155,7 @@ case class IteratorWithCurrent[T](private val iterator: Iterator[T]) {
 }
 
 case class ValueCache[T]() {
-  private var value : Option[T] = None
+  private var value: Option[T] = None
 
   def get(getter: () => T) = {
     if (!value.isDefined) {
@@ -165,4 +165,3 @@ case class ValueCache[T]() {
     value.get
   }
 }
-
