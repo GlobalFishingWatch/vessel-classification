@@ -32,12 +32,6 @@ object Parameters {
   val unclassifiedSplit = "Unclassified"
   val splits = Seq(trainingSplit, testSplit, unclassifiedSplit)
 
-  // Around 1km^2
-  val anchoragesS2Scale = 13
-  val minUniqueVesselsForAnchorage = 20
-  val anchorageVisitDistanceThreshold = 0.5.of[kilometer]
-  val minAnchorageVisitDuration = Duration.standardMinutes(60)
-
   val adjacencyResamplePeriod = Duration.standardMinutes(10)
   val maxInterpolateGap = Duration.standardMinutes(60)
 

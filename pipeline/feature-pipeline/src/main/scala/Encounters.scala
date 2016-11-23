@@ -8,9 +8,9 @@ import com.google.common.geometry.S2CellId
 import com.typesafe.scalalogging.LazyLogging
 import com.spotify.scio.values.SCollection
 import org.joda.time.{Duration, Instant}
+import org.skytruth.common._
 import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
-import org.skytruth.common.LatLon
 
 import scala.collection.{mutable, immutable}
 import scala.math._
@@ -110,33 +110,29 @@ object Encounters extends LazyLogging {
   def annotateAdjacency(
       locations: SCollection[(VesselMetadata, ProcessedLocations)],
       adjacencies: SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])])
-    : SCollection[(VesselMetadata, ProcessedAdjacencyLocations)] = {
+    : SCollection[(VesselMetadata, Seq[VesselLocationRecordWithAdjacency])] = {
     locations.join(adjacencies).map {
-      case (vessel, (locations, resampled)) => {
+      case (vessel, (processedLocations, resampled)) => {
         val resampledIter = resampled.iterator.buffered
         var current = resampledIter.next()
-        (
-          vessel,
-          ProcessedAdjacencyLocations(
-            stationaryPeriods = locations.stationaryPeriods,
-            locations = locations.locations.map(location => {
-              while (resampledIter.hasNext
-                     && abs(new Duration(current.locationRecord.timestamp, location.timestamp)
-                       .getMillis())
-                       > abs(new Duration(resampledIter.head.locationRecord.timestamp,
-                                          location.timestamp).getMillis())) {
-                current = resampledIter.next()
-              }
-              VesselLocationRecordWithAdjacency(
-                location,
-                Adjacency(
-                  current.adjacency.numNeighbours,
-                  current.adjacency.closestNeighbour
-                )
-              )
-            })
+
+        val locationsWithAdjacency = processedLocations.locations.map { location =>
+          while (resampledIter.hasNext
+                 && abs(
+                   new Duration(current.locationRecord.timestamp, location.timestamp).getMillis())
+                   > abs(new Duration(resampledIter.head.locationRecord.timestamp,
+                                      location.timestamp).getMillis())) {
+            current = resampledIter.next()
+          }
+          VesselLocationRecordWithAdjacency(
+            location,
+            Adjacency(
+              current.adjacency.numNeighbours,
+              current.adjacency.closestNeighbour
+            )
           )
-        )
+        }
+        (vessel, locationsWithAdjacency)
       }
     }
   }
