@@ -12,6 +12,9 @@ import com.spotify.scio._
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 
 import org.apache.commons.math3.util.MathUtils
+import org.json4s._
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
 import org.joda.time.{DateTime, DateTimeZone, Duration, Instant}
 import org.joda.time.format.ISODateTimeFormat
 
@@ -105,6 +108,19 @@ object LatLon {
 
 case class VesselMetadata(mmsi: Int, isFishingVessel: Boolean = false) {
   def flagState = CountryCodes.fromMmsi(mmsi)
+
+  def toJson = {
+    ("mmsi" -> mmsi) ~
+    ("is_fishing" -> isFishingVessel)
+  }
+}
+
+object VesselMetadata {
+  implicit val formats = DefaultFormats
+
+  def fromJson(json: JValue) = VesselMetadata(
+    (json \ "mmsi").extract[Int],
+    (json \ "is_fishing").extract[Boolean])
 }
 
 case class VesselLocationRecord(timestamp: Instant,

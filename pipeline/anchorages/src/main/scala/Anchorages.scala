@@ -13,6 +13,7 @@ import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 
 import org.json4s._
+import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 
@@ -24,6 +25,7 @@ import org.jgrapht.alg.util.UnionFind
 import org.joda.time.{Duration, Instant}
 
 import org.skytruth.common._
+import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
 import org.skytruth.common.ScioContextResource._
 
@@ -58,13 +60,27 @@ case class AnchoragePoint(meanLocation: LatLon,
       ("unique_vessel_count" -> vessels.size) ~
       ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
       ("flag_state_distribution" -> flagStateDistribution) ~
-      ("mmsis" -> vessels.map(_.mmsi)) ~
+      ("vessels" -> vessels.map(_.toJson)) ~
       ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
       ("mean_drift_radius_km" -> meanDriftRadius.value)
   }
 
   def id: String =
     meanLocation.getS2CellId(AnchorageParameters.anchoragesS2Scale).toToken
+}
+
+object AnchoragePoint {
+  implicit val formats = DefaultFormats
+
+  def fromJson(json: JValue) = {
+    val meanLocation = LatLon((json \ "latitude").extract[Double].of[degrees],
+                              (json \ "longitude").extract[Double].of[degrees])
+    val meanDistanceToShore = (json \ "mean_distance_to_shore_km").extract[Double].of[kilometer]
+    val meanDriftRadius = (json \ "mean_drift_radius_km").extract[Double].of[kilometer]
+    val vessels =
+      (json \ "vessels").extract[List[JValue]].map(jv => VesselMetadata.fromJson(jv)).toSet
+    AnchoragePoint(meanLocation, vessels, meanDistanceToShore, meanDriftRadius)
+  }
 }
 
 case class Anchorage(meanLocation: LatLon,
@@ -89,13 +105,15 @@ case class Anchorage(meanLocation: LatLon,
       ("unique_vessel_count" -> vessels.size) ~
       ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
       ("flag_state_distribution" -> flagStateDistribution) ~
-      ("anchorage_points" -> anchoragePoints.toSeq.sortBy(_.id).map(_.id)) ~
+      ("anchorage_points" -> anchoragePoints.map(_.toJson)) ~
       ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
       ("mean_drift_radius_km" -> meanDriftRadius.value)
   }
 }
 
 object Anchorage {
+  implicit val formats = DefaultFormats
+
   def fromAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]) = {
     val weights = anchoragePoints.map(_.vessels.size.toDouble)
     Anchorage(LatLon.weightedMean(anchoragePoints.map(_.meanLocation), weights),
@@ -105,6 +123,18 @@ object Anchorage {
               // is perhaps a little statistically dubious, but may still prove
               // useful to distinguish fixed vs drifting anchorage groups.
               anchoragePoints.map(_.meanDriftRadius).weightedMean(weights))
+  }
+
+  def fromJson(json: JValue) = {
+    val meanLocation = LatLon((json \ "latitude").extract[Double].of[degrees],
+                              (json \ "longitude").extract[Double].of[degrees])
+    val meanDistanceToShore = (json \ "mean_distance_to_shore_km").extract[Double].of[kilometer]
+    val meanDriftRadius = (json \ "mean_drift_radius_km").extract[Double].of[kilometer]
+    val anchoragePoints = (json \ "anchorage_points")
+      .extract[List[JValue]]
+      .map(jv => AnchoragePoint.fromJson(jv))
+      .toSet
+    Anchorage(meanLocation, anchoragePoints, meanDistanceToShore, meanDriftRadius)
   }
 }
 
