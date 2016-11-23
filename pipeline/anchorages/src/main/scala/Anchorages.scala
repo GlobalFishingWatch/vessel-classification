@@ -237,4 +237,68 @@ object Anchorages {
       }
       .toSCollection
   }
+  /*
+  def main(argArray: Array[String]) {
+    val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
+
+    val environment = remaining_args.required("env")
+    val jobName = remaining_args.required("job-name")
+    val config = GcpConfig.makeConfig(environment, jobName)
+
+    logger.info(s"Pipeline output path: ${config.pipelineOutputPath}")
+
+    options.setRunner(classOf[DataflowPipelineRunner])
+    options.setProject(config.projectId)g
+    options.setStagingLocation(config.dataflowStagingPath)
+
+    managed(ScioContext(options)).acquireAndGet((sc) => {
+
+      // Read, filter and build location records. We build a set of matches for all
+      // relevant years, as a single Cloud Dataflow text reader currently can't yet
+      // handle the sheer volume of matching files.
+      val matches = (Parameters.allDataYears).map { year =>
+        val path = Parameters.measuresPathPattern(year)
+
+        sc.tableRowJsonFile(path)
+      }
+
+      val knownFishingMMSIs = loadFishingMMSIs()
+
+      val minValidLocations = 200
+      val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
+        readJsonRecords(matches, knownFishingMMSIs, Parameters.minRequiredPositions)
+
+      val processed =
+        filterAndProcessVesselRecords(locationRecords)
+
+      val anchoragePoints =
+        Anchorages.findAnchoragePointCells(processed)
+      val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
+
+      // Output anchorages points.
+      val anchoragePointsPath = config.pipelineOutputPath + "/anchorage_points"
+      anchoragePoints.map { anchoragePoint =>
+        compact(render(anchoragePoint.toJson))
+      }.saveAsTextFile(anchoragePointsPath)
+
+      // And anchorages.
+      val anchoragesPath = config.pipelineOutputPath + "/anchorages"
+      anchorages.map { anchorage =>
+        compact(render(anchorage.toJson))
+      }.saveAsTextFile(anchoragesPath)
+
+      val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_visits"
+      val anchorageVisits =
+        Anchorages.findAnchorageVisits(locationRecords,
+                                       anchorages,
+                                       AnchorageParameters.minAnchorageVisitDuration)
+
+      anchorageVisits.map {
+        case (metadata, visits) =>
+          compact(
+            render(("mmsi" -> metadata.mmsi) ~
+              ("visits" -> visits.map(_.toJson))))
+      }.saveAsTextFile(anchorageVisitsPath)
+    }
+  }*/
 }

@@ -94,7 +94,7 @@ object Pipeline extends LazyLogging {
       .filter {
         case (_, record) =>
           RangeValidator()
-            .inRange(record.timestamp, Parameters.minValidTime, Parameters.maxValidTime)
+            .inRange(record.timestamp, InputDataParameters.minValidTime, InputDataParameters.maxValidTime)
             .inRange(record.location.lat, -90.0.of[degrees], 90.0.of[degrees])
             .inRange(record.location.lon, -180.0.of[degrees], 180.of[degrees])
             .inRange(record.distanceToShore, 0.0.of[kilometer], 20000.0.of[kilometer])
@@ -137,7 +137,7 @@ object Pipeline extends LazyLogging {
     // Thin locations down to a minimum time between each.
     records.foreach { vr =>
       if (thinnedPoints.isEmpty || !vr.timestamp.isBefore(
-            thinnedPoints.last.timestamp.plus(Parameters.minTimeBetweenPoints))) {
+            thinnedPoints.last.timestamp.plus(InputDataParameters.minTimeBetweenPoints))) {
         thinnedPoints.append(vr)
       }
     }
@@ -159,9 +159,9 @@ object Pipeline extends LazyLogging {
         val periodFirst = currentPeriod.front
         val speed = vr.speed
         val distanceDelta = vr.location.getDistance(periodFirst.location)
-        if (distanceDelta > Parameters.stationaryPeriodMaxDistance) {
+        if (distanceDelta > InputDataParameters.stationaryPeriodMaxDistance) {
           if (vr.timestamp.isAfter(
-                periodFirst.timestamp.plus(Parameters.stationaryPeriodMinDuration))) {
+                periodFirst.timestamp.plus(InputDataParameters.stationaryPeriodMinDuration))) {
             withoutLongStationaryPeriods.append(periodFirst)
             if (currentPeriod.last != periodFirst) {
               withoutLongStationaryPeriods.append(currentPeriod.last)
@@ -202,7 +202,7 @@ object Pipeline extends LazyLogging {
   }
 
   def loadFishingMMSIs(): Set[Int] = {
-    val fishingMMSIreader = new CSVReader(new FileReader(Parameters.knownFishingMMSIs))
+    val fishingMMSIreader = new CSVReader(new FileReader(InputDataParameters.knownFishingMMSIs))
     fishingMMSIreader
       .readAll()
       .map { l =>
@@ -236,8 +236,8 @@ object Pipeline extends LazyLogging {
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
-      val matches = (Parameters.allDataYears).map { year =>
-        val path = Parameters.measuresPathPattern(year)
+      val matches = (InputDataParameters.allDataYears).map { year =>
+        val path = InputDataParameters.measuresPathPattern(year)
 
         sc.tableRowJsonFile(path)
       }
@@ -246,7 +246,7 @@ object Pipeline extends LazyLogging {
 
       val minValidLocations = 200
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
-        readJsonRecords(matches, knownFishingMMSIs, Parameters.minRequiredPositions)
+        readJsonRecords(matches, knownFishingMMSIs, InputDataParameters.minRequiredPositions)
 
       val processed =
         filterAndProcessVesselRecords(locationRecords)
