@@ -14,6 +14,8 @@ import org.skytruth.common.AdditionalUnits._
 import scala.collection.{mutable, immutable}
 
 class AnchorageVisitsTests extends PipelineSpec with Matchers {
+  // TODO(alexwilson): These helpers also exist in feature-pipeline
+  // tests and should be unified.
   def ts(timestamp: String) = Instant.parse(timestamp)
 
   def vlr(timestamp: String = "1970-01-01T00:00:00Z",
