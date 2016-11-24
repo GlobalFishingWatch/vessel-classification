@@ -15,7 +15,6 @@ import os
 import csv
 import subprocess
 import numpy as np
-from sklearn import metrics
 import dateutil.parser
 import logging
 import argparse
@@ -486,12 +485,12 @@ def load_inferred(inference_path, label_map, field):
                     if lbl == 'Unknown':
                         continue
                     mmsi_list.append(mmsi)
-                    label_scores = row['labels'][field]['label_scores']
+                    label_scores = row[field]['label_scores']
                     all_labels |= set(label_scores.keys())
                     start_dates.append(
                         dateutil.parser.parse(row['start_time']))
                     true_labels.append(label_map[mmsi])
-                    inferred_labels.append(row['labels'][field]['max_label'])
+                    inferred_labels.append(row[field]['max_label'])
                     scores.append(label_scores)
     inferred_labels = np.array(inferred_labels)
     true_labels = np.array(true_labels)
@@ -525,7 +524,7 @@ def load_lengths(inference_path, length_map, label_map):
                         dateutil.parser.parse(row['start_time']))
                     true_lengths.append(float(length_map[mmsi]))
                     true_labels.append(label_map.get(mmsi, 'Unknown'))
-                    inferred_lengths.append(row['labels']['length']['value'])
+                    inferred_lengths.append(row['length']['value'])
     inferred_lengths = np.array(inferred_lengths)
     true_lengths = np.array(true_lengths)
     start_dates = np.array(start_dates)
@@ -591,7 +590,7 @@ def load_predicted_fishing_ranges_by_mmsi(inference_path, mmsi_set):
                 if not is_test(mmsi):
                     info.warning("%s is not a test mmsi", mmsi)
                 rng = [(parse(a), parse(b))
-                       for (a, b) in row['labels']['fishing_localisation']]
+                       for (a, b) in row['fishing_localisation']]
                 ranges_by_mmsi[mmsi].extend(rng)
                 coverage_by_mmsi[mmsi].append(
                     (parse(row['start_time']), parse(row['end_time'])))
