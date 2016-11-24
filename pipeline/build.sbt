@@ -64,6 +64,10 @@ lazy val features =
   project
     .in(file("feature-pipeline"))
     .settings(commonSettings: _*)
+    // TODO(alexwilson): *shame*: tfExampleProtos needs to come first as a dependency because
+    // there are currently >1 versions of the proto library in the deployment environment. our
+    // code needs to resolve the version in tfExampleProtos as otherwise at runtime on cloud
+    // dataflow the other versions are missing some required methods.
     .dependsOn(tfExampleProtos, anchorages, common % "compile->compile;test->test")
 
 // An aggregation of all projects.
