@@ -9,6 +9,7 @@ from . import evaluation_loop
 from . import utility
 
 import tensorflow as tf
+from tensorflow.contrib.framework.python.ops import variables
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 
@@ -82,6 +83,16 @@ class Trainer:
 
         return features, timestamps, time_bounds, mmsis
 
+    def _make_saver(self):
+        # TODO(alexwilson): The saver in 0.11.0rc2 is broken. Remove when
+        # Cloud ML advances from 0.11.0rc2.
+        if tf.__version__ == '0.11.0rc2':
+            return tf.train.Saver(
+                variables.get_variables_to_restore(),
+                write_version=tf.train.SaverDef.V1)
+        else:
+            return tf.train.Saver(variables.get_variables_to_restore())
+
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
@@ -107,7 +118,8 @@ class Trainer:
             is_chief=is_chief,
             number_of_steps=500000,
             save_summaries_secs=30,
-            save_interval_secs=60)
+            save_interval_secs=60,
+            saver=self._make_saver())
 
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
@@ -136,7 +148,7 @@ class Trainer:
         # Setup the global step.
         slim.get_or_create_global_step()
 
-        merged_summary_ops = tf.summary.merge(summary_ops)
+        merged_summary_ops = tf.merge_summary(summary_ops)
         evaluation_loop.evaluation_loop(
             master,
             self.checkpoint_dir,
@@ -145,4 +157,5 @@ class Trainer:
             eval_op=update_ops,
             summary_op=merged_summary_ops,
             eval_interval_secs=120,
-            timeout=20 * 60)
+            timeout=20 * 60,
+            saver=self._make_saver())

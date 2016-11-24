@@ -128,7 +128,8 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
                            500.0.of[kilometer],
                            0.07188281512413591.of[kilometer]))
 
-    val result = AISDataProcessing.removeStationaryPeriods(inputRecords)
+    val result = AISDataProcessing
+      .removeStationaryPeriods(inputRecords, InputDataParameters.stationaryPeriodMinDuration)
 
     result.locations should contain theSameElementsAs expectedLocations
     result.stationaryPeriods should contain theSameElementsAs expectedStationaryPeriods

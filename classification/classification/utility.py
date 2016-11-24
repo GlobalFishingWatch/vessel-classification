@@ -212,25 +212,34 @@ def np_pad_repeat_slice(slice, window_size):
     return np.concatenate([slice] * reps, axis=0)[:window_size]
 
 
+def np_array_random_fixed_length_extract(random_state, input_series,
+                                         output_length):
+
+    cropped = input_series[start_offset:end_offset]
+
+    return np_pad_repeat_slice(cropped, output_length)
+
+
 def np_array_random_fixed_time_extract(random_state, input_series,
                                        max_time_delta, output_length,
                                        min_timeslice_size):
     """ Extracts a random fixed-time slice from a 2d numpy array.
     
-  The input array must be 2d, representing a time series, with the first    
-  column representing a timestamp (sorted ascending). Any values in the series    
-  with a time greater than (first time + max_time_delta) are removed and the    
-  prefix series repeated into the window to pad.    
+   The input array must be 2d, representing a time series, with the first    
+   column representing a timestamp (sorted ascending). Any values in the series    
+   with a time greater than (first time + max_time_delta) are removed and the    
+   prefix series repeated into the window to pad. If max time delta is 0,
+   instead extract a fixed length extract of length output_length.
     
-  Args:
-    random_state: a numpy randomstate object.
-    input_series: the input series. A 2d array first column representing an
-      ascending time.   
-    max_time_delta: the maximum duration of the returned timeseries in seconds.
-    output_length: the number of points in the output series. Input series    
-      shorter than this will be repeated into the output series.   
-    min_timeslice_size: the minimum number of points in a timeslice for the
-      series to be considered meaningful. 
+   Args:
+        random_state: a numpy randomstate object.
+        input_series: the input series. A 2d array first column representing an
+            ascending time.   
+        max_time_delta: the maximum duration of the returned timeseries in seconds.
+        output_length: the number of points in the output series. Input series    
+            shorter than this will be repeated into the output series.   
+        min_timeslice_size: the minimum number of points in a timeslice for the
+            series to be considered meaningful. 
     
   Returns:    
     An array of the same depth as the input, but altered width, representing
@@ -238,25 +247,35 @@ def np_array_random_fixed_time_extract(random_state, input_series,
   """
 
     input_length = len(input_series)
-    start_time = input_series[0][0]
-    end_time = input_series[-1][0]
-    max_time_offset = max((end_time - start_time) - max_time_delta, 0)
-    if max_time_offset == 0:
-        time_offset = 0
+    if max_time_delta == 0:
+        # Pick a random fixed-length window rather than fixed-time.
+        max_offset = max(input_length - output_length, 0)
+        if max_offset == 0:
+            start_index = 0
+        else:
+            start_index = random_state.randint(0, max_offset)
+        end_index = min(start_index + output_length, input_length)
     else:
-        time_offset = random_state.randint(0, max_time_offset)
-    start_index = np.searchsorted(
-        input_series[:, 0], start_time + time_offset, side='left')
+        start_time = input_series[0][0]
+        end_time = input_series[-1][0]
+        max_time_offset = max((end_time - start_time) - max_time_delta, 0)
+        if max_time_offset == 0:
+            time_offset = 0
+        else:
+            time_offset = random_state.randint(0, max_time_offset)
+        start_index = np.searchsorted(
+            input_series[:, 0], start_time + time_offset, side='left')
 
-    # Should not start closer than min_timeslice_size points from the end lest the 
-    # series have too few points to be meaningful.
-    start_index = min(start_index, max(0, input_length - min_timeslice_size))
-    crop_end_time = min(input_series[start_index][0] + max_time_delta,
-                        end_time)
+        # Should not start closer than min_timeslice_size points from the end lest the 
+        # series have too few points to be meaningful.
+        start_index = min(start_index, max(0,
+                                           input_length - min_timeslice_size))
+        crop_end_time = min(input_series[start_index][0] + max_time_delta,
+                            end_time)
 
-    end_index = min(start_index + output_length,
-                    np.searchsorted(
-                        input_series[:, 0], crop_end_time, side='right'))
+        end_index = min(start_index + output_length,
+                        np.searchsorted(
+                            input_series[:, 0], crop_end_time, side='right'))
 
     cropped = input_series[start_index:end_index]
     output_series = np_pad_repeat_slice(cropped, output_length)
@@ -440,10 +459,11 @@ def np_array_extract_slices_for_time_ranges(
 def cropping_all_slice_feature_file_reader(filename_queue, num_features,
                                            time_ranges, window_size,
                                            min_points_for_classification):
-    """ Set up a file reader and inference feature extractor for the files in a queue.
+    """ Set up a file reader and inference feature extractor for the files in a
+        queue.
 
-    An inference feature extractor, pulling all sequential slices from a vessel
-    movement series.
+    An inference feature extractor, pulling all sequential fixed-time slices
+    from a vessel movement series.
 
     Args:
         filename_queue: a queue of filenames for feature files to read.
@@ -471,6 +491,65 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
         return np_array_extract_slices_for_time_ranges(
             random_state, input, num_features, mmsi, time_ranges, window_size,
             min_points_for_classification)
+
+    features_list, timeseries, time_bounds_list, mmsis = tf.py_func(
+        replicate_extract, [movement_features, mmsi],
+        [tf.float32, tf.int32, tf.int32, tf.int32])
+
+    return features_list, timeseries, time_bounds_list, mmsis
+
+
+def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
+                                      window_size):
+    slices = []
+    input_length = len(input_series)
+    for end_index in range(input_length, 0, -window_size):
+        start_index = max(0, end_index - window_size)
+        cropped = input_series[start_index:end_index]
+        start_time = int(cropped[0][0])
+        end_time = int(cropped[-1][0])
+        time_bounds = np.array([start_time, end_time], dtype=np.int32)
+
+        output_slice = np_pad_repeat_slice(cropped, window_size)
+        without_timestamp = output_slice[:, 1:]
+        timeseries = output_slice[:, 0].astype(np.int32)
+        slices.append(
+            (np.stack([without_timestamp]), timeseries, time_bounds, mmsi))
+
+    return zip(*slices)
+
+
+def all_fixed_window_feature_file_reader(filename_queue, num_features,
+                                         window_size):
+    """ Set up a file reader and inference feature extractor for the files in a
+        queue.
+
+    An inference feature extractor, pulling all sequential fixed-length slices
+    from a vessel movement series.
+
+    Args:
+        filename_queue: a queue of filenames for feature files to read.
+        num_features: the dimensionality of the features.
+
+    Returns:
+        A tuple comprising, for the n slices comprising each vessel:
+          1. A tensor of the feature slices drawn, of dimension
+             [n, 1, window_size, num_features].
+          2. A tensor of the timestamps for each feature point of dimension
+             [n, window_size].
+          3. A tensor of the timebounds for the slices, of dimension [n, 2].
+          4. A tensor of the mmsis of each vessel of dimension [n].
+
+    """
+    context_features, sequence_features = single_feature_file_reader(
+        filename_queue, num_features)
+
+    movement_features = sequence_features['movement_features']
+    mmsi = tf.cast(context_features['mmsi'], tf.int32)
+
+    def replicate_extract(input_series, mmsi):
+        return np_array_extract_all_fixed_slices(input_series, num_features,
+                                                 mmsi, window_size)
 
     features_list, timeseries, time_bounds_list, mmsis = tf.py_func(
         replicate_extract, [movement_features, mmsi],
@@ -543,23 +622,23 @@ class VesselMetadata(object):
         return self.metadata_by_split[split].keys()
 
     def weighted_training_list(self, random_state, split,
-                               max_replication_factor):
+                               max_replication_factor, row_filter = lambda row: True):
         replicated_mmsis = []
         logging.info("Training mmsis: %d", len(self.mmsis_for_split(split)))
         fishing_ranges_mmsis = []
-        for mmsi, (rows, weight) in self.metadata_by_split[split].iteritems():
+        for mmsi, (row, weight) in self.metadata_by_split[split].iteritems():
+            if row_filter(row):
+                if mmsi in self.fishing_ranges_map:
+                    fishing_ranges_mmsis.append(mmsi)
+                    weight = weight * self.fishing_range_training_upweight
 
-            if mmsi in self.fishing_ranges_map:
-                fishing_ranges_mmsis.append(mmsi)
-                weight = weight * self.fishing_range_training_upweight
+                weight = min(weight, max_replication_factor)
 
-            weight = min(weight, max_replication_factor)
-
-            int_n = int(weight)
-            replicated_mmsis += ([mmsi] * int_n)
-            frac_n = weight - float(int_n)
-            if (random_state.uniform(0.0, 1.0) <= frac_n):
-                replicated_mmsis.append(mmsi)
+                int_n = int(weight)
+                replicated_mmsis += ([mmsi] * int_n)
+                frac_n = weight - float(int_n)
+                if (random_state.uniform(0.0, 1.0) <= frac_n):
+                    replicated_mmsis.append(mmsi)
 
         random_state.shuffle(replicated_mmsis)
         logging.info("Replicated training mmsis: %d", len(replicated_mmsis))
@@ -597,8 +676,7 @@ def is_test(mmsi):
     return (_hash_mmsi_to_double(mmsi) >= 0.5)
 
 
-def read_vessel_multiclass_metadata_lines(available_mmsis,
-                                          lines,
+def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
                                           fishing_range_dict,
                                           fishing_range_training_upweight):
     """ For a set of vessels, read metadata and calculate class weights.
@@ -689,6 +767,16 @@ def read_vessel_multiclass_metadata(available_mmsis,
 
 
 def find_available_mmsis(feature_path):
+    with tf.Session() as sess:
+        logging.info('Reading mmsi list file.')
+        mmsi_list_tensor = tf.read_file(feature_path + '/mmsis.txt')
+        els = sess.run(mmsi_list_tensor).split('\n')
+        mmsi_list = [int(mmsi) for mmsi in els if mmsi != '']
+
+        logging.info('Found %d mmsis.', len(mmsi_list))
+        return set(mmsi_list)
+
+def find_available_mmsis_glob(feature_path):
     # TODO(alexwilson): Using a temporary session to get the matching files on
     # GCS is far from ideal. However the alternative is to bring in additional
     # libraries with explicit auth that may or may not play nicely with CloudML.

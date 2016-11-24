@@ -17,6 +17,8 @@ class ModelBase(object):
 
     @property
     def max_window_duration_seconds(self):
+        """ Window max duration in seconds. A value of zero indicates that
+            we would instead like to choose a fixed-length window. """
         return None
 
     # We often allocate a much smaller buffer than would fit the specified time
