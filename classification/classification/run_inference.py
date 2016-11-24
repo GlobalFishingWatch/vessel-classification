@@ -35,7 +35,7 @@ class Inferer(object):
             for mmsi in self.mmsis
         ]
 
-    def _build_starts(interval_length_seconds):
+    def _build_starts(self, interval_length_seconds):
         today = datetime.datetime.now(pytz.utc)
         time_starts = []
         iter = datetime.datetime(2012, 1, 1, tzinfo=pytz.utc)
@@ -51,7 +51,7 @@ class Inferer(object):
 
         readers = []
         if self.model.max_window_duration_seconds != 0:
-            time_starts = _build_starts(self.model.max_window_duration_seconds)
+            time_starts = self._build_starts(self.model.max_window_duration_seconds)
 
             self.time_ranges = [(s, e)
                                 for (s, e) in zip(time_starts, time_starts[1:])]
@@ -161,7 +161,7 @@ def main(args):
 
             fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
             vessel_metadata = utility.read_vessel_multiclass_metadata(
-                all_available_mmsis,
+                mmsis,
                 metadata_file,
                 fishing_range_dict=fishing_ranges)
 
