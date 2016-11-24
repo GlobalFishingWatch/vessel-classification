@@ -85,7 +85,7 @@ lazy val aisAnnotator =
   .settings(commonSettings: _*)
   .settings(
       Seq(
-        mainClass in assembly := Some("org.skytruth.anchorages.Anchorage"),
+        mainClass in assembly := Some("org.skytruth.ais_annotator.AISAnnotator"),
         assemblyMergeStrategy in assembly := assemblyMergeStrategies
       ))
   .dependsOn(common)
