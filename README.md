@@ -140,7 +140,8 @@ To build and deploy inference, from the root directory:
 * Cloud Dataflow
    * From the sbt console:
    * Run jobs, specifying the zone and max number of workers, e.g.
-     `run --zone=europe-west1-c  --maxNumWorkers=80 --job-name=new_pipeline_features --env=dev`.
+       - Anchorages: `run --env=dev --zone=europe-west1-c --job-name=anchoragesOnly --maxNumWorkers=600 --diskSizeGb=100`.
+       - Feature pipeline: `run --env=dev --zone=europe-west1-c  --maxNumWorkers=80 --job-name=new_pipeline_features`.
 * Running TF locally:
    * Training:
        - `python -m classification.run_training alex.vessel_classification <...>`
