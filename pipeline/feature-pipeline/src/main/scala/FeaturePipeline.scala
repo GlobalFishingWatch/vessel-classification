@@ -107,7 +107,7 @@ object Pipeline extends LazyLogging {
 
       // Get a list of all MMSIs to save to disk to speed up TF training startup.
       val mmsiListPath = config.pipelineOutputPath + "/mmsis"
-      processed.keys.saveAsTextFile(mmsiListPath)
+      processed.keys.map(md => s"S{md.mmsi}").saveAsTextFile(mmsiListPath)
     })
   }
 }
