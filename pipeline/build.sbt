@@ -2,10 +2,31 @@
 import sbtprotobuf.{ProtobufPlugin => PB}
 PB.protobufSettings
 
+import sbtassembly.MergeStrategy
 
-lazy val excludedFiles = Set("MANIFEST.inf", "MANIFEST.mf", "MANIFEST.MF",
-  "io.netty.versions.properties", "INDEX.LIST", "DEPENDENCIES", "io.grpc.ManagedChannelProvider")
+lazy val excludedFiles = Set("MANIFEST.inf",
+                             "MANIFEST.mf",
+                             "MANIFEST.MF",
+                             "io.netty.versions.properties",
+                             "INDEX.LIST",
+                             "DEPENDENCIES",
+                             "LICENSE",
+                             "LICENSE.txt",
+                             "NOTICE",
+                             "NOTICE.txt",
+                             "io.grpc.ManagedChannelProvider")
 
+lazy val assemblyMergeStrategies: String => MergeStrategy = {
+  case PathList("com", "fasterxml", xs @ _ *) => MergeStrategy.first
+  case PathList("com", "google", xs @ _ *) => MergeStrategy.first
+  case PathList("io", "grpc", "grpc_stub", xs @ _ *) => MergeStrategy.discard
+  // Jackson
+  case PathList(ps @ _ *) if (ps.exists(_.contains("fasterxml"))) => MergeStrategy.first
+  // Scio or cloud dataflow: maybe explicitly choose the scio one.
+  case PathList(ps @ _ *) if ps.last.endsWith("PipelineOptionsRegistrar") => MergeStrategy.first
+  case PathList(ps @ _ *) if excludedFiles.contains(ps.last) => MergeStrategy.discard
+  case _ => MergeStrategy.deduplicate
+}
 
 // Project definitions for vessel classification pipeline and modelling.
 scalafmtConfig in ThisBuild := Some(file(".scalafmt"))
@@ -60,10 +81,22 @@ lazy val common = project.in(file("common")).settings(commonSettings: _*)
 // Pipeline for annotating AIS messages with other attributes (such as when
 // fishing, port visits, transhipments or AIS gaps occur).
 lazy val aisAnnotator =
-  project.in(file("ais-annotator")).settings(commonSettings: _*).dependsOn(common)
+  project.in(file("ais-annotator"))
+  .settings(commonSettings: _*)
+  .settings(
+      Seq(
+        mainClass in assembly := Some("org.skytruth.anchorages.Anchorage"),
+        assemblyMergeStrategy in assembly := assemblyMergeStrategies
+      ))
+  .dependsOn(common)
 
 lazy val anchorages =
-  project.in(file("anchorages")).settings(commonSettings: _*).dependsOn(common)
+  project.in(file("anchorages")).settings(commonSettings: _*)
+  .settings(
+      Seq(
+        mainClass in assembly := Some("org.skytruth.anchorages.Anchorage"),
+        assemblyMergeStrategy in assembly := assemblyMergeStrategies
+      ))dependsOn(common)
 
 // The dataflow feature generation pipeline.
 lazy val features =
@@ -73,18 +106,8 @@ lazy val features =
     .settings(
       Seq(
         mainClass in assembly := Some("org.skytruth.feature_pipeline.Pipeline"),
-        assemblyMergeStrategy in assembly := {
-          case PathList("com", "fasterxml", xs @ _*) => MergeStrategy.first
-          case PathList("com", "google", xs @ _*) => MergeStrategy.first
-          case PathList("io", "grpc", "grpc_stub", xs @ _*) => MergeStrategy.discard
-          // Jackson
-          case PathList(ps @ _*) if (ps.exists(_.contains("fasterxml"))) => MergeStrategy.first
-          // Scio or cloud dataflow: maybe explicitly choose the scio one.
-          case PathList(ps @ _*) if ps.last.endsWith("PipelineOptionsRegistrar") => MergeStrategy.first
-          case PathList(ps @ _*) if excludedFiles.contains(ps.last) => MergeStrategy.discard
-          case PathList(ps @ _*) => MergeStrategy.deduplicate
-        }
-    ))
+        assemblyMergeStrategy in assembly := assemblyMergeStrategies
+      ))
     // TODO(alexwilson): *shame*: tfExampleProtos needs to come first as a dependency because
     // there are currently >1 versions of the proto library in the deployment environment. our
     // code needs to resolve the version in tfExampleProtos as otherwise at runtime on cloud
