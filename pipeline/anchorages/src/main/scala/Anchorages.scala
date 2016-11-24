@@ -4,7 +4,16 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
+import com.google.cloud.dataflow.sdk.options.{
+  DataflowPipelineOptions,
+  PipelineOptions,
+  PipelineOptionsFactory
+}
+import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
+import com.typesafe.scalalogging.{LazyLogging, Logger}
+
 import org.json4s._
+import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 
@@ -12,14 +21,20 @@ import com.google.common.geometry.{S2CellId}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 
+import java.io.File
+
 import org.jgrapht.alg.util.UnionFind
 import org.joda.time.{Duration, Instant}
 
 import org.skytruth.common._
+import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
+import org.skytruth.common.ScioContextResource._
 
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._
+
+import resource._
 
 object AnchorageParameters {
   // Around 1km^2
@@ -27,6 +42,7 @@ object AnchorageParameters {
   val minUniqueVesselsForAnchorage = 20
   val anchorageVisitDistanceThreshold = 0.5.of[kilometer]
   val minAnchorageVisitDuration = Duration.standardMinutes(60)
+  val stationaryPeriodMinDuration = Duration.standardHours(24)
 
 }
 
@@ -47,13 +63,27 @@ case class AnchoragePoint(meanLocation: LatLon,
       ("unique_vessel_count" -> vessels.size) ~
       ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
       ("flag_state_distribution" -> flagStateDistribution) ~
-      ("mmsis" -> vessels.map(_.mmsi)) ~
+      ("vessels" -> vessels.map(_.toJson)) ~
       ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
       ("mean_drift_radius_km" -> meanDriftRadius.value)
   }
 
   def id: String =
     meanLocation.getS2CellId(AnchorageParameters.anchoragesS2Scale).toToken
+}
+
+object AnchoragePoint {
+  implicit val formats = DefaultFormats
+
+  def fromJson(json: JValue) = {
+    val meanLocation = LatLon((json \ "latitude").extract[Double].of[degrees],
+                              (json \ "longitude").extract[Double].of[degrees])
+    val meanDistanceToShore = (json \ "mean_distance_to_shore_km").extract[Double].of[kilometer]
+    val meanDriftRadius = (json \ "mean_drift_radius_km").extract[Double].of[kilometer]
+    val vessels =
+      (json \ "vessels").extract[List[JValue]].map(jv => VesselMetadata.fromJson(jv)).toSet
+    AnchoragePoint(meanLocation, vessels, meanDistanceToShore, meanDriftRadius)
+  }
 }
 
 case class Anchorage(meanLocation: LatLon,
@@ -78,13 +108,15 @@ case class Anchorage(meanLocation: LatLon,
       ("unique_vessel_count" -> vessels.size) ~
       ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
       ("flag_state_distribution" -> flagStateDistribution) ~
-      ("anchorage_points" -> anchoragePoints.toSeq.sortBy(_.id).map(_.id)) ~
+      ("anchorage_point_ids" -> anchoragePoints.map(_.id)) ~
       ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
       ("mean_drift_radius_km" -> meanDriftRadius.value)
   }
 }
 
 object Anchorage {
+  implicit val formats = DefaultFormats
+
   def fromAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]) = {
     val weights = anchoragePoints.map(_.vessels.size.toDouble)
     Anchorage(LatLon.weightedMean(anchoragePoints.map(_.meanLocation), weights),
@@ -94,6 +126,35 @@ object Anchorage {
               // is perhaps a little statistically dubious, but may still prove
               // useful to distinguish fixed vs drifting anchorage groups.
               anchoragePoints.map(_.meanDriftRadius).weightedMean(weights))
+  }
+
+  def fromJson(json: JValue, anchoragePointMap: Map[String, AnchoragePoint]) = {
+    val meanLocation = LatLon((json \ "latitude").extract[Double].of[degrees],
+                              (json \ "longitude").extract[Double].of[degrees])
+    val meanDistanceToShore = (json \ "mean_distance_to_shore_km").extract[Double].of[kilometer]
+    val meanDriftRadius = (json \ "mean_drift_radius_km").extract[Double].of[kilometer]
+    val anchoragePoints =
+      (json \ "anchorage_point_ids").extract[List[String]].map(id => anchoragePointMap(id)).toSet
+    Anchorage(meanLocation, anchoragePoints, meanDistanceToShore, meanDriftRadius)
+  }
+
+  def readAnchorages(rootPath: String): Seq[Anchorage] = {
+    val anchoragePointsPath = rootPath + "/anchorage_points"
+    val anchoragesPath = rootPath + "/anchorages"
+
+    def readAllToJson(path: String) = new File(path).listFiles.flatMap { p =>
+      managed(scala.io.Source.fromFile(p)).acquireAndGet { s =>
+        s.getLines.map(line => parse(line))
+      }
+    }
+
+    val anchoragePointMap = readAllToJson(rootPath + "/anchorage_points")
+      .map(AnchoragePoint.fromJson _)
+      .map(ap => (ap.id, ap))
+      .toMap
+
+    readAllToJson(rootPath + "/anchorages").map(json =>
+      Anchorage.fromJson(json, anchoragePointMap))
   }
 }
 
@@ -114,7 +175,7 @@ case class AnchorageVisit(anchorage: Anchorage, arrival: Instant, departure: Ins
       ("end_time" -> departure.toString())
 }
 
-object Anchorages {
+object Anchorages extends LazyLogging {
   def findAnchoragePointCells(
       input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[AnchoragePoint] = {
 
@@ -236,5 +297,72 @@ object Anchorages {
         }
       }
       .toSCollection
+  }
+
+  def main(argArray: Array[String]) {
+    val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
+
+    val environment = remaining_args.required("env")
+    val jobName = remaining_args.required("job-name")
+    val config = GcpConfig.makeConfig(environment, jobName)
+
+    logger.info(s"Pipeline output path: ${config.pipelineOutputPath}")
+
+    options.setRunner(classOf[DataflowPipelineRunner])
+    options.setProject(config.projectId)
+    options.setStagingLocation(config.dataflowStagingPath)
+
+    managed(ScioContext(options)).acquireAndGet { sc =>
+      // Read, filter and build location records. We build a set of matches for all
+      // relevant years, as a single Cloud Dataflow text reader currently can't yet
+      // handle the sheer volume of matching files.
+      val matches = (InputDataParameters.allDataYears).map { year =>
+        val path = InputDataParameters.measuresPathPattern(year)
+
+        sc.textFile(path)
+      }
+
+      val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
+
+      val minValidLocations = 200
+      val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
+        AISDataProcessing
+          .readJsonRecords(matches, knownFishingMMSIs, InputDataParameters.minRequiredPositions)
+
+      val processed =
+        AISDataProcessing.filterAndProcessVesselRecords(
+          locationRecords,
+          AnchorageParameters.stationaryPeriodMinDuration)
+
+      val anchoragePoints =
+        Anchorages.findAnchoragePointCells(processed)
+      val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
+
+      // Output anchorages points.
+      val anchoragePointsPath = config.pipelineOutputPath + "/anchorage_points"
+      anchoragePoints.map { anchoragePoint =>
+        compact(render(anchoragePoint.toJson))
+      }.saveAsTextFile(anchoragePointsPath)
+
+      // And anchorages.
+      val anchoragesPath = config.pipelineOutputPath + "/anchorages"
+      anchorages.map { anchorage =>
+        compact(render(anchorage.toJson))
+      }.saveAsTextFile(anchoragesPath)
+
+      // And find anchorage visits.
+      val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_visits"
+      val anchorageVisits =
+        Anchorages.findAnchorageVisits(locationRecords,
+                                       anchorages,
+                                       AnchorageParameters.minAnchorageVisitDuration)
+
+      anchorageVisits.map {
+        case (metadata, visits) =>
+          compact(
+            render(("mmsi" -> metadata.mmsi) ~
+              ("visits" -> visits.map(_.toJson))))
+      }.saveAsTextFile(anchorageVisitsPath)
+    }
   }
 }

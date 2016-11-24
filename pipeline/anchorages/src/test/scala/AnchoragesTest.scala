@@ -7,11 +7,35 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 
 import org.joda.time.{Duration, Instant}
+import org.json4s._
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
 import org.scalatest._
 import org.skytruth.common._
 import org.skytruth.common.AdditionalUnits._
 
 import scala.collection.{mutable, immutable}
+
+class AnchorageSerializationTests extends PipelineSpec with Matchers {
+  val anchoragePoints = Seq(AnchoragePoint(LatLon(4.0.of[degrees], 9.0.of[degrees]),
+                                           Set(VesselMetadata(1, true)),
+                                           10.0.of[kilometer],
+                                           0.1.of[kilometer]),
+                            AnchoragePoint(LatLon(0.0.of[degrees], 1.0.of[degrees]),
+                                           Set(VesselMetadata(1)),
+                                           20.0.of[kilometer],
+                                           0.05.of[kilometer]))
+
+  val anchorage =
+    Anchorage.fromAnchoragePoints(anchoragePoints)
+
+  "Anchorages and anchorage points" should "serialize to JSON and back" in {
+    AnchoragePoint.fromJson(anchoragePoints(0).toJson) should equal(anchoragePoints(0))
+
+    val anchoragePointMap = anchoragePoints.map(ap => (ap.id, ap)).toMap
+    Anchorage.fromJson(anchorage.toJson, anchoragePointMap) should equal(anchorage)
+  }
+}
 
 class AnchorageVisitsTests extends PipelineSpec with Matchers {
   // TODO(alexwilson): These helpers also exist in feature-pipeline
