@@ -1,2 +1,3 @@
 include classification/data/net_training_20161016.csv
 include classification/data/combined_fishing_ranges.csv
+include classification/data/likely_fishing_mmsis.txt

@@ -11,13 +11,14 @@ import com.spotify.scio.bigquery._
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import java.util.LinkedHashMap
 import org.joda.time.{Instant}
-import org.skytruth.common.{GcpConfig, IteratorWithCurrent}
+import org.skytruth.common.{GcpConfig, IteratorWithCurrent, ValueCache}
 import org.skytruth.common.ScioContextResource._
 import scala.collection.{mutable, immutable}
 
 import resource._
 
 case class JSONFileAnnotatorConfig(inputFilePattern: String,
+                                   outputFieldName: String,
                                    timeRangeFieldName: String,
                                    defaultValue: Double)
 
@@ -43,6 +44,7 @@ object AISAnnotator extends LazyLogging {
   }
 
   def jsonAnnotationReader(annotations: SCollection[TableRow],
+                           outputFieldName: String,
                            timeRangeFieldName: String,
                            defaultValue: Double): SCollection[MessageAnnotation] = {
     annotations.flatMap { json =>
@@ -57,7 +59,7 @@ object AISAnnotator extends LazyLogging {
         val value =
           Option(timeRangeField.get("value")).map(_.asInstanceOf[Double]).getOrElse(defaultValue)
 
-        MessageAnnotation(mmsi, timeRangeFieldName, startTime, endTime, value)
+        MessageAnnotation(mmsi, outputFieldName, startTime, endTime, value)
       }
     }
   }
@@ -113,19 +115,36 @@ object AISAnnotator extends LazyLogging {
 
     val aisMessages = SCollection.unionAll(aisMessageInputs)
 
-    // Remove all but location messages and key by mmsi.
-    val filteredByMmsi = aisMessages
-    // Keep only records with a location.
-      .filter(json => json.containsKey("lat") && json.containsKey("lon"))
-      .groupBy(_.getLong("mmsi").toInt)
-
     val annotationsByMmsi = SCollection.unionAll(annotationInputs).groupBy(_.mmsi)
+    val mmsisWithAnnotation =
+      annotationsByMmsi.map(_._1).map(x => (0, x)).groupByKey.map(_._2.toSet).asSingletonSideInput
 
-    filteredByMmsi.fullOuterJoin(annotationsByMmsi).flatMap {
-      case (mmsi, (messages, annotations)) =>
-        annotateVesselMessages(messages.toSeq.flatten, annotations.toSeq.flatten)
+    // Do not process messages for MMSIs for which we have no annotations.
+    val allowedMMSIs = ValueCache[Set[Int]]()
+    val filteredAISMessages = aisMessages.map { json =>
+      (json.getLong("mmsi").toInt, json)
+    }.withSideInputs(mmsisWithAnnotation)
+      .filter {
+        case ((mmsi, json), ctx) =>
+          val mmsiSet = allowedMMSIs.get(() => ctx(mmsisWithAnnotation))
+
+          mmsiSet.contains(mmsi)
+      }
+      .toSCollection
+
+    // Remove all but location messages and key by mmsi.
+    val filteredGroupedByMmsi = filteredAISMessages
+    // Keep only records with a location.
+    .filter { case (_, json) => json.containsKey("lat") && json.containsKey("lon") }.groupByKey
+
+    filteredGroupedByMmsi.join(annotationsByMmsi).flatMap {
+      case (mmsi, (messagesIt, annotationsIt)) =>
+        val messages = messagesIt.toSeq
+        val annotations = annotationsIt.toSeq
+        annotateVesselMessages(messages, annotations)
     }
   }
+  
 
   def main(argArray: Array[String]) {
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
@@ -153,6 +172,7 @@ object AISAnnotator extends LazyLogging {
         case annotation =>
           val inputAnnotationFile = sc.tableRowJsonFile(annotation.inputFilePattern)
           jsonAnnotationReader(inputAnnotationFile,
+                               annotation.outputFieldName,
                                annotation.timeRangeFieldName,
                                annotation.defaultValue)
       }

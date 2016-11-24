@@ -520,17 +520,27 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
 
         dense_labels = self.dense_labels(
             tf.shape(self.prediction), timestamps, mmsis)
+        thresholded_prediction = tf.to_int32(self.prediction > 0.5)
+        valid = tf.to_int32(tf.not_equal(dense_labels, -1))
+        ones = tf.to_int32(dense_labels > 0.5)
+        weights = tf.to_float(valid)
 
         raw_loss = self.loss_function(dense_labels)
+
         update_ops.append(
             tf.summary.scalar('%s/Training loss' % self.name, raw_loss))
+
+        accuracy = slim.metrics.accuracy(
+            thresholded_prediction, ones, weights=weights)
+        update_ops.append(
+            tf.summary.scalar('%s/Training accuracy' % self.name, accuracy))
 
         loss = raw_loss * self.loss_weight
 
         return Trainer(loss, update_ops)
 
     def build_evaluation(self, timestamps, mmsis):
-        dense_labels = self.dense_labels
+        dense_labels_fn = self.dense_labels
 
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, prediction, timestamps,
@@ -539,12 +549,11 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                                                  prediction, timestamps, mmsis)
 
             def build_test_metrics(self):
-                labels = dense_labels(
+                dense_labels = dense_labels_fn(
                     tf.shape(self.prediction), self.timestamps, self.mmsis)
                 thresholded_prediction = tf.to_int32(self.prediction > 0.5)
-
-                valid = tf.to_int32(tf.not_equal(labels, -1))
-                ones = tf.to_int32(tf.equal(labels, 1))
+                valid = tf.to_int32(tf.not_equal(dense_labels, -1))
+                ones = tf.to_int32(dense_labels > 0.5)
                 weights = tf.to_float(valid)
 
                 raw_metrics = {

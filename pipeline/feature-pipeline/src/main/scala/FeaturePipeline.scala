@@ -108,7 +108,14 @@ object Pipeline extends LazyLogging {
     // performance of the pipeline. Doing this with countByKey is much faster than
     // doing this via a groupBy.
     val mmsisWithSufficientPoints =
-      validRecords.countByKey.filter(_._2 >= minRequiredPositions).map(_._1).asListSideInput
+      validRecords.countByKey
+        .filter(_._2 >= minRequiredPositions)
+        // We need to group all values together otherwise dataflow makes (probably)
+        // a side-input file per mmsi and then falls over with an internal error.
+        .map(x => (0, x._1))
+        .groupByKey
+        .map(_._2.toSet)
+        .asSingletonSideInput
 
     val allowedMMSIs = ValueCache[Set[VesselMetadata]]()
     var cachedMap: Option[Set[VesselMetadata]] = None
@@ -116,7 +123,7 @@ object Pipeline extends LazyLogging {
       .withSideInputs(mmsisWithSufficientPoints)
       .filter {
         case ((vmd, _), ctx) =>
-          val mmsiSet = allowedMMSIs.get(() => ctx(mmsisWithSufficientPoints).toSet)
+          val mmsiSet = allowedMMSIs.get(() => ctx(mmsisWithSufficientPoints))
 
           mmsiSet.contains(vmd)
       }

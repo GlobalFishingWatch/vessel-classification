@@ -92,12 +92,12 @@ class AnnotatorTests extends PipelineSpec with Matchers {
     )
     runWithContext { sc =>
       val tableRows = jsonFromString(sc.parallelize(inputLines))
-      val res = AISAnnotator.jsonAnnotationReader(tableRows, "heights", 2.0)
+      val res = AISAnnotator.jsonAnnotationReader(tableRows, "heights_out", "heights", 2.0)
 
       res should containInAnyOrder(
         Seq(
           MessageAnnotation(123,
-                            "heights",
+                            "heights_out",
                             Instant.parse("20150101T01:00:00Z"),
                             Instant.parse("20150101T07:00:00Z"),
                             4.5)))
@@ -112,6 +112,7 @@ class AnnotatorTests extends PipelineSpec with Matchers {
     |outputFilePath: baz
     |jsonAnnotations:
     |  - inputFilePattern: one
+    |    outputFieldName: foo
     |    timeRangeFieldName: two
     |    defaultValue: 6.8
     """.stripMargin('|')
@@ -122,6 +123,7 @@ class AnnotatorTests extends PipelineSpec with Matchers {
     res.outputFilePath should equal("baz")
     res.jsonAnnotations should have size (1)
     res.jsonAnnotations.head.inputFilePattern should equal("one")
+    res.jsonAnnotations.head.outputFieldName should equal("foo")
     res.jsonAnnotations.head.timeRangeFieldName should equal("two")
     res.jsonAnnotations.head.defaultValue should equal(6.8)
   }
