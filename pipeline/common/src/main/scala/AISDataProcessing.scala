@@ -121,7 +121,8 @@ object AISDataProcessing extends LazyLogging {
     thinnedPoints
   }
 
-  def removeStationaryPeriods(records: Iterable[VesselLocationRecord]): ProcessedLocations = {
+  def removeStationaryPeriods(records: Iterable[VesselLocationRecord],
+                              stationaryPeriodMinDuration: Duration): ProcessedLocations = {
     // Remove long stationary periods from the record: anything over the threshold
     // time will be reduced to just the start and end points of the period.
     // TODO(alexwilson): Tim points out that leaves vessels sitting around for t - delta looking
@@ -136,8 +137,7 @@ object AISDataProcessing extends LazyLogging {
         val speed = vr.speed
         val distanceDelta = vr.location.getDistance(periodFirst.location)
         if (distanceDelta > InputDataParameters.stationaryPeriodMaxDistance) {
-          if (vr.timestamp.isAfter(
-                periodFirst.timestamp.plus(InputDataParameters.stationaryPeriodMinDuration))) {
+          if (vr.timestamp.isAfter(periodFirst.timestamp.plus(stationaryPeriodMinDuration))) {
             withoutLongStationaryPeriods.append(periodFirst)
             if (currentPeriod.last != periodFirst) {
               withoutLongStationaryPeriods.append(currentPeriod.last)
@@ -166,12 +166,13 @@ object AISDataProcessing extends LazyLogging {
   }
 
   def filterAndProcessVesselRecords(
-      input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
-    : SCollection[(VesselMetadata, ProcessedLocations)] = {
+      input: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
+      stationaryPeriodMinDuration: Duration): SCollection[(VesselMetadata, ProcessedLocations)] = {
     input.map {
       case (metadata, records) =>
         val thinnedPoints = thinPoints(records)
-        val processedLocations = removeStationaryPeriods(thinnedPoints)
+        val processedLocations =
+          removeStationaryPeriods(thinnedPoints, stationaryPeriodMinDuration)
 
         (metadata, processedLocations)
     }

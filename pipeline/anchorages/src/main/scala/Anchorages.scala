@@ -42,6 +42,7 @@ object AnchorageParameters {
   val minUniqueVesselsForAnchorage = 20
   val anchorageVisitDistanceThreshold = 0.5.of[kilometer]
   val minAnchorageVisitDuration = Duration.standardMinutes(60)
+  val stationaryPeriodMinDuration = Duration.standardHours(24)
 
 }
 
@@ -329,7 +330,9 @@ object Anchorages extends LazyLogging {
           .readJsonRecords(matches, knownFishingMMSIs, InputDataParameters.minRequiredPositions)
 
       val processed =
-        AISDataProcessing.filterAndProcessVesselRecords(locationRecords)
+        AISDataProcessing.filterAndProcessVesselRecords(
+          locationRecords,
+          AnchorageParameters.stationaryPeriodMinDuration)
 
       val anchoragePoints =
         Anchorages.findAnchoragePointCells(processed)

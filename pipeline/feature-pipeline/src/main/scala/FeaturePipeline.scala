@@ -70,7 +70,9 @@ object Pipeline extends LazyLogging {
           .readJsonRecords(matches, knownFishingMMSIs, InputDataParameters.minRequiredPositions)
 
       val processed =
-        AISDataProcessing.filterAndProcessVesselRecords(locationRecords)
+        AISDataProcessing.filterAndProcessVesselRecords(
+          locationRecords,
+          InputDataParameters.stationaryPeriodMinDuration)
 
       val locationsWithAdjacency = if (generateEncounters) {
         val adjacencies =
