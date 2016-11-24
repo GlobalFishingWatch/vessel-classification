@@ -23,7 +23,7 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.utility import vessel_categorical_length_transformer, is_test
+from classification.utility import is_test
 import gzip
 import dateutil.parser
 import datetime
@@ -86,6 +86,56 @@ table {
 
 
 """
+
+# basic metrics 
+
+def precision_score(y_true, y_pred):
+    y_true = np.asarray(y_true, dtype=bool)
+    y_pred = np.asarray(y_pred, dtype=bool)
+
+    true_pos = y_true & y_pred
+    all_pos = y_pred
+
+    return true_pos.sum() / all_pos.sum()
+
+
+def recall_score(y_true, y_pred):
+    y_true = np.asarray(y_true, dtype=bool)
+    y_pred = np.asarray(y_pred, dtype=bool)
+
+    true_pos = y_true & y_pred
+    all_true = y_true
+
+    return true_pos.sum() / all_true.sum()
+
+
+def f1_score(y_true, y_pred):
+    prec = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+
+    return 2 / (1 / prec + 1 / recall)
+
+
+def accuracy_score(y_true, y_pred):
+    y_true = np.asarray(y_true, dtype=bool)
+    y_pred = np.asarray(y_pred, dtype=bool)
+
+    correct = (y_true == y_pred)
+
+    return correct.mean()
+
+
+def base_confusion_matrix(y_true, y_pred, labels):    
+    n = len(labels)
+    label_map = {lbl : i for i, lbl in enumerate(labels)}
+    cm = np.zeros([n,n], dtype=int)
+
+    for yt, yp in zip(y_true, y_pred):
+        cm[label_map[yt], label_map[yp]] += 1
+
+    return cm
+
+
 
 # Helper function formatting as HTML (using yattag)
 
@@ -257,11 +307,11 @@ def ydump_fishing_localisation(doc, results):
     header = ["Gear Type", "Precision", "Recall", "Accuracy", "F1-Score"]
     rows = []
     logging.info("Overall localisation accuracy %s",
-                 metrics.accuracy_score(y_true, y_pred))
+                 accuracy_score(y_true, y_pred))
     logging.info("Overall localisation precision %s",
-                 metrics.precision_score(y_true, y_pred))
+                 precision_score(y_true, y_pred))
     logging.info("Overall localisation recall %s",
-                 metrics.recall_score(y_true, y_pred))
+                 recall_score(y_true, y_pred))
 
     for cls in sorted(set(results.label_map.values())):
         true_chunks = []
@@ -277,10 +327,10 @@ def ydump_fishing_localisation(doc, results):
             y_true = np.concatenate(true_chunks)
             y_pred = np.concatenate(pred_chunks)
             rows.append([cls,
-                         metrics.precision_score(y_true, y_pred),
-                         metrics.recall_score(y_true, y_pred),
-                         metrics.accuracy_score(y_true, y_pred),
-                         metrics.f1_score(y_true, y_pred), ])
+                         precision_score(y_true, y_pred),
+                         recall_score(y_true, y_pred),
+                         accuracy_score(y_true, y_pred),
+                         f1_score(y_true, y_pred), ])
 
     rows.append(['', '', '', '', ''])
 
@@ -288,10 +338,10 @@ def ydump_fishing_localisation(doc, results):
     y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
 
     rows.append(['Overall',
-                 metrics.precision_score(y_true, y_pred),
-                 metrics.recall_score(y_true, y_pred),
-                 metrics.accuracy_score(y_true, y_pred),
-                 metrics.f1_score(y_true, y_pred), ])
+                 precision_score(y_true, y_pred),
+                 recall_score(y_true, y_pred),
+                 accuracy_score(y_true, y_pred),
+                 f1_score(y_true, y_pred), ])
 
     with tag('div', klass="unbreakable"):
         ydump_table(
@@ -392,7 +442,7 @@ def confusion_matrix(results):
 
     """
     EPS = 1e-10
-    cm_raw = metrics.confusion_matrix(
+    cm_raw = base_confusion_matrix(
         results.true_labels, results.inferred_labels, results.label_list)
 
     # For off axis, normalize harmonic mean of row / col inverse errors.
@@ -415,13 +465,6 @@ def confusion_matrix(results):
 
     return ConfusionMatrix(cm_raw, cm_normalized)
 
-
-#TODO: remove
-def remap_lengths(len_map):
-    map = {}
-    for k, v in len_map.items():
-        map[k] = vessel_categorical_length_transformer(v)
-    return map
 
 
 def load_inferred(inference_path, label_map, field):
