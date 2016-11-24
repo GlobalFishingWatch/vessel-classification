@@ -18,15 +18,17 @@ object TestHelper {
                    speed: Double = 0.0,
                    course: Double = 0.0,
                    heading: Double = 0.0) =
-        compact(render(("mmsi" -> mmsi) ~
-             ("timestamp" -> timestamp) ~
-             ("lon" -> lon) ~
-             ("lat" -> lat) ~
-             ("distance_from_shore" -> (distanceFromShore * 1000.0)) ~
-             ("distance_from_port" -> (distanceFromPort * 1000.0)) ~
-             ("speed" -> speed) ~
-             ("course" -> course) ~
-             ("heading" -> heading)))
+    compact(
+      render(
+        ("mmsi" -> mmsi) ~
+          ("timestamp" -> timestamp) ~
+          ("lon" -> lon) ~
+          ("lat" -> lat) ~
+          ("distance_from_shore" -> (distanceFromShore * 1000.0)) ~
+          ("distance_from_port" -> (distanceFromPort * 1000.0)) ~
+          ("speed" -> speed) ~
+          ("course" -> course) ~
+          ("heading" -> heading)))
 
   def ts(timestamp: String) = Instant.parse(timestamp)
 

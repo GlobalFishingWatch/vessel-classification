@@ -21,6 +21,8 @@ import com.google.common.geometry.{S2CellId}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 
+import java.io.File
+
 import org.jgrapht.alg.util.UnionFind
 import org.joda.time.{Duration, Instant}
 
@@ -105,7 +107,7 @@ case class Anchorage(meanLocation: LatLon,
       ("unique_vessel_count" -> vessels.size) ~
       ("known_fishing_vessel_count" -> knownFishingVesselCount) ~
       ("flag_state_distribution" -> flagStateDistribution) ~
-      ("anchorage_points" -> anchoragePoints.map(_.toJson)) ~
+      ("anchorage_point_ids" -> anchoragePoints.map(_.id)) ~
       ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
       ("mean_drift_radius_km" -> meanDriftRadius.value)
   }
@@ -125,16 +127,33 @@ object Anchorage {
               anchoragePoints.map(_.meanDriftRadius).weightedMean(weights))
   }
 
-  def fromJson(json: JValue) = {
+  def fromJson(json: JValue, anchoragePointMap: Map[String, AnchoragePoint]) = {
     val meanLocation = LatLon((json \ "latitude").extract[Double].of[degrees],
                               (json \ "longitude").extract[Double].of[degrees])
     val meanDistanceToShore = (json \ "mean_distance_to_shore_km").extract[Double].of[kilometer]
     val meanDriftRadius = (json \ "mean_drift_radius_km").extract[Double].of[kilometer]
-    val anchoragePoints = (json \ "anchorage_points")
-      .extract[List[JValue]]
-      .map(jv => AnchoragePoint.fromJson(jv))
-      .toSet
+    val anchoragePoints =
+      (json \ "anchorage_point_ids").extract[List[String]].map(id => anchoragePointMap(id)).toSet
     Anchorage(meanLocation, anchoragePoints, meanDistanceToShore, meanDriftRadius)
+  }
+
+  def readAnchorages(rootPath: String): Seq[Anchorage] = {
+    val anchoragePointsPath = rootPath + "/anchorage_points"
+    val anchoragesPath = rootPath + "/anchorages"
+
+    def readAllToJson(path: String) = new File(path).listFiles.flatMap { p =>
+      managed(scala.io.Source.fromFile(p)).acquireAndGet { s =>
+        s.getLines.map(line => parse(line))
+      }
+    }
+
+    val anchoragePointMap = readAllToJson(rootPath + "/anchorage_points")
+      .map(AnchoragePoint.fromJson _)
+      .map(ap => (ap.id, ap))
+      .toMap
+
+    readAllToJson(rootPath + "/anchorages").map(json =>
+      Anchorage.fromJson(json, anchoragePointMap))
   }
 }
 

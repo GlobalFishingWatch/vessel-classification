@@ -34,7 +34,7 @@ object Pipeline extends LazyLogging {
     val environment = remaining_args.required("env")
     val jobName = remaining_args.required("job-name")
     val generateModelFeatures = remaining_args.boolean("generate-model-features", true)
-    val anchoragesPath = remaining_args("anchorages-path")
+    val anchoragesRootPath = remaining_args("anchorages-root-path")
     val generateEncounters = remaining_args.boolean("generate-encounters", true)
 
     val config = GcpConfig.makeConfig(environment, jobName)
@@ -56,11 +56,10 @@ object Pipeline extends LazyLogging {
         sc.textFile(path)
       }
 
-      val anchorages = if (!anchoragesPath.isEmpty) {
-        sc.textFile(anchoragesPath)
-          .map { json => Anchorage.fromJson(parse(json)) }
+      val anchorages = if (!anchoragesRootPath.isEmpty) {
+        Anchorage.readAnchorages(anchoragesRootPath)
       } else {
-        sc.parallelize(Seq.empty[Anchorage])
+        Seq.empty[Anchorage]
       }
 
       val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()

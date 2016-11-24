@@ -17,24 +17,23 @@ import org.skytruth.common.AdditionalUnits._
 import scala.collection.{mutable, immutable}
 
 class AnchorageSerializationTests extends PipelineSpec with Matchers {
-  val anchoragePoint1 =
-    AnchoragePoint(LatLon(4.0.of[degrees], 9.0.of[degrees]),
-                   Set(VesselMetadata(1, true)),
-                   10.0.of[kilometer],
-                   0.1.of[kilometer])
-  val anchoragePoint2 =
-    AnchoragePoint(LatLon(0.0.of[degrees], 1.0.of[degrees]),
-                   Set(VesselMetadata(1)),
-                   20.0.of[kilometer],
-                   0.05.of[kilometer])
+  val anchoragePoints = Seq(AnchoragePoint(LatLon(4.0.of[degrees], 9.0.of[degrees]),
+                                           Set(VesselMetadata(1, true)),
+                                           10.0.of[kilometer],
+                                           0.1.of[kilometer]),
+                            AnchoragePoint(LatLon(0.0.of[degrees], 1.0.of[degrees]),
+                                           Set(VesselMetadata(1)),
+                                           20.0.of[kilometer],
+                                           0.05.of[kilometer]))
 
   val anchorage =
-    Anchorage.fromAnchoragePoints(Seq(anchoragePoint1, anchoragePoint2))
+    Anchorage.fromAnchoragePoints(anchoragePoints)
 
   "Anchorages and anchorage points" should "serialize to JSON and back" in {
-    AnchoragePoint.fromJson(anchoragePoint1.toJson) should equal(anchoragePoint1)
+    AnchoragePoint.fromJson(anchoragePoints(0).toJson) should equal(anchoragePoints(0))
 
-    Anchorage.fromJson(anchorage.toJson) should equal(anchorage)
+    val anchoragePointMap = anchoragePoints.map(ap => (ap.id, ap)).toMap
+    Anchorage.fromJson(anchorage.toJson, anchoragePointMap) should equal(anchorage)
   }
 }
 

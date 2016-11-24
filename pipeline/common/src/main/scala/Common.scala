@@ -111,16 +111,15 @@ case class VesselMetadata(mmsi: Int, isFishingVessel: Boolean = false) {
 
   def toJson = {
     ("mmsi" -> mmsi) ~
-    ("is_fishing" -> isFishingVessel)
+      ("is_fishing" -> isFishingVessel)
   }
 }
 
 object VesselMetadata {
   implicit val formats = DefaultFormats
 
-  def fromJson(json: JValue) = VesselMetadata(
-    (json \ "mmsi").extract[Int],
-    (json \ "is_fishing").extract[Boolean])
+  def fromJson(json: JValue) =
+    VesselMetadata((json \ "mmsi").extract[Int], (json \ "is_fishing").extract[Boolean])
 }
 
 case class VesselLocationRecord(timestamp: Instant,

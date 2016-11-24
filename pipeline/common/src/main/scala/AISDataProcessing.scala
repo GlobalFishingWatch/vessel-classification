@@ -47,7 +47,7 @@ object AISDataProcessing extends LazyLogging {
   implicit val formats = DefaultFormats
   implicit class JValueExtended(value: JValue) {
     def has(field: String) = ((value \ field) != JNothing)
-    def getString(field:String) = (value \ field).extract[String]
+    def getString(field: String) = (value \ field).extract[String]
     def getDouble(field: String) = (value \ field).extract[Double]
   }
 
@@ -60,7 +60,8 @@ object AISDataProcessing extends LazyLogging {
 
     val input = SCollection.unionAll(inputs)
     // Keep only records with a location.
-    val validRecords = input.map(line => parse(line))
+    val validRecords = input
+      .map(line => parse(line))
       .filter(json => json.has("lat") && json.has("lon"))
       // Build a typed location record with units of measure.
       .map(json => {
