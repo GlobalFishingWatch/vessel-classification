@@ -304,6 +304,8 @@ object Anchorages extends LazyLogging {
 
     val environment = remaining_args.required("env")
     val jobName = remaining_args.required("job-name")
+    val dataYears = remaining_args.getOrElse("data-years", "2012,2013,2014,2015,2016")
+
     val config = GcpConfig.makeConfig(environment, jobName)
 
     logger.info(s"Pipeline output path: ${config.pipelineOutputPath}")
@@ -316,7 +318,7 @@ object Anchorages extends LazyLogging {
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
-      val matches = (InputDataParameters.allDataYears).map { year =>
+      val matches = (dataYears.split(",")).map { year =>
         val path = InputDataParameters.measuresPathPattern(year)
 
         sc.textFile(path)
