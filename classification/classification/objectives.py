@@ -63,9 +63,48 @@ class EvaluationBase(object):
         pass
 
 
+class SummaryObjective(ObjectiveBase):
+    def __init__(self, metadata_label, name):
+        super(SummaryObjective, self).__init__(metadata_label, name, 0.0)
+
+    def build(self, net):
+        self.inputs = net
+
+    def _build_summary(self):
+        #TODO(bitsofbits): pull these names from someplace
+        ops = {}
+        for i, name in enumerate(['log_timestampDeltaSeconds', 'log_distanceDeltaMeters', 'log_speedMps', 'log_integratedSpeedMps',
+                    'cogDeltaDegrees_div_180', 'localTodFeature', 'localMonthOfYearFeature', 'integratedCogDeltaDegrees_div_180',
+                    'log_distanceToShoreKm', 'log_distanceToBoundingAnchorageKm', 'log_timeToBoundingAnchorageS']):
+            ops[name] = tf.histogram_summary("input/{}-{}".format(name, i), tf.reshape(self.inputs[:, :, :, i], [-1]), 
+                #TODO(bitsofbits): may need not need all of these collection keys
+                collections=[tf.GraphKeys.UPDATE_OPS, tf.GraphKeys.SUMMARIES])
+        return ops
+
+    def build_trainer(self, timestamps, mmsis):
+        ops = self._build_summary()
+        return Trainer(0, ops.values())
+
+    def build_evaluation(self, timestamps, mmsis):
+
+        build_summary = self._build_summary
+
+        class Evaluation(EvaluationBase):
+
+            def build_test_metrics(self):
+                ops = build_summary()
+
+                return {}, ops
+
+            def build_json_results(self, prediction, timestamps):
+                return {}
+
+        return Evaluation(self.metadata_label, self.name, None, None, None)    
+
+
 class RegressionObjective(ObjectiveBase):
     def __init__(self, metadata_label, name, value_from_mmsi, loss_weight=1.0):
-        super(self.__class__, self).__init__(metadata_label, name, loss_weight)
+        super(RegressionObjective, self).__init__(metadata_label, name, loss_weight)
         self.value_from_mmsi = value_from_mmsi
 
     def build(self, net):
@@ -118,7 +157,7 @@ class RegressionObjective(ObjectiveBase):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, masked_mean_error,
                          prediction):
-                super(self.__class__, self).__init__(
+                super(Evaluation, self).__init__(
                     metadata_label, name, prediction, timestamps, mmsis)
                 self.masked_mean_error = masked_mean_error
                 self.mmsis = mmsis
