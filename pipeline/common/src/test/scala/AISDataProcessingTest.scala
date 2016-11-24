@@ -6,6 +6,9 @@ import com.spotify.scio.testing.PipelineSpec
 import com.spotify.scio.bigquery.TableRow
 import com.spotify.scio.io._
 import org.joda.time.{Duration, Instant}
+import org.json4s._
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
 import org.scalatest._
 
 import AdditionalUnits._
@@ -16,8 +19,8 @@ class AISDataProcessingTests extends PipelineSpec with Matchers {
     runWithContext { sc =>
       val input = sc.parallelize(
         Seq(
-          TableRow("mmsi" -> "45", "foo" -> "bar")
-        ))
+          (("mmsi" -> 45) ~ ("foo" -> "bar"))
+        ).map(json => compact(render(json))))
       val locationRecords =
         AISDataProcessing.readJsonRecords(Seq(input), Set(), 0)
 

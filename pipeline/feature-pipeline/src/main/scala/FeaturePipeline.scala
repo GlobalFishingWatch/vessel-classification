@@ -4,11 +4,8 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
-import com.google.common.geometry.{S2, S2LatLng}
-import com.google.protobuf.{ByteString, MessageLite}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
-import com.spotify.scio.bigquery._
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import com.google.cloud.dataflow.sdk.options.{
   DataflowPipelineOptions,
@@ -16,16 +13,6 @@ import com.google.cloud.dataflow.sdk.options.{
   PipelineOptionsFactory
 }
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
-import com.google.cloud.dataflow.sdk.io.{FileBasedSink, Write}
-import com.google.cloud.dataflow.sdk.util.{GcsUtil}
-import com.google.cloud.dataflow.sdk.util.gcsfs.{GcsPath}
-import java.io.{File, FileOutputStream, FileReader, InputStream, OutputStream}
-import java.lang.{RuntimeException}
-import java.nio.channels.Channels
-import java.nio.charset.StandardCharsets
-import org.apache.commons.math3.util.MathUtils
-import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
-import org.joda.time.format.ISODateTimeFormat
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
@@ -34,15 +21,10 @@ import org.skytruth.common._
 import org.skytruth.common.AdditionalUnits._
 import org.skytruth.common.Implicits._
 import org.skytruth.common.ScioContextResource._
-import org.skytruth.dataflow.{TFRecordSink, TFRecordUtils}
 
 import scala.collection.{mutable, immutable}
-import scala.collection.JavaConversions._
-import scala.math
 
 import resource._
-
-import org.apache.commons.lang3.builder.ToStringBuilder._
 
 object Pipeline extends LazyLogging {
 
@@ -52,8 +34,7 @@ object Pipeline extends LazyLogging {
     val environment = remaining_args.required("env")
     val jobName = remaining_args.required("job-name")
     val generateModelFeatures = remaining_args.boolean("generate-model-features", true)
-    val generateAnchorages = remaining_args.boolean("generate-anchorages", true)
-    val generateAnchorageVisits = remaining_args.boolean("generate-anchorage-visits", true)
+    val anchoragesPath = remaining_args("anchorages-path")
     val generateEncounters = remaining_args.boolean("generate-encounters", true)
 
     val config = GcpConfig.makeConfig(environment, jobName)
@@ -72,7 +53,14 @@ object Pipeline extends LazyLogging {
       val matches = (InputDataParameters.allDataYears).map { year =>
         val path = InputDataParameters.measuresPathPattern(year)
 
-        sc.tableRowJsonFile(path)
+        sc.textFile(path)
+      }
+
+      val anchorages = if (!anchoragesPath.isEmpty) {
+        sc.textFile(anchoragesPath)
+          .map { json => Anchorage.fromJson(parse(json)) }
+      } else {
+        sc.parallelize(Seq.empty[Anchorage])
       }
 
       val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
@@ -84,43 +72,6 @@ object Pipeline extends LazyLogging {
 
       val processed =
         AISDataProcessing.filterAndProcessVesselRecords(locationRecords)
-
-      val anchorages = if (generateAnchorages) {
-        val anchoragePoints =
-          Anchorages.findAnchoragePointCells(processed)
-        val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
-
-        // Output anchorages points.
-        val anchoragePointsPath = config.pipelineOutputPath + "/anchorage_points"
-        anchoragePoints.map { anchoragePoint =>
-          compact(render(anchoragePoint.toJson))
-        }.saveAsTextFile(anchoragePointsPath)
-
-        // And anchorages.
-        val anchoragesPath = config.pipelineOutputPath + "/anchorages"
-        anchorages.map { anchorage =>
-          compact(render(anchorage.toJson))
-        }.saveAsTextFile(anchoragesPath)
-
-        if (generateAnchorageVisits) {
-          val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_visits"
-          val anchorageVisits =
-            Anchorages.findAnchorageVisits(locationRecords,
-                                           anchorages,
-                                           AnchorageParameters.minAnchorageVisitDuration)
-
-          anchorageVisits.map {
-            case (metadata, visits) =>
-              compact(
-                render(("mmsi" -> metadata.mmsi) ~
-                  ("visits" -> visits.map(_.toJson))))
-          }.saveAsTextFile(anchorageVisitsPath)
-        }
-
-        anchorages
-      } else {
-        sc.parallelize(Seq.empty[Anchorage])
-      }
 
       val locationsWithAdjacency = if (generateEncounters) {
         val adjacencies =

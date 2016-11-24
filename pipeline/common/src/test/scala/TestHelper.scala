@@ -2,9 +2,10 @@ package org.skytruth.common
 
 import io.github.karols.units._
 import io.github.karols.units.SI._
-
-import com.spotify.scio.bigquery.TableRow
 import org.joda.time.{Duration, Instant}
+import org.json4s._
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
 import AdditionalUnits._
 
 object TestHelper {
@@ -17,15 +18,15 @@ object TestHelper {
                    speed: Double = 0.0,
                    course: Double = 0.0,
                    heading: Double = 0.0) =
-    TableRow("mmsi" -> mmsi.toString,
-             "timestamp" -> timestamp,
-             "lon" -> lon.toString,
-             "lat" -> lat.toString,
-             "distance_from_shore" -> (distanceFromShore * 1000.0).toString,
-             "distance_from_port" -> (distanceFromPort * 1000.0).toString,
-             "speed" -> speed.toString,
-             "course" -> course.toString,
-             "heading" -> heading.toString)
+        compact(render(("mmsi" -> mmsi) ~
+             ("timestamp" -> timestamp) ~
+             ("lon" -> lon) ~
+             ("lat" -> lat) ~
+             ("distance_from_shore" -> (distanceFromShore * 1000.0)) ~
+             ("distance_from_port" -> (distanceFromPort * 1000.0)) ~
+             ("speed" -> speed) ~
+             ("course" -> course) ~
+             ("heading" -> heading)))
 
   def ts(timestamp: String) = Instant.parse(timestamp)
 

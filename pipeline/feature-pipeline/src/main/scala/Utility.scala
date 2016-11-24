@@ -5,23 +5,19 @@ import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
 import com.google.protobuf.{ByteString, MessageLite}
-import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
-import com.google.cloud.dataflow.sdk.io.{FileBasedSink, Write}
 import com.google.cloud.dataflow.sdk.options.{
   DataflowPipelineOptions,
   PipelineOptions,
   PipelineOptionsFactory
 }
-import com.google.cloud.dataflow.sdk.util.{GcsUtil}
-import com.google.cloud.dataflow.sdk.util.gcsfs.{GcsPath}
+import com.google.cloud.dataflow.sdk.util.GcsUtil
+import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import java.io.{File, FileOutputStream, FileReader, InputStream, OutputStream}
-import java.lang.{RuntimeException}
 import java.nio.channels.Channels
 
-import org.apache.commons.math3.util.MathUtils
 import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._

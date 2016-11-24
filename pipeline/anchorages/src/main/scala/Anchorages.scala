@@ -299,7 +299,7 @@ object Anchorages extends LazyLogging {
       val matches = (InputDataParameters.allDataYears).map { year =>
         val path = InputDataParameters.measuresPathPattern(year)
 
-        sc.tableRowJsonFile(path)
+        sc.textFile(path)
       }
 
       val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
@@ -328,6 +328,7 @@ object Anchorages extends LazyLogging {
         compact(render(anchorage.toJson))
       }.saveAsTextFile(anchoragesPath)
 
+      // And find anchorage visits.
       val anchorageVisitsPath = config.pipelineOutputPath + "/anchorage_visits"
       val anchorageVisits =
         Anchorages.findAnchorageVisits(locationRecords,

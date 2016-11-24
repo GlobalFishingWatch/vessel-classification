@@ -12,6 +12,10 @@ import com.typesafe.scalalogging.{LazyLogging, Logger}
 import java.io.{FileReader}
 import org.apache.commons.math3.util.MathUtils
 import org.joda.time.{Duration, Instant}
+import org.json4s._
+import org.json4s.JsonAST.JValue
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConversions._
 
@@ -34,27 +38,33 @@ object RangeValidator {
 }
 
 object AISDataProcessing extends LazyLogging {
-
   lazy val blacklistedMmsis = Set(0, 12345)
 
   // Normalize from -180 to + 180
   def angleNormalize(angle: DoubleU[degrees]) =
     MathUtils.normalizeAngle(angle.convert[radians].value, 0.0).of[radians].convert[degrees]
 
+  implicit val formats = DefaultFormats
+  implicit class JValueExtended(value: JValue) {
+    def has(field: String) = ((value \ field) != JNothing)
+    def getString(field:String) = (value \ field).extract[String]
+    def getDouble(field: String) = (value \ field).extract[Double]
+  }
+
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
   // by ascending timestamp.
   def readJsonRecords(
-      inputs: Seq[SCollection[TableRow]],
+      inputs: Seq[SCollection[String]],
       knownFishingMMSIs: Set[Int],
       minRequiredPositions: Long): SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
 
     val input = SCollection.unionAll(inputs)
     // Keep only records with a location.
-    val validRecords = input
-      .filter(json => json.containsKey("lat") && json.containsKey("lon"))
+    val validRecords = input.map(line => parse(line))
+      .filter(json => json.has("lat") && json.has("lon"))
       // Build a typed location record with units of measure.
       .map(json => {
-        val mmsi = json.getLong("mmsi").toInt
+        val mmsi = (json \ "mmsi").extract[Int]
         val metadata = VesselMetadata(mmsi, knownFishingMMSIs.contains(mmsi))
         val record =
           // TODO(alexwilson): Double-check all these units are correct.
