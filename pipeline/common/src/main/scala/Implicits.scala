@@ -4,6 +4,8 @@ import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
+import com.spotify.scio._
+import com.spotify.scio.values.SCollection
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import scala.collection.{mutable, immutable}
 
@@ -57,5 +59,9 @@ object Implicits {
       }
       (acc / weight).of[T]
     }
+  }
+
+  implicit class RicherSCollection[T](collection: SCollection[T]) {
+    def groupAll(): SCollection[Iterable[T]] = collection.groupBy(v => 0).map(_._2)
   }
 }
