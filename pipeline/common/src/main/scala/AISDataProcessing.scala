@@ -47,8 +47,8 @@ object AISDataProcessing extends LazyLogging {
   implicit val formats = DefaultFormats
   implicit class JValueExtended(value: JValue) {
     def has(field: String) = ((value \ field) != JNothing)
-    def getString(field: String) = (value \ field).extract[String]
-    def getDouble(field: String) = (value \ field).extract[Double]
+    def getString(field: String) = (value \ field).extractOpt[String].getOrElse("")
+    def getDouble(field: String) = (value \ field).extractOpt[Double].getOrElse(0.0)
   }
 
   // Reads JSON vessel records, filters to only location records, groups by MMSI and sorts
