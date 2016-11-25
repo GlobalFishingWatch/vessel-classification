@@ -47,7 +47,7 @@ object AnchorageParameters {
 }
 
 case class AnchoragePoint(meanLocation: LatLon,
-                          vessels: Set[VesselMetadata],
+                          vessels: IndexedSeq[VesselMetadata],
                           meanDistanceToShore: DoubleU[kilometer],
                           meanDriftRadius: DoubleU[kilometer]) {
   def toJson = {
@@ -81,13 +81,13 @@ object AnchoragePoint {
     val meanDistanceToShore = (json \ "mean_distance_to_shore_km").extract[Double].of[kilometer]
     val meanDriftRadius = (json \ "mean_drift_radius_km").extract[Double].of[kilometer]
     val vessels =
-      (json \ "vessels").extract[List[JValue]].map(jv => VesselMetadata.fromJson(jv)).toSet
+      (json \ "vessels").extract[List[JValue]].map(jv => VesselMetadata.fromJson(jv)).toIndexedSeq
     AnchoragePoint(meanLocation, vessels, meanDistanceToShore, meanDriftRadius)
   }
 }
 
 case class Anchorage(meanLocation: LatLon,
-                     anchoragePoints: Set[AnchoragePoint],
+                     anchoragePoints: IndexedSeq[AnchoragePoint],
                      meanDistanceToShore: DoubleU[kilometer],
                      meanDriftRadius: DoubleU[kilometer]) {
   def id: String =
@@ -120,7 +120,7 @@ object Anchorage extends LazyLogging {
   def fromAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]) = {
     val weights = anchoragePoints.map(_.vessels.size.toDouble)
     Anchorage(LatLon.weightedMean(anchoragePoints.map(_.meanLocation), weights),
-              anchoragePoints.toSet,
+              anchoragePoints.toIndexedSeq,
               anchoragePoints.map(_.meanDistanceToShore).weightedMean(weights),
               // Averaging across multiple anchorage points for drift radius
               // is perhaps a little statistically dubious, but may still prove
@@ -134,7 +134,7 @@ object Anchorage extends LazyLogging {
     val meanDistanceToShore = (json \ "mean_distance_to_shore_km").extract[Double].of[kilometer]
     val meanDriftRadius = (json \ "mean_drift_radius_km").extract[Double].of[kilometer]
     val anchoragePoints =
-      (json \ "anchorage_point_ids").extract[List[String]].map(id => anchoragePointMap(id)).toSet
+      (json \ "anchorage_point_ids").extract[List[String]].map(id => anchoragePointMap(id)).toIndexedSeq
     Anchorage(meanLocation, anchoragePoints, meanDistanceToShore, meanDriftRadius)
   }
 
@@ -156,7 +156,7 @@ object Anchorage extends LazyLogging {
     logger.info(s"Read ${anchoragePointMap.size} anchorage points.")
 
     val anchorages =
-      readAllToJson(anchoragesPath).map(json => Anchorage.fromJson(json, anchoragePointMap)).toSeq
+      readAllToJson(anchoragesPath).map(json => Anchorage.fromJson(json, anchoragePointMap)).toIndexedSeq
     logger.info(s"Read ${anchorages.size} anchorages.")
     anchorages
   }
@@ -180,6 +180,18 @@ case class AnchorageVisit(anchorage: Anchorage, arrival: Instant, departure: Ins
 }
 
 object Anchorages extends LazyLogging {
+  def getAnchoragesLookup(anchoragesRootPath: String) = {
+    val gcs = GoogleCloudStorage()
+    val anchorages = if (!anchoragesRootPath.isEmpty) {
+      Anchorage.readAnchorages(gcs, anchoragesRootPath)
+    } else {
+      Seq.empty[Anchorage]
+    }
+    AdjacencyLookup(anchorages,
+        (anchorage: Anchorage) => anchorage.meanLocation,
+        AnchorageParameters.anchorageVisitDistanceThreshold,
+        AnchorageParameters.anchoragesS2Scale)
+  }
   def findAnchoragePointCells(
       input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[AnchoragePoint] = {
 
@@ -196,7 +208,7 @@ object Anchorages extends LazyLogging {
         val meanDistanceToShore = visits.map { _._2.meanDistanceToShore }.mean
         val meanDriftRadius = visits.map { _._2.meanDriftRadius }.mean
 
-        AnchoragePoint(centralPoint, uniqueVessels.toSet, meanDistanceToShore, meanDriftRadius)
+        AnchoragePoint(centralPoint, uniqueVessels.toIndexedSeq, meanDistanceToShore, meanDriftRadius)
     }.filter { _.vessels.size >= AnchorageParameters.minUniqueVesselsForAnchorage }
   }
 

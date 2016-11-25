@@ -46,16 +46,9 @@ object Pipeline extends LazyLogging {
     options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
 
-    val gcs = GoogleCloudStorage()
-
-    val anchorages = if (!anchoragesRootPath.isEmpty) {
-      Anchorage.readAnchorages(gcs, anchoragesRootPath)
-    } else {
-      Seq.empty[Anchorage]
-    }
 
     managed(ScioContext(options)).acquireAndGet((sc) => {
-
+      logger.info("Finding matching files.")
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
@@ -65,6 +58,7 @@ object Pipeline extends LazyLogging {
         sc.textFile(path)
       }
 
+      logger.info("Building pipeline.")
       val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
 
       val minValidLocations = 200
@@ -99,7 +93,7 @@ object Pipeline extends LazyLogging {
       }
 
       if (generateModelFeatures) {
-        val features = ModelFeatures.buildVesselFeatures(locationsWithAdjacency, anchorages).map {
+        val features = ModelFeatures.buildVesselFeatures(locationsWithAdjacency, anchoragesRootPath).map {
           case (md, feature) =>
             (s"${md.mmsi}", feature)
         }
@@ -111,6 +105,8 @@ object Pipeline extends LazyLogging {
       // Get a list of all MMSIs to save to disk to speed up TF training startup.
       val mmsiListPath = config.pipelineOutputPath + "/mmsis"
       processed.keys.groupAll.flatMap(_.map(md => s"${md.mmsi}")).saveAsTextFile(mmsiListPath)
+
+      logger.info("Launching pipeline.")
     })
   }
 }

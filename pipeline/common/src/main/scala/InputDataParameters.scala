@@ -16,7 +16,7 @@ object InputDataParameters {
   val inputMeasuresPath =
     "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment"
   def measuresPathPattern(year: String) =
-    s"${inputMeasuresPath}/$year-*-*/*-of-*"
+    s"${inputMeasuresPath}/$year-05-*/*-of-*"
 
   val knownFishingMMSIs = "feature-pipeline/src/main/data/treniformis_known_fishing_mmsis_2016.txt"
 
