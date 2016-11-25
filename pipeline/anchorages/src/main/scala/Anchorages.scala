@@ -241,12 +241,8 @@ object Anchorages extends LazyLogging {
   }
 
   def buildAnchoragesFromAnchoragePoints(
-      anchorages: SCollection[AnchoragePoint]): SCollection[Anchorage] =
-    anchorages
-    // TODO(alexwilson): These three lines hackily group all anchorages on one mapper
-    .map { a =>
-      (0, a)
-    }.groupByKey.map { case (_, anchorages) => anchorages }
+      anchorages: SCollection[AnchoragePoint]): SCollection[Anchorage] = anchorages
+    .groupAll
     // Build anchorage group list.
     .flatMap { anchorages =>
       mergeAdjacentAnchoragePoints(anchorages)
