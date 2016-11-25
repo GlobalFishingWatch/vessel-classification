@@ -6,7 +6,7 @@ import tensorflow.contrib.slim as slim
 import logging
 
 from classification.model import ModelBase
-from classification.objectives import (SummaryObjective,
+from classification.objectives import (
     TrainNetInfo, VesselMetadataClassificationObjective,
     FishingLocalizationObjectiveCrossEntropy)
 
@@ -48,23 +48,15 @@ class Model(ModelBase):
                                                   utility.VESSEL_CLASS_NAMES),
             VesselMetadataClassificationObjective(
                 'sublabel', 'Vessel detailed class', vessel_metadata,
-                utility.VESSEL_CLASS_DETAILED_NAMES),
+                utility.VESSEL_CLASS_DETAILED_NAMES)
         ]
-
-        self.summary_objective = SummaryObjective(
-                'histograms', 'Histograms')
 
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
             'fishing_localisation', 'Fishing localisation', vessel_metadata)
 
         self.training_objectives = self.classification_training_objectives + [
-            self.fishing_localisation_objective, self.summary_objective
+            self.fishing_localisation_objective
         ]
-
-
-    @property
-    def max_window_duration_seconds(self):
-        return 90 * 24 * 3600
 
     @property
     def window_max_points(self):
@@ -77,8 +69,6 @@ class Model(ModelBase):
 
         # Build a tower consisting of stacks of misconception layers in parallel
         # with size 1 convolutional shortcuts to help train.
-
-        self.summary_objective.build(current)
 
         layers = []
 
@@ -153,8 +143,6 @@ class Model(ModelBase):
 
         self.fishing_localisation_objective.build(fishing_logits)
 
-
-
         return logit_list, fishing_logits
 
     def build_inference_net(self, features, timestamps, mmsis):
@@ -169,9 +157,6 @@ class Model(ModelBase):
             self.fishing_localisation_objective.build_evaluation(timestamps,
                                                                  mmsis))
 
-        evaluations.append(self.summary_objective.build_evaluation(timestamps,
-                                                                 mmsis))
-
         return evaluations
 
     def build_training_net(self, features, timestamps, mmsis):
@@ -179,9 +164,17 @@ class Model(ModelBase):
         logits_list, fishing_logits = self.build_model(
             tf.constant(True), features)
 
+        # logits_list, fishing_scores = self.misconception_with_fishing_ranges(
+        #     features, mmsis, True)
+
         trainers = []
-        for tobj in self.training_objectives:
-            trainers.append(tobj.build_trainer(timestamps, mmsis))
+        for i in range(len(self.classification_training_objectives)):
+            trainers.append(self.classification_training_objectives[i]
+                            .build_trainer(timestamps, mmsis))
+
+        trainers.append(
+            self.fishing_localisation_objective.build_trainer(timestamps,
+                                                              mmsis))
 
         example = slim.get_or_create_global_step() * self.batch_size
 
@@ -190,5 +183,6 @@ class Model(ModelBase):
             self.learning_decay_rate)
 
         optimizer = tf.train.MomentumOptimizer(learning_rate, self.momentum)
+        # optimizer = tf.train.AdamOptimizer(1e-5)
 
         return TrainNetInfo(optimizer, trainers)
