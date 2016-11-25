@@ -121,6 +121,13 @@ Run `yapf -r -i .` in the top level directory to fix the format of the full proj
 Some of our jobs are run on managed services (for instance the feature pipeline on Cloud Dataflow, the
 tensor flow model training on Cloud ML). But other jobs are deployed to Compute Engine using Docker.
 
+To build a fat jar for any of the pipelines, we use an sbt plugin: 'sbt-assembly'.
+
+* To build a fat jar of the feature pipeline (in sbt console):
+  - `project features`.
+  - `assembly`.
+  - Once done, assembly will report the output path of the fat jar.
+
 To build and deploy inference, from the root directory:
 
 * `docker build -f deploy/inference/Dockerfile .`
