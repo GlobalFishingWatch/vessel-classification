@@ -28,6 +28,10 @@ import dateutil.parser
 import datetime
 import pytz
 
+# Fix fine CM
+# std dev of length.
+# COmmit HTML with comment before model feature fixes
+
 InferenceResults = namedtuple('InferenceResults',
                               ['mmsi', 'inferred_labels', 'true_labels',
                                'start_dates', 'scores', 'label_list'])
@@ -123,23 +127,38 @@ def f1_score(y_true, y_pred):
     return 2 / (1 / prec + 1 / recall)
 
 
-def accuracy_score(y_true, y_pred):
-    y_true = np.asarray(y_true, dtype=bool)
-    y_pred = np.asarray(y_pred, dtype=bool)
+def accuracy_score(y_true, y_pred, weights=None):
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    if weights is None:
+        weights = np.ones_like(y_pred)
+    weights = np.asarray(weights)
 
     correct = (y_true == y_pred)
 
-    return correct.mean()
+    return (weights * correct).sum() / weights.sum()
+
+
+def weights(labels, y_true, y_pred, max_weight=200):
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+
+    weights = np.zeros([len(y_true)])
+    for lbl in labels:
+        trues = (y_true == lbl)
+        if trues.sum():
+            wt = min(len(trues) / trues.sum(), max_weight)
+            weights += trues * wt
+
+    return weights
 
 
 def base_confusion_matrix(y_true, y_pred, labels):    
     n = len(labels)
-    label_map = {lbl.lower() : i for i, lbl in enumerate(labels)}
-    cm = np.zeros([n,n], dtype=int)
+    label_map = {lbl : i for i, lbl in enumerate(labels)}
+    cm = np.zeros([n, n], dtype=int)
 
     for yt, yp in zip(y_true, y_pred):
-        yt = yt.lower()
-        yp = yp.lower()
         if yt not in label_map:
             logging.warn('%s not in label_map', yt)
             continue
@@ -307,12 +326,21 @@ def ydump_metrics(doc, results):
 
     with tag('div', klass="unbreakable"):
         line('h3', 'Metrics by Label')
+        row_vals = precision_recall(
+                         consolidated.label_list, 
+                         consolidated.true_labels,
+                         consolidated.inferred_labels)
         ydump_table(doc, ['Label', 'Precision', 'Recall'],
                     [(a, '{:.2f}'.format(b), "{:.2f}".format(c))
-                     for (a, b, c) in precision_recall(
-                         consolidated.label_list, consolidated.true_labels,
-                         consolidated.inferred_labels)])
-
+                     for (a, b, c) in row_vals])
+        wts = weights(consolidated.label_list, 
+                         consolidated.true_labels,
+                         consolidated.inferred_labels)
+        line('h4', 'Accuracy with equal class weight')
+        text(            str(accuracy_score( 
+                         consolidated.true_labels,
+                         consolidated.inferred_labels,
+                         wts)))
 
 def ydump_fishing_localisation(doc, results):
     doc, tag, text, line = doc.ttl()
@@ -374,14 +402,16 @@ def clean_label(x):
 
 
 def precision_recall(labels, y_true, y_pred):
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
     results = []
     for lbl in labels:
-        positives = (y_pred == lbl)
         trues = (y_true == lbl)
-        true_positives = (positives & trues)
-        precision = true_positives.sum() / (positives.sum() + 1e-10)
-        recall = true_positives.sum() / (trues.sum() + 1e-10)
-        results.append((lbl, precision, recall))
+        positives = (y_pred == lbl)
+        if trues.sum() and positives.sum():
+            # Only return cases where there are least one vessel present in both cases
+            results.append((lbl, precision_score(trues, positives),
+                                    recall_score(trues, positives)))
     return results
 
 
@@ -504,7 +534,7 @@ class ClassificationExtractor(object):
         self.true_labels = []
         self.start_dates = []
         self.scores = []
-        self.all_labels = set()
+        self.all_labels = set(label_map.values())
    
     def extract(self, row):
         mmsi = row['mmsi']
@@ -734,6 +764,10 @@ def compute_results(args):
             for field in ['is_fishing', 'label', 'sublabel', 'length']:
                 if row[field]:
                     maps[field][mmsi] = clean_label(row[field])
+    # Fill in any missing fine fields with coarse values
+    for mmsi in maps['label']:
+        if mmsi not in maps['sublabel']:
+            maps['sublabel'][mmsi] = maps['label'][mmsi]
 
     results = {}
 
