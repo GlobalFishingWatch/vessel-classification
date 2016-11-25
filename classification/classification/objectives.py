@@ -63,48 +63,9 @@ class EvaluationBase(object):
         pass
 
 
-class SummaryObjective(ObjectiveBase):
-    def __init__(self, metadata_label, name):
-        super(SummaryObjective, self).__init__(metadata_label, name, 0.0)
-
-    def build(self, net):
-        self.inputs = net
-
-    def _build_summary(self):
-        #TODO(bitsofbits): pull these names from someplace
-        ops = {}
-        for i, name in enumerate(['log_timestampDeltaSeconds', 'log_distanceDeltaMeters', 'log_speedMps', 'log_integratedSpeedMps',
-                    'cogDeltaDegrees_div_180', 'localTodFeature', 'localMonthOfYearFeature', 'integratedCogDeltaDegrees_div_180',
-                    'log_distanceToShoreKm', 'log_distanceToBoundingAnchorageKm', 'log_timeToBoundingAnchorageS']):
-            ops[name] = tf.histogram_summary("input/{}-{}".format(name, i), tf.reshape(self.inputs[:, :, :, i], [-1]), 
-                #TODO(bitsofbits): may need not need all of these collection keys
-                collections=[tf.GraphKeys.UPDATE_OPS, tf.GraphKeys.SUMMARIES])
-        return ops
-
-    def build_trainer(self, timestamps, mmsis):
-        ops = self._build_summary()
-        return Trainer(0, ops.values())
-
-    def build_evaluation(self, timestamps, mmsis):
-
-        build_summary = self._build_summary
-
-        class Evaluation(EvaluationBase):
-
-            def build_test_metrics(self):
-                ops = build_summary()
-
-                return {}, ops
-
-            def build_json_results(self, prediction, timestamps):
-                return {}
-
-        return Evaluation(self.metadata_label, self.name, None, None, None)    
-
-
 class RegressionObjective(ObjectiveBase):
     def __init__(self, metadata_label, name, value_from_mmsi, loss_weight=1.0):
-        super(RegressionObjective, self).__init__(metadata_label, name, loss_weight)
+        super(self.__class__, self).__init__(metadata_label, name, loss_weight)
         self.value_from_mmsi = value_from_mmsi
 
     def build(self, net):
@@ -157,7 +118,7 @@ class RegressionObjective(ObjectiveBase):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, masked_mean_error,
                          prediction):
-                super(Evaluation, self).__init__(
+                super(self.__class__, self).__init__(
                     metadata_label, name, prediction, timestamps, mmsis)
                 self.masked_mean_error = masked_mean_error
                 self.mmsis = mmsis
@@ -559,17 +520,27 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
 
         dense_labels = self.dense_labels(
             tf.shape(self.prediction), timestamps, mmsis)
+        thresholded_prediction = tf.to_int32(self.prediction > 0.5)
+        valid = tf.to_int32(tf.not_equal(dense_labels, -1))
+        ones = tf.to_int32(dense_labels > 0.5)
+        weights = tf.to_float(valid)
 
         raw_loss = self.loss_function(dense_labels)
+
         update_ops.append(
             tf.summary.scalar('%s/Training loss' % self.name, raw_loss))
+
+        accuracy = slim.metrics.accuracy(
+            thresholded_prediction, ones, weights=weights)
+        update_ops.append(
+            tf.summary.scalar('%s/Training accuracy' % self.name, accuracy))
 
         loss = raw_loss * self.loss_weight
 
         return Trainer(loss, update_ops)
 
     def build_evaluation(self, timestamps, mmsis):
-        dense_labels = self.dense_labels
+        dense_labels_fn = self.dense_labels
 
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, prediction, timestamps,
@@ -578,12 +549,11 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                                                  prediction, timestamps, mmsis)
 
             def build_test_metrics(self):
-                labels = dense_labels(
+                dense_labels = dense_labels_fn(
                     tf.shape(self.prediction), self.timestamps, self.mmsis)
                 thresholded_prediction = tf.to_int32(self.prediction > 0.5)
-
-                valid = tf.to_int32(tf.not_equal(labels, -1))
-                ones = tf.to_int32(tf.equal(labels, 1))
+                valid = tf.to_int32(tf.not_equal(dense_labels, -1))
+                ones = tf.to_int32(dense_labels > 0.5)
                 weights = tf.to_float(valid)
 
                 raw_metrics = {
