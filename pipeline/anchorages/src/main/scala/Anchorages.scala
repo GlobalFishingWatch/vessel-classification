@@ -114,7 +114,7 @@ case class Anchorage(meanLocation: LatLon,
   }
 }
 
-object Anchorage {
+object Anchorage extends LazyLogging {
   implicit val formats = DefaultFormats
 
   def fromAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]) = {
@@ -138,23 +138,27 @@ object Anchorage {
     Anchorage(meanLocation, anchoragePoints, meanDistanceToShore, meanDriftRadius)
   }
 
-  def readAnchorages(rootPath: String): Seq[Anchorage] = {
+  def readAnchorages(gcs: GoogleCloudStorage, rootPath: String): Seq[Anchorage] = {
     val anchoragePointsPath = rootPath + "/anchorage_points"
     val anchoragesPath = rootPath + "/anchorages"
 
-    def readAllToJson(path: String) = new File(path).listFiles.flatMap { p =>
-      managed(scala.io.Source.fromFile(p)).acquireAndGet { s =>
-        s.getLines.map(line => parse(line))
+    def readAllToJson(rootPath: String) =
+      gcs.list(rootPath).flatMap { p =>
+        gcs.get(p).map(l => parse(l))
       }
-    }
 
-    val anchoragePointMap = readAllToJson(rootPath + "/anchorage_points")
+    logger.info("Reading anchorage points.")
+    val anchoragePointMap = readAllToJson(anchoragePointsPath)
       .map(AnchoragePoint.fromJson _)
       .map(ap => (ap.id, ap))
       .toMap
 
-    readAllToJson(rootPath + "/anchorages").map(json =>
-      Anchorage.fromJson(json, anchoragePointMap))
+    logger.info("Read ${anchoragePointMap.size} anchorage points.")
+
+    val anchorages =
+      readAllToJson(anchoragesPath).map(json => Anchorage.fromJson(json, anchoragePointMap)).toSeq
+    logger.info("Read ${anchorages.size} anchorages.")
+    anchorages
   }
 }
 

@@ -45,6 +45,14 @@ object Pipeline extends LazyLogging {
     options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
 
+    val gcs = GoogleCloudStorage()
+
+    val anchorages = if (!anchoragesRootPath.isEmpty) {
+      Anchorage.readAnchorages(gcs, anchoragesRootPath)
+    } else {
+      Seq.empty[Anchorage]
+    }
+
     managed(ScioContext(options)).acquireAndGet((sc) => {
 
       // Read, filter and build location records. We build a set of matches for all
@@ -54,12 +62,6 @@ object Pipeline extends LazyLogging {
         val path = InputDataParameters.measuresPathPattern(year)
 
         sc.textFile(path)
-      }
-
-      val anchorages = if (!anchoragesRootPath.isEmpty) {
-        Anchorage.readAnchorages(anchoragesRootPath)
-      } else {
-        Seq.empty[Anchorage]
       }
 
       val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
