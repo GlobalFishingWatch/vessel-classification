@@ -121,6 +121,13 @@ Run `yapf -r -i .` in the top level directory to fix the format of the full proj
 Some of our jobs are run on managed services (for instance the feature pipeline on Cloud Dataflow, the
 tensor flow model training on Cloud ML). But other jobs are deployed to Compute Engine using Docker.
 
+To build a fat jar for any of the pipelines, we use an sbt plugin: 'sbt-assembly'.
+
+* To build a fat jar of the feature pipeline (in sbt console):
+  - `project features`.
+  - `assembly`.
+  - Once done, assembly will report the output path of the fat jar.
+
 To build and deploy inference, from the root directory:
 
 * `docker build -f deploy/inference/Dockerfile .`
@@ -140,7 +147,8 @@ To build and deploy inference, from the root directory:
 * Cloud Dataflow
    * From the sbt console:
    * Run jobs, specifying the zone and max number of workers, e.g.
-     `run --zone=europe-west1-c  --maxNumWorkers=80 --job-name=new_pipeline_features --env=dev`.
+       - Anchorages: `run --env=dev --zone=europe-west1-c --job-name=anchoragesOnly --maxNumWorkers=600 --diskSizeGb=100`.
+       - Feature pipeline: `run --env=dev --zone=europe-west1-c  --maxNumWorkers=80 --job-name=new_pipeline_features`.
 * Running TF locally:
    * Training:
        - `python -m classification.run_training alex.vessel_classification <...>`
@@ -149,4 +157,5 @@ To build and deploy inference, from the root directory:
        - `./deploy_cloudml.py --model_name alex.vessel_classification --env dev --job_name test2`
        - `./deploy_cloudml.py --model_name tim.tmodel_1 --env dev --job_name test2`
    * Inference:
-       - `python -m classification.run_inference alex.vessel_classification --root_feature_path gs://alex-dataflow-scratch/features-scratch/new_features_ports_anchorage/20161018T153546Z/features --inference_results_path=`pwd`/vessel_classification.json.gz --inference_parallelism 20  --feature_dimensions 11 --model_checkpoint_path vessel_classification_model.ckpt-500001`
+       - Vessel classification: `python -m classification.run_inference alex.vessel_classification --root_feature_path gs://alex-dataflow-scratch/features-scratch/new_features_ports_anchorage/20161018T153546Z/features --inference_results_path=`pwd`/vessel_classification.json.gz --inference_parallelism 20  --feature_dimensions 11 --model_checkpoint_path vessel_classification_model.ckpt-500001`
+       - Fishing localisation: `python -m classification.run_inference alex.fishing_range_classification --root_feature_path gs://alex-dataflow-scratch/features-scratch/new_features_ports_anchorage/20161018T153546Z/features --inference_results_path=`pwd`/fishing_localisation.json.gz --inference_parallelism 20  --feature_dimensions 11 --model_checkpoint_path vessel_classification_model.ckpt-500001`

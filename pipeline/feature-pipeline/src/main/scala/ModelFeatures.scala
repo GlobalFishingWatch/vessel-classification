@@ -91,7 +91,7 @@ object ModelFeatures extends LazyLogging {
           val distanceDeltaMeters = p1.location.getDistance(p0.location).value
           val speedMps = p1.speed.convert[meters_per_second].value
           val integratedSpeedMps = distanceDeltaMeters / timestampDeltaSeconds
-          val cogDeltaDegrees = Utility.angleNormalize((p1.course - p0.course)).value
+          val cogDeltaDegrees = AISDataProcessing.angleNormalize((p1.course - p0.course)).value
           val integratedCogDeltaDegrees = S2
             .turnAngle(ll0.normalized().toPoint(),
                        ll1.normalized().toPoint(),
@@ -106,9 +106,9 @@ object ModelFeatures extends LazyLogging {
               .convert[degrees]
               .value / 180.0)
           val offsetTimezone = DateTimeZone.forOffsetMillis(longitudeTzOffsetSeconds.toInt * 1000)
-          val localTime = new LocalDateTime(timestampSeconds, offsetTimezone)
+          val localTime = new LocalDateTime(p1.timestamp.getMillis, offsetTimezone)
           val localTodFeature = ((localTime
-              .getHourOfDay() * (localTime.getMinuteOfHour() / 60.0)) - 12.0) / 12.0
+              .getHourOfDay() + (localTime.getMinuteOfHour() / 60.0)) - 12.0) / 12.0
           val localMonthOfYearFeature = (localTime.getMonthOfYear() - 6.0) / 6.0
 
           val (distanceToBoundingAnchorageKm, timeToBoundingAnchorageS) =
@@ -187,27 +187,20 @@ object ModelFeatures extends LazyLogging {
 
   def buildVesselFeatures(
       input: SCollection[(VesselMetadata, Seq[VesselLocationRecordWithAdjacency])],
-      anchorages: SCollection[Anchorage]): SCollection[(VesselMetadata, SequenceExample)] = {
-    val siAnchorages = anchorages.asListSideInput
+      anchorages: Seq[Anchorage]): SCollection[(VesselMetadata, SequenceExample)] = {
+    val anchoragesLookup = AdjacencyLookup[Anchorage](
+      anchorages,
+      (v: Anchorage) => v.meanLocation,
+      AnchorageParameters.anchorageVisitDistanceThreshold,
+      AnchorageParameters.anchoragesS2Scale)
 
-    val anchorageLookupCache = ValueCache[AdjacencyLookup[Anchorage]]()
-    input
-      .withSideInputs(siAnchorages)
-      .filter {
-        case ((metadata, locations), _) => locations.size >= 3
-      }
-      .map {
-        case ((metadata, locations), s) =>
-          val anchorageLookup = anchorageLookupCache.get { () =>
-            AdjacencyLookup(s(siAnchorages),
-                            (v: Anchorage) => v.meanLocation,
-                            AnchorageParameters.anchorageVisitDistanceThreshold,
-                            AnchorageParameters.anchoragesS2Scale)
-          }
-          val features = buildSingleVesselFeatures(locations, anchorageLookup)
-          val featuresAsTFExample = buildTFExampleProto(metadata, features)
-          (metadata, featuresAsTFExample)
-      }
-      .toSCollection
+    input.filter {
+      case (metadata, locations) => locations.size >= 3
+    }.map {
+      case (metadata, locations) =>
+        val features = buildSingleVesselFeatures(locations, anchoragesLookup)
+        val featuresAsTFExample = buildTFExampleProto(metadata, features)
+        (metadata, featuresAsTFExample)
+    }
   }
 }

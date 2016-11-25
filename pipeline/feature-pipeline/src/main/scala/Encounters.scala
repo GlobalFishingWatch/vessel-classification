@@ -16,6 +16,60 @@ import scala.collection.{mutable, immutable}
 import scala.math._
 
 object Encounters extends LazyLogging {
+  def resampleVesselSeries(increment: Duration,
+                           input: Seq[VesselLocationRecord]): Seq[ResampledVesselLocation] = {
+    val incrementSeconds = increment.getStandardSeconds()
+    val maxInterpolateGapSeconds = Parameters.maxInterpolateGap.getStandardSeconds()
+    def tsToUnixSeconds(timestamp: Instant): Long = (timestamp.getMillis / 1000L)
+    def roundToIncrement(timestamp: Instant): Long =
+      (tsToUnixSeconds(timestamp) / incrementSeconds) * incrementSeconds
+
+    var iterTime = roundToIncrement(input.head.timestamp)
+    val endTime = roundToIncrement(input.last.timestamp)
+
+    var iterLocation = input.iterator
+
+    val interpolatedSeries = mutable.ListBuffer.empty[ResampledVesselLocation]
+    var lastLocationRecord: Option[VesselLocationRecord] = None
+    var currentLocationRecord = iterLocation.next()
+    while (iterTime <= endTime) {
+      while (tsToUnixSeconds(currentLocationRecord.timestamp) < iterTime && iterLocation.hasNext) {
+        lastLocationRecord = Some(currentLocationRecord)
+        currentLocationRecord = iterLocation.next()
+      }
+
+      lastLocationRecord.foreach { llr =>
+        val firstTimeSeconds = tsToUnixSeconds(llr.timestamp)
+        val secondTimeSeconds = tsToUnixSeconds(currentLocationRecord.timestamp)
+        val timeDeltaSeconds = secondTimeSeconds - firstTimeSeconds
+
+        val pointDensity = math.min(1.0, incrementSeconds.toDouble / timeDeltaSeconds.toDouble)
+
+        if (firstTimeSeconds <= iterTime && secondTimeSeconds >= iterTime &&
+            timeDeltaSeconds < maxInterpolateGapSeconds) {
+          val mix = (iterTime - firstTimeSeconds).toDouble / (secondTimeSeconds - firstTimeSeconds).toDouble
+
+          val interpLat = currentLocationRecord.location.lat.value * mix +
+              llr.location.lat.value * (1.0 - mix)
+          val interpLon = currentLocationRecord.location.lon.value * mix +
+              llr.location.lon.value * (1.0 - mix)
+
+          val interpDistFromShore = currentLocationRecord.distanceToShore.value * mix +
+              llr.distanceToShore.value * (1.0 - mix)
+
+          interpolatedSeries.append(
+            ResampledVesselLocation(new Instant(iterTime * 1000),
+                                    LatLon(interpLat.of[degrees], interpLon.of[degrees]),
+                                    interpDistFromShore.of[kilometer],
+                                    pointDensity))
+        }
+      }
+
+      iterTime += incrementSeconds
+    }
+
+    interpolatedSeries.toIndexedSeq
+  }
 
   def calculateEncounters(
       minDurationForEncounter: Duration,
@@ -144,7 +198,7 @@ object Encounters extends LazyLogging {
 
     val resampled: SCollection[(VesselMetadata, Seq[ResampledVesselLocation])] = vesselSeries.map {
       case (md, locations) =>
-        (md, Utility.resampleVesselSeries(interpolateIncrementSeconds, locations))
+        (md, resampleVesselSeries(interpolateIncrementSeconds, locations))
     }
 
     val groupedByTime = resampled.flatMap {

@@ -5,23 +5,19 @@ import io.github.karols.units.SI._
 import io.github.karols.units.defining._
 
 import com.google.protobuf.{ByteString, MessageLite}
-import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
-import com.google.cloud.dataflow.sdk.io.{FileBasedSink, Write}
 import com.google.cloud.dataflow.sdk.options.{
   DataflowPipelineOptions,
   PipelineOptions,
   PipelineOptionsFactory
 }
-import com.google.cloud.dataflow.sdk.util.{GcsUtil}
-import com.google.cloud.dataflow.sdk.util.gcsfs.{GcsPath}
+import com.google.cloud.dataflow.sdk.util.GcsUtil
+import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import java.io.{File, FileOutputStream, FileReader, InputStream, OutputStream}
-import java.lang.{RuntimeException}
 import java.nio.channels.Channels
 
-import org.apache.commons.math3.util.MathUtils
 import org.joda.time.{DateTime, DateTimeZone, Duration, Instant, LocalDateTime}
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
@@ -84,10 +80,6 @@ case class VesselEncounters(vessel1: VesselMetadata,
 }
 
 object Utility extends LazyLogging {
-  // Normalize from -180 to + 180
-  def angleNormalize(angle: DoubleU[degrees]) =
-    MathUtils.normalizeAngle(angle.convert[radians].value, 0.0).of[radians].convert[degrees]
-
   // TODO(alexwilson): Rolling this ourselves isn't nice. Explore how to do this with existing cloud dataflow sinks.
   def oneFilePerTFRecordSink[T <: MessageLite](basePath: String,
                                                values: SCollection[(String, T)]) = {
@@ -123,60 +115,5 @@ object Utility extends LazyLogging {
 
         finalPath
     }
-  }
-
-  def resampleVesselSeries(increment: Duration,
-                           input: Seq[VesselLocationRecord]): Seq[ResampledVesselLocation] = {
-    val incrementSeconds = increment.getStandardSeconds()
-    val maxInterpolateGapSeconds = Parameters.maxInterpolateGap.getStandardSeconds()
-    def tsToUnixSeconds(timestamp: Instant): Long = (timestamp.getMillis / 1000L)
-    def roundToIncrement(timestamp: Instant): Long =
-      (tsToUnixSeconds(timestamp) / incrementSeconds) * incrementSeconds
-
-    var iterTime = roundToIncrement(input.head.timestamp)
-    val endTime = roundToIncrement(input.last.timestamp)
-
-    var iterLocation = input.iterator
-
-    val interpolatedSeries = mutable.ListBuffer.empty[ResampledVesselLocation]
-    var lastLocationRecord: Option[VesselLocationRecord] = None
-    var currentLocationRecord = iterLocation.next()
-    while (iterTime <= endTime) {
-      while (tsToUnixSeconds(currentLocationRecord.timestamp) < iterTime && iterLocation.hasNext) {
-        lastLocationRecord = Some(currentLocationRecord)
-        currentLocationRecord = iterLocation.next()
-      }
-
-      lastLocationRecord.foreach { llr =>
-        val firstTimeSeconds = tsToUnixSeconds(llr.timestamp)
-        val secondTimeSeconds = tsToUnixSeconds(currentLocationRecord.timestamp)
-        val timeDeltaSeconds = secondTimeSeconds - firstTimeSeconds
-
-        val pointDensity = math.min(1.0, incrementSeconds.toDouble / timeDeltaSeconds.toDouble)
-
-        if (firstTimeSeconds <= iterTime && secondTimeSeconds >= iterTime &&
-            timeDeltaSeconds < maxInterpolateGapSeconds) {
-          val mix = (iterTime - firstTimeSeconds).toDouble / (secondTimeSeconds - firstTimeSeconds).toDouble
-
-          val interpLat = currentLocationRecord.location.lat.value * mix +
-              llr.location.lat.value * (1.0 - mix)
-          val interpLon = currentLocationRecord.location.lon.value * mix +
-              llr.location.lon.value * (1.0 - mix)
-
-          val interpDistFromShore = currentLocationRecord.distanceToShore.value * mix +
-              llr.distanceToShore.value * (1.0 - mix)
-
-          interpolatedSeries.append(
-            ResampledVesselLocation(new Instant(iterTime * 1000),
-                                    LatLon(interpLat.of[degrees], interpLon.of[degrees]),
-                                    interpDistFromShore.of[kilometer],
-                                    pointDensity))
-        }
-      }
-
-      iterTime += incrementSeconds
-    }
-
-    interpolatedSeries.toIndexedSeq
   }
 }

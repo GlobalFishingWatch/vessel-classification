@@ -22,15 +22,16 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     window_size = 3
     stride = 2
     feature_depth = 80
-    levels = 9
+    levels = 6
 
     @property
     def max_window_duration_seconds(self):
-        return 90 * 24 * 3600
+        # A fixed-length rather than fixed-duration window.
+        return 0
 
     @property
     def window_max_points(self):
-        return 4096
+        return 512
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
@@ -66,6 +67,15 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
         self.training_objectives = self.classification_training_objectives + [
             self.fishing_localisation_objective
+        ]
+
+    def build_training_file_list(self, base_feature_path, split):
+        random_state = np.random.RandomState()
+        training_mmsis = self.vessel_metadata.weighted_training_list(
+            random_state, split, self.max_replication_factor, lambda row: row['is_fishing'] == 'Fishing')
+        return [
+            '%s/%d.tfrecord' % (base_feature_path, mmsi)
+            for mmsi in training_mmsis
         ]
 
     def build_training_net(self, features, timestamps, mmsis):

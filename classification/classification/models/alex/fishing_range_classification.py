@@ -26,7 +26,8 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
     @property
     def max_window_duration_seconds(self):
-        return 11 * 24 * 3600
+        # A fixed-length rather than fixed-duration window.
+        return 0
 
     @property
     def window_max_points(self):

@@ -9,6 +9,81 @@ import org.skytruth.common._
 import org.skytruth.common.AdditionalUnits._
 
 import TestHelper._
+import EncountersTestHelper._
+
+object EncountersTestHelper {
+  def vlra(timestamp: String = "1970-01-01T00:00:00Z",
+          lat: Double = 0.0,
+          lon: Double = 0.0,
+          distanceToShore: Double = 500.0,
+          speed: Double = 0.0,
+          course: Double = 0.0,
+          heading: Double = 0.0,
+          numNeighbours: Int = 0,
+          closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)] = None) =
+    VesselLocationRecordWithAdjacency(
+      VesselLocationRecord(ts(timestamp),
+                           LatLon(lat.of[degrees], lon.of[degrees]),
+                           distanceToShore.of[kilometer],
+                           speed.of[knots],
+                           course.of[degrees],
+                           heading.of[degrees]),
+      Adjacency(numNeighbours, closestNeighbour))
+
+  def rvl(timestamp: String, lat: Double, lon: Double, pointDensity: Double = 1.0) =
+    ResampledVesselLocation(ts(timestamp),
+                            LatLon(lat.of[degrees], lon.of[degrees]),
+                            500.0.of[kilometer],
+                            pointDensity)
+
+  def rvla(timestamp: String = "1970-01-01T00:00:00Z",
+         lat: Double = 0.0,
+         lon: Double = 0.0,
+         pointDensity: Double = 1.0,
+         numNeighbours: Int = 0,
+         closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)] = None) =
+    ResampledVesselLocationWithAdjacency(
+      rvl(timestamp, lat, lon, pointDensity),
+      Adjacency(numNeighbours, closestNeighbour))
+}
+
+class LocationResamplerTests extends PipelineSpec with Matchers {
+  "The resampler" should "resample points, but not if they are too far apart" in {
+    val inputRecords = Seq(vlr("2011-06-30T23:58:00Z", lat = 10.0, lon = 10.0),
+                           // Pick up the exact value at 00:00:00
+                           vlr("2011-07-01T00:00:00Z", lat = 10.3, lon = 10.0),
+                           vlr("2011-07-01T00:02:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:04:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:06:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:08:00Z", lat = 10.0, lon = 10.0),
+                           // Interpolate time into 00:10:00, but no movement.
+                           vlr("2011-07-01T00:12:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T00:18:00Z", lat = 10.0, lon = 10.0),
+                           // Interpolate into 00:20:00, closer to the 00:18:00 point.
+                           vlr("2011-07-01T00:26:00Z", lat = 10.0, lon = 11.0),
+                           // Do not generate samples where the surrounding points are more than
+                           // an hour apart.
+                           vlr("2011-07-01T01:38:00Z", lat = 10.0, lon = 11.0),
+                           // Interpolate into 01:40:00.
+                           vlr("2011-07-01T01:42:00Z", lat = 11.0, lon = 11.0),
+                           vlr("2011-07-01T02:22:00Z", lat = 11.0, lon = 11.0))
+
+    val expected =
+      Seq(rvl("2011-07-01T00:00:00Z", 10.3, 10.0, 1.0),
+          rvl("2011-07-01T00:10:00Z", 10.0, 10.0, 1.0),
+          rvl("2011-07-01T00:20:00Z", 10.0, 10.25, 1.0),
+          rvl("2011-07-01T01:40:00Z", 10.5, 11.0, 1.0),
+          rvl("2011-07-01T01:50:00Z", 11.0, 11.0, 0.25),
+          rvl("2011-07-01T02:00:00Z", 11.0, 11.0, 0.25),
+          rvl("2011-07-01T02:10:00Z", 11.0, 11.0, 0.25),
+          rvl("2011-07-01T02:20:00Z", 11.0, 11.0, 0.25))
+
+    val result = Encounters.resampleVesselSeries(Duration.standardMinutes(10), inputRecords)
+
+    result should contain theSameElementsAs expected
+  }
+}
+
 
 class EncountersTest extends PipelineSpec with Matchers {
   val path1 = Seq(vlr("2011-01-01T15:40:00Z", -1.5032387, 55.2340155),
