@@ -24,11 +24,11 @@ import EncountersTestHelper._
 class FeatureBuilderTests extends PipelineSpec with Matchers {
   val anchorageLocations = IndexedSeq(
     Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4068508.of[degrees], 55.2363158.of[degrees]),
-        Seq(VesselMetadata(1)), 0.0.of[kilometer], 0.0.of[kilometer]))),
+        Set(VesselMetadata(1)), 0.0.of[kilometer], 0.0.of[kilometer]))),
     Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.4686489.of[degrees], 55.2206029.of[degrees]),
-        Seq(VesselMetadata(1)), 0.0.of[kilometer], 0.0.of[kilometer]))),
+        Set(VesselMetadata(1)), 0.0.of[kilometer], 0.0.of[kilometer]))),
     Anchorage.fromAnchoragePoints(Seq(AnchoragePoint(LatLon(-1.3983536.of[degrees], 55.2026308.of[degrees]), 
-        Seq(VesselMetadata(1)), 0.0.of[kilometer], 0.0.of[kilometer]))))
+        Set(VesselMetadata(1)), 0.0.of[kilometer], 0.0.of[kilometer]))))
 
   val vesselPath = Seq(vlra("2011-07-01T00:00:00Z", -1.4065933, 55.2350923, speed = 1.0),
                        vlra("2011-07-01T00:05:00Z", -1.4218712, 55.2342113, speed = 1.0),

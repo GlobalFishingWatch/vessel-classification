@@ -36,7 +36,9 @@ object Pipeline extends LazyLogging {
     val generateModelFeatures = remaining_args.boolean("generate-model-features", true)
     val anchoragesRootPath = remaining_args("anchorages-root-path")
     val generateEncounters = remaining_args.boolean("generate-encounters", true)
-    val dataYears = remaining_args.getOrElse("data-years", "2012,2013,2014,2015,2016")
+    val dataYears = remaining_args.getOrElse("data-years", InputDataParameters.defaultYearsToRun)
+    val dataFileGlob =
+      remaining_args.getOrElse("data-file-glob", InputDataParameters.defaultDataFileGlob)
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -46,14 +48,13 @@ object Pipeline extends LazyLogging {
     options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
 
-
     managed(ScioContext(options)).acquireAndGet((sc) => {
       logger.info("Finding matching files.")
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
       val matches = dataYears.split(",").map { year =>
-        val path = InputDataParameters.measuresPathPattern(year)
+        val path = InputDataParameters.measuresPathPattern(year, dataFileGlob)
 
         sc.textFile(path)
       }
@@ -93,10 +94,11 @@ object Pipeline extends LazyLogging {
       }
 
       if (generateModelFeatures) {
-        val features = ModelFeatures.buildVesselFeatures(locationsWithAdjacency, anchoragesRootPath).map {
-          case (md, feature) =>
-            (s"${md.mmsi}", feature)
-        }
+        val features =
+          ModelFeatures.buildVesselFeatures(locationsWithAdjacency, anchoragesRootPath).map {
+            case (md, feature) =>
+              (s"${md.mmsi}", feature)
+          }
         // Output vessel classifier features.
         val outputFeaturePath = config.pipelineOutputPath + "/features"
         val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
