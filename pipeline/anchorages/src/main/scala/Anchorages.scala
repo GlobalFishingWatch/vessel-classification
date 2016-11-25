@@ -153,11 +153,11 @@ object Anchorage extends LazyLogging {
       .map(ap => (ap.id, ap))
       .toMap
 
-    logger.info("Read ${anchoragePointMap.size} anchorage points.")
+    logger.info(s"Read ${anchoragePointMap.size} anchorage points.")
 
     val anchorages =
       readAllToJson(anchoragesPath).map(json => Anchorage.fromJson(json, anchoragePointMap)).toSeq
-    logger.info("Read ${anchorages.size} anchorages.")
+    logger.info(s"Read ${anchorages.size} anchorages.")
     anchorages
   }
 }

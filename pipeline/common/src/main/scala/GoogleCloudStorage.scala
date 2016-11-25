@@ -43,7 +43,8 @@ case class GoogleCloudStorage(private val storage: Storage) {
           next
         }
       }
-      var (currentVal, nextVal) = (readLine(), readLine())
+      var currentVal: Option[String] = None
+      var nextVal = readLine()
 
       override def hasNext = nextVal.isDefined
       override def next() = {
