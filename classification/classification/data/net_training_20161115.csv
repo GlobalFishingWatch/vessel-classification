@@ -9714,7 +9714,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 247305830,Fishing,Trawlers,,24.0,72.0,clav_fishing;eu_fishing
 247305840,Fishing,Trawlers,,20.469999999999999,53.0,eu_fishing
 247305860,Fishing,,,21.34,75.0,eu_fishing
-247306030,Fishing,Trollers,,17.629999999999999,18.0,eu_fishing
 247306040,Fishing,,,15.5,15.0,eu_fishing
 247306490,Fishing,Trawlers,,17.199999999999999,34.0,eu_fishing
 247306520,Fishing,,,18.199999999999999,32.0,eu_fishing
@@ -15327,7 +15326,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 265608620,Fishing,Fixed gear,Pots and traps,10.699999999999999,7.8899999999999997,eu_fishing
 265609090,Non-fishing,Cargo/Tanker,Cargo,,,cargotanker_fishing
 265610040,Non-fishing,Cargo/Tanker,Tanker,,,cargotanker_fishing
-265611970,Fishing,Trollers,,11.98,14.550000000000001,eu_fishing
 265612240,Fishing,Trawlers,,14.880000000000001,21.0,eu_fishing
 265612260,Fishing,Fixed gear,Pots and traps,9.2400000000000002,7.4699999999999998,eu_fishing
 265612300,Non-fishing,Cargo/Tanker,Tanker,,,cargotanker_fishing
@@ -15339,7 +15337,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 265623120,Non-fishing,Tug/Pilot/Supply,Pilot,,,five24_fishing
 265626160,Fishing,Trawlers,,9.9700000000000006,13.99,eu_fishing
 265627630,Non-fishing,Cargo/Tanker,Cargo,,,cargotanker_fishing
-265629560,Fishing,Trollers,,8.25,3.6200000000000001,eu_fishing
 265630670,Fishing,Fixed gear,,11.9,10.869999999999999,eu_fishing
 265630900,Fishing,Fixed gear,Set gillnets,11.449999999999999,15.0,eu_fishing
 265631320,Fishing,,,10.75,12.050000000000001,eu_fishing
@@ -15350,7 +15347,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 265635620,Fishing,Fixed gear,Pots and traps,8.9000000000000004,4.7800000000000002,eu_fishing
 265635810,Fishing,,,11.949999999999999,13.359999999999999,eu_fishing
 265636700,Fishing,Fixed gear,Set gillnets,10.84,10.26,eu_fishing
-265639120,Fishing,Trollers,,9.9800000000000004,7.8300000000000001,eu_fishing
 265640570,Fishing,Fixed gear,Pots and traps,9.5,4.1200000000000001,eu_fishing
 265643510,Fishing,,,9.5999999999999996,6.1399999999999997,eu_fishing
 265645290,Fishing,Fixed gear,,8.8499999999999996,4.8700000000000001,eu_fishing
@@ -15384,7 +15380,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 265674890,Fishing,Fixed gear,Set gillnets,11.199999999999999,13.4,eu_fishing
 265676610,Fishing,Fixed gear,Pots and traps,11.15,9.1500000000000004,eu_fishing
 265677890,Fishing,,,8.25,3.1499999999999999,eu_fishing
-265678200,Fishing,Trollers,,9.8499999999999996,6.21,eu_fishing
 265678430,Fishing,Fixed gear,Pots and traps,11.960000000000001,11.27,eu_fishing
 265680790,Fishing,,,11.699999999999999,7.0999999999999996,eu_fishing
 265681130,Fishing,Trawlers,,11.32,15.789999999999999,eu_fishing
@@ -15410,7 +15405,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 265701830,Fishing,,,11.48,11.49,eu_fishing
 265703000,Fishing,Trawlers,,34.579999999999998,308.0,eu_fishing
 265704000,Fishing,Trawlers,,33.850000000000001,234.0,eu_fishing
-265704020,Fishing,Trollers,,8.5299999999999994,5.2999999999999998,eu_fishing
 265704430,Fishing,Fixed gear,Set gillnets,13.85,26.0,eu_fishing
 265708000,Fishing,Trawlers,,34.979999999999997,358.0,eu_fishing
 265708380,Fishing,Fixed gear,Pots and traps,8.25,3.1499999999999999,eu_fishing
@@ -15639,7 +15633,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 271062075,Fishing,,,,68.0,itu_fishing
 271062077,Fishing,,,,87.0,itu_fishing
 271062092,Fishing,,,,94.019999999999996,itu_fishing
-271062093,Fishing,Trollers,,25.0,114.0,clav_fishing
 271062143,Fishing,,,,109.0,itu_fishing
 271069012,Fishing,,,,91.0,itu_fishing
 271069019,Fishing,,,,354.0,itu_fishing
@@ -15686,7 +15679,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 271072141,Fishing,,,,171.0,itu_fishing
 271072142,Fishing,,,,135.0,itu_fishing
 271072143,Fishing,,,,63.0,itu_fishing
-271072145,Fishing,Trollers,,22.73,25.0,clav_fishing
 271072148,Fishing,,,,34.600000000000001,itu_fishing
 271072151,Fishing,,,,25.0,itu_fishing
 271072156,Fishing,,,,78.0,itu_fishing
@@ -15732,7 +15724,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 271072278,Fishing,,,,71.0,itu_fishing
 271072280,Fishing,,,,108.0,itu_fishing
 271072286,Fishing,,,,72.0,itu_fishing
-271072288,Fishing,Trollers,,28.100000000000001,,clav_fishing;itu_fishing
 271072292,Fishing,,,,119.0,itu_fishing
 271072296,Fishing,,,,99.0,itu_fishing
 271072299,Fishing,,,,44.0,itu_fishing
@@ -15761,7 +15752,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 271072415,Fishing,,,,298.0,itu_fishing
 271072416,Fishing,,,,50.0,itu_fishing
 271072418,Fishing,,,,86.0,itu_fishing
-271072420,Fishing,Trollers,,25.920000000000002,111.0,clav_fishing;itu_fishing
 271072421,Fishing,,,,126.79000000000001,itu_fishing
 271072425,Fishing,,,,136.0,itu_fishing
 271072427,Fishing,,,,88.0,itu_fishing
@@ -15787,7 +15777,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 271072483,Fishing,,,,89.299999999999997,itu_fishing
 271072490,Fishing,,,,38.0,itu_fishing
 271072492,Fishing,,,,111.0,itu_fishing
-271072507,Fishing,Trollers,,25.350000000000001,,clav_fishing;itu_fishing
 271072517,Fishing,,,,81.0,itu_fishing
 271072520,Fishing,,,,82.0,itu_fishing
 271072522,Fishing,,,,26.0,itu_fishing
@@ -15812,7 +15801,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 271072595,Fishing,,,,103.0,itu_fishing
 271072598,Fishing,,,,59.0,itu_fishing
 271072600,Fishing,,,,40.939999999999998,itu_fishing
-271072603,Fishing,Trollers,,27.199999999999999,118.0,clav_fishing
 271072606,Fishing,,,,62.100000000000001,itu_fishing
 271072607,Fishing,,,,73.0,itu_fishing
 271072608,Fishing,,,,296.0,itu_fishing
@@ -16803,7 +16791,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 311000065,Non-fishing,Seismic vessel,,,,seismic_fishing
 311000083,Non-fishing,Cargo/Tanker,Cargo,,,kristina_fishing
 311000084,Non-fishing,Seismic vessel,,,,seismic_fishing
-311000093,Non-fishing,Passenger,Motor passenger,,,kristina_fishing
 311000114,Non-fishing,Cargo/Tanker,Cargo,,,kristina_fishing
 311000115,Non-fishing,Seismic vessel,,,,seismic_fishing
 311000135,Non-fishing,Cargo/Tanker,Tanker,,,kristina_fishing
@@ -16952,7 +16939,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 314401000,Non-fishing,Passenger,Sailing,,,kristina_fishing
 316001008,Fishing,,,,135.0,itu_fishing
 316001023,Fishing,Trawlers,,,115.0,itu_fishing
-316001125,Fishing,Trollers,,28.949999999999999,444.11500000000001,clav_fishing
 316001204,Fishing,Fixed gear,Pots and traps,,10.0,itu_fishing
 316001218,Fishing,Trawlers,,,35.0,itu_fishing
 316001229,Fishing,,,,5.0,itu_fishing
@@ -16961,7 +16947,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 316001412,Fishing,Trawlers,,,,kristina_fishing
 316001464,Fishing,,,,38.0,itu_fishing
 316001514,Fishing,,,,139.0,itu_fishing
-316001649,Fishing,Trollers,,22.66,80.159999999999997,clav_fishing
 316001757,Fishing,Trawlers,,,89.0,itu_fishing
 316001765,Fishing,,,,8.0,itu_fishing
 316001794,Fishing,Fixed gear,Pots and traps,,25.0,itu_fishing
@@ -17018,7 +17003,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 316002569,Fishing,,,,56.0,itu_fishing
 316002595,Fishing,,,,55.0,itu_fishing
 316002659,Fishing,Fixed gear,Pots and traps,,14.0,itu_fishing
-316002732,Fishing,Trollers,,18.289999999999999,110.06999999999999,clav_fishing
 316002757,Fishing,Fixed gear,Pots and traps,,26.0,itu_fishing
 316002769,Fishing,,,,25.0,itu_fishing
 316002812,Fishing,Fixed gear,Pots and traps,,15.0,itu_fishing
@@ -17181,7 +17165,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 316005460,Fishing,,,,94.0,itu_fishing
 316005482,Fishing,Fixed gear,Pots and traps,,14.0,itu_fishing
 316005483,Fishing,Fixed gear,Pots and traps,,12.0,itu_fishing
-316005485,Fishing,Trollers,,15.369999999999999,21.0,clav_fishing
 316005519,Fishing,Fixed gear,Pots and traps,,15.0,itu_fishing
 316005601,Fishing,,,,99.0,itu_fishing
 316005604,Fishing,,,,14.0,itu_fishing
@@ -17361,7 +17344,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 316011823,Fishing,,,,15.0,itu_fishing
 316012006,Fishing,,,,32.0,itu_fishing
 316012049,Fishing,,,,43.0,itu_fishing
-316012074,Fishing,Trollers,,12.65,24.524999999999999,clav_fishing
 316012153,Fishing,Fixed gear,Pots and traps,,19.0,itu_fishing
 316012168,Fishing,,,,82.0,itu_fishing
 316012215,Fishing,,,,12.0,itu_fishing
@@ -18308,7 +18290,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 356941000,Non-fishing,Cargo/Tanker,Cargo,,,cargotanker_fishing
 356952000,Non-fishing,Cargo/Tanker,Tanker,,,cargotanker_fishing
 356962000,Non-fishing,Reefer,,138.5,10629.0,reefer_fishing
-356986000,Non-fishing,Tug/Pilot/Supply,Supply,,,river_fishing
 356990000,Non-fishing,Cargo/Tanker,Cargo,,,kristina_fishing
 357014000,Fishing,,,,356.0,itu_fishing
 357020000,Non-fishing,Reefer,,100.98,4361.0,reefer_fishing
@@ -18357,7 +18338,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 366047000,Fishing,Trawlers,,,,kristina_fishing
 366177430,Fishing,Pole and line,,28.27,192.0,clav_fishing
 366207630,Fishing,,,21.82,89.0,clav_fishing;kristina_fishing
-366207650,Fishing,Trollers,,22.859999999999999,59.0,clav_fishing
 366218540,Fishing,Pole and line,,23.5,124.0,clav_fishing
 366222330,Fishing,Trawlers,,,,kristina_fishing
 366238710,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing
@@ -18395,7 +18375,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 366799370,Fishing,,,,15.0,itu_fishing
 366799770,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
 366813750,Non-fishing,Seismic vessel,,,,seismic_fishing
-366831470,Fishing,Trollers,,13.56,22.0,clav_fishing
 366832850,Non-fishing,Passenger,Sailing,,,five24_fishing
 366835820,Non-fishing,Passenger,,,,alex_fishing
 366841360,Non-fishing,Passenger,Sailing,,,five24_fishing
@@ -18425,7 +18404,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 366933360,Fishing,,,,,itu_fishing
 366934770,Fishing,,,,112.0,itu_fishing
 366936460,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
-366943720,Fishing,Trollers,,,31.5,clav_fishing
 366946150,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
 366947110,Non-fishing,Seismic vessel,,,,seismic_fishing
 366948190,Non-fishing,Cargo/Tanker,Tanker,,,cargotanker_fishing
@@ -18452,7 +18430,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 366978110,Fishing,Trawlers,,,,kristina_fishing
 366979230,Fishing,,,,,itu_fishing
 366979330,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
-366980030,Fishing,Trollers,,12.800000000000001,11.0,clav_fishing
 366980150,Fishing,,,,,itu_fishing
 366980490,Fishing,,,,94.0,itu_fishing
 366982260,Non-fishing,Tug/Pilot/Supply,Pilot,,,five24_fishing
@@ -18474,11 +18451,7 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367009760,Non-fishing,Passenger,,,,five24_fishing
 367010030,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367014280,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
-367019950,Fishing,Trollers,,,66.0,clav_fishing
-367020280,Fishing,Trollers,,14.109999999999999,22.5,clav_fishing
 367020870,Non-fishing,Passenger,,,,five24_fishing
-367028360,Fishing,Trollers,,,24.0,clav_fishing
-367030568,Fishing,Trollers,,23.600000000000001,138.0,clav_fishing
 367032060,Fishing,Trawlers,,,,kristina_fishing
 367036790,Non-fishing,Passenger,Sailing,,,kristina_fishing
 367036820,Fishing,,,,,itu_fishing
@@ -18486,11 +18459,9 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367038360,Fishing,,,,50.0,itu_fishing
 367038990,Fishing,Trawlers,,,,kristina_fishing
 367039250,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
-367040420,Fishing,Trollers,,14.425000000000001,41.0,clav_fishing
 367040650,Fishing,Pole and line,,25.530000000000001,157.0,clav_fishing
 367043490,Fishing,,,,49.0,itu_fishing
 367045260,Fishing,,,,194.0,itu_fishing
-367046890,Fishing,Trollers,,21.670000000000002,103.0,clav_fishing
 367047190,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367047240,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367051920,Fishing,Pole and line,,23.710000000000001,157.0,clav_fishing
@@ -18501,10 +18472,8 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367056452,Fishing,Trawlers,,,,kristina_fishing
 367057260,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing
 367057890,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
-367061930,Fishing,Trollers,,23.0,64.0,clav_fishing
 367066070,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
 367067090,Non-fishing,Tug/Pilot/Supply,Pilot,,,five24_fishing
-367070360,Fishing,Trollers,,17.065000000000001,68.5,clav_fishing
 367072000,Fishing,,,,12.0,itu_fishing
 367073540,Non-fishing,Passenger,,,,kristina_fishing
 367073740,Fishing,Pole and line,,25.0,90.0,clav_fishing
@@ -18516,7 +18485,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367077510,Non-fishing,Passenger,Sailing,,,kristina_fishing
 367078130,Fishing,,,32.090000000000003,180.0,clav_fishing;kristina_fishing
 367079330,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
-367079690,Fishing,Trollers,,22.34,143.0,clav_fishing
 367082010,Fishing,Trawlers,,,,kristina_fishing
 367082710,Fishing,Trawlers,,,,kristina_fishing
 367083560,Fishing,Trawlers,,,,kristina_fishing
@@ -18543,7 +18511,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367131750,Fishing,Pole and line,,25.84,194.0,clav_fishing
 367134000,Non-fishing,Cargo/Tanker,Tanker,,,cargotanker_fishing
 367134180,Fishing,Pole and line,,,53.5,clav_fishing
-367138310,Fishing,Trollers,,18.260000000000002,32.0,clav_fishing
 367139970,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367141000,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367142010,Non-fishing,Passenger,,,,kristina_fishing
@@ -18553,28 +18520,22 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367144820,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367147290,Non-fishing,Passenger,Sailing,,,kristina_fishing
 367147350,Fishing,Pole and line,,23.469999999999999,103.0,clav_fishing
-367147830,Fishing,Trollers,,20.399999999999999,36.0,clav_fishing
 367149920,Fishing,Pole and line,,19.760000000000002,54.0,clav_fishing
 367156340,Fishing,Trawlers,,,,kristina_fishing
 367157110,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
-367157650,Fishing,Trollers,,19.100000000000001,36.0,clav_fishing
 367158250,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
 367159740,Fishing,Trawlers,,,,itu_fishing
 367159840,Fishing,Pole and line,,23.5,106.0,clav_fishing
 367161350,Fishing,Trawlers,,,,kristina_fishing
-367161930,Fishing,Trollers,,15.145,222.5,clav_fishing
 367162190,Fishing,,,26.149999999999999,211.0,clav_fishing;kristina_fishing
 367162680,Non-fishing,Passenger,,,,five24_fishing
-367165240,Fishing,Trollers,,25.899999999999999,139.0,clav_fishing
 367167000,Non-fishing,Cargo/Tanker,Cargo,,,alex_fishing
 367169090,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
 367169320,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367171320,Fishing,Pole and line,,22.399999999999999,154.0,clav_fishing
 367171380,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367172050,Non-fishing,Passenger,Sailing,,,kristina_fishing
-367172260,Fishing,Trollers,,37.969999999999999,179.0,clav_fishing
 367173260,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing
-367176750,Fishing,Trollers,,20.420000000000002,75.5,clav_fishing
 367187480,Fishing,Pole and line,,22.600000000000001,35.0,clav_fishing
 367196000,Non-fishing,Cargo/Tanker,Cargo,,,cargotanker_fishing
 367305920,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
@@ -18585,22 +18546,17 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367326480,Fishing,Pole and line,,32.219999999999999,198.0,clav_fishing
 367327330,Non-fishing,Passenger,,,,five24_fishing
 367330620,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing
-367331760,Fishing,Trollers,,21.640000000000001,99.0,clav_fishing
 367331830,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
-367332090,Fishing,Trollers,,23.039999999999999,99.5,clav_fishing
 367332950,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367338620,Non-fishing,Seismic vessel,,,,seismic_fishing
 367340460,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367346310,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
-367347000,Fishing,Trollers,,32.490000000000002,185.0,clav_fishing
-367348005,Fishing,Trollers,,25.02,163.0,clav_fishing
 367352680,Non-fishing,Tug/Pilot/Supply,Pilot,,,five24_fishing
 367353380,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367353660,Non-fishing,Cargo/Tanker,Tanker,,,cargotanker_fishing
 367354780,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
 367357020,Non-fishing,Seismic vessel,,,,seismic_fishing
 367362460,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
-367364340,Fishing,Trollers,,23.984999999999999,132.5,clav_fishing
 367366210,Fishing,Pole and line,,,110.5,clav_fishing
 367371620,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367371830,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
@@ -18614,12 +18570,10 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367396120,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367396670,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367399010,Non-fishing,Passenger,Sailing,,,five24_fishing
-367399460,Fishing,Trollers,,9.75,13.5,clav_fishing
 367399910,Fishing,Trawlers,,,,kristina_fishing
 367400420,Non-fishing,Passenger,,,,five24_fishing
 367401480,Fishing,Pole and line,,20.010000000000002,148.0,clav_fishing
 367402560,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
-367402670,Fishing,Trollers,,18.469999999999999,71.0,clav_fishing
 367402730,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
 367405000,Fishing,Trawlers,,,,kristina_fishing
 367410780,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
@@ -18634,7 +18588,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367438000,Non-fishing,Cargo/Tanker,Cargo,,,cargotanker_fishing
 367438210,Non-fishing,Passenger,,,,five24_fishing
 367440940,Non-fishing,Passenger,Sailing,,,five24_fishing
-367444510,Fishing,Trollers,,15.109999999999999,97.0,clav_fishing
 367447520,Non-fishing,Passenger,,,,alex_fishing
 367449030,Non-fishing,Passenger,Sailing,,,five24_fishing
 367454720,Non-fishing,Seismic vessel,,,,seismic_fishing
@@ -18643,7 +18596,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367455690,Fishing,Purse seines,,,,kristina_fishing
 367457000,Non-fishing,Cargo/Tanker,Tanker,,,cargotanker_fishing
 367458670,Non-fishing,Tug/Pilot/Supply,Tug,,,kristina_fishing
-367466000,Fishing,Trollers,,22.460000000000001,89.5,clav_fishing
 367473510,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367474960,Non-fishing,Tug/Pilot/Supply,Pilot,,,five24_fishing
 367475340,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
@@ -18667,7 +18619,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367497580,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367497940,Fishing,Trawlers,,,,itu_fishing
 367498820,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
-367500440,Fishing,Trollers,,,52.5,clav_fishing
 367501540,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing
 367505660,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367513150,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
@@ -18695,11 +18646,9 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367551660,Fishing,Pole and line,,23.5,138.0,clav_fishing
 367558180,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 367559610,Fishing,Pole and line,,23.800000000000001,123.0,clav_fishing
-367561420,Fishing,Trollers,,31.449999999999999,177.0,clav_fishing
 367562570,Non-fishing,Passenger,Sailing,,,five24_fishing
 367571460,Fishing,Trawlers,,,,kristina_fishing
 367573650,Non-fishing,Passenger,Sailing,,,five24_fishing
-367575760,Fishing,Trollers,,17.670000000000002,83.0,clav_fishing
 367581180,Non-fishing,Seismic vessel,,,,seismic_fishing
 367583060,Non-fishing,Passenger,Sailing,,,five24_fishing
 367583840,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
@@ -19799,7 +19748,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 367703350,Fishing,,,,,itu_fishing
 367705000,Fishing,,,,184.0,itu_fishing
 367834000,Non-fishing,Cargo/Tanker,Cargo,,,cargotanker_fishing
-367874400,Fishing,Trollers,,19.899999999999999,110.5,clav_fishing
 368032000,Fishing,Trawlers,,,,kristina_fishing
 368085000,Fishing,Trawlers,,,,kristina_fishing
 368148000,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
@@ -19813,7 +19761,6 @@ mmsi,is_fishing,label,sublabel,length,tonnage,list_sources
 368454000,Fishing,,,,187.0,itu_fishing
 368515000,Non-fishing,Tug/Pilot/Supply,Tug,,,five24_fishing;tugs_fishing
 368548000,Fishing,Trawlers,,,,kristina_fishing
-368578000,Fishing,Trollers,,26.539999999999999,113.0,clav_fishing
 368633000,Fishing,,,,162.0,itu_fishing
 368684000,Non-fishing,Cargo/Tanker,Cargo,,,cargotanker_fishing
 368685000,Non-fishing,Cargo/Tanker,Cargo,,,cargotanker_fishing
