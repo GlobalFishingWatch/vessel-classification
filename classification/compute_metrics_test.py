@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 import csv
 import numpy as np
@@ -21,21 +22,26 @@ class BasicMetricTests(tf.test.TestCase):
         self.assertEqual(compute_metrics.accuracy_score(self.y_true, self.y_pred), 0.7)
 
 
-# class MultiClassMetrics(tf.test.TestCase):
+class MultiClassMetrics(tf.test.TestCase):
 
-#     labels = [0, 1, 2]
-#     y_true = [0, 1, 2, 0, 1, 2, 0, 1, 2]
-#     y_pred = [0, 1, 2, 2, 0, 2, 1, 1, 0]
+    labels = [0, 1, 2]
+    y_true = [0, 1, 1, 2, 2, 2, 2, 2]
+    y_pred = [0, 1, 2, 2, 0, 2, 1, 1, ]
 
-#     def test_precision_recall(self):
-#         self.assertAllEqual(compute_metrics.precision_recall(self.labels, self.y_true, self.y_pred), 
-#             [[0, 1, 1, 1],
-#              [1, 1, 1, 1],
-#              [2, 1, 1, 1]])
+    def _expected_weights(self):
+        a, b, c = np.array([8, 4, 8/5])
+        expected = np.array([a, b, b, c, c, c, c, c])
+        expected /= expected.sum()
+        return expected
 
-#  x: array([[ 0.      ,  0.333333,  0.333333,  0.555556],
-#        [ 1.      ,  0.666667,  0.666667,  0.777778],
-#        [ 2.      ,  0.666667,  0.666667,  0.777778]])
+    def test_weights(self):
+        self.assertAllEqual(compute_metrics.weights(self.labels, self.y_true, self.y_pred), 
+            self._expected_weights())
+
+    def test_weighted_accuracy(self):
+        weights = self._expected_weights()
+        self.assertAllEqual(compute_metrics.accuracy_score(self.y_true, self.y_pred, weights), 
+            weights[0] + weights[1] + 2 * weights[-1])
 
 
 

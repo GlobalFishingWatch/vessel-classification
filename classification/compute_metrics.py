@@ -22,14 +22,13 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.utility import is_test
+from classification.utility import is_test, VESSEL_CLASS_DETAILED_NAMES
 import gzip
 import dateutil.parser
 import datetime
 import pytz
 
 # Fix fine CM
-# std dev of length.
 # COmmit HTML with comment before model feature fixes
 
 InferenceResults = namedtuple('InferenceResults',
@@ -150,7 +149,7 @@ def weights(labels, y_true, y_pred, max_weight=200):
             wt = min(len(trues) / trues.sum(), max_weight)
             weights += trues * wt
 
-    return weights
+    return weights / weights.sum()
 
 
 def base_confusion_matrix(y_true, y_pred, labels):    
@@ -277,14 +276,14 @@ def ydump_length(doc, results):
         for lbl in labels:
             mask = (lbl == true_labels)
             err = RMS(true_lengths[mask], pred_lengths[mask])
-            results.append((lbl, err, true_lengths[mask].mean()))
+            results.append((lbl, err, true_lengths[mask].mean(), true_lengths[mask].std()))
         return results
 
     with tag('div', klass="unbreakable"):
         line('h3', 'RMS Error by Label')
-        ydump_table(doc, ['Label', 'RMS Error (m)', 'Mean Length (m)'], [
-            (a, '{:.2f}'.format(b), '{:.2f}'.format(c))
-            for (a, b, c
+        ydump_table(doc, ['Label', 'RMS Error (m)', 'Mean Length (m)', 'StdDev Length (m)'], [
+            (a, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
+            for (a, b, c, d
                  ) in RMS_by_label(consolidated.true_lengths, consolidated.
                                    inferred_lengths, consolidated.true_labels)
         ])
@@ -767,7 +766,8 @@ def compute_results(args):
     # Fill in any missing fine fields with coarse values
     for mmsi in maps['label']:
         if mmsi not in maps['sublabel']:
-            maps['sublabel'][mmsi] = maps['label'][mmsi]
+            if maps['label'][mmsi] in VESSEL_CLASS_DETAILED_NAMES:
+                maps['sublabel'][mmsi] = maps['label'][mmsi]
 
     results = {}
 
