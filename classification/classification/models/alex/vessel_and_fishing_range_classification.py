@@ -72,7 +72,8 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     def build_training_file_list(self, base_feature_path, split):
         random_state = np.random.RandomState()
         training_mmsis = self.vessel_metadata.weighted_training_list(
-            random_state, split, self.max_replication_factor, lambda row: row['is_fishing'] == 'Fishing')
+            random_state, split, self.max_replication_factor,
+            lambda row: row['is_fishing'] == 'Fishing')
         return [
             '%s/%d.tfrecord' % (base_feature_path, mmsi)
             for mmsi in training_mmsis

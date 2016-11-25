@@ -35,18 +35,15 @@ VESSEL_CATEGORIES = {
         ['Purse seines', ['Purse seines']], ['Squid', ['Squid']],
         ['Pole and line', ['Pole and line']], [
             'Cargo/Tanker', ['Cargo', 'Tanker']
-        ], ['Reefer', ['Reefer']],
-        ['Passenger', ['Sailing']],
-        ['Seismic vessel', ['Seismic vessel']],
-        ['Tug/Pilot', ['Tug', 'Pilot']]
+        ], ['Reefer', ['Reefer']], ['Passenger', ['Sailing']],
+        ['Seismic vessel', ['Seismic vessel']], ['Tug/Pilot', ['Tug', 'Pilot']]
     ],
     'fishing': [
-        ['Fishing', ['Drifting longlines', 'Set longlines', 'Trawlers',
-                     'Pots and traps', 'Set gillnets', 'Purse seines', 'Squid',
-                     'Pole and line']],
-        ['Non-fishing',
-         ['Cargo', 'Tanker', 'Reefer', 'Sailing',
-          'Seismic vessel', 'Tug', 'Pilot']]
+        ['Fishing',
+         ['Drifting longlines', 'Set longlines', 'Trawlers', 'Pots and traps',
+          'Set gillnets', 'Purse seines', 'Squid', 'Pole and line']],
+        ['Non-fishing', ['Cargo', 'Tanker', 'Reefer', 'Sailing',
+                         'Seismic vessel', 'Tug', 'Pilot']]
     ]
 }
 """ The coarse vessel label set. """
@@ -57,9 +54,8 @@ VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
 """ The finer vessel label set. """
 VESSEL_CLASS_DETAILED_NAMES = [
     'Squid', 'Trawlers', 'Seismic vessel', 'Set gillnets', 'Reefer',
-    'Pole and line', 'Purse seines', 'Pots and traps', 'Cargo',
-    'Sailing', 'Set longlines',
-    'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
+    'Pole and line', 'Purse seines', 'Pots and traps', 'Cargo', 'Sailing',
+    'Set longlines', 'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
 ]
 
 FISHING_NONFISHING_NAMES = ['Fishing', 'Non-fishing']
@@ -621,8 +617,11 @@ class VesselMetadata(object):
     def mmsis_for_split(self, split):
         return self.metadata_by_split[split].keys()
 
-    def weighted_training_list(self, random_state, split,
-                               max_replication_factor, row_filter = lambda row: True):
+    def weighted_training_list(self,
+                               random_state,
+                               split,
+                               max_replication_factor,
+                               row_filter=lambda row: True):
         replicated_mmsis = []
         logging.info("Training mmsis: %d", len(self.mmsis_for_split(split)))
         fishing_ranges_mmsis = []
@@ -775,6 +774,7 @@ def find_available_mmsis(feature_path):
 
         logging.info('Found %d mmsis.', len(mmsi_list))
         return set(mmsi_list)
+
 
 def find_available_mmsis_glob(feature_path):
     # TODO(alexwilson): Using a temporary session to get the matching files on
