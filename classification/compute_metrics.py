@@ -15,7 +15,6 @@ import os
 import csv
 import subprocess
 import numpy as np
-from sklearn import metrics
 import dateutil.parser
 import logging
 import argparse
@@ -23,11 +22,14 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.utility import is_test
+from classification.utility import is_test, VESSEL_CLASS_DETAILED_NAMES
 import gzip
 import dateutil.parser
 import datetime
 import pytz
+
+# Fix fine CM
+# COmmit HTML with comment before model feature fixes
 
 InferenceResults = namedtuple('InferenceResults',
                               ['mmsi', 'inferred_labels', 'true_labels',
@@ -91,6 +93,80 @@ table {
 
 
 """
+
+# basic metrics 
+
+def precision_score(y_true, y_pred):
+    y_true = np.asarray(y_true, dtype=bool)
+    y_pred = np.asarray(y_pred, dtype=bool)
+
+    true_pos = y_true & y_pred
+    all_pos = y_pred
+
+    return true_pos.sum() / all_pos.sum()
+
+
+def recall_score(y_true, y_pred):
+    y_true = np.asarray(y_true, dtype=bool)
+    y_pred = np.asarray(y_pred, dtype=bool)
+
+    true_pos = y_true & y_pred
+    all_true = y_true
+
+    return true_pos.sum() / all_true.sum()
+
+
+def f1_score(y_true, y_pred):
+    prec = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+
+    return 2 / (1 / prec + 1 / recall)
+
+
+def accuracy_score(y_true, y_pred, weights=None):
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    if weights is None:
+        weights = np.ones_like(y_pred)
+    weights = np.asarray(weights)
+
+    correct = (y_true == y_pred)
+
+    return (weights * correct).sum() / weights.sum()
+
+
+def weights(labels, y_true, y_pred, max_weight=200):
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+
+    weights = np.zeros([len(y_true)])
+    for lbl in labels:
+        trues = (y_true == lbl)
+        if trues.sum():
+            wt = min(len(trues) / trues.sum(), max_weight)
+            weights += trues * wt
+
+    return weights / weights.sum()
+
+
+def base_confusion_matrix(y_true, y_pred, labels):    
+    n = len(labels)
+    label_map = {lbl : i for i, lbl in enumerate(labels)}
+    cm = np.zeros([n, n], dtype=int)
+
+    for yt, yp in zip(y_true, y_pred):
+        if yt not in label_map:
+            logging.warn('%s not in label_map', yt)
+            continue
+        if yp not in label_map:
+            logging.warn('%s not in label_map', yp)
+            continue
+        cm[label_map[yt], label_map[yp]] += 1
+
+    return cm
+
+
+
 
 # Helper function formatting as HTML (using yattag)
 
@@ -197,14 +273,14 @@ def ydump_length(doc, results):
         for lbl in labels:
             mask = (lbl == true_labels)
             err = RMS(true_lengths[mask], pred_lengths[mask])
-            results.append((lbl, err, true_lengths[mask].mean()))
+            results.append((lbl, err, true_lengths[mask].mean(), true_lengths[mask].std()))
         return results
 
     with tag('div', klass="unbreakable"):
         line('h3', 'RMS Error by Label')
-        ydump_table(doc, ['Label', 'RMS Error (m)', 'Mean Length (m)'], [
-            (a, '{:.2f}'.format(b), '{:.2f}'.format(c))
-            for (a, b, c
+        ydump_table(doc, ['Label', 'RMS Error (m)', 'Mean Length (m)', 'StdDev Length (m)'], [
+            (a, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
+            for (a, b, c, d
                  ) in RMS_by_label(consolidated.true_lengths, consolidated.
                                    inferred_lengths, consolidated.true_labels)
         ])
@@ -246,12 +322,21 @@ def ydump_metrics(doc, results):
 
     with tag('div', klass="unbreakable"):
         line('h3', 'Metrics by Label')
+        row_vals = precision_recall(
+                         consolidated.label_list, 
+                         consolidated.true_labels,
+                         consolidated.inferred_labels)
         ydump_table(doc, ['Label', 'Precision', 'Recall'],
                     [(a, '{:.2f}'.format(b), "{:.2f}".format(c))
-                     for (a, b, c) in precision_recall(
-                         consolidated.label_list, consolidated.true_labels,
-                         consolidated.inferred_labels)])
-
+                     for (a, b, c) in row_vals])
+        wts = weights(consolidated.label_list, 
+                         consolidated.true_labels,
+                         consolidated.inferred_labels)
+        line('h4', 'Accuracy with equal class weight')
+        text(            str(accuracy_score( 
+                         consolidated.true_labels,
+                         consolidated.inferred_labels,
+                         wts)))
 
 def ydump_fishing_localisation(doc, results):
     doc, tag, text, line = doc.ttl()
@@ -262,11 +347,11 @@ def ydump_fishing_localisation(doc, results):
     header = ["Gear Type", "Precision", "Recall", "Accuracy", "F1-Score"]
     rows = []
     logging.info("Overall localisation accuracy %s",
-                 metrics.accuracy_score(y_true, y_pred))
+                 accuracy_score(y_true, y_pred))
     logging.info("Overall localisation precision %s",
-                 metrics.precision_score(y_true, y_pred))
+                 precision_score(y_true, y_pred))
     logging.info("Overall localisation recall %s",
-                 metrics.recall_score(y_true, y_pred))
+                 recall_score(y_true, y_pred))
 
     for cls in sorted(set(results.label_map.values())):
         true_chunks = []
@@ -282,10 +367,10 @@ def ydump_fishing_localisation(doc, results):
             y_true = np.concatenate(true_chunks)
             y_pred = np.concatenate(pred_chunks)
             rows.append([cls,
-                         metrics.precision_score(y_true, y_pred),
-                         metrics.recall_score(y_true, y_pred),
-                         metrics.accuracy_score(y_true, y_pred),
-                         metrics.f1_score(y_true, y_pred), ])
+                         precision_score(y_true, y_pred),
+                         recall_score(y_true, y_pred),
+                         accuracy_score(y_true, y_pred),
+                         f1_score(y_true, y_pred), ])
 
     rows.append(['', '', '', '', ''])
 
@@ -293,10 +378,10 @@ def ydump_fishing_localisation(doc, results):
     y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
 
     rows.append(['Overall',
-                 metrics.precision_score(y_true, y_pred),
-                 metrics.recall_score(y_true, y_pred),
-                 metrics.accuracy_score(y_true, y_pred),
-                 metrics.f1_score(y_true, y_pred), ])
+                 precision_score(y_true, y_pred),
+                 recall_score(y_true, y_pred),
+                 accuracy_score(y_true, y_pred),
+                 f1_score(y_true, y_pred), ])
 
     with tag('div', klass="unbreakable"):
         ydump_table(
@@ -313,14 +398,16 @@ def clean_label(x):
 
 
 def precision_recall(labels, y_true, y_pred):
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
     results = []
     for lbl in labels:
-        positives = (y_pred == lbl)
         trues = (y_true == lbl)
-        true_positives = (positives & trues)
-        precision = true_positives.sum() / (positives.sum() + 1e-10)
-        recall = true_positives.sum() / (trues.sum() + 1e-10)
-        results.append((lbl, precision, recall))
+        positives = (y_pred == lbl)
+        if trues.sum() and positives.sum():
+            # Only return cases where there are least one vessel present in both cases
+            results.append((lbl, precision_score(trues, positives),
+                                    recall_score(trues, positives)))
     return results
 
 
@@ -397,7 +484,7 @@ def confusion_matrix(results):
 
     """
     EPS = 1e-10
-    cm_raw = metrics.confusion_matrix(
+    cm_raw = base_confusion_matrix(
         results.true_labels, results.inferred_labels, results.label_list)
 
     # For off axis, normalize harmonic mean of row / col inverse errors.
@@ -443,19 +530,20 @@ class ClassificationExtractor(object):
         self.true_labels = []
         self.start_dates = []
         self.scores = []
-        self.all_labels = set()
-
+        self.all_labels = set(label_map.values())
     def extract(self, row):
         mmsi = row['mmsi']
         lbl = self.label_map.get(mmsi, "Unknown")
         if lbl == "Unknown":
             return
+        if self.field not in row:
+            return
         self.mmsi.append(mmsi)
-        label_scores = row['labels'][self.field]['label_scores']
+        label_scores = row[self.field]['label_scores']
         self.all_labels |= set(label_scores.keys())
         self.start_dates.append(dateutil.parser.parse(row['start_time']))
         self.true_labels.append(self.label_map[mmsi])
-        self.inferred_labels.append(row['labels'][self.field]['max_label'])
+        self.inferred_labels.append(row[self.field]['max_label'])
         self.scores.append(label_scores)
 
     def finalize(self):
@@ -485,11 +573,13 @@ class LengthExtractor(object):
         lbl = self.label_map.get(mmsi, "Unknown")
         if lbl == "Unknown" or mmsi not in self.length_map:
             return
+        if 'length' not in row:
+            return
         self.mmsi.append(mmsi)
         self.start_dates.append(dateutil.parser.parse(row['start_time']))
         self.true_lengths.append(float(self.length_map[mmsi]))
         self.true_labels.append(self.label_map.get(mmsi, 'Unknown'))
-        self.inferred_lengths.append(row['labels']['length']['value'])
+        self.inferred_lengths.append(row['length']['value'])
 
     def finalize(self):
         self.inferred_lengths = np.array(self.inferred_lengths)
@@ -514,13 +604,19 @@ class FishingRangeExtractor(object):
         # TODO: fix generation to generate consistent datetimes
         if x[-6:] == "+00:00":
             x = x[:-6]
-        dt = datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S")
+        try:
+            dt = datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S")
+        except:
+            logging.fatal('Could not parse "%s"', x)
+            raise
         return dt.replace(tzinfo=pytz.UTC)
 
     def extract(self, row):
+        if 'fishing_localisation' not in row:
+            return
         mmsi = row['mmsi']
-        rng = [(self._parse(a), self._parse(b))
-               for (a, b) in row['labels']['fishing_localisation']]
+        rng = [(self._parse(x['start_time']), self._parse(x['end_time']))
+               for x in row['fishing_localisation']]
         self.ranges_by_mmsi[mmsi].extend(rng)
         self.coverage_by_mmsi[mmsi].append(
             (self._parse(row['start_time']), self._parse(row['end_time'])))
@@ -658,6 +754,11 @@ def compute_results(args):
             for field in ['is_fishing', 'label', 'sublabel', 'length']:
                 if row[field]:
                     maps[field][mmsi] = clean_label(row[field])
+    # Fill in any missing fine fields with coarse values
+    for mmsi in maps['label']:
+        if mmsi not in maps['sublabel']:
+            if maps['label'][mmsi] in VESSEL_CLASS_DETAILED_NAMES:
+                maps['sublabel'][mmsi] = maps['label'][mmsi]
 
     results = {}
 
@@ -704,7 +805,8 @@ def dump_html(args, results):
         ydump_length(doc, results['length'])
         doc.stag('hr')
 
-    if not args.skip_localisation_metrics and results['localisation']:
+    # TODO: make localization results a class with __nonzero__ method
+    if not args.skip_localisation_metrics and results['localisation'].true_fishing_by_mmsi:
         doc.line('h2', 'Fishing Localisation')
         ydump_fishing_localisation(doc, results['localisation'])
         doc.stag('hr')
