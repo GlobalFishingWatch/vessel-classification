@@ -2,7 +2,7 @@
 
 For dev runs, use `--env=dev`.
 
-## Training a model
+## Building features, training and model, running inference.
 
 ### Run the anchorages pipeline to generate a set of anchorages.
 
@@ -39,17 +39,21 @@ For vessel classification and length regression:
 
 ### Run inference
 
-For fishing ranges, for all likely fishing vessels:
+For fishing ranges (all likely fishing vessels):
 
 ```
 python -m classification.run_inference alex.fishing_range_classification --root_feature_path gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output/features --inference_results_path=`pwd`/release-0.1.0-fishing-ranges-likely-fishing.json.gz --inference_parallelism 20  --feature_dimensions 12 --model_checkpoint_path fishing-range-model.ckpt-500007 --dataset_split likely_fishing_mmsis.txt
 ```
 
-(for the Test set, for metric computation `--dataset_split Test`).
+(for the Test set, for metric computation add `--dataset_split Test`).
 
 For vessel classification and length regression (whole ocean):
 
+```
+python -m classification.run_inference alex.vessel_classification --root_feature_path gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output/features --inference_results_path=`pwd`/release-0.1.0-vessel-classification-test.json.gz  --inference_parallelism 20  --feature_dimensions 12 --model_checkpoint_path vessel-classification-model.ckpt-159530
+```
 
+(for the Test set, for metric computation add `--dataset_split Test`).
 
 ### Compute metrics for the model runs
 
@@ -57,6 +61,12 @@ For fishing ranges:
 
 ```
 python compute_metrics.py --inference-path release-0.1.0-fishing-ranges-test.json.gz --label-path ./classification/data/net_training_20161115.csv --fishing-ranges ./classification/data/combined_fishing_ranges.csv --dest-path release-0.1.0-fishing-ranges-test-report.html
+```
+
+For vessel classification and length regression:
+
+```
+python compute_metrics.py --inference-path release-0.1.0-vessel-classification-test.json.gz --label-path ./classification/data/net_training_20161115.csv --fishing-ranges ./classification/data/combined_fishing_ranges.csv --dest-path vessel-classification-test-report.html
 ```
 
 ### Annotate likely fishing vessel AIS data with fishing ranges
