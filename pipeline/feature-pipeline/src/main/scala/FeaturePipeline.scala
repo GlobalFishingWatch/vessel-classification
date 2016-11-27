@@ -36,6 +36,9 @@ object Pipeline extends LazyLogging {
     val generateModelFeatures = remaining_args.boolean("generate-model-features", true)
     val anchoragesRootPath = remaining_args("anchorages-root-path")
     val generateEncounters = remaining_args.boolean("generate-encounters", true)
+    val dataYears = remaining_args.getOrElse("data-years", InputDataParameters.defaultYearsToRun)
+    val dataFileGlob =
+      remaining_args.getOrElse("data-file-glob", InputDataParameters.defaultDataFileGlob)
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -46,22 +49,17 @@ object Pipeline extends LazyLogging {
     options.setStagingLocation(config.dataflowStagingPath)
 
     managed(ScioContext(options)).acquireAndGet((sc) => {
-
+      logger.info("Finding matching files.")
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
-      val matches = (InputDataParameters.allDataYears).map { year =>
-        val path = InputDataParameters.measuresPathPattern(year)
+      val matches = dataYears.split(",").map { year =>
+        val path = InputDataParameters.measuresPathPattern(year, dataFileGlob)
 
         sc.textFile(path)
       }
 
-      val anchorages = if (!anchoragesRootPath.isEmpty) {
-        Anchorage.readAnchorages(anchoragesRootPath)
-      } else {
-        Seq.empty[Anchorage]
-      }
-
+      logger.info("Building pipeline.")
       val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
 
       val minValidLocations = 200
@@ -96,10 +94,11 @@ object Pipeline extends LazyLogging {
       }
 
       if (generateModelFeatures) {
-        val features = ModelFeatures.buildVesselFeatures(locationsWithAdjacency, anchorages).map {
-          case (md, feature) =>
-            (s"${md.mmsi}", feature)
-        }
+        val features =
+          ModelFeatures.buildVesselFeatures(locationsWithAdjacency, anchoragesRootPath).map {
+            case (md, feature) =>
+              (s"${md.mmsi}", feature)
+          }
         // Output vessel classifier features.
         val outputFeaturePath = config.pipelineOutputPath + "/features"
         val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
@@ -108,6 +107,8 @@ object Pipeline extends LazyLogging {
       // Get a list of all MMSIs to save to disk to speed up TF training startup.
       val mmsiListPath = config.pipelineOutputPath + "/mmsis"
       processed.keys.groupAll.flatMap(_.map(md => s"${md.mmsi}")).saveAsTextFile(mmsiListPath)
+
+      logger.info("Launching pipeline.")
     })
   }
 }
