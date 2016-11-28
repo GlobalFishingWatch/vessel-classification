@@ -621,8 +621,11 @@ class VesselMetadata(object):
     def mmsis_for_split(self, split):
         return self.metadata_by_split[split].keys()
 
-    def weighted_training_list(self, random_state, split,
-                               max_replication_factor, row_filter = lambda row: True):
+    def weighted_training_list(self,
+                               random_state,
+                               split,
+                               max_replication_factor,
+                               row_filter=lambda row: True):
         replicated_mmsis = []
         logging.info("Training mmsis: %d", len(self.mmsis_for_split(split)))
         fishing_ranges_mmsis = []
@@ -775,6 +778,7 @@ def find_available_mmsis(feature_path):
 
         logging.info('Found %d mmsis.', len(mmsi_list))
         return set(mmsi_list)
+
 
 def find_available_mmsis_glob(feature_path):
     # TODO(alexwilson): Using a temporary session to get the matching files on
