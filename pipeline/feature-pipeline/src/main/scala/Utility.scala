@@ -36,6 +36,7 @@ import resource._
 
 case class Adjacency(
     numNeighbours: Int,
+    numFishingNeighbours: Int,
     closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)])
 
 case class VesselLocationRecordWithAdjacency(location: VesselLocationRecord, adjacency: Adjacency)

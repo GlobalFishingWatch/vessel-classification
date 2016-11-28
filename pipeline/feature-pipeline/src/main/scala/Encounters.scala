@@ -182,6 +182,7 @@ object Encounters extends LazyLogging {
             location,
             Adjacency(
               current.adjacency.numNeighbours,
+              current.adjacency.numFishingNeighbours,
               current.adjacency.closestNeighbour
             )
           )
@@ -256,17 +257,24 @@ object Encounters extends LazyLogging {
           case (md, adjacencies) =>
             val vl = vesselLocationMap(md)
             val (identity, withoutIdentity) = adjacencies.partition(_._1 == md)
-            val closestN =
-              withoutIdentity.toSeq.distinct.sortBy(_._2).take(Parameters.maxClosestNeighbours)
+            val sortedByDist =
+              withoutIdentity.toSeq.distinct.sortBy(_._2)
 
-            val closestNeighbour = closestN.headOption.map {
-              case (md2, dist) => (md2, dist, vesselLocationMap(md2))
+            val closestNeighbour = if (withoutIdentity.isEmpty) {
+              None
+            } else {
+              val (md2, dist) = withoutIdentity.minBy(_._2)
+              Some((md2, dist, vesselLocationMap(md2)))
             }
 
-            val number = closestN.size
+            val numNeighbours = sortedByDist.size
+            val numFishingNeighbours = sortedByDist.filter(_._1.isFishingVessel).size
 
             val res =
-              (md, ResampledVesselLocationWithAdjacency(vl, Adjacency(number, closestNeighbour)))
+              (md,
+               ResampledVesselLocationWithAdjacency(
+                 vl,
+                 Adjacency(numNeighbours, numFishingNeighbours, closestNeighbour)))
             res
         }.toSeq
     }

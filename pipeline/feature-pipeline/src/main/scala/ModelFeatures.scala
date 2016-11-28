@@ -125,11 +125,13 @@ object ModelFeatures extends LazyLogging {
               (0.0, 0.0)
             }
 
-          // TODO(alexwilson): #neighbours, distance to closest neighbour, is_dark.
+          val distanceToClosestKm = a0.closestNeighbour.map(_._2).getOrElse(
+            Parameters.maxEncounterRadius * 2.0).value
 
           // We include the absolute time not as a feature, but to make it easy
           // to binary-search for the start and end of time ranges when running
           // under TensorFlow.
+          
           val feature = Array[Double](timestampSeconds,
                                       math.log(1.0 + timestampDeltaSeconds),
                                       math.log(1.0 + distanceDeltaMeters),
@@ -142,12 +144,9 @@ object ModelFeatures extends LazyLogging {
                                       math.log(1.0 + distanceToShoreKm),
                                       math.log(1.0 + distanceToBoundingAnchorageKm),
                                       math.log(1.0 + timeToBoundingAnchorageS),
-                                      /* We should probably add
-                                         distance to closest neighbour
-                                         here too - but what value
-                                         should we use if one does not
-                                         exist? */
-                                      a0.numNeighbours)
+                                      a0.numNeighbours,
+                                      a0.numFishingNeighbours,
+                                      distanceToClosestKm)
 
           feature.foreach { v =>
             if (v.isNaN || v.isInfinite) {

@@ -87,7 +87,8 @@ object Pipeline extends LazyLogging {
         processed.map {
           case (vmd, pl) =>
             val locationsWithEmptyAdjacency =
-              pl.locations.map(vlr => VesselLocationRecordWithAdjacency(vlr, Adjacency(0, None)))
+              pl.locations.map(vlr =>
+                VesselLocationRecordWithAdjacency(vlr, Adjacency(0, 0, None)))
 
             (vmd, locationsWithEmptyAdjacency)
         }

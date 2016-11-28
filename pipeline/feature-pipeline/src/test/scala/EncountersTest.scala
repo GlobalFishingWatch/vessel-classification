@@ -20,6 +20,7 @@ object EncountersTestHelper {
           course: Double = 0.0,
           heading: Double = 0.0,
           numNeighbours: Int = 0,
+          numFishingNeighbours: Int = 0,
           closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)] = None) =
     VesselLocationRecordWithAdjacency(
       VesselLocationRecord(ts(timestamp),
@@ -28,7 +29,7 @@ object EncountersTestHelper {
                            speed.of[knots],
                            course.of[degrees],
                            heading.of[degrees]),
-      Adjacency(numNeighbours, closestNeighbour))
+      Adjacency(numNeighbours, numFishingNeighbours, closestNeighbour))
 
   def rvl(timestamp: String, lat: Double, lon: Double, pointDensity: Double = 1.0) =
     ResampledVesselLocation(ts(timestamp),
@@ -41,10 +42,11 @@ object EncountersTestHelper {
          lon: Double = 0.0,
          pointDensity: Double = 1.0,
          numNeighbours: Int = 0,
+         numFishingNeighbours: Int = 0,
          closestNeighbour: Option[(VesselMetadata, DoubleU[kilometer], ResampledVesselLocation)] = None) =
     ResampledVesselLocationWithAdjacency(
       rvl(timestamp, lat, lon, pointDensity),
-      Adjacency(numNeighbours, closestNeighbour))
+      Adjacency(numNeighbours, numFishingNeighbours, closestNeighbour))
 }
 
 class LocationResamplerTests extends PipelineSpec with Matchers {
@@ -188,6 +190,7 @@ class EncountersTest extends PipelineSpec with Matchers {
             locationRecord,
             Adjacency(
               numNeighbours,
+              0,
               other.map { case(ommsi, dist, other_loc) => (VesselMetadata(ommsi), dist.of[kilometer], other_loc)})))
 
 
