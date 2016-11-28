@@ -83,6 +83,8 @@ class SummaryObjective(ObjectiveBase):
 
     def build_trainer(self, timestamps, mmsis):
         ops = self._build_summary()
+        # We return a constant loss of zero here, so this doesn't effect the training,
+        # only adds summaries to the output.
         return Trainer(0, ops.values())
 
     def build_evaluation(self, timestamps, mmsis):
