@@ -241,8 +241,8 @@ object Anchorages extends LazyLogging {
   }
 
   def buildAnchoragesFromAnchoragePoints(
-      anchorages: SCollection[AnchoragePoint]): SCollection[Anchorage] = anchorages
-    .groupAll
+      anchorages: SCollection[AnchoragePoint]): SCollection[Anchorage] =
+    anchorages.groupAll
     // Build anchorage group list.
     .flatMap { anchorages =>
       mergeAdjacentAnchoragePoints(anchorages)
