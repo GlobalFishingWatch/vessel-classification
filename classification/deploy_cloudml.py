@@ -40,7 +40,7 @@ def launch(environment, model_name, job_name):
         output_path=gcp.model_path(), model_name=model_name)
 
     timestamp = gcp.start_time.strftime('%Y%m%dT%H%M%S')
-    job_id = ('%s_%s_%s' % (model_name, job_name, timestamp)).replace('.', '_')
+    job_id = ('%s_%s_%s' % (model_name, job_name, timestamp)).replace('.', '_').replace('-', '_')
 
     # Kick off the job on CloudML
     with tempfile.NamedTemporaryFile() as temp:
