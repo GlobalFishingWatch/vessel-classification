@@ -54,7 +54,8 @@ lazy val commonSettings = Seq(
     "org.json4s" %% "json4s-native" % "3.3.0",
     "org.jgrapht" % "jgrapht-core" % "1.0.0",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.3",
-    "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % "2.8.3"
+    "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % "2.8.3",
+    "com.google.cloud" % "google-cloud" % "0.6.0"
   ),
   // Test dependencies.
   libraryDependencies ++= Seq(
@@ -80,22 +81,25 @@ lazy val common = project.in(file("common")).settings(commonSettings: _*)
 // Pipeline for annotating AIS messages with other attributes (such as when
 // fishing, port visits, transhipments or AIS gaps occur).
 lazy val aisAnnotator =
-  project.in(file("ais-annotator"))
-  .settings(commonSettings: _*)
-  .settings(
+  project
+    .in(file("ais-annotator"))
+    .settings(commonSettings: _*)
+    .settings(
       Seq(
         mainClass in assembly := Some("org.skytruth.ais_annotator.AISAnnotator"),
         assemblyMergeStrategy in assembly := assemblyMergeStrategies
       ))
-  .dependsOn(common)
+    .dependsOn(common)
 
 lazy val anchorages =
-  project.in(file("anchorages")).settings(commonSettings: _*)
-  .settings(
+  project
+    .in(file("anchorages"))
+    .settings(commonSettings: _*)
+    .settings(
       Seq(
         mainClass in assembly := Some("org.skytruth.anchorages.Anchorage"),
         assemblyMergeStrategy in assembly := assemblyMergeStrategies
-      ))dependsOn(common)
+      )) dependsOn (common)
 
 // The dataflow feature generation pipeline.
 lazy val features =

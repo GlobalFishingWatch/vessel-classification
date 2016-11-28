@@ -114,7 +114,7 @@ case class Anchorage(meanLocation: LatLon,
   }
 }
 
-object Anchorage {
+object Anchorage extends LazyLogging {
   implicit val formats = DefaultFormats
 
   def fromAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]) = {
@@ -138,23 +138,27 @@ object Anchorage {
     Anchorage(meanLocation, anchoragePoints, meanDistanceToShore, meanDriftRadius)
   }
 
-  def readAnchorages(rootPath: String): Seq[Anchorage] = {
+  def readAnchorages(gcs: GoogleCloudStorage, rootPath: String): Seq[Anchorage] = {
     val anchoragePointsPath = rootPath + "/anchorage_points"
     val anchoragesPath = rootPath + "/anchorages"
 
-    def readAllToJson(path: String) = new File(path).listFiles.flatMap { p =>
-      managed(scala.io.Source.fromFile(p)).acquireAndGet { s =>
-        s.getLines.map(line => parse(line))
+    def readAllToJson(rootPath: String) =
+      gcs.list(rootPath).flatMap { p =>
+        gcs.get(p).map(l => parse(l))
       }
-    }
 
-    val anchoragePointMap = readAllToJson(rootPath + "/anchorage_points")
+    logger.info("Reading anchorage points.")
+    val anchoragePointMap = readAllToJson(anchoragePointsPath)
       .map(AnchoragePoint.fromJson _)
       .map(ap => (ap.id, ap))
       .toMap
 
-    readAllToJson(rootPath + "/anchorages").map(json =>
-      Anchorage.fromJson(json, anchoragePointMap))
+    logger.info(s"Read ${anchoragePointMap.size} anchorage points.")
+
+    val anchorages =
+      readAllToJson(anchoragesPath).map(json => Anchorage.fromJson(json, anchoragePointMap))
+    logger.info(s"Read ${anchorages.size} anchorages.")
+    anchorages.toSeq
   }
 }
 
@@ -176,6 +180,18 @@ case class AnchorageVisit(anchorage: Anchorage, arrival: Instant, departure: Ins
 }
 
 object Anchorages extends LazyLogging {
+  def getAnchoragesLookup(anchoragesRootPath: String) = {
+    val gcs = GoogleCloudStorage()
+    val anchorages = if (!anchoragesRootPath.isEmpty) {
+      Anchorage.readAnchorages(gcs, anchoragesRootPath)
+    } else {
+      Seq.empty[Anchorage]
+    }
+    AdjacencyLookup(anchorages,
+                    (anchorage: Anchorage) => anchorage.meanLocation,
+                    AnchorageParameters.anchorageVisitDistanceThreshold,
+                    AnchorageParameters.anchoragesS2Scale)
+  }
   def findAnchoragePointCells(
       input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[AnchoragePoint] = {
 
@@ -226,11 +242,7 @@ object Anchorages extends LazyLogging {
 
   def buildAnchoragesFromAnchoragePoints(
       anchorages: SCollection[AnchoragePoint]): SCollection[Anchorage] =
-    anchorages
-    // TODO(alexwilson): These three lines hackily group all anchorages on one mapper
-    .map { a =>
-      (0, a)
-    }.groupByKey.map { case (_, anchorages) => anchorages }
+    anchorages.groupAll
     // Build anchorage group list.
     .flatMap { anchorages =>
       mergeAdjacentAnchoragePoints(anchorages)
@@ -304,6 +316,10 @@ object Anchorages extends LazyLogging {
 
     val environment = remaining_args.required("env")
     val jobName = remaining_args.required("job-name")
+    val dataYears = remaining_args.getOrElse("data-years", InputDataParameters.defaultYearsToRun)
+    val dataFileGlob =
+      remaining_args.getOrElse("data-file-glob", InputDataParameters.defaultDataFileGlob)
+
     val config = GcpConfig.makeConfig(environment, jobName)
 
     logger.info(s"Pipeline output path: ${config.pipelineOutputPath}")
@@ -316,9 +332,8 @@ object Anchorages extends LazyLogging {
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
-      val matches = (InputDataParameters.allDataYears).map { year =>
-        val path = InputDataParameters.measuresPathPattern(year)
-
+      val matches = (dataYears.split(",")).map { year =>
+        val path = InputDataParameters.measuresPathPattern(year, dataFileGlob)
         sc.textFile(path)
       }
 

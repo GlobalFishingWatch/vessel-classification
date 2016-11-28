@@ -45,13 +45,10 @@ LocalisationResults = namedtuple('LocalisationResults',
 
 ConfusionMatrix = namedtuple('ConfusionMatrix', ['raw', 'scaled'])
 
-
 CLASSIFICATION_METRICS = [
     ('fishing', 'is_fishing', 'Is Fishing'),
-    ('coarse', 'label', 'Coarse Labels'),
-    ('fine', 'sublabel', 'Fine Labels') 
+    ('coarse', 'label', 'Coarse Labels'), ('fine', 'sublabel', 'Fine Labels')
 ]
-
 
 css = """
 
@@ -546,8 +543,7 @@ class ClassificationExtractor(object):
         self.mmsi.append(mmsi)
         label_scores = row[self.field]['label_scores']
         self.all_labels |= set(label_scores.keys())
-        self.start_dates.append(
-            dateutil.parser.parse(row['start_time']))
+        self.start_dates.append(dateutil.parser.parse(row['start_time']))
         self.true_labels.append(self.label_map[mmsi])
         self.inferred_labels.append(row[self.field]['max_label'])
         self.scores.append(label_scores)
@@ -582,8 +578,7 @@ class LengthExtractor(object):
         if 'length' not in row:
             return
         self.mmsi.append(mmsi)
-        self.start_dates.append(
-            dateutil.parser.parse(row['start_time']))
+        self.start_dates.append(dateutil.parser.parse(row['start_time']))
         self.true_lengths.append(float(self.length_map[mmsi]))
         self.true_labels.append(self.label_map.get(mmsi, 'Unknown'))
         self.inferred_lengths.append(row['length']['value'])
@@ -597,6 +592,7 @@ class LengthExtractor(object):
 
     def __nonzero__(self):
         return len(self.mmsi) > 0
+
 
 class FishingRangeExtractor(object):
     def __init__(self):
@@ -668,19 +664,21 @@ def load_true_fishing_ranges_by_mmsi(fishing_range_path):
     return ranges_by_mmsi
 
 
-
 def datetime_to_minute(dt):
     timestamp = (dt - datetime.datetime(
         1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
     return int(timestamp // 60)
 
 
-def compare_fishing_localisation(extracted_ranges, fishing_range_path, label_map):
+def compare_fishing_localisation(extracted_ranges, fishing_range_path,
+                                 label_map):
 
     logging.debug("loading fishing ranges")
     true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(fishing_range_path)
-    pred_ranges_by_mmsi = {k: extracted_ranges.ranges_by_mmsi[k] for k in true_ranges_by_mmsi}
-    pred_coverage_by_mmsi = {k: extracted_ranges.coverage_by_mmsi[k] for k in true_ranges_by_mmsi}
+    pred_ranges_by_mmsi = {k: extracted_ranges.ranges_by_mmsi[k]
+                           for k in true_ranges_by_mmsi}
+    pred_coverage_by_mmsi = {k: extracted_ranges.coverage_by_mmsi[k]
+                             for k in true_ranges_by_mmsi}
 
     true_by_mmsi = {}
     pred_by_mmsi = {}
@@ -742,13 +740,7 @@ def compare_fishing_localisation(extracted_ranges, fishing_range_path, label_map
             true_by_mmsi[mmsi] = minutes[mask, 0]
             pred_by_mmsi[mmsi] = minutes[mask, 1]
 
-
-    return LocalisationResults(
-            true_by_mmsi, pred_by_mmsi, label_map)
-
-
-
-
+    return LocalisationResults(true_by_mmsi, pred_by_mmsi, label_map)
 
 
 def compute_results(args):
@@ -772,7 +764,6 @@ def compute_results(args):
 
     results = {}
 
-
     if not args.skip_localisation_metrics:
         ext = FishingRangeExtractor()
         results['fishing_ranges'] = ext
@@ -789,13 +780,10 @@ def compute_results(args):
     logging.info('Loading inference data')
     load_inferred(inference_path, results.values())
 
-
-
     if not args.skip_localisation_metrics:
         logging.info('Comparing localisation')
-        results['localisation'] = compare_fishing_localisation(results['fishing_ranges'], args.fishing_ranges,
-            maps['label'])
-
+        results['localisation'] = compare_fishing_localisation(
+            results['fishing_ranges'], args.fishing_ranges, maps['label'])
 
     return results
 
@@ -846,8 +834,7 @@ if __name__ == '__main__':
         '--inference-path', help='path to inference results', required=True)
     parser.add_argument(
         '--label-path', help='path to test data', required=True)
-    parser.add_argument(
-        '--fishing-ranges', help='path to fishing range data')
+    parser.add_argument('--fishing-ranges', help='path to fishing range data')
     parser.add_argument(
         '--dest-path', help='path to write results to', required=True)
     # Specify which things to dump to output file
