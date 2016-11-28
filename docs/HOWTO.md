@@ -1,6 +1,6 @@
 # A set of examples of how to perform (prod) classification.
 
-For dev runs, use `--env=dev`.
+(In all the examples below, to perform dev runs instead, use `--env=dev`).
 
 ## Building features, training and model, running inference.
 
@@ -69,8 +69,17 @@ For vessel classification and length regression:
 python compute_metrics.py --inference-path release-0.1.0-vessel-classification-test.json.gz --label-path ./classification/data/net_training_20161115.csv --fishing-ranges ./classification/data/combined_fishing_ranges.csv --dest-path vessel-classification-test-report.html
 ```
 
-### Annotate likely fishing vessel AIS data with fishing ranges
+### Annotate AIS data with fishing ranges (for likely fishing vessels)
+
+```
+TODO
+```
 
 ## Other functionality
 
-* Run the feature pipeline to generate a set of encounters.
+Running the feature pipeline to generate a set of encounters.
+
+```
+TODO
+```
+
