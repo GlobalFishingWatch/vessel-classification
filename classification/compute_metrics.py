@@ -325,13 +325,13 @@ def ydump_metrics(doc, results):
 
     with tag('div', klass="unbreakable"):
         line('h3', 'Metrics by Label')
-        row_vals = precision_recall(
+        row_vals = precision_recall_f1(
                          consolidated.label_list, 
                          consolidated.true_labels,
                          consolidated.inferred_labels)
-        ydump_table(doc, ['Label', 'Precision', 'Recall'],
-                    [(a, '{:.2f}'.format(b), "{:.2f}".format(c))
-                     for (a, b, c) in row_vals])
+        ydump_table(doc, ['Label', 'Precision', 'Recall', 'F1-Score'],
+                    [(a, '{:.2f}'.format(b), "{:.2f}".format(c), "{:.2f}".format(d))
+                     for (a, b, c, d) in row_vals])
         wts = weights(consolidated.label_list, 
                          consolidated.true_labels,
                          consolidated.inferred_labels)
@@ -400,7 +400,7 @@ def clean_label(x):
     return x.replace('_', ' ')
 
 
-def precision_recall(labels, y_true, y_pred):
+def precision_recall_f1(labels, y_true, y_pred):
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
     results = []
@@ -410,7 +410,8 @@ def precision_recall(labels, y_true, y_pred):
         if trues.sum() and positives.sum():
             # Only return cases where there are least one vessel present in both cases
             results.append((lbl, precision_score(trues, positives),
-                                    recall_score(trues, positives)))
+                                    recall_score(trues, positives),
+                                    f1_score(trues, positives)))
     return results
 
 
