@@ -125,13 +125,13 @@ object ModelFeatures extends LazyLogging {
               (0.0, 0.0)
             }
 
-          val distanceToClosestKm = a0.closestNeighbour.map(_._2).getOrElse(
-            Parameters.maxEncounterRadius * 2.0).value
+          val distanceToClosestKm =
+            a0.closestNeighbour.map(_._2).getOrElse(Parameters.maxEncounterRadius * 2.0).value
 
           // We include the absolute time not as a feature, but to make it easy
           // to binary-search for the start and end of time ranges when running
           // under TensorFlow.
-          
+
           val feature = Array[Double](timestampSeconds,
                                       math.log(1.0 + timestampDeltaSeconds),
                                       math.log(1.0 + distanceDeltaMeters),
