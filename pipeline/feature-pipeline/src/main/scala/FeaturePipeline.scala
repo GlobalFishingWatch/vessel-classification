@@ -36,9 +36,15 @@ object Pipeline extends LazyLogging {
     val generateModelFeatures = remaining_args.boolean("generate-model-features", true)
     val anchoragesRootPath = remaining_args("anchorages-root-path")
     val generateEncounters = remaining_args.boolean("generate-encounters", true)
-    val dataYears = remaining_args.getOrElse("data-years", InputDataParameters.defaultYearsToRun)
+    val dataYearsArg = remaining_args.list("data-years")
     val dataFileGlob =
       remaining_args.getOrElse("data-file-glob", InputDataParameters.defaultDataFileGlob)
+
+    val dataYears = if (dataYearsArg.isEmpty) {
+      Seq(InputDataParameters.defaultYearsToRun)
+    } else {
+      dataYearsArg
+    }
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -53,7 +59,7 @@ object Pipeline extends LazyLogging {
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
-      val matches = dataYears.split(",").map { year =>
+      val matches = dataYears.map { year =>
         val path = InputDataParameters.measuresPathPattern(year, dataFileGlob)
 
         sc.textFile(path)
