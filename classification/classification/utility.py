@@ -33,33 +33,29 @@ VESSEL_CATEGORIES = {
         ['Fixed gear', ['Pots and traps', 'Set gillnets', 'Set longlines']],
         ['Drifting longlines', ['Drifting longlines']],
         ['Purse seines', ['Purse seines']], ['Squid', ['Squid']],
-        ['Pole and line', ['Pole and line']], ['Trollers', ['Trollers']], [
+        ['Pole and line', ['Pole and line']], [
             'Cargo/Tanker', ['Cargo', 'Tanker']
-        ], ['Reefer', ['Reefer']],
-        ['Passenger', ['Motor passenger', 'Sailing']],
-        ['Seismic vessel', ['Seismic vessel']],
-        ['Tug/Pilot/Supply', ['Tug', 'Pilot', 'Supply']]
+        ], ['Reefer', ['Reefer']], ['Passenger', ['Sailing']],
+        ['Seismic vessel', ['Seismic vessel']], ['Tug/Pilot', ['Tug', 'Pilot']]
     ],
     'fishing': [
-        ['Fishing', ['Drifting longlines', 'Set longlines', 'Trawlers',
-                     'Pots and traps', 'Set gillnets', 'Purse seines', 'Squid',
-                     'Pole and line', 'Trollers']],
-        ['Non-fishing',
-         ['Cargo', 'Tanker', 'Reefer', 'Motor passenger', 'Sailing',
-          'Seismic vessel', 'Tug', 'Pilot', 'Supply']]
+        ['Fishing',
+         ['Drifting longlines', 'Set longlines', 'Trawlers', 'Pots and traps',
+          'Set gillnets', 'Purse seines', 'Squid', 'Pole and line']],
+        ['Non-fishing', ['Cargo', 'Tanker', 'Reefer', 'Sailing',
+                         'Seismic vessel', 'Tug', 'Pilot']]
     ]
 }
 """ The coarse vessel label set. """
 VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
                       'Seismic vessel', 'Fixed gear', 'Reefer',
                       'Drifting longlines', 'Pole and line', 'Purse seines',
-                      'Trollers', 'Tug/Pilot/Supply']
+                      'Tug/Pilot']
 """ The finer vessel label set. """
 VESSEL_CLASS_DETAILED_NAMES = [
     'Squid', 'Trawlers', 'Seismic vessel', 'Set gillnets', 'Reefer',
-    'Pole and line', 'Purse seines', 'Pots and traps', 'Trollers', 'Cargo',
-    'Sailing', 'Supply', 'Set longlines', 'Motor passenger',
-    'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
+    'Pole and line', 'Purse seines', 'Pots and traps', 'Cargo', 'Sailing',
+    'Set longlines', 'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
 ]
 
 FISHING_NONFISHING_NAMES = ['Fishing', 'Non-fishing']
