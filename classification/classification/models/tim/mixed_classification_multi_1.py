@@ -8,7 +8,7 @@ import numpy as np
 
 from classification.model import ModelBase
 
-from classification.objectives import (
+from classification.objectives import (SummaryObjective,
     TrainNetInfo, VesselMetadataClassificationObjective, RegressionObjective,
     MultiClassificationObjective, FishingLocalizationObjectiveCrossEntropy)
 
@@ -61,9 +61,17 @@ class Model(ModelBase):
             vessel_metadata,
             loss_weight=100)
 
+        self.summary_objective = SummaryObjective(
+                'histograms', 'Histograms')
+
         self.objectives = [self.classification_objective,
                            self.length_objective,
-                           self.fishing_localisation_objective]
+                           self.fishing_localisation_objective,
+                           self.summary_objective]
+
+    @property
+    def max_window_duration_seconds(self):
+        return 90 * 24 * 3600
 
     @property
     def window_max_points(self):
@@ -121,6 +129,8 @@ class Model(ModelBase):
         return output, stack
 
     def build_model(self, is_training, current):
+
+        self.summary_objective.build(current)
 
         # Build a tower consisting of stacks of misconception layers in parallel
         # with size 1 convolutional shortcuts to help train.
