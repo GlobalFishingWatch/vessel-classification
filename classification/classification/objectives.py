@@ -606,8 +606,10 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                         thresholded_prediction, ones, weights=weights),
                     'Test recall': slim.metrics.streaming_recall(
                         thresholded_prediction, ones, weights=weights),
-                    'Test fishing fraction': slim.metrics.streaming_accuracy(
+                    'Test prediction fraction': slim.metrics.streaming_accuracy(
                         thresholded_prediction, valid, weights=weights)
+                    'Test label fraction': slim.metrics.streaming_accuracy(
+                        ones, valid, weights=weights)
                 }
 
                 return metrics.aggregate_metric_map(
