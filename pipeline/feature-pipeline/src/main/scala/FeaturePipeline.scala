@@ -40,12 +40,6 @@ object Pipeline extends LazyLogging {
     val dataFileGlob =
       remaining_args.getOrElse("data-file-glob", InputDataParameters.defaultDataFileGlob)
 
-    val dataYears = if (dataYearsArg.isEmpty) {
-      Seq(InputDataParameters.defaultYearsToRun)
-    } else {
-      dataYearsArg
-    }
-
     val config = GcpConfig.makeConfig(environment, jobName)
 
     logger.info(s"Pipeline output path: ${config.pipelineOutputPath}")
@@ -59,19 +53,18 @@ object Pipeline extends LazyLogging {
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
-      val matches = dataYears.map { year =>
-        val path = InputDataParameters.measuresPathPattern(year, dataFileGlob)
-
-        sc.textFile(path)
-      }
+      val aisInputData = InputDataParameters
+        .dataFileGlobPerYear(dataYearsArg, dataFileGlob)
+        .map(glob => sc.textFile(glob))
 
       logger.info("Building pipeline.")
       val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
 
       val minValidLocations = 200
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
-        AISDataProcessing
-          .readJsonRecords(matches, knownFishingMMSIs, InputDataParameters.minRequiredPositions)
+        AISDataProcessing.readJsonRecords(aisInputData,
+                                          knownFishingMMSIs,
+                                          InputDataParameters.minRequiredPositions)
 
       val processed =
         AISDataProcessing.filterAndProcessVesselRecords(
