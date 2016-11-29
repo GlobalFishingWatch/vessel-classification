@@ -33,33 +33,29 @@ VESSEL_CATEGORIES = {
         ['Fixed gear', ['Pots and traps', 'Set gillnets', 'Set longlines']],
         ['Drifting longlines', ['Drifting longlines']],
         ['Purse seines', ['Purse seines']], ['Squid', ['Squid']],
-        ['Pole and line', ['Pole and line']], ['Trollers', ['Trollers']], [
+        ['Pole and line', ['Pole and line']], [
             'Cargo/Tanker', ['Cargo', 'Tanker']
-        ], ['Reefer', ['Reefer']],
-        ['Passenger', ['Motor passenger', 'Sailing']],
-        ['Seismic vessel', ['Seismic vessel']],
-        ['Tug/Pilot/Supply', ['Tug', 'Pilot', 'Supply']]
+        ], ['Reefer', ['Reefer']], ['Passenger', ['Sailing']],
+        ['Seismic vessel', ['Seismic vessel']], ['Tug/Pilot', ['Tug', 'Pilot']]
     ],
     'fishing': [
-        ['Fishing', ['Drifting longlines', 'Set longlines', 'Trawlers',
-                     'Pots and traps', 'Set gillnets', 'Purse seines', 'Squid',
-                     'Pole and line', 'Trollers']],
-        ['Non-fishing',
-         ['Cargo', 'Tanker', 'Reefer', 'Motor passenger', 'Sailing',
-          'Seismic vessel', 'Tug', 'Pilot', 'Supply']]
+        ['Fishing',
+         ['Drifting longlines', 'Set longlines', 'Trawlers', 'Pots and traps',
+          'Set gillnets', 'Purse seines', 'Squid', 'Pole and line']],
+        ['Non-fishing', ['Cargo', 'Tanker', 'Reefer', 'Sailing',
+                         'Seismic vessel', 'Tug', 'Pilot']]
     ]
 }
 """ The coarse vessel label set. """
 VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
                       'Seismic vessel', 'Fixed gear', 'Reefer',
                       'Drifting longlines', 'Pole and line', 'Purse seines',
-                      'Trollers', 'Tug/Pilot/Supply']
+                      'Tug/Pilot']
 """ The finer vessel label set. """
 VESSEL_CLASS_DETAILED_NAMES = [
     'Squid', 'Trawlers', 'Seismic vessel', 'Set gillnets', 'Reefer',
-    'Pole and line', 'Purse seines', 'Pots and traps', 'Trollers', 'Cargo',
-    'Sailing', 'Supply', 'Set longlines', 'Motor passenger',
-    'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
+    'Pole and line', 'Purse seines', 'Pots and traps', 'Cargo', 'Sailing',
+    'Set longlines', 'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
 ]
 
 FISHING_NONFISHING_NAMES = ['Fishing', 'Non-fishing']
@@ -772,45 +768,15 @@ def read_vessel_multiclass_metadata(available_mmsis,
 def find_available_mmsis(feature_path):
     with tf.Session() as sess:
         logging.info('Reading mmsi list file.')
-        mmsi_list_tensor = tf.read_file(feature_path + '/mmsis.txt')
+        root_output_path, _ = os.path.split(feature_path)
+        # The feature pipeline stage that outputs the MMSI list is sharded to only
+        # produce a single file, so no need to glob or loop here.
+        mmsi_list_tensor = tf.read_file(root_output_path + '/mmsis/part-00000-of-00001.txt')
         els = sess.run(mmsi_list_tensor).split('\n')
         mmsi_list = [int(mmsi) for mmsi in els if mmsi != '']
 
         logging.info('Found %d mmsis.', len(mmsi_list))
         return set(mmsi_list)
-
-
-def find_available_mmsis_glob(feature_path):
-    # TODO(alexwilson): Using a temporary session to get the matching files on
-    # GCS is far from ideal. However the alternative is to bring in additional
-    # libraries with explicit auth that may or may not play nicely with CloudML.
-    # Improve later...
-    mmsi_cache_filename = "available_mmsis.cache"
-    if os.path.exists(mmsi_cache_filename):
-        with nlj.open(mmsi_cache_filename, 'r') as cache:
-            for line in cache:
-                if line["path"] == feature_path:
-                    logging.info("Loading mmsis from cache.")
-                    return set(line['mmsis'])
-
-    with tf.Session() as sess:
-        logging.info(
-            "Finding matching features files. May take a few minutes...")
-        matching_files = tf.train.match_filenames_once(feature_path +
-                                                       "/*.tfrecord")
-        sess.run(tf.global_variables_initializer())
-
-        all_feature_files = sess.run(matching_files)
-        if len(all_feature_files) == 0:
-            logging.fatal("Error: no feature files found.")
-            sys.exit(-1)
-        logging.info("Found %d feature files.", len(all_feature_files))
-
-    mmsis = [int(os.path.split(p)[1].split('.')[0]) for p in all_feature_files]
-    with nlj.open(mmsi_cache_filename, 'a') as cache:
-        cache.write({"path": feature_path, "mmsis": mmsis})
-
-    return set(mmsis)
 
 
 def read_fishing_ranges(fishing_range_file):

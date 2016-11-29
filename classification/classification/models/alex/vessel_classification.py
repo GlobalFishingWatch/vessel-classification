@@ -31,6 +31,10 @@ class Model(abstract_models.MisconceptionModel):
     def window_max_points(self):
         return (self.max_window_duration_seconds / (5 * 60)) / 4
 
+    @property
+    def min_viable_timeslice_length(self):
+        return 500
+
     def __init__(self, num_feature_dimensions, vessel_metadata):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
 

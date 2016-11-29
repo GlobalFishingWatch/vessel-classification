@@ -1,10 +1,13 @@
 package org.skytruth.ais_annotator
 
 import com.fasterxml.jackson.databind.{ObjectMapper, SerializationFeature}
-import com.spotify.scio.bigquery.TableRow
 import com.spotify.scio.testing.PipelineSpec
 import com.spotify.scio.values.SCollection
 import org.joda.time.{Instant}
+import org.json4s._
+import org.json4s.JsonAST.JValue
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
 import org.scalatest._
 import scala.collection.JavaConverters._
 
@@ -14,20 +17,20 @@ class AnnotatorTests extends PipelineSpec with Matchers {
                  timestamp: String,
                  lat: Double,
                  lon: Double,
-                 fields: Map[String, Any]): TableRow = {
-    val v = new TableRow()
-    v.put("mmsi", mmsi)
-    v.put("timestamp", timestamp)
-    v.put("lat", lat)
-    v.put("lon", lon)
-    fields.foreach { case (key, value) => v.put(key, value) }
-    v
+                 fields: Map[String, Double]): JValue = {
+    var baseJson: JValue = ("mmsi" -> mmsi) ~
+        ("timestamp" -> timestamp) ~
+        ("lat" -> lat) ~
+        ("lon" -> lon)
+    fields.foreach {
+      case (key, value) =>
+        val asJson: JValue = (key -> value)
+        baseJson = baseJson merge asJson
+    }
+    baseJson
   }
 
-  private def jsonFromString(lines: SCollection[String]) = {
-    val mapper = new ObjectMapper().disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-    lines.map(mapper.readValue(_, classOf[TableRow]))
-  }
+  private def jsonFromString(lines: SCollection[String]) = lines.map(l => parse(l))
 
   "The annotator" should "annotate" in {
     val msgs = Seq(
@@ -83,6 +86,20 @@ class AnnotatorTests extends PipelineSpec with Matchers {
       )
 
       res should containInAnyOrder(expected)
+
+      val asString = res.map(json => compact(render(json)))
+
+      val renderedExample = Seq(
+        "{\"mmsi\":123,\"timestamp\":\"20150101T01:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":2.5}",
+        "{\"mmsi\":123,\"timestamp\":\"20150101T02:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":2.5}",
+        "{\"mmsi\":123,\"timestamp\":\"20150101T03:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":2.5}",
+        "{\"mmsi\":123,\"timestamp\":\"20150101T04:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":2.5}",
+        "{\"mmsi\":123,\"timestamp\":\"20150101T05:00:00Z\",\"lat\":0.0,\"lon\":0.0}",
+        "{\"mmsi\":123,\"timestamp\":\"20150101T06:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":4.5,\"weight\":100.0}",
+        "{\"mmsi\":123,\"timestamp\":\"20150101T07:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":4.5,\"weight\":100.0}",
+        "{\"mmsi\":123,\"timestamp\":\"20150101T08:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":4.5,\"weight\":100.0}",
+        "{\"mmsi\":123,\"timestamp\":\"20150101T09:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"weight\":100.0}")
+      asString should containInAnyOrder(renderedExample)
     }
   }
 

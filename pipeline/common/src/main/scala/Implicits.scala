@@ -7,6 +7,10 @@ import io.github.karols.units.defining._
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import com.typesafe.scalalogging.{LazyLogging, Logger}
+import org.json4s._
+import org.json4s.JsonAST.JValue
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
 import scala.collection.{mutable, immutable}
 
 object Implicits {
