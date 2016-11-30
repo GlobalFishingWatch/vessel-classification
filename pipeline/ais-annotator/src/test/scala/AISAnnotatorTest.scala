@@ -87,19 +87,6 @@ class AnnotatorTests extends PipelineSpec with Matchers {
 
       res should containInAnyOrder(expected)
 
-      val asString = res.map(json => compact(render(json)))
-
-      val renderedExample = Seq(
-        "{\"mmsi\":123,\"timestamp\":\"20150101T01:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":2.5}",
-        "{\"mmsi\":123,\"timestamp\":\"20150101T02:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":2.5}",
-        "{\"mmsi\":123,\"timestamp\":\"20150101T03:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":2.5}",
-        "{\"mmsi\":123,\"timestamp\":\"20150101T04:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":2.5}",
-        "{\"mmsi\":123,\"timestamp\":\"20150101T05:00:00Z\",\"lat\":0.0,\"lon\":0.0}",
-        "{\"mmsi\":123,\"timestamp\":\"20150101T06:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":4.5,\"weight\":100.0}",
-        "{\"mmsi\":123,\"timestamp\":\"20150101T07:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":4.5,\"weight\":100.0}",
-        "{\"mmsi\":123,\"timestamp\":\"20150101T08:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"height\":4.5,\"weight\":100.0}",
-        "{\"mmsi\":123,\"timestamp\":\"20150101T09:00:00Z\",\"lat\":0.0,\"lon\":0.0,\"weight\":100.0}")
-      asString should containInAnyOrder(renderedExample)
     }
   }
 
