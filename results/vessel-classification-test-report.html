@@ -1,0 +1,3119 @@
+<style type="text/css">
+
+table {
+    text-align: center;
+    border-collapse: collapse;
+}
+
+.confusion-matrix th.col {
+  height: 140px; 
+  white-space: nowrap;
+}
+
+.confusion-matrix th.col div {
+    transform: translate(16px, 49px) rotate(315deg); 
+    width: 30px;
+}
+
+.confusion-matrix th.col span {
+    border-bottom: 1px solid #ccc; 
+    padding: 5px 10px; 
+    text-align: left;
+}
+
+.confusion-matrix th.row {
+    text-align: right;
+}
+
+.confusion-matrix td.diagonal {
+    border: 1px solid black;
+}
+
+.confusion-matrix td.offdiagonal {
+    border: 1px dotted grey;
+}
+
+.unbreakable {
+    page-break-inside: avoid;
+}
+
+
+
+
+</style>
+<h2>
+  Is Fishing
+</h2>
+<div class="unbreakable">
+  <h3>
+    Accuracy by Date
+  </h3>
+  <table>
+    <tr>
+      <th>
+        Start Date
+      </th>
+      <th>
+        Accuracy
+      </th>
+    </tr>
+    <tr>
+      <td>
+        2012-01-01
+      </td>
+      <td>
+        0.97
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2012-06-29
+      </td>
+      <td>
+        0.98
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2012-12-26
+      </td>
+      <td>
+        0.98
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2013-06-24
+      </td>
+      <td>
+        0.98
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2013-12-21
+      </td>
+      <td>
+        0.98
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2014-06-19
+      </td>
+      <td>
+        0.98
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2014-12-16
+      </td>
+      <td>
+        0.98
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2015-06-14
+      </td>
+      <td>
+        0.98
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2015-12-11
+      </td>
+      <td>
+        0.98
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="unbreakable">
+  <h3>
+    Overall Accuracy
+  </h3>
+  0.98
+</div>
+<div class="unbreakable">
+  <h3>
+    Confusion Matrix
+  </h3>
+  <table class="confusion-matrix">
+    <tr>
+      <th></th>
+      <th class="col">
+        <div>
+          <span>
+            Fishing
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Non-fishing
+          </span>
+        </div>
+      </th>
+    </tr>
+    <tr>
+      <th class="row">
+        Fishing
+      </th>
+      <td bgcolor="#08FF00" class="diagonal">
+        <font color="#000000" title="0.982">
+          2749
+        </font>
+      </td>
+      <td bgcolor="#FFf8f8" class="offdiagonal">
+        <font color="#000000" title="0.027">
+          71
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Non-fishing
+      </th>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.011">
+          30
+        </font>
+      </td>
+      <td bgcolor="#09FF00" class="diagonal">
+        <font color="#000000" title="0.980">
+          2443
+        </font>
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="unbreakable">
+  <h3>
+    Metrics by Label
+  </h3>
+  <table>
+    <tr>
+      <th>
+        Label
+      </th>
+      <th>
+        Precision
+      </th>
+      <th>
+        Recall
+      </th>
+      <th>
+        F1-Score
+      </th>
+    </tr>
+    <tr>
+      <td>
+        Fishing
+      </td>
+      <td>
+        0.99
+      </td>
+      <td>
+        0.97
+      </td>
+      <td>
+        0.98
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Non-fishing
+      </td>
+      <td>
+        0.97
+      </td>
+      <td>
+        0.99
+      </td>
+      <td>
+        0.98
+      </td>
+    </tr>
+  </table>
+  <h4>
+    Accuracy with equal class weight
+  </h4>
+  0.981345840037
+</div>
+<hr />
+<h2>
+  Coarse Labels
+</h2>
+<div class="unbreakable">
+  <h3>
+    Accuracy by Date
+  </h3>
+  <table>
+    <tr>
+      <th>
+        Start Date
+      </th>
+      <th>
+        Accuracy
+      </th>
+    </tr>
+    <tr>
+      <td>
+        2012-01-01
+      </td>
+      <td>
+        0.76
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2012-06-29
+      </td>
+      <td>
+        0.86
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2012-12-26
+      </td>
+      <td>
+        0.89
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2013-06-24
+      </td>
+      <td>
+        0.90
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2013-12-21
+      </td>
+      <td>
+        0.90
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2014-06-19
+      </td>
+      <td>
+        0.90
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2014-12-16
+      </td>
+      <td>
+        0.89
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2015-06-14
+      </td>
+      <td>
+        0.89
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2015-12-11
+      </td>
+      <td>
+        0.89
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="unbreakable">
+  <h3>
+    Overall Accuracy
+  </h3>
+  0.92
+</div>
+<div class="unbreakable">
+  <h3>
+    Confusion Matrix
+  </h3>
+  <table class="confusion-matrix">
+    <tr>
+      <th></th>
+      <th class="col">
+        <div>
+          <span>
+            Cargo/Tanker
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Drifting longlines
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Fixed gear
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Passenger
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Pole and line
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Purse seines
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Reefer
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Seismic vessel
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Squid
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Trawlers
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Tug/Pilot
+          </span>
+        </div>
+      </th>
+    </tr>
+    <tr>
+      <th class="row">
+        Cargo/Tanker
+      </th>
+      <td bgcolor="#1cFF00" class="diagonal">
+        <font color="#000000" title="0.943">
+          1437
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf6f6" class="offdiagonal">
+        <font color="#000000" title="0.035">
+          19
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.014">
+          7
+        </font>
+      </td>
+      <td bgcolor="#FFe2e2" class="offdiagonal">
+        <font color="#000000" title="0.115">
+          68
+        </font>
+      </td>
+      <td bgcolor="#FFf7f7" class="offdiagonal">
+        <font color="#000000" title="0.030">
+          4
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.002">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFf1f1" class="offdiagonal">
+        <font color="#000000" title="0.055">
+          21
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Drifting longlines
+      </th>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#3bFF00" class="diagonal">
+        <font color="#000000" title="0.884">
+          76
+        </font>
+      </td>
+      <td bgcolor="#FFf5f5" class="offdiagonal">
+        <font color="#000000" title="0.037">
+          5
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.013">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Fixed gear
+      </th>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.002">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFf8f8" class="offdiagonal">
+        <font color="#000000" title="0.028">
+          4
+        </font>
+      </td>
+      <td bgcolor="#4cFF00" class="diagonal">
+        <font color="#000000" title="0.849">
+          312
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.009">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFf2f2" class="offdiagonal">
+        <font color="#000000" title="0.053">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.012">
+          4
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf0f0" class="offdiagonal">
+        <font color="#000000" title="0.058">
+          35
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.014">
+          4
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Passenger
+      </th>
+      <td bgcolor="#FFfafa" class="offdiagonal">
+        <font color="#000000" title="0.019">
+          10
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.006">
+          2
+        </font>
+      </td>
+      <td bgcolor="#46FF00" class="diagonal">
+        <font color="#000000" title="0.861">
+          281
+        </font>
+      </td>
+      <td bgcolor="#FFf6f6" class="offdiagonal">
+        <font color="#000000" title="0.035">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.003">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.009">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.005">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFebeb" class="offdiagonal">
+        <font color="#000000" title="0.079">
+          21
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Pole and line
+      </th>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf4f4" class="offdiagonal">
+        <font color="#000000" title="0.043">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.014">
+          1
+        </font>
+      </td>
+      <td bgcolor="#8dFF00" class="diagonal">
+        <font color="#000000" title="0.722">
+          26
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.014">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFdede" class="offdiagonal">
+        <font color="#000000" title="0.129">
+          9
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Purse seines
+      </th>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.002">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfafa" class="offdiagonal">
+        <font color="#000000" title="0.021">
+          7
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#21FF00" class="diagonal">
+        <font color="#000000" title="0.934">
+          275
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.003">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.016">
+          8
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.008">
+          2
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Reefer
+      </th>
+      <td bgcolor="#FFf9f9" class="offdiagonal">
+        <font color="#000000" title="0.023">
+          12
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.014">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.003">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.006">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.003">
+          1
+        </font>
+      </td>
+      <td bgcolor="#52FF00" class="diagonal">
+        <font color="#000000" title="0.839">
+          296
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.009">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.017">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.004">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.011">
+          3
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Seismic vessel
+      </th>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.007">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf9f9" class="offdiagonal">
+        <font color="#000000" title="0.022">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.015">
+          2
+        </font>
+      </td>
+      <td bgcolor="#68FF00" class="diagonal">
+        <font color="#000000" title="0.795">
+          60
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf8f8" class="offdiagonal">
+        <font color="#000000" title="0.027">
+          4
+        </font>
+      </td>
+      <td bgcolor="#FFe6e6" class="offdiagonal">
+        <font color="#000000" title="0.096">
+          11
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Squid
+      </th>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.012">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.008">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#0dFF00" class="diagonal">
+        <font color="#000000" title="0.973">
+          71
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Trawlers
+      </th>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.009">
+          15
+        </font>
+      </td>
+      <td bgcolor="#FFf6f6" class="offdiagonal">
+        <font color="#000000" title="0.036">
+          6
+        </font>
+      </td>
+      <td bgcolor="#FFeeee" class="offdiagonal">
+        <font color="#000000" title="0.065">
+          39
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.016">
+          9
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.010">
+          5
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.016">
+          10
+        </font>
+      </td>
+      <td bgcolor="#FFf7f7" class="offdiagonal">
+        <font color="#000000" title="0.030">
+          4
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#15FF00" class="diagonal">
+        <font color="#000000" title="0.958">
+          1867
+        </font>
+      </td>
+      <td bgcolor="#FFf9f9" class="offdiagonal">
+        <font color="#000000" title="0.023">
+          9
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Tug/Pilot
+      </th>
+      <td bgcolor="#FFf5f5" class="offdiagonal">
+        <font color="#000000" title="0.039">
+          13
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFefef" class="offdiagonal">
+        <font color="#000000" title="0.062">
+          15
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.004">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.012">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFf8f8" class="offdiagonal">
+        <font color="#000000" title="0.029">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.003">
+          1
+        </font>
+      </td>
+      <td bgcolor="#83FF00" class="diagonal">
+        <font color="#000000" title="0.742">
+          154
+        </font>
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="unbreakable">
+  <h3>
+    Metrics by Label
+  </h3>
+  <table>
+    <tr>
+      <th>
+        Label
+      </th>
+      <th>
+        Precision
+      </th>
+      <th>
+        Recall
+      </th>
+      <th>
+        F1-Score
+      </th>
+    </tr>
+    <tr>
+      <td>
+        Cargo/Tanker
+      </td>
+      <td>
+        0.96
+      </td>
+      <td>
+        0.92
+      </td>
+      <td>
+        0.94
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Drifting longlines
+      </td>
+      <td>
+        0.85
+      </td>
+      <td>
+        0.92
+      </td>
+      <td>
+        0.88
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Fixed gear
+      </td>
+      <td>
+        0.85
+      </td>
+      <td>
+        0.85
+      </td>
+      <td>
+        0.85
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Passenger
+      </td>
+      <td>
+        0.85
+      </td>
+      <td>
+        0.87
+      </td>
+      <td>
+        0.86
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Pole and line
+      </td>
+      <td>
+        0.81
+      </td>
+      <td>
+        0.65
+      </td>
+      <td>
+        0.72
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Purse seines
+      </td>
+      <td>
+        0.93
+      </td>
+      <td>
+        0.94
+      </td>
+      <td>
+        0.93
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Reefer
+      </td>
+      <td>
+        0.77
+      </td>
+      <td>
+        0.92
+      </td>
+      <td>
+        0.84
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Seismic vessel
+      </td>
+      <td>
+        0.83
+      </td>
+      <td>
+        0.76
+      </td>
+      <td>
+        0.79
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Squid
+      </td>
+      <td>
+        0.97
+      </td>
+      <td>
+        0.97
+      </td>
+      <td>
+        0.97
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Trawlers
+      </td>
+      <td>
+        0.97
+      </td>
+      <td>
+        0.95
+      </td>
+      <td>
+        0.96
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Tug/Pilot
+      </td>
+      <td>
+        0.68
+      </td>
+      <td>
+        0.81
+      </td>
+      <td>
+        0.74
+      </td>
+    </tr>
+  </table>
+  <h4>
+    Accuracy with equal class weight
+  </h4>
+  0.868881631618
+</div>
+<hr />
+<h2>
+  Fine Labels
+</h2>
+<div class="unbreakable">
+  <h3>
+    Accuracy by Date
+  </h3>
+  <table>
+    <tr>
+      <th>
+        Start Date
+      </th>
+      <th>
+        Accuracy
+      </th>
+    </tr>
+    <tr>
+      <td>
+        2012-01-01
+      </td>
+      <td>
+        0.67
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2012-06-29
+      </td>
+      <td>
+        0.78
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2012-12-26
+      </td>
+      <td>
+        0.83
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2013-06-24
+      </td>
+      <td>
+        0.84
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2013-12-21
+      </td>
+      <td>
+        0.84
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2014-06-19
+      </td>
+      <td>
+        0.85
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2014-12-16
+      </td>
+      <td>
+        0.84
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2015-06-14
+      </td>
+      <td>
+        0.85
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2015-12-11
+      </td>
+      <td>
+        0.84
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="unbreakable">
+  <h3>
+    Overall Accuracy
+  </h3>
+  0.87
+</div>
+<div class="unbreakable">
+  <h3>
+    Confusion Matrix
+  </h3>
+  <table class="confusion-matrix">
+    <tr>
+      <th></th>
+      <th class="col">
+        <div>
+          <span>
+            Cargo
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Drifting longlines
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Pilot
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Pole and line
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Pots and traps
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Purse seines
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Reefer
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Sailing
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Seismic vessel
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Set gillnets
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Set longlines
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Squid
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Tanker
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Trawlers
+          </span>
+        </div>
+      </th>
+      <th class="col">
+        <div>
+          <span>
+            Tug
+          </span>
+        </div>
+      </th>
+    </tr>
+    <tr>
+      <th class="row">
+        Cargo
+      </th>
+      <td bgcolor="#71FF00" class="diagonal">
+        <font color="#000000" title="0.777">
+          555
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.016">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.005">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFdcdc" class="offdiagonal">
+        <font color="#000000" title="0.138">
+          78
+        </font>
+      </td>
+      <td bgcolor="#FFf4f4" class="offdiagonal">
+        <font color="#000000" title="0.041">
+          8
+        </font>
+      </td>
+      <td bgcolor="#FFf9f9" class="offdiagonal">
+        <font color="#000000" title="0.023">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFd8d8" class="offdiagonal">
+        <font color="#000000" title="0.153">
+          121
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.004">
+          4
+        </font>
+      </td>
+      <td bgcolor="#FFecec" class="offdiagonal">
+        <font color="#000000" title="0.075">
+          22
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Drifting longlines
+      </th>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#39FF00" class="diagonal">
+        <font color="#000000" title="0.886">
+          78
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.009">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf8f8" class="offdiagonal">
+        <font color="#000000" title="0.026">
+          4
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Pilot
+      </th>
+      <td bgcolor="#FFf8f8" class="offdiagonal">
+        <font color="#000000" title="0.029">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#ccFF00" class="diagonal">
+        <font color="#000000" title="0.600">
+          21
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf9f9" class="offdiagonal">
+        <font color="#000000" title="0.025">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.015">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFf1f1" class="offdiagonal">
+        <font color="#000000" title="0.055">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.014">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFdcdc" class="offdiagonal">
+        <font color="#000000" title="0.138">
+          8
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Pole and line
+      </th>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#6eFF00" class="diagonal">
+        <font color="#000000" title="0.783">
+          27
+        </font>
+      </td>
+      <td bgcolor="#FFf3f3" class="offdiagonal">
+        <font color="#000000" title="0.048">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.014">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.017">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFdede" class="offdiagonal">
+        <font color="#000000" title="0.129">
+          9
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Pots and traps
+      </th>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf8f8" class="offdiagonal">
+        <font color="#000000" title="0.028">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#a1FF00" class="diagonal">
+        <font color="#000000" title="0.683">
+          28
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.015">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFefef" class="offdiagonal">
+        <font color="#000000" title="0.064">
+          4
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFeded" class="offdiagonal">
+        <font color="#000000" title="0.070">
+          5
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Purse seines
+      </th>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.002">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#1dFF00" class="diagonal">
+        <font color="#000000" title="0.942">
+          277
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.003">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf9f9" class="offdiagonal">
+        <font color="#000000" title="0.023">
+          5
+        </font>
+      </td>
+      <td bgcolor="#FFf6f6" class="offdiagonal">
+        <font color="#000000" title="0.034">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.016">
+          8
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.004">
+          1
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Reefer
+      </th>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.014">
+          6
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.014">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.003">
+          1
+        </font>
+      </td>
+      <td bgcolor="#70FF00" class="diagonal">
+        <font color="#000000" title="0.779">
+          300
+        </font>
+      </td>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.012">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.009">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.017">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.007">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.005">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.008">
+          2
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Sailing
+      </th>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf0f0" class="offdiagonal">
+        <font color="#000000" title="0.061">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFf9f9" class="offdiagonal">
+        <font color="#000000" title="0.022">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.006">
+          1
+        </font>
+      </td>
+      <td bgcolor="#5dFF00" class="diagonal">
+        <font color="#000000" title="0.817">
+          89
+        </font>
+      </td>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.012">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.008">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.005">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.015">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFf6f6" class="offdiagonal">
+        <font color="#000000" title="0.037">
+          5
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Seismic vessel
+      </th>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.007">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfafa" class="offdiagonal">
+        <font color="#000000" title="0.022">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFf9f9" class="offdiagonal">
+        <font color="#000000" title="0.024">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.015">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#68FF00" class="diagonal">
+        <font color="#000000" title="0.795">
+          60
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf6f6" class="offdiagonal">
+        <font color="#000000" title="0.034">
+          5
+        </font>
+      </td>
+      <td bgcolor="#FFeaea" class="offdiagonal">
+        <font color="#000000" title="0.082">
+          9
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Set gillnets
+      </th>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.017">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFecec" class="offdiagonal">
+        <font color="#000000" title="0.075">
+          5
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.005">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#72FF00" class="diagonal">
+        <font color="#000000" title="0.775">
+          134
+        </font>
+      </td>
+      <td bgcolor="#FFeded" class="offdiagonal">
+        <font color="#000000" title="0.072">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.007">
+          2
+        </font>
+      </td>
+      <td bgcolor="#FFebeb" class="offdiagonal">
+        <font color="#000000" title="0.077">
+          23
+        </font>
+      </td>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.011">
+          2
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Set longlines
+      </th>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf0f0" class="offdiagonal">
+        <font color="#000000" title="0.057">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf9f9" class="offdiagonal">
+        <font color="#000000" title="0.025">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFacac" class="offdiagonal">
+        <font color="#000000" title="0.324">
+          17
+        </font>
+      </td>
+      <td bgcolor="#FFfb00" class="diagonal">
+        <font color="#000000" title="0.491">
+          13
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFf4f4" class="offdiagonal">
+        <font color="#000000" title="0.043">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Squid
+      </th>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.012">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.008">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#0dFF00" class="diagonal">
+        <font color="#000000" title="0.973">
+          71
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Tanker
+      </th>
+      <td bgcolor="#FFeaea" class="offdiagonal">
+        <font color="#000000" title="0.084">
+          58
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.012">
+          5
+        </font>
+      </td>
+      <td bgcolor="#FFe8e8" class="offdiagonal">
+        <font color="#000000" title="0.089">
+          50
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.005">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#52FF00" class="diagonal">
+        <font color="#000000" title="0.837">
+          649
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.007">
+          2
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Trawlers
+      </th>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.005">
+          5
+        </font>
+      </td>
+      <td bgcolor="#FFf5f5" class="offdiagonal">
+        <font color="#000000" title="0.041">
+          7
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.016">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFecec" class="offdiagonal">
+        <font color="#000000" title="0.076">
+          6
+        </font>
+      </td>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.010">
+          5
+        </font>
+      </td>
+      <td bgcolor="#FFfbfb" class="offdiagonal">
+        <font color="#000000" title="0.015">
+          11
+        </font>
+      </td>
+      <td bgcolor="#FFf5f5" class="offdiagonal">
+        <font color="#000000" title="0.039">
+          8
+        </font>
+      </td>
+      <td bgcolor="#FFf7f7" class="offdiagonal">
+        <font color="#000000" title="0.030">
+          4
+        </font>
+      </td>
+      <td bgcolor="#FFf4f4" class="offdiagonal">
+        <font color="#000000" title="0.042">
+          13
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.007">
+          8
+        </font>
+      </td>
+      <td bgcolor="#12FF00" class="diagonal">
+        <font color="#000000" title="0.964">
+          1890
+        </font>
+      </td>
+      <td bgcolor="#FFfafa" class="offdiagonal">
+        <font color="#000000" title="0.018">
+          6
+        </font>
+      </td>
+    </tr>
+    <tr>
+      <th class="row">
+        Tug
+      </th>
+      <td bgcolor="#FFf8f8" class="offdiagonal">
+        <font color="#000000" title="0.029">
+          7
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFe7e7" class="offdiagonal">
+        <font color="#000000" title="0.096">
+          5
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.005">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFfcfc" class="offdiagonal">
+        <font color="#000000" title="0.013">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFfdfd" class="offdiagonal">
+        <font color="#000000" title="0.008">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFf7f7" class="offdiagonal">
+        <font color="#000000" title="0.031">
+          3
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFffff" class="offdiagonal">
+        <font color="#000000" title="0.000">
+          0
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.004">
+          1
+        </font>
+      </td>
+      <td bgcolor="#FFfefe" class="offdiagonal">
+        <font color="#000000" title="0.004">
+          1
+        </font>
+      </td>
+      <td bgcolor="#76FF00" class="diagonal">
+        <font color="#000000" title="0.768">
+          131
+        </font>
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="unbreakable">
+  <h3>
+    Metrics by Label
+  </h3>
+  <table>
+    <tr>
+      <th>
+        Label
+      </th>
+      <th>
+        Precision
+      </th>
+      <th>
+        Recall
+      </th>
+      <th>
+        F1-Score
+      </th>
+    </tr>
+    <tr>
+      <td>
+        Cargo
+      </td>
+      <td>
+        0.87
+      </td>
+      <td>
+        0.70
+      </td>
+      <td>
+        0.78
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Drifting longlines
+      </td>
+      <td>
+        0.84
+      </td>
+      <td>
+        0.94
+      </td>
+      <td>
+        0.89
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Pilot
+      </td>
+      <td>
+        0.64
+      </td>
+      <td>
+        0.57
+      </td>
+      <td>
+        0.60
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Pole and line
+      </td>
+      <td>
+        0.93
+      </td>
+      <td>
+        0.68
+      </td>
+      <td>
+        0.78
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Pots and traps
+      </td>
+      <td>
+        0.65
+      </td>
+      <td>
+        0.72
+      </td>
+      <td>
+        0.68
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Purse seines
+      </td>
+      <td>
+        0.94
+      </td>
+      <td>
+        0.94
+      </td>
+      <td>
+        0.94
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Reefer
+      </td>
+      <td>
+        0.67
+      </td>
+      <td>
+        0.93
+      </td>
+      <td>
+        0.78
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Sailing
+      </td>
+      <td>
+        0.79
+      </td>
+      <td>
+        0.85
+      </td>
+      <td>
+        0.82
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Seismic vessel
+      </td>
+      <td>
+        0.83
+      </td>
+      <td>
+        0.76
+      </td>
+      <td>
+        0.79
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Set gillnets
+      </td>
+      <td>
+        0.77
+      </td>
+      <td>
+        0.78
+      </td>
+      <td>
+        0.77
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Set longlines
+      </td>
+      <td>
+        0.81
+      </td>
+      <td>
+        0.35
+      </td>
+      <td>
+        0.49
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Squid
+      </td>
+      <td>
+        0.97
+      </td>
+      <td>
+        0.97
+      </td>
+      <td>
+        0.97
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Tanker
+      </td>
+      <td>
+        0.83
+      </td>
+      <td>
+        0.85
+      </td>
+      <td>
+        0.84
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Trawlers
+      </td>
+      <td>
+        0.96
+      </td>
+      <td>
+        0.96
+      </td>
+      <td>
+        0.96
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Tug
+      </td>
+      <td>
+        0.70
+      </td>
+      <td>
+        0.86
+      </td>
+      <td>
+        0.77
+      </td>
+    </tr>
+  </table>
+  <h4>
+    Accuracy with equal class weight
+  </h4>
+  0.790314076707
+</div>
+<hr />
+<h2>
+  Length Inference
+</h2>
+<div class="unbreakable">
+  <h3>
+    RMS Error (m) by Date
+  </h3>
+  <table>
+    <tr>
+      <th>
+        Start Date
+      </th>
+      <th>
+        RMS Error
+      </th>
+    </tr>
+    <tr>
+      <td>
+        2012-01-01
+      </td>
+      <td>
+        18.08
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2012-06-29
+      </td>
+      <td>
+        11.71
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2012-12-26
+      </td>
+      <td>
+        10.51
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2013-06-24
+      </td>
+      <td>
+        9.70
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2013-12-21
+      </td>
+      <td>
+        9.57
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2014-06-19
+      </td>
+      <td>
+        9.58
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2014-12-16
+      </td>
+      <td>
+        9.69
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2015-06-14
+      </td>
+      <td>
+        9.52
+      </td>
+    </tr>
+    <tr>
+      <td>
+        2015-12-11
+      </td>
+      <td>
+        9.18
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="unbreakable">
+  <h3>
+    Overall RMS Error
+  </h3>
+  9.08
+</div>
+<div class="unbreakable">
+  <h3>
+    RMS Error by Label
+  </h3>
+  <table>
+    <tr>
+      <th>
+        Label
+      </th>
+      <th>
+        RMS Error (m)
+      </th>
+      <th>
+        Mean Length (m)
+      </th>
+      <th>
+        StdDev Length (m)
+      </th>
+    </tr>
+    <tr>
+      <td>
+        Drifting longlines
+      </td>
+      <td>
+        4.53
+      </td>
+      <td>
+        32.58
+      </td>
+      <td>
+        9.90
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Fixed gear
+      </td>
+      <td>
+        4.35
+      </td>
+      <td>
+        17.81
+      </td>
+      <td>
+        7.62
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Pole and line
+      </td>
+      <td>
+        6.45
+      </td>
+      <td>
+        32.86
+      </td>
+      <td>
+        14.16
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Purse seines
+      </td>
+      <td>
+        4.55
+      </td>
+      <td>
+        24.76
+      </td>
+      <td>
+        13.15
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Reefer
+      </td>
+      <td>
+        20.05
+      </td>
+      <td>
+        109.13
+      </td>
+      <td>
+        19.16
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Trawlers
+      </td>
+      <td>
+        9.03
+      </td>
+      <td>
+        26.33
+      </td>
+      <td>
+        15.37
+      </td>
+    </tr>
+  </table>
+</div>
+<hr />
