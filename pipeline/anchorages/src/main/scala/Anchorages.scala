@@ -449,15 +449,18 @@ object Anchorages extends LazyLogging {
           locationRecords,
           AnchorageParameters.stationaryPeriodMinDuration)
 
-      val anchoragePoints =
-        Anchorages.findAnchoragePointCells(processed)
-      val anchorages = Anchorages.buildAnchoragesFromAnchoragePoints(anchoragePoints)
+      val anchorages = clusterAnchorages(
+        Anchorages.buildAnchoragesFromAnchoragePoints(
+          Anchorages.findAnchoragePointCells(processed)))
 
       // Output anchorages points.
       val anchoragePointsPath = config.pipelineOutputPath + "/anchorage_points"
-      anchoragePoints.map { anchoragePoint =>
-        compact(render(anchoragePoint.toJson))
-      }.saveAsTextFile(anchoragePointsPath)
+      anchorages
+        .flatMap(anchorage => anchorage.anchoragePoints)
+        .map { anchoragePoint =>
+          compact(render(anchoragePoint.toJson))
+        }
+        .saveAsTextFile(anchoragePointsPath)
 
       // And anchorages.
       val anchoragesPath = config.pipelineOutputPath + "/anchorages"
