@@ -70,6 +70,67 @@ object VesselStationaryPeriod {
       StationaryPeriod.fromJson(json \ "visit"))
 }
 
+
+
+
+
+
+
+
+
+
+case class AnchorageGridPoint(meanLocation: LatLon, vessels: Set[VesselMetadata], visits: Seq[VesselStationaryPeriod]) {
+  def id: String = meanLocation.getS2CellId(AnchorageParameters.anchoragesS2Scale).toToken
+}
+
+object AnchorageGridPoint {
+  implicit val formats = DefaultFormats
+
+  def fromVisits(visits : Seq[VesselStationaryPeriod]) = {
+    AnchorageGridPoint(
+      LatLon.mean(visits.map(_.visit.location)),
+      visits.map(_.metadata).toIndexedSeq.distinct.toSet,
+      visits)
+  }
+}
+
+case class AnchorageGridCluster(meanLocation: LatLon, anchoragePoints: Set[AnchorageGridPoint]) {
+  def id: String = meanLocation.getS2CellId(AnchorageParameters.anchoragesS2Scale).toToken
+}
+
+object AnchorageGridCluster extends LazyLogging {
+  implicit val formats = DefaultFormats
+
+  def fromAnchorageGridPoints(points: Iterable[AnchorageGridPoint]) = {
+    AnchorageGridCluster(
+      LatLon.weightedMean(
+        points.map(_.meanLocation),
+        points.map(_.vessels.size.toDouble)),
+      points.toSet)
+  }
+
+  def fromVisits(visits : Seq[VesselStationaryPeriod]) : AnchorageGridCluster = {
+    val centralPoint = LatLon.mean(visits.map(_.visit.location))
+    val uniqueVessels = visits.map(_.metadata).toIndexedSeq.distinct
+    AnchorageGridCluster(centralPoint, Set[AnchorageGridPoint]())
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 case class AnchoragePoint(meanLocation: LatLon,
                           vessels: Set[VesselMetadata],
                           meanDistanceToShore: DoubleU[kilometer],
@@ -242,7 +303,7 @@ object Anchorages extends LazyLogging {
   }
 
   def findAnchoragePointCells(
-      input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[AnchoragePoint] = {
+      input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[AnchorageGridPoint] = {
 
     input.flatMap {
       case (md, processedLocations) =>
@@ -252,16 +313,16 @@ object Anchorages extends LazyLogging {
         }
     }.groupByKey.map {
       case (cell, visits) =>
-        AnchoragePoint.fromVisits(visits.toSeq)
+        AnchorageGridPoint.fromVisits(visits.toSeq)
     }.filter { _.vessels.size >= AnchorageParameters.minUniqueVesselsForAnchorage }
   }
 
-  def mergeAdjacentAnchoragePoints(anchoragePoints: Iterable[AnchoragePoint]): Seq[Anchorage] = {
+  def mergeAdjacentAnchoragePoints(anchoragePoints: Iterable[AnchorageGridPoint]): Seq[AnchorageGridCluster] = {
     val anchoragesById =
       anchoragePoints.map(anchoragePoint => (anchoragePoint.id, anchoragePoint)).toMap
 
     // Merge adjacent anchorages.
-    val unionFind = new UnionFind[AnchoragePoint](anchoragePoints.toSet.asJava)
+    val unionFind = new UnionFind[AnchorageGridPoint](anchoragePoints.toSet.asJava)
     anchoragePoints.foreach { ancorage =>
       val neighbourCells = Array.fill[S2CellId](4) { new S2CellId() }
       ancorage.meanLocation
@@ -280,12 +341,12 @@ object Anchorages extends LazyLogging {
       unionFind.find(anchoragePoint).id
     }.map {
       case (_, anchoragePoints) =>
-        Anchorage.fromAnchoragePoints(anchoragePoints)
+        AnchorageGridCluster.fromAnchorageGridPoints(anchoragePoints)
     }.toSeq
   }
 
   def buildAnchoragesFromAnchoragePoints(
-      anchorages: SCollection[AnchoragePoint]): SCollection[Anchorage] =
+      anchorages: SCollection[AnchorageGridPoint]): SCollection[AnchorageGridCluster] =
     anchorages.groupAll
     // Build anchorage group list.
     .flatMap { anchorages =>
@@ -318,7 +379,7 @@ object Anchorages extends LazyLogging {
     })
   }
 
-  def clusterAnchorage(tentativeAnchorage: Anchorage) : Seq[Anchorage] = {
+  def clusterAnchorage(tentativeAnchorage: AnchorageGridCluster) : Seq[Anchorage] = {
     val vesselPoints = tentativeAnchorage.anchoragePoints
       .flatMap(
         point => point.visits)
@@ -344,7 +405,7 @@ object Anchorages extends LazyLogging {
     attachPointsToNearestAnchorage(points, anchorages)
   }
 
-  def clusterAnchorages(tentativeAnchorages: SCollection[Anchorage]) : SCollection[Anchorage] = {
+  def clusterAnchorages(tentativeAnchorages: SCollection[AnchorageGridCluster]) : SCollection[Anchorage] = {
     tentativeAnchorages.flatMap(clusterAnchorage)
   }
 
