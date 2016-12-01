@@ -101,6 +101,15 @@ case class AnchoragePoint(meanLocation: LatLon,
 object AnchoragePoint {
   implicit val formats = DefaultFormats
 
+  def fromVisits(visits : Seq[VesselStationaryPeriod]) : AnchoragePoint = {
+    val centralPoint = LatLon.mean(visits.map(_.visit.location))
+    val uniqueVessels = visits.map(_.metadata).toIndexedSeq.distinct
+    val meanDistanceToShore = visits.map { _.visit.meanDistanceToShore }.mean
+    val meanDriftRadius = visits.map { _.visit.meanDriftRadius }.mean
+
+    AnchoragePoint(centralPoint, uniqueVessels.toSet, meanDistanceToShore, meanDriftRadius, visits)
+  }
+
   def fromJson(json: JValue) = {
     val meanLocation = LatLon((json \ "latitude").extract[Double].of[degrees],
                               (json \ "longitude").extract[Double].of[degrees])
@@ -155,6 +164,15 @@ object Anchorage extends LazyLogging {
               // is perhaps a little statistically dubious, but may still prove
               // useful to distinguish fixed vs drifting anchorage groups.
               anchoragePoints.map(_.meanDriftRadius).weightedMean(weights))
+  }
+
+  def fromVisits(visits : Seq[VesselStationaryPeriod]) : Anchorage = {
+    val centralPoint = LatLon.mean(visits.map(_.visit.location))
+    val uniqueVessels = visits.map(_.metadata).toIndexedSeq.distinct
+    val meanDistanceToShore = visits.map { _.visit.meanDistanceToShore }.mean
+    val meanDriftRadius = visits.map { _.visit.meanDriftRadius }.mean
+
+    Anchorage(centralPoint, Set[AnchoragePoint](), meanDistanceToShore, meanDriftRadius)
   }
 
   def fromJson(json: JValue, anchoragePointMap: Map[String, AnchoragePoint]) = {
@@ -223,24 +241,6 @@ object Anchorages extends LazyLogging {
                     AnchorageParameters.anchoragesS2Scale)
   }
 
-  def visitsToAnchoragePoint(visits : Seq[VesselStationaryPeriod]) : AnchoragePoint = {
-    val centralPoint = LatLon.mean(visits.map(_.visit.location))
-    val uniqueVessels = visits.map(_.metadata).toIndexedSeq.distinct
-    val meanDistanceToShore = visits.map { _.visit.meanDistanceToShore }.mean
-    val meanDriftRadius = visits.map { _.visit.meanDriftRadius }.mean
-
-    AnchoragePoint(centralPoint, uniqueVessels.toSet, meanDistanceToShore, meanDriftRadius, visits)
-  }
-
-  def visitsToAnchorage(visits : Seq[VesselStationaryPeriod]) : Anchorage = {
-    val centralPoint = LatLon.mean(visits.map(_.visit.location))
-    val uniqueVessels = visits.map(_.metadata).toIndexedSeq.distinct
-    val meanDistanceToShore = visits.map { _.visit.meanDistanceToShore }.mean
-    val meanDriftRadius = visits.map { _.visit.meanDriftRadius }.mean
-
-    Anchorage(centralPoint, Set[AnchoragePoint](), meanDistanceToShore, meanDriftRadius)
-  }
-
   def findAnchoragePointCells(
       input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[AnchoragePoint] = {
 
@@ -252,7 +252,7 @@ object Anchorages extends LazyLogging {
         }
     }.groupByKey.map {
       case (cell, visits) =>
-        visitsToAnchoragePoint(visits.toSeq)
+        AnchoragePoint.fromVisits(visits.toSeq)
     }.filter { _.vessels.size >= AnchorageParameters.minUniqueVesselsForAnchorage }
   }
 
@@ -329,7 +329,7 @@ object Anchorages extends LazyLogging {
     .cluster(vesselPoints.toIterable.asJavaCollection)
     .asScala
     .map(cluster => {
-      visitsToAnchoragePoint(cluster.getPoints().asScala)
+      AnchoragePoint.fromVisits(cluster.getPoints().asScala)
     })
 
     val anchorages = new DBSCANClusterer[VesselStationaryPeriod](
@@ -338,7 +338,7 @@ object Anchorages extends LazyLogging {
     .cluster(vesselPoints.toIterable.asJavaCollection)
     .asScala
     .map(cluster => {
-      visitsToAnchorage(cluster.getPoints().asScala)
+      Anchorage.fromVisits(cluster.getPoints().asScala)
     })
 
     attachPointsToNearestAnchorage(points, anchorages)
