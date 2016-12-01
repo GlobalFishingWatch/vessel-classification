@@ -22,6 +22,13 @@ Trainer = namedtuple("Trainer", ["loss", "update_ops"])
 TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 
 
+def f1(recall, precision):
+    rval, rop = recall
+    pval, pop = precision
+    f1 = 2.0 / (1.0 / rval + 1.0 / pval)
+    return (f1, f1)
+
+
 class ObjectiveBase(object):
     __metaclass__ = abc.ABCMeta
 
@@ -277,10 +284,25 @@ class ClassificationObjective(ObjectiveBase):
                     tf.equal(labels, -1), tf.zeros_like(labels),
                     tf.ones_like(labels))
 
-                return metrics.aggregate_metric_map({
+                metrics_map = {
                     '%s/Test accuracy' % self.name: metrics.streaming_accuracy(
                         predictions, labels, weights=label_mask),
-                })
+                    }
+
+                for i, cls in enumerate(self.classes):
+                    trues = tf.to_int32(tf.equal(labels, i))
+                    preds = tf.to_int32(tf.equal(predictions, i))
+                    recall = metrics.streaming_recall(
+                        preds, trues, weights=label_mask)
+                    precision = metrics.streaming_precision(
+                        preds, trues, weights=label_mask)
+                    metrics_map["%s/Class-%s-Precision" % (self.name, cls)] = recall
+                    metrics_map["%s/Class-%s-Recall" % (self.name, cls)] = precision
+                    metrics_map["%s/Class-%s-F1-Score" % (self.name, cls)] = 2.0 / (1.0 / recall + 1.0 / precision)
+
+                return metrics.aggregate_metric_map(metrics_map)
+
+
 
             def build_json_results(self, prediction, timestamps):
                 max_prob_index = np.argmax(prediction)
@@ -487,17 +509,48 @@ class MultiClassificationObjective(ObjectiveBase):
 
                 # TODO: (bitsofbits) refactor to make not horrible
 
-                return metrics.aggregate_metric_map({
-                    '%s/Test fine accuracy' % self.name:
+                metrics_map = {
+                    '%s/Test-fine-accuracy' % self.name:
                     metrics.streaming_accuracy(
                         fine_predictions, fine_labels, weights=fine_mask),
-                    '%s/Test coarse accuracy' % self.name:
+                    '%s/Test-coarse-accuracy' % self.name:
                     metrics.streaming_accuracy(
                         coarse_prediction, coarse_labels, weights=coarse_mask),
-                    '%s/Test fishing accuracy' % self.name:
+                    '%s/Test-fishing-accuracy' % self.name:
                     metrics.streaming_accuracy(
                         fishing_prediction, is_fishing, weights=fishing_mask),
-                })
+                }
+
+
+
+                for i, cls in enumerate(self.classes):
+                    trues = tf.to_int32(tf.equal(fine_labels, i))
+                    preds = tf.to_int32(tf.equal(fine_predictions, i))
+                    recall = metrics.streaming_recall(
+                        preds, trues, weights=fine_mask)
+                    precision = metrics.streaming_precision(
+                        preds, trues, weights=fine_mask)
+                    metrics_map["%s/Class-%s-Precision" % (self.name, cls)] = recall
+                    metrics_map["%s/Class-%s-Recall" % (self.name, cls)] = precision
+                    metrics_map["%s/Class-%s-F1-Score" % (self.name, cls)] = f1(recall, precision)
+
+                for i, cls in enumerate(utility.VESSEL_CLASS_NAMES):
+                    # Also include coarse classes, but only if they are not
+                    # already included in the fine classes
+                    if cls in self.classes:
+                        continue
+                    trues = tf.to_int32(tf.equal(coarse_labels, i))
+                    preds = tf.to_int32(tf.equal(coarse_prediction, i))
+                    recall = metrics.streaming_recall(
+                        preds, trues, weights=fine_mask)
+                    precision = metrics.streaming_precision(
+                        preds, trues, weights=fine_mask)
+                    metrics_map["%s/Class-%s-Precision" % (self.name, cls)] = recall
+                    metrics_map["%s/Class-%s-Recall" % (self.name, cls)] = precision
+                    metrics_map["%s/Class-%s-F1-Score" % (self.name, cls)] = f1(recall, precision)
+
+
+                return metrics.aggregate_metric_map(metrics_map)
 
             def build_json_results(self, class_probabilities):
                 max_prob_index = np.argmax(class_probabilities)
@@ -597,18 +650,23 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 ones = tf.to_int32(dense_labels > 0.5)
                 weights = tf.to_float(valid)
 
+                recall = slim.metrics.streaming_recall(
+                        thresholded_prediction, ones, weights=weights)
+
+                precision = slim.metrics.streaming_precision(
+                        thresholded_prediction, ones, weights=weights)
+
                 raw_metrics = {
-                    'Test MSE': slim.metrics.streaming_mean_squared_error(
+                    'Test-MSE': slim.metrics.streaming_mean_squared_error(
                         self.prediction, tf.to_float(ones), weights=weights),
-                    'Test accuracy': slim.metrics.streaming_accuracy(
+                    'Test-accuracy': slim.metrics.streaming_accuracy(
                         thresholded_prediction, ones, weights=weights),
-                    'Test precision': slim.metrics.streaming_precision(
-                        thresholded_prediction, ones, weights=weights),
-                    'Test recall': slim.metrics.streaming_recall(
-                        thresholded_prediction, ones, weights=weights),
-                    'Test prediction fraction': slim.metrics.streaming_accuracy(
-                        thresholded_prediction, valid, weights=weights)
-                    'Test label fraction': slim.metrics.streaming_accuracy(
+                    'Test-precision': precision,
+                    'Test-recall': recall,
+                    'Test-F1-score': f1(recall, precision),
+                    'Test-prediction-fraction': slim.metrics.streaming_accuracy(
+                        thresholded_prediction, valid, weights=weights),
+                    'Test-label-fraction': slim.metrics.streaming_accuracy(
                         ones, valid, weights=weights)
                 }
 
@@ -650,12 +708,17 @@ class FishingLocalizationObjectiveMSE(AbstractFishingLocalizationObjective):
 
 class FishingLocalizationObjectiveCrossEntropy(
         AbstractFishingLocalizationObjective):
+
+    def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0, pos_weight=1.0):
+        super(FishingLocalizationObjectiveCrossEntropy, self).__init__(metadata_label, name, vessel_metadata, loss_weight)
+        self.pos_weight = pos_weight    
+
     def loss_function(self, dense_labels):
         fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
         fishing_targets = tf.to_float(dense_labels > 0.5)
         return (tf.reduce_mean(fishing_mask *
-                               tf.nn.sigmoid_cross_entropy_with_logits(
-                                   self.logits, fishing_targets)))
+                               tf.nn.weighted_cross_entropy_with_logits(
+                                   self.logits, fishing_targets, pos_weight=self.pos_weight)))
 
 
 class VesselMetadataClassificationObjective(ClassificationObjective):
