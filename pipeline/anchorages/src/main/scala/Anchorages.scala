@@ -70,15 +70,6 @@ object VesselStationaryPeriod {
       StationaryPeriod.fromJson(json \ "visit"))
 }
 
-
-
-
-
-
-
-
-
-
 case class AnchorageGridPoint(meanLocation: LatLon, vessels: Set[VesselMetadata], visits: Seq[VesselStationaryPeriod]) {
   def id: String = meanLocation.getS2CellId(AnchorageParameters.anchoragesS2Scale).toToken
 }
@@ -108,34 +99,12 @@ object AnchorageGridCluster extends LazyLogging {
         points.map(_.vessels.size.toDouble)),
       points.toSet)
   }
-
-  def fromVisits(visits : Seq[VesselStationaryPeriod]) : AnchorageGridCluster = {
-    val centralPoint = LatLon.mean(visits.map(_.visit.location))
-    val uniqueVessels = visits.map(_.metadata).toIndexedSeq.distinct
-    AnchorageGridCluster(centralPoint, Set[AnchorageGridPoint]())
-  }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 case class AnchoragePoint(meanLocation: LatLon,
                           vessels: Set[VesselMetadata],
                           meanDistanceToShore: DoubleU[kilometer],
-                          meanDriftRadius: DoubleU[kilometer],
-                          visits: Seq[VesselStationaryPeriod]) {
+                          meanDriftRadius: DoubleU[kilometer]) {
   def toJson() = {
     val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2).map {
       case (name, count) =>
@@ -151,8 +120,7 @@ case class AnchoragePoint(meanLocation: LatLon,
       ("flag_state_distribution" -> flagStateDistribution) ~
       ("vessels" -> vessels.map(_.toJson)) ~
       ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
-      ("mean_drift_radius_km" -> meanDriftRadius.value) ~
-      ("visits" -> visits.map((visit) => visit.toJson()))
+      ("mean_drift_radius_km" -> meanDriftRadius.value)
   }
 
   def id: String =
@@ -168,7 +136,7 @@ object AnchoragePoint {
     val meanDistanceToShore = visits.map { _.visit.meanDistanceToShore }.mean
     val meanDriftRadius = visits.map { _.visit.meanDriftRadius }.mean
 
-    AnchoragePoint(centralPoint, uniqueVessels.toSet, meanDistanceToShore, meanDriftRadius, visits)
+    AnchoragePoint(centralPoint, uniqueVessels.toSet, meanDistanceToShore, meanDriftRadius)
   }
 
   def fromJson(json: JValue) = {
@@ -178,10 +146,8 @@ object AnchoragePoint {
     val meanDriftRadius = (json \ "mean_drift_radius_km").extract[Double].of[kilometer]
     val vessels =
       (json \ "vessels").extract[List[JValue]].map(jv => VesselMetadata.fromJson(jv)).toSet
-    val visits =
-      (json \ "visits").extract[List[JValue]].map(jv => VesselStationaryPeriod.fromJson(jv)).toSeq
 
-    AnchoragePoint(meanLocation, vessels, meanDistanceToShore, meanDriftRadius, visits)
+    AnchoragePoint(meanLocation, vessels, meanDistanceToShore, meanDriftRadius)
   }
 }
 
@@ -302,7 +268,7 @@ object Anchorages extends LazyLogging {
                     AnchorageParameters.anchoragesS2Scale)
   }
 
-  def findAnchoragePointCells(
+  def findAnchorageGridPoints(
       input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[AnchorageGridPoint] = {
 
     input.flatMap {
@@ -317,7 +283,7 @@ object Anchorages extends LazyLogging {
     }.filter { _.vessels.size >= AnchorageParameters.minUniqueVesselsForAnchorage }
   }
 
-  def mergeAdjacentAnchoragePoints(anchoragePoints: Iterable[AnchorageGridPoint]): Seq[AnchorageGridCluster] = {
+  def mergeAdjacentAnchorageGridPoints(anchoragePoints: Iterable[AnchorageGridPoint]): Seq[AnchorageGridCluster] = {
     val anchoragesById =
       anchoragePoints.map(anchoragePoint => (anchoragePoint.id, anchoragePoint)).toMap
 
@@ -345,12 +311,12 @@ object Anchorages extends LazyLogging {
     }.toSeq
   }
 
-  def buildAnchoragesFromAnchoragePoints(
+  def buildAnchorageGridClusters(
       anchorages: SCollection[AnchorageGridPoint]): SCollection[AnchorageGridCluster] =
     anchorages.groupAll
     // Build anchorage group list.
     .flatMap { anchorages =>
-      mergeAdjacentAnchoragePoints(anchorages)
+      mergeAdjacentAnchorageGridPoints(anchorages)
     }
 
   def findNearestAnchorage(point : AnchoragePoint, anchorages : Seq[Anchorage]) : (Anchorage, DoubleU[kilometer]) = {
@@ -379,8 +345,8 @@ object Anchorages extends LazyLogging {
     })
   }
 
-  def clusterAnchorage(tentativeAnchorage: AnchorageGridCluster) : Seq[Anchorage] = {
-    val vesselPoints = tentativeAnchorage.anchoragePoints
+  def clusterAnchorage(gridCluster: AnchorageGridCluster) : Seq[Anchorage] = {
+    val vesselPoints = gridCluster.anchoragePoints
       .flatMap(
         point => point.visits)
 
@@ -405,8 +371,8 @@ object Anchorages extends LazyLogging {
     attachPointsToNearestAnchorage(points, anchorages)
   }
 
-  def clusterAnchorages(tentativeAnchorages: SCollection[AnchorageGridCluster]) : SCollection[Anchorage] = {
-    tentativeAnchorages.flatMap(clusterAnchorage)
+  def clusterAnchorages(gridCluster: SCollection[AnchorageGridCluster]) : SCollection[Anchorage] = {
+    gridCluster.flatMap(clusterAnchorage)
   }
 
   def findAnchorageVisits(
@@ -511,8 +477,8 @@ object Anchorages extends LazyLogging {
           AnchorageParameters.stationaryPeriodMinDuration)
 
       val anchorages = clusterAnchorages(
-        Anchorages.buildAnchoragesFromAnchoragePoints(
-          Anchorages.findAnchoragePointCells(processed)))
+        Anchorages.buildAnchorageGridClusters(
+          Anchorages.findAnchorageGridPoints(processed)))
 
       // Output anchorages points.
       val anchoragePointsPath = config.pipelineOutputPath + "/anchorage_points"
