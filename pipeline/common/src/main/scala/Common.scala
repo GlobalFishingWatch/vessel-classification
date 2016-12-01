@@ -13,6 +13,7 @@ import com.typesafe.scalalogging.{LazyLogging, Logger}
 
 import org.apache.commons.math3.util.MathUtils
 import org.json4s._
+import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 import org.joda.time.{DateTime, DateTimeZone, Duration, Instant}
@@ -32,6 +33,11 @@ object AdditionalUnits {
 
   implicit val knots_to_mps = one[knots].contains(0.514444)[meters_per_second]
   implicit val radians_to_degrees = one[degrees].contains(MathUtils.TWO_PI / 360.0)[radians]
+
+  type nauticalMile = DefineUnit[_N ~: _M]
+
+  implicit val NM_to_m = one[nauticalMile].contains(1852)[metre]
+  implicit val NM_to_km = one[nauticalMile].contains(1.852)[kilometer]
 }
 
 import AdditionalUnits._
@@ -72,9 +78,16 @@ case class LatLon(lat: DoubleU[degrees], lon: DoubleU[degrees]) {
 
     coverCells.toList
   }
+
+  def toJson() = {
+    ("lat" -> lat.value) ~
+      ("lon" -> lon.value)
+  }
 }
 
 object LatLon {
+  implicit val formats = DefaultFormats
+
   def fromS2CellId(cell: S2CellId) = {
     val loc = cell.toLatLng()
     LatLon(loc.latDegrees().of[degrees], loc.lngDegrees().of[degrees])
@@ -104,12 +117,17 @@ object LatLon {
     }
     LatLon((lat / weight).of[degrees], (lon / weight).of[degrees])
   }
+
+  def fromJson(json: JValue) =
+    LatLon(
+      (json \ "lat").extract[Double].of[degrees],
+      (json \ "lon").extract[Double].of[degrees])
 }
 
 case class VesselMetadata(mmsi: Int, isFishingVessel: Boolean = false) {
   def flagState = CountryCodes.fromMmsi(mmsi)
 
-  def toJson = {
+  def toJson() = {
     ("mmsi" -> mmsi) ~
       ("is_fishing" -> isFishingVessel)
   }
@@ -119,7 +137,9 @@ object VesselMetadata {
   implicit val formats = DefaultFormats
 
   def fromJson(json: JValue) =
-    VesselMetadata((json \ "mmsi").extract[Int], (json \ "is_fishing").extract[Boolean])
+    VesselMetadata(
+      (json \ "mmsi").extract[Int],
+      (json \ "is_fishing").extract[Boolean])
 }
 
 case class VesselLocationRecord(timestamp: Instant,
@@ -132,7 +152,24 @@ case class VesselLocationRecord(timestamp: Instant,
 case class StationaryPeriod(location: LatLon,
                             duration: Duration,
                             meanDistanceToShore: DoubleU[kilometer],
-                            meanDriftRadius: DoubleU[kilometer])
+                            meanDriftRadius: DoubleU[kilometer]) {
+  def toJson() = {
+    ("location" -> location.toJson()) ~
+      ("duration" -> duration.getMillis()) ~
+      ("meanDistanceToShore" -> meanDistanceToShore.value) ~
+      ("meanDriftRadius" -> meanDriftRadius.value)
+  }
+}
+object StationaryPeriod {
+  implicit val formats = DefaultFormats
+
+  def fromJson(json: JValue) =
+    StationaryPeriod(
+      LatLon.fromJson(json \ "location"),
+      new Duration((json \ "duration").extract[Long]),
+      (json \ "meanDistanceToShore").extract[Double].of[kilometer],
+      (json \ "meanDriftRadius").extract[Double].of[kilometer])
+}
 
 case class ProcessedLocations(locations: Seq[VesselLocationRecord],
                               stationaryPeriods: Seq[StationaryPeriod])

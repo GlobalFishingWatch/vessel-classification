@@ -34,6 +34,11 @@ import org.skytruth.common.ScioContextResource._
 import scala.collection.{mutable, immutable}
 import scala.collection.JavaConverters._
 
+import org.apache.commons.math3.ml.clustering.DBSCANClusterer
+import org.apache.commons.math3.ml.clustering.DoublePoint
+import org.apache.commons.math3.ml.distance.DistanceMeasure
+import org.apache.commons.math3.ml.clustering.Clusterable
+
 import resource._
 
 object AnchorageParameters {
@@ -46,11 +51,31 @@ object AnchorageParameters {
 
 }
 
+case class VesselStationaryPeriod(metadata : VesselMetadata, visit : StationaryPeriod) extends Clusterable {
+  def getPoint() : Array[Double] = {
+    return Array(visit.location.lat.value, visit.location.lon.value)
+  }
+
+  def toJson() =
+    ("metadata" -> metadata.toJson()) ~
+      ("visit" -> visit.toJson())
+}
+
+object VesselStationaryPeriod {
+  implicit val formats = DefaultFormats
+
+  def fromJson(json: JValue) =
+    new VesselStationaryPeriod(
+      VesselMetadata.fromJson(json \ "metadata"),
+      StationaryPeriod.fromJson(json \ "visit"))
+}
+
 case class AnchoragePoint(meanLocation: LatLon,
                           vessels: Set[VesselMetadata],
                           meanDistanceToShore: DoubleU[kilometer],
-                          meanDriftRadius: DoubleU[kilometer]) {
-  def toJson = {
+                          meanDriftRadius: DoubleU[kilometer],
+                          visits: Seq[VesselStationaryPeriod]) {
+  def toJson() = {
     val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2).map {
       case (name, count) =>
         ("name" -> name) ~
@@ -65,7 +90,8 @@ case class AnchoragePoint(meanLocation: LatLon,
       ("flag_state_distribution" -> flagStateDistribution) ~
       ("vessels" -> vessels.map(_.toJson)) ~
       ("mean_distance_to_shore_km" -> meanDistanceToShore.value) ~
-      ("mean_drift_radius_km" -> meanDriftRadius.value)
+      ("mean_drift_radius_km" -> meanDriftRadius.value) ~
+      ("visits" -> visits.map((visit) => visit.toJson()))
   }
 
   def id: String =
@@ -82,7 +108,10 @@ object AnchoragePoint {
     val meanDriftRadius = (json \ "mean_drift_radius_km").extract[Double].of[kilometer]
     val vessels =
       (json \ "vessels").extract[List[JValue]].map(jv => VesselMetadata.fromJson(jv)).toSet
-    AnchoragePoint(meanLocation, vessels, meanDistanceToShore, meanDriftRadius)
+    val visits =
+      (json \ "visits").extract[List[JValue]].map(jv => VesselStationaryPeriod.fromJson(jv)).toSeq
+
+    AnchoragePoint(meanLocation, vessels, meanDistanceToShore, meanDriftRadius, visits)
   }
 }
 
@@ -93,7 +122,7 @@ case class Anchorage(meanLocation: LatLon,
   def id: String =
     meanLocation.getS2CellId(AnchorageParameters.anchoragesS2Scale).toToken
 
-  def toJson = {
+  def toJson() = {
     val vessels = anchoragePoints.flatMap(_.vessels).toSet
     val flagStateDistribution = vessels.countBy(_.flagState).toSeq.sortBy(c => -c._2).map {
       case (name, count) =>
@@ -173,11 +202,12 @@ case class AnchorageVisit(anchorage: Anchorage, arrival: Instant, departure: Ins
 
   def duration = new Duration(arrival, departure)
 
-  def toJson =
+  def toJson() =
     ("anchorage" -> anchorage.id) ~
       ("start_time" -> arrival.toString()) ~
       ("end_time" -> departure.toString())
 }
+
 
 object Anchorages extends LazyLogging {
   def getAnchoragesLookup(anchoragesRootPath: String) = {
@@ -192,6 +222,25 @@ object Anchorages extends LazyLogging {
                     AnchorageParameters.anchorageVisitDistanceThreshold,
                     AnchorageParameters.anchoragesS2Scale)
   }
+
+  def visitsToAnchoragePoint(visits : Seq[VesselStationaryPeriod]) : AnchoragePoint = {
+    val centralPoint = LatLon.mean(visits.map(_.visit.location))
+    val uniqueVessels = visits.map(_.metadata).toIndexedSeq.distinct
+    val meanDistanceToShore = visits.map { _.visit.meanDistanceToShore }.mean
+    val meanDriftRadius = visits.map { _.visit.meanDriftRadius }.mean
+
+    AnchoragePoint(centralPoint, uniqueVessels.toSet, meanDistanceToShore, meanDriftRadius, visits)
+  }
+
+  def visitsToAnchorage(visits : Seq[VesselStationaryPeriod]) : Anchorage = {
+    val centralPoint = LatLon.mean(visits.map(_.visit.location))
+    val uniqueVessels = visits.map(_.metadata).toIndexedSeq.distinct
+    val meanDistanceToShore = visits.map { _.visit.meanDistanceToShore }.mean
+    val meanDriftRadius = visits.map { _.visit.meanDriftRadius }.mean
+
+    Anchorage(centralPoint, Set[AnchoragePoint](), meanDistanceToShore, meanDriftRadius)
+  }
+
   def findAnchoragePointCells(
       input: SCollection[(VesselMetadata, ProcessedLocations)]): SCollection[AnchoragePoint] = {
 
@@ -199,16 +248,11 @@ object Anchorages extends LazyLogging {
       case (md, processedLocations) =>
         processedLocations.stationaryPeriods.map { pl =>
           val cell = pl.location.getS2CellId(AnchorageParameters.anchoragesS2Scale)
-          (cell, (md, pl))
+          (cell, VesselStationaryPeriod(md, pl))
         }
     }.groupByKey.map {
       case (cell, visits) =>
-        val centralPoint = LatLon.mean(visits.map(_._2.location))
-        val uniqueVessels = visits.map(_._1).toIndexedSeq.distinct
-        val meanDistanceToShore = visits.map { _._2.meanDistanceToShore }.mean
-        val meanDriftRadius = visits.map { _._2.meanDriftRadius }.mean
-
-        AnchoragePoint(centralPoint, uniqueVessels.toSet, meanDistanceToShore, meanDriftRadius)
+        visitsToAnchoragePoint(visits.toSeq)
     }.filter { _.vessels.size >= AnchorageParameters.minUniqueVesselsForAnchorage }
   }
 
@@ -247,6 +291,62 @@ object Anchorages extends LazyLogging {
     .flatMap { anchorages =>
       mergeAdjacentAnchoragePoints(anchorages)
     }
+
+  def findNearestAnchorage(point : AnchoragePoint, anchorages : Seq[Anchorage]) : (Anchorage, DoubleU[kilometer]) = {
+    anchorages.map(
+      (anchorage) => (anchorage, anchorage.meanLocation.getDistance(point.meanLocation))
+    ).reduceLeft((a, b) => (a, b) match {
+      case ((anchorage1, distance1), (anchorage2, distance2)) => {
+        if (distance1 < distance2) {
+          (anchorage1, distance1)
+        } else {
+          (anchorage2, distance2)
+        }
+      }
+    })
+  }
+
+  def attachPointsToNearestAnchorage(points : Seq[AnchoragePoint], anchorages : Seq[Anchorage]) : Seq[Anchorage] = {    
+    points.map(point => {
+      val (anchorage, distance) = findNearestAnchorage(point, anchorages)
+      (anchorage, point)
+    }).groupBy({ case (anchorage, point) => anchorage })
+    .toIterable
+    .toSeq
+    .map({ case (anchorage, points) =>
+      anchorage.copy(anchoragePoints = points.map({ case (anchorage, point) => point}).toSet)
+    })
+  }
+
+  def clusterAnchorage(tentativeAnchorage: Anchorage) : Seq[Anchorage] = {
+    val vesselPoints = tentativeAnchorage.anchoragePoints
+      .flatMap(
+        point => point.visits)
+
+    val points = new DBSCANClusterer[VesselStationaryPeriod](
+      AnchorageParameters.anchorageVisitDistanceThreshold.convert[nauticalMile].value,
+      AnchorageParameters.minUniqueVesselsForAnchorage)
+    .cluster(vesselPoints.toIterable.asJavaCollection)
+    .asScala
+    .map(cluster => {
+      visitsToAnchoragePoint(cluster.getPoints().asScala)
+    })
+
+    val anchorages = new DBSCANClusterer[VesselStationaryPeriod](
+      AnchorageParameters.anchorageVisitDistanceThreshold.convert[nauticalMile].value * 10,
+      AnchorageParameters.minUniqueVesselsForAnchorage)
+    .cluster(vesselPoints.toIterable.asJavaCollection)
+    .asScala
+    .map(cluster => {
+      visitsToAnchorage(cluster.getPoints().asScala)
+    })
+
+    attachPointsToNearestAnchorage(points, anchorages)
+  }
+
+  def clusterAnchorages(tentativeAnchorages: SCollection[Anchorage]) : SCollection[Anchorage] = {
+    tentativeAnchorages.flatMap(clusterAnchorage)
+  }
 
   def findAnchorageVisits(
       locationEvents: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
