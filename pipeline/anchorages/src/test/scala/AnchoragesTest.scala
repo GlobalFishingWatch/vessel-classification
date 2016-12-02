@@ -133,12 +133,9 @@ class AnchorageVisitsTests extends PipelineSpec with Matchers {
 
 class AnchoragesGroupingTests extends PipelineSpec with Matchers {
   def anchoragePointFromS2CellToken(token: String,
-                                    vessels: Set[VesselMetadata],
-                                    distanceToShore: DoubleU[kilometer] = 0.0.of[kilometer]) =
-    AnchoragePoint(LatLon.fromS2CellId(S2CellId.fromToken(token)),
-                   vessels,
-                   distanceToShore,
-                   0.0.of[kilometer])
+                                    vessels: Set[VesselMetadata]) =
+    AnchorageGridPoint(LatLon.fromS2CellId(S2CellId.fromToken(token)),
+                   vessels, Seq[VesselStationaryPeriod]())
 
   "Anchorage merging" should "work!" in {
     val anchorages = IndexedSeq(
@@ -147,32 +144,23 @@ class AnchoragesGroupingTests extends PipelineSpec with Matchers {
       anchoragePointFromS2CellToken("89c19b64", Set(VesselMetadata(1), VesselMetadata(2))),
       anchoragePointFromS2CellToken("89c1852c", Set(VesselMetadata(1))),
       anchoragePointFromS2CellToken("89c19b04",
-                                    Set(VesselMetadata(1), VesselMetadata(2)),
-                                    30.0.of[kilometer]),
+                                    Set(VesselMetadata(1), VesselMetadata(2))),
       anchoragePointFromS2CellToken("89c19bac",
-                                    Set(VesselMetadata(1), VesselMetadata(2)),
-                                    20.0.of[kilometer]),
+                                    Set(VesselMetadata(1), VesselMetadata(2))),
       anchoragePointFromS2CellToken("89c19bb4",
-                                    Set(VesselMetadata(1), VesselMetadata(2)),
-                                    10.0.of[kilometer]))
+                                    Set(VesselMetadata(1), VesselMetadata(2))))
 
-    val groupedAnchorages = Anchorages.mergeAdjacentAnchoragePoints(anchorages)
+    val groupedAnchorages = Anchorages.mergeAdjacentAnchorageGridPoints(anchorages)
 
     groupedAnchorages should have size 3
 
     val expected =
-      Seq(Anchorage(LatLon(40.016824742437635.of[degrees], -74.07113588841028.of[degrees]),
-                    Set(anchorages(2)),
-                    0.0.of[kilometer],
-                    0.0.of[kilometer]),
-          Anchorage(LatLon(39.994377589412146.of[degrees], -74.12517039688245.of[degrees]),
-                    Set(anchorages(0), anchorages(1)),
-                    0.0.of[kilometer],
-                    0.0.of[kilometer]),
-          Anchorage(LatLon(39.96842156104703.of[degrees], -74.0828838592642.of[degrees]),
-                    Set(anchorages(3), anchorages(4), anchorages(5)),
-                    20.0.of[kilometer],
-                    0.0.of[kilometer]))
+      Seq(AnchorageGridCluster(LatLon(40.016824742437635.of[degrees], -74.07113588841028.of[degrees]),
+                    Set(anchorages(2))),
+          AnchorageGridCluster(LatLon(39.994377589412146.of[degrees], -74.12517039688245.of[degrees]),
+                    Set(anchorages(0), anchorages(1))),
+          AnchorageGridCluster(LatLon(39.96842156104703.of[degrees], -74.0828838592642.of[degrees]),
+                    Set(anchorages(3), anchorages(4), anchorages(5))))
 
     groupedAnchorages should contain theSameElementsAs expected
   }
