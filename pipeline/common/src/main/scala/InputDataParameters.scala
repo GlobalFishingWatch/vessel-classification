@@ -15,14 +15,24 @@ object InputDataParameters {
 
   val inputMeasuresPath =
     "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment"
-  def measuresPathPattern(year: String, fileGlob: String) =
-    s"${inputMeasuresPath}/$year$fileGlob"
 
   val knownFishingMMSIs = "feature-pipeline/src/main/data/treniformis_known_fishing_mmsis_2016.txt"
 
   val minValidTime = Instant.parse("2012-01-01T00:00:00Z")
   lazy val maxValidTime = Instant.now()
 
-  val defaultYearsToRun = "2012,2013,2014,2015,2016"
+  val defaultYearsToRun = Seq("2012", "2013", "2014", "2015", "2016")
   val defaultDataFileGlob = "-*-*/*-of-*"
+
+  def dataFileGlobPerYear(dataYearsArg: Seq[String], dataFileGlob: String): Seq[String] = {
+    val dataYears = if (dataYearsArg.isEmpty) {
+      InputDataParameters.defaultYearsToRun
+    } else {
+      dataYearsArg
+    }
+
+    dataYears.map { year =>
+      s"${inputMeasuresPath}/$year$dataFileGlob"
+    }
+  }
 }
