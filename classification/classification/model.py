@@ -11,6 +11,12 @@ import utility
 class ModelBase(object):
     __metaclass__ = abc.ABCMeta
 
+
+    @property
+    def use_ranges_for_training(self):
+        """Choose features overlapping with provided ranges during training"""
+        return False
+
     @property
     def batch_size(self):
         return 64
@@ -54,6 +60,13 @@ class ModelBase(object):
             '%s/%d.tfrecord' % (base_feature_path, mmsi)
             for mmsi in training_mmsis
         ]
+
+
+    @staticmethod
+    def read_metadata(
+            all_available_mmsis, metadata_file,
+            fishing_ranges, fishing_upweight=1.0):
+        return utility.read_vessel_multiclass_metadata(all_available_mmsis, metadata_file, fishing_ranges, fishing_upweight)
 
     @abc.abstractmethod
     def build_training_net(self, features, timestamps, mmsis):

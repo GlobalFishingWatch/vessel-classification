@@ -1,6 +1,8 @@
 from collections import defaultdict, namedtuple
 import csv
+import datetime
 import dateutil.parser
+import pytz
 import hashlib
 import math
 import model
@@ -14,6 +16,11 @@ import sys
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
+
+# How many times do we attempt to hit one of our time_ranges
+RANGE_ATTEMPTS = 1000
+
+
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
@@ -218,7 +225,8 @@ def np_array_random_fixed_length_extract(random_state, input_series,
 
 def np_array_random_fixed_time_extract(random_state, input_series,
                                        max_time_delta, output_length,
-                                       min_timeslice_size):
+                                       min_timeslice_size, 
+                                       selection_ranges):
     """ Extracts a random fixed-time slice from a 2d numpy array.
     
    The input array must be 2d, representing a time series, with the first    
@@ -236,6 +244,7 @@ def np_array_random_fixed_time_extract(random_state, input_series,
             shorter than this will be repeated into the output series.   
         min_timeslice_size: the minimum number of points in a timeslice for the
             series to be considered meaningful. 
+        selections_ranges: ranges to include in returned slices or None
     
   Returns:    
     An array of the same depth as the input, but altered width, representing
@@ -243,35 +252,55 @@ def np_array_random_fixed_time_extract(random_state, input_series,
   """
 
     input_length = len(input_series)
-    if max_time_delta == 0:
-        # Pick a random fixed-length window rather than fixed-time.
-        max_offset = max(input_length - output_length, 0)
-        if max_offset == 0:
-            start_index = 0
-        else:
-            start_index = random_state.randint(0, max_offset)
-        end_index = min(start_index + output_length, input_length)
-    else:
-        start_time = input_series[0][0]
-        end_time = input_series[-1][0]
-        max_time_offset = max((end_time - start_time) - max_time_delta, 0)
-        if max_time_offset == 0:
-            time_offset = 0
-        else:
-            time_offset = random_state.randint(0, max_time_offset)
-        start_index = np.searchsorted(
-            input_series[:, 0], start_time + time_offset, side='left')
 
-        # Should not start closer than min_timeslice_size points from the end lest the 
-        # series have too few points to be meaningful.
-        start_index = min(start_index, max(0,
-                                           input_length - min_timeslice_size))
-        crop_end_time = min(input_series[start_index][0] + max_time_delta,
-                            end_time)
+    for i in range(RANGE_ATTEMPTS):
+        # Try to get something in one of selection ranges
+        # If we don't get something in RANGE_ATTEMPTS then just use whatever
+        if selection_ranges:
+            selrange = selection_ranges[random_state.choice(len(selection_ranges))]
 
-        end_index = min(start_index + output_length,
-                        np.searchsorted(
-                            input_series[:, 0], crop_end_time, side='right'))
+        if max_time_delta == 0:
+                
+                # Pick a random fixed-length window rather than fixed-time.
+                max_offset = max(input_length - output_length, 0)
+                if max_offset == 0:
+                    start_index = 0
+                else:
+                    start_index = random_state.randint(0, max_offset)
+                end_index = min(start_index + output_length, input_length - 1) # INCLUDE ME WHEN RIPPING OUT REST OF KLUDGE
+
+        else:
+            start_time = input_series[0][0]
+            end_time = input_series[-1][0]
+            max_time_offset = max((end_time - start_time) - max_time_delta, 0)
+            if max_time_offset == 0:
+                time_offset = 0
+            else:
+                time_offset = random_state.randint(0, max_time_offset)
+            start_index = np.searchsorted(
+                input_series[:, 0], start_time + time_offset, side='left')
+
+            # Should not start closer than min_timeslice_size points from the end lest the 
+            # series have too few points to be meaningful.
+            start_index = min(start_index, max(0,
+                                               input_length - min_timeslice_size))
+            crop_end_time = min(input_series[start_index][0] + max_time_delta,
+                                end_time)
+
+            end_index = min(start_index + output_length,
+                            np.searchsorted(
+                                input_series[:, 0], crop_end_time, side='right'))
+
+        if not selection_ranges:
+            break
+
+        start_time = datetime.datetime.utcfromtimestamp(input_series[start_index][0]).replace(tzinfo=pytz.UTC)
+        end_time = datetime.datetime.utcfromtimestamp(input_series[end_index][0]).replace(tzinfo=pytz.UTC)
+
+        if ((selrange.start_time <= start_time <= selrange.end_time) or 
+            (selrange.start_time <= end_time <= selrange.end_time)):
+            # We are overlapping with our chosen range so use that.
+            break
 
     cropped = input_series[start_index:end_index]
     output_series = np_pad_repeat_slice(cropped, output_length)
@@ -280,7 +309,7 @@ def np_array_random_fixed_time_extract(random_state, input_series,
 
 
 def np_array_extract_features(random_state, input, max_time_delta, window_size,
-                              min_timeslice_size):
+                              min_timeslice_size, selection_ranges):
     """ Extract and process a random timeslice from vessel movement features.
 
   Removes the timestamp column from the features, and applies a random roll to
@@ -296,7 +325,8 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
       3. The start and end time of the timeslice (in int32 seconds since epoch).
   """
     features = np_array_random_fixed_time_extract(
-        random_state, input, max_time_delta, window_size, min_timeslice_size)
+        random_state, input, max_time_delta, window_size, min_timeslice_size,
+        selection_ranges)
 
     start_time = int(features[0][0])
     end_time = int(features[-1][0])
@@ -313,7 +343,8 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
 
 
 def np_array_extract_n_random_features(random_state, input, n, max_time_delta,
-                                       window_size, min_timeslice_size, mmsi):
+                                       window_size, min_timeslice_size, mmsi,
+                                       selection_ranges):
     """ Extract and process multiple random timeslices from a vessel movement feature.
 
   Args:
@@ -335,7 +366,7 @@ def np_array_extract_n_random_features(random_state, input, n, max_time_delta,
     for _ in range(n):
         features, timestamps, time_bounds = np_array_extract_features(
             random_state, input, max_time_delta, window_size,
-            min_timeslice_size)
+            min_timeslice_size, selection_ranges)
 
         samples.append((np.stack([features]), timestamps, time_bounds, mmsi))
 
@@ -344,7 +375,8 @@ def np_array_extract_n_random_features(random_state, input, n, max_time_delta,
 
 def random_feature_cropping_file_reader(vessel_metadata, filename_queue,
                                         num_features, max_time_delta,
-                                        window_size, min_timeslice_size):
+                                        window_size, min_timeslice_size,
+                                        select_ranges=False):
     """ Set up a file reader and training feature extractor for the files in a queue.
 
     As a training feature extractor, this pulls sets of random timeslices from the
@@ -352,11 +384,7 @@ def random_feature_cropping_file_reader(vessel_metadata, filename_queue,
     by the weight assigned to the particular vessel.
 
     Args:
-        filename_queue: a queue of filenames for feature files to read.
-        num_features: the dimensionality of the features.
-        max_replication_factor: the maximum number of samples that can be drawn from a
-          single vessel series, regardless of the weight specified.
-        fishing_ranges: a dictionary of fishing ranges per mmsi.
+        TODO: add args, old ones were wrong
 
     Returns:
         A tuple comprising, for the n samples drawn for each vessel:
@@ -375,11 +403,13 @@ def random_feature_cropping_file_reader(vessel_metadata, filename_queue,
 
     num_slices_per_mmsi = 8
 
+    ranges = vessel_metadata.fishing_ranges_map.get(mmsi) if select_ranges else None
+
     def replicate_extract(input, mmsi):
         # Extract several random windows from each vessel track
         return np_array_extract_n_random_features(
             random_state, input, num_slices_per_mmsi, max_time_delta,
-            window_size, min_timeslice_size, mmsi)
+            window_size, min_timeslice_size, mmsi, ranges)
 
     (features_list, timestamps, time_bounds_list, mmsis) = tf.py_func(
         replicate_extract, [movement_features, mmsi],
@@ -627,7 +657,7 @@ class VesselMetadata(object):
         fishing_ranges_mmsis = []
         for mmsi, (row, weight) in self.metadata_by_split[split].iteritems():
             if row_filter(row):
-                if mmsi in self.fishing_ranges_map:
+                if mmsi in self.fishing_ranges_map: # XXX multiply only if one present
                     fishing_ranges_mmsis.append(mmsi)
                     weight = weight * self.fishing_range_training_upweight
 
@@ -673,6 +703,55 @@ def is_test(mmsi):
     """Is this mmsi in the test set?
     """
     return (_hash_mmsi_to_double(mmsi) >= 0.5)
+
+
+def read_vessel_unweighted_metadata(available_mmsis, metadata_file,
+                                          fishing_range_dict,
+                                          fishing_range_training_upweight):
+    """ For a set of vessels, read metadata; use flat weights
+
+    Args:
+        available_mmsis: a set of all mmsis for which we have feature data.
+        lines: 
+        # TODO: update
+
+    Returns:
+        A VesselMetadata object with weights and labels for each vessel.
+    """
+
+    metadata_dict = defaultdict(lambda: {})
+
+    # Build a list of vessels + split + and vessel type. Calculate the split on
+    # the fly, but deterministically. 
+    min_time_per_mmsi = 1e9 # TODO: is there a better choice for this?
+
+    NON_FALSE_POS_UPWEIGHT = 100
+    for row in metadata_file_reader(metadata_file):
+        mmsi = int(row['mmsi'])
+        if mmsi in available_mmsis:
+            is_fp = True
+            if is_test(mmsi):
+                split = 'Test'
+            else:
+                split = 'Training'
+            time_for_this_mmsi = 0
+            for rng in fishing_range_dict[mmsi]:
+                time_for_this_mmsi += (rng.end_time - rng.start_time).total_seconds()
+                if rng.is_fishing > 0.5:
+                    is_fp = False
+            if not is_fp:
+                time_for_this_mmsi *= NON_FALSE_POS_UPWEIGHT
+            metadata_dict[split][mmsi] = (row, time_for_this_mmsi)
+            if time_for_this_mmsi:
+                min_time_per_mmsi = min(min_time_per_mmsi, time_for_this_mmsi)
+
+    for split_dict in metadata_dict.values():
+        for mmsi in split_dict:
+            row, time = split_dict[mmsi]
+            split_dict[mmsi] = (row, time / min_time_per_mmsi)
+
+    return VesselMetadata(metadata_dict, fishing_range_dict,
+                          fishing_range_training_upweight)
 
 
 def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
@@ -760,9 +839,13 @@ def read_vessel_multiclass_metadata(available_mmsis,
                                     fishing_range_dict={},
                                     fishing_range_training_upweight=1.0):
     reader = metadata_file_reader(metadata_file)
+
+
     return read_vessel_multiclass_metadata_lines(
         available_mmsis, reader, fishing_range_dict,
         fishing_range_training_upweight)
+
+
 
 
 def find_available_mmsis(feature_path):

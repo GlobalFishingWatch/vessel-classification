@@ -67,7 +67,8 @@ class Trainer:
                     self.model.vessel_metadata, filename_queue,
                     self.model.num_feature_dimensions + 1, self.model.
                     max_window_duration_seconds, self.model.window_max_points,
-                    self.model.min_viable_timeslice_length))
+                    self.model.min_viable_timeslice_length,
+                    self.model.use_ranges_for_training))
 
         (features, timestamps, time_bounds,
          mmsis) = tf.train.shuffle_batch_join(

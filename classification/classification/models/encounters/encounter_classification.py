@@ -30,6 +30,11 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         return 0
 
     @property
+    def use_ranges_for_training(self):
+        """Choose features overlapping with provided ranges during training"""
+        return True
+
+    @property
     def window_max_points(self):
         return 512
 
@@ -46,8 +51,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
             'encounters',
             'Encounters',
-            vessel_metadata,
-            pos_weight=4)
+            vessel_metadata)
 
         self.classification_training_objectives = []
         self.training_objectives = [self.fishing_localisation_objective]
@@ -60,6 +64,13 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             '%s/%d.tfrecord' % (base_feature_path, mmsi)
             for mmsi in training_mmsis
         ]
+
+    @staticmethod
+    def read_metadata(
+            all_available_mmsis, metadata_file,
+            fishing_ranges, fishing_upweight=1.0):
+        return utility.read_vessel_unweighted_metadata(all_available_mmsis, metadata_file, fishing_ranges, fishing_upweight)
+
 
     def build_training_net(self, features, timestamps, mmsis):
         features = self.zero_pad_features(features)

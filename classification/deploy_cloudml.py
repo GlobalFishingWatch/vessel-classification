@@ -27,11 +27,11 @@ from googleapiclient import discovery
 import tempfile
 
 
-def launch(environment, model_name, job_name):
+def launch(environment, model_name, job_name, config_file):
     # Read the configuration file so that we 
     # know the train path and don't need to
     # hardcode it here
-    with open("deploy_cloudml_config_template.txt") as f:
+    with open(config_file) as f:
         config_template = f.read()
 
     gcp = GcpConfig.make_from_env_name(environment, job_name)
@@ -75,7 +75,8 @@ if __name__ == "__main__":
     parser.add_argument('--env', help='environment for run: prod/dev.')
     parser.add_argument('--model_name', help='module name of model.')
     parser.add_argument('--job_name', help='unique name for this job.')
+    parser.add_argument('--config_file', help='configuration file path.', default="deploy_cloudml_config_template.txt")
 
     args = parser.parse_args()
 
-    launch(args.env, args.model_name, args.job_name)
+    launch(args.env, args.model_name, args.job_name, args.config_file)
