@@ -298,7 +298,7 @@ class ClassificationObjective(ObjectiveBase):
                         preds, trues, weights=label_mask)
                     metrics_map["%s/Class-%s-Precision" % (self.name, cls)] = recall
                     metrics_map["%s/Class-%s-Recall" % (self.name, cls)] = precision
-                    metrics_map["%s/Class-%s-F1-Score" % (self.name, cls)] = 2.0 / (1.0 / recall + 1.0 / precision)
+                    metrics_map["%s/Class-%s-F1-Score" % (self.name, cls)] = f1(recall, precision)
 
                 return metrics.aggregate_metric_map(metrics_map)
 

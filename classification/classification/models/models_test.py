@@ -13,7 +13,7 @@ from encounters import encounter_classification
 class ModelsTest(tf.test.TestCase):
     num_feature_dimensions = 11
     model_classes = [encounter_classification.Model,
-                     mixed_classification_multi_1.Model,
+                     mixed_classification_1.Model,
                      vessel_classification.Model,
                      vessel_and_fishing_range_classification.Model
                      ]
