@@ -117,34 +117,35 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
 
 def _get_metadata_file():
     from pkg_resources import resource_filename
-    return os.path.abspath(
-        resource_filename('classification.data', params.metadata_file))
+    for name in ["params.metadata_file", "encounter_vessels.csv"]:
+        yield os.path.abspath(
+            resource_filename('classification.data', name))
 
 
 class MetadataConsistencyTest(tf.test.TestCase):
     def test_metadata_consistency(self):
-        metadata_file = _get_metadata_file()
-        self.assertTrue(os.path.exists(metadata_file))
-        is_fishing_labels = set()
-        # By putting '' in these sets we can safely remove it later
-        coarse_labels = set([''])
-        fine_labels = set([''])
-        for row in utility.metadata_file_reader(metadata_file):
-            is_fishing_labels.add(row['is_fishing'].strip())
-            coarse_labels.add(row['label'].strip())
-            fine_labels.add(row['sublabel'].strip())
-        coarse_labels.remove('')
-        fine_labels.remove('')
+        for metadata_file in _get_metadata_files():
+            self.assertTrue(os.path.exists(metadata_file))
+            is_fishing_labels = set()
+            # By putting '' in these sets we can safely remove it later
+            coarse_labels = set([''])
+            fine_labels = set([''])
+            for row in utility.metadata_file_reader(metadata_file):
+                is_fishing_labels.add(row['is_fishing'].strip())
+                coarse_labels.add(row['label'].strip())
+                fine_labels.add(row['sublabel'].strip())
+            coarse_labels.remove('')
+            fine_labels.remove('')
 
-        # Is fishing should never be blank
-        self.assertFalse('' in is_fishing_labels)
+            # Is fishing should never be blank
+            self.assertFalse('' in is_fishing_labels)
 
-        self.assertEquals(is_fishing_labels,
-                          set(utility.FISHING_NONFISHING_NAMES))
+            self.assertEquals(is_fishing_labels,
+                              set(utility.FISHING_NONFISHING_NAMES))
 
-        self.assertEquals(coarse_labels, set(utility.VESSEL_CLASS_NAMES))
+            self.assertEquals(coarse_labels, set(utility.VESSEL_CLASS_NAMES))
 
-        self.assertEquals(fine_labels,
+            self.assertEquals(fine_labels,
                           set(utility.VESSEL_CLASS_DETAILED_NAMES))
 
 
