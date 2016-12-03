@@ -4,7 +4,6 @@ import model
 import numpy as np
 import utility
 import tensorflow as tf
-from . import params
 
 
 class PythonReshapePadTest(tf.test.TestCase):
@@ -40,7 +39,7 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
                     return 0
 
             res = utility.np_array_random_fixed_time_extract(
-                FakeRandomState(), input_data, 5, 8, 50)
+                FakeRandomState(), input_data, 5, 8, 50, None)
 
             self.assertAllEqual(res, expected_result)
 
@@ -50,7 +49,7 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
                                    [4., 9., 0.]])
 
             res = utility.np_array_random_fixed_time_extract(
-                lambda _: 0, input_data, 20, 4, 50)
+                lambda _: 0, input_data, 20, 4, 50, None)
             self.assertAllEqual(res, input_data)
 
     def test_uncropped_extract_pad(self):
@@ -61,7 +60,7 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
                                                        6.], [2., 4., 4.]])
 
             res = utility.np_array_random_fixed_time_extract(
-                lambda _: 0, input_data, 20, 5, 50)
+                lambda _: 0, input_data, 20, 5, 50, None)
             self.assertAllEqual(res, expected_result)
 
 
@@ -115,9 +114,10 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
                             'mmsi': '100003'}, 1.0))
 
 
-def _get_metadata_file():
+def _get_metadata_files():
     from pkg_resources import resource_filename
-    for name in ["params.metadata_file", "encounter_vessels.csv"]:
+    for name in ["net_training_20161115.csv"]:
+        # TODO: rework to test encounters as well.
         yield os.path.abspath(
             resource_filename('classification.data', name))
 
