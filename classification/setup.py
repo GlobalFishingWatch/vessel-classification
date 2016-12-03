@@ -19,6 +19,5 @@ setuptools.setup(
         'classification.models.encounters'
     ],
     install_requires=[
-        'NewlineJSON',
-        'pytz'
+        'NewlineJSON'
     ])

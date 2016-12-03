@@ -4,9 +4,7 @@ import tensorflow as tf
 from classification import utility
 from alex import (fishing_range_classification, vessel_classification,
                   vessel_and_fishing_range_classification)
-from tim import mixed_classification_1, mixed_classification_multi_1, mixed_classification_multi_mpool_1, mixed_classification_multi_gated_1
-from tim import mixed_classification_multi_2, mixed_classification_multi_gated_2, mixed_classification_multi_1b, mixed_classification_multi_1c
-from tim import mixed_classification_multi_1d
+from tim import mixed_classification_1
 from encounters import encounter_classification
 
 # TODO(alexwilson): Feed some data in. Also check evaluation.build_json_results
@@ -15,17 +13,9 @@ from encounters import encounter_classification
 class ModelsTest(tf.test.TestCase):
     num_feature_dimensions = 11
     model_classes = [encounter_classification.Model,
-                     mixed_classification_multi_1c.Model,
-                     mixed_classification_multi_1d.Model,
-                     # mixed_classification_multi_1b.Model,
-                     # mixed_classification_multi_gated_2.Model,
-                     # mixed_classification_multi_2.Model,
-                     # mixed_classification_multi_gated_1.Model,
-                     # mixed_classification_multi_mpool_1.Model,
-                     # mixed_classification_1.Model,
-                     # mixed_classification_multi_1.Model,
-                     # vessel_classification.Model,
-                     # vessel_and_fishing_range_classification.Model
+                     mixed_classification_multi_1.Model,
+                     vessel_classification.Model,
+                     vessel_and_fishing_range_classification.Model
                      ]
 
     def _build_model_input(self, model):
