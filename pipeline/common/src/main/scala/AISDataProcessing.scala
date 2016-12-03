@@ -48,6 +48,7 @@ object AISDataProcessing extends LazyLogging {
   implicit class JValueExtended(value: JValue) {
     def has(field: String) = ((value \ field) != JNothing)
     def getString(field: String) = (value \ field).extractOpt[String].getOrElse("")
+    def getLong(field: String) = (value \ field).extractOpt[Long].getOrElse(0L)
     def getDouble(field: String) = (value \ field).extractOpt[Double].getOrElse(0.0)
   }
 

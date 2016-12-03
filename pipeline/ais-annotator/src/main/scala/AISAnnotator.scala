@@ -7,11 +7,14 @@ import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
 import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
-import com.spotify.scio.bigquery._
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import java.util.LinkedHashMap
 import org.joda.time.{Instant}
-import org.skytruth.common.{GcpConfig, IteratorWithCurrent, ValueCache}
+import org.json4s._
+import org.json4s.JsonAST.JValue
+import org.json4s.JsonDSL.WithDouble._
+import org.json4s.native.JsonMethods._
+import org.skytruth.common._
 import org.skytruth.common.ScioContextResource._
 import scala.collection.{mutable, immutable}
 
@@ -35,6 +38,8 @@ case class MessageAnnotation(mmsi: Int,
                              value: Double)
 
 object AISAnnotator extends LazyLogging {
+  implicit val formats = DefaultFormats
+  import AISDataProcessing.JValueExtended
 
   def readYamlConfig(config: String): AnnotatorConfig = {
     val mapper: ObjectMapper = new ObjectMapper(new YAMLFactory())
@@ -43,29 +48,31 @@ object AISAnnotator extends LazyLogging {
     mapper.readValue(config, classOf[AnnotatorConfig])
   }
 
-  def jsonAnnotationReader(annotations: SCollection[TableRow],
+  def jsonAnnotationReader(annotations: SCollection[JValue],
                            outputFieldName: String,
                            timeRangeFieldName: String,
                            defaultValue: Double): SCollection[MessageAnnotation] = {
     annotations.flatMap { json =>
-      val mmsi = json.getLong("mmsi").toInt
+      val mmsi = (json \ "mmsi").extract[Int]
 
-      val timeRangeFieldList =
-        json.getRepeated(timeRangeFieldName).map(_.asInstanceOf[LinkedHashMap[String, Any]])
+      val timeRangeFieldList = (json \ timeRangeFieldName).extract[List[JValue]]
 
       timeRangeFieldList.map { timeRangeField =>
-        val startTime = Instant.parse(timeRangeField.get("start_time").asInstanceOf[String])
-        val endTime = Instant.parse(timeRangeField.get("end_time").asInstanceOf[String])
-        val value =
-          Option(timeRangeField.get("value")).map(_.asInstanceOf[Double]).getOrElse(defaultValue)
+        val startTime = Instant.parse(timeRangeField.getString("start_time"))
+        val endTime = Instant.parse(timeRangeField.getString("end_time"))
+        val value = if (timeRangeField.has("value")) {
+          timeRangeField.getDouble("value")
+        } else {
+          defaultValue
+        }
 
         MessageAnnotation(mmsi, outputFieldName, startTime, endTime, value)
       }
     }
   }
 
-  def annotateVesselMessages(messages: Iterable[TableRow],
-                             annotations: Iterable[MessageAnnotation]): Seq[TableRow] = {
+  def annotateVesselMessages(messages: Iterable[JValue],
+                             annotations: Iterable[MessageAnnotation]): Seq[JValue] = {
     // Sort messages and annotations by (start) time.
     val sortedMessages = messages.map { msg =>
       (Instant.parse(msg.getString("timestamp")), msg)
@@ -82,7 +89,7 @@ object AISAnnotator extends LazyLogging {
     var annotationIterator = IteratorWithCurrent(sortedAnnotations.iterator)
 
     // Annotate each message with any active timerange values.
-    var annotatedRows = mutable.ListBuffer[TableRow]()
+    var annotatedRows = mutable.ListBuffer[JValue]()
     sortedMessages.map {
       case (ts, msg) =>
         // Remove annotations from the past.
@@ -98,20 +105,21 @@ object AISAnnotator extends LazyLogging {
           annotationIterator.getNext()
         }
 
-        val clonedMessage = msg.clone()
+        var annotatedMsg = msg
         activeAnnotations.map { annotation =>
-          clonedMessage.set(annotation.name, annotation.value)
+          val json: JValue = (annotation.name -> annotation.value)
+          annotatedMsg = annotatedMsg merge json
         }
 
-        annotatedRows.append(clonedMessage)
+        annotatedRows.append(annotatedMsg)
     }
 
     annotatedRows.toSeq
   }
 
   def annotateAllMessages(
-      aisMessageInputs: Seq[SCollection[TableRow]],
-      annotationInputs: Seq[SCollection[MessageAnnotation]]): SCollection[TableRow] = {
+      aisMessageInputs: Seq[SCollection[JValue]],
+      annotationInputs: Seq[SCollection[MessageAnnotation]]): SCollection[JValue] = {
 
     val aisMessages = SCollection.unionAll(aisMessageInputs)
 
@@ -135,7 +143,7 @@ object AISAnnotator extends LazyLogging {
     // Remove all but location messages and key by mmsi.
     val filteredGroupedByMmsi = filteredAISMessages
     // Keep only records with a location.
-    .filter { case (_, json) => json.containsKey("lat") && json.containsKey("lon") }.groupByKey
+    .filter { case (_, json) => json.has("lat") && json.has("lon") }.groupByKey
 
     filteredGroupedByMmsi.join(annotationsByMmsi).flatMap {
       case (mmsi, (messagesIt, annotationsIt)) =>
@@ -144,6 +152,8 @@ object AISAnnotator extends LazyLogging {
         annotateVesselMessages(messages, annotations)
     }
   }
+
+  def readJsonFile(sc: ScioContext, filePath: String) = sc.textFile(filePath).map(l => parse(l))
 
   def main(argArray: Array[String]) {
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
@@ -164,12 +174,12 @@ object AISAnnotator extends LazyLogging {
 
     managed(ScioContext(options)).acquireAndGet { sc =>
       val inputData = annotatorConfig.inputFilePatterns.map { path =>
-        sc.tableRowJsonFile(path)
+        readJsonFile(sc, path)
       }
 
       val annotations = annotatorConfig.jsonAnnotations.map {
         case annotation =>
-          val inputAnnotationFile = sc.tableRowJsonFile(annotation.inputFilePattern)
+          val inputAnnotationFile = readJsonFile(sc, annotation.inputFilePattern)
           jsonAnnotationReader(inputAnnotationFile,
                                annotation.outputFieldName,
                                annotation.timeRangeFieldName,
@@ -177,8 +187,9 @@ object AISAnnotator extends LazyLogging {
       }
 
       val annotated = annotateAllMessages(inputData, annotations)
+      val annotatedToString = annotated.map(json => compact(render(json)))
 
-      annotated.saveAsTextFile(annotatorConfig.outputFilePath)
+      annotatedToString.saveAsTextFile(annotatorConfig.outputFilePath)
     }
   }
 }
