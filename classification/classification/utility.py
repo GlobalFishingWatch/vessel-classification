@@ -317,7 +317,7 @@ def np_array_random_fixed_time_extract(random_state, input_series,
         the fixed time slice.   
     """
     assert max_time_delta != 0
-    assert not selections_ranges, "Using selection ranges not supported for time based windows"
+    assert not selection_ranges, "Using selection ranges not supported for time based windows"
 
     input_length = len(input_series)
 
