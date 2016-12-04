@@ -99,27 +99,28 @@ class Trainer:
         features, timestamps, time_bounds, mmsis = self._feature_data_reader(
             utility.TRAINING_SPLIT, True)
 
-        (optimizer, objectives) = self.model.build_training_net(
-            features, timestamps, mmsis)
+        with tf.device("/gpu:0"):
+            (optimizer, objectives) = self.model.build_training_net(
+                features, timestamps, mmsis)
 
-        loss = tf.reduce_sum(
-            [o.loss for o in objectives], reduction_indices=[0])
+            loss = tf.reduce_sum(
+                [o.loss for o in objectives], reduction_indices=[0])
 
-        train_op = slim.learning.create_train_op(
-            loss,
-            optimizer,
-            update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+            train_op = slim.learning.create_train_op(
+                loss,
+                optimizer,
+                update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
 
-        logging.info("Starting slim training loop.")
-        slim.learning.train(
-            train_op,
-            self.checkpoint_dir,
-            master=master,
-            is_chief=is_chief,
-            number_of_steps=500000,
-            save_summaries_secs=30,
-            save_interval_secs=60,
-            saver=self._make_saver())
+            logging.info("Starting slim training loop.")
+            slim.learning.train(
+                train_op,
+                self.checkpoint_dir,
+                master=master,
+                is_chief=is_chief,
+                number_of_steps=500000,
+                save_summaries_secs=30,
+                save_interval_secs=60,
+                saver=self._make_saver())
 
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
