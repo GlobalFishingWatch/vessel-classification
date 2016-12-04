@@ -17,9 +17,6 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
 
-# How many times do we attempt to hit one of our time_ranges
-RANGE_ATTEMPTS = 1000
-
 
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
@@ -223,19 +220,16 @@ def np_array_random_fixed_length_extract(random_state, input_series,
     return np_pad_repeat_slice(cropped, output_length)
 
 
-def np_array_random_fixed_time_extract(random_state, input_series,
+def np_array_random_fixed_points_extract(random_state, input_series,
                                        max_time_delta, output_length,
                                        min_timeslice_size, 
                                        selection_ranges):
-    """ Extracts a random fixed-time slice from a 2d numpy array.
+    """ Extracts a random fixed-points slice from a 2d numpy array.
     
-   The input array must be 2d, representing a time series, with the first    
-   column representing a timestamp (sorted ascending). Any values in the series    
-   with a time greater than (first time + max_time_delta) are removed and the    
-   prefix series repeated into the window to pad. If max time delta is 0,
-   instead extract a fixed length extract of length output_length.
-    
-   Args:
+    The input array must be 2d, representing a time series, with the first    
+    column representing a timestamp (sorted ascending). 
+
+    Args:
         random_state: a numpy randomstate object.
         input_series: the input series. A 2d array first column representing an
             ascending time.   
@@ -245,62 +239,106 @@ def np_array_random_fixed_time_extract(random_state, input_series,
         min_timeslice_size: the minimum number of points in a timeslice for the
             series to be considered meaningful. 
         selections_ranges: ranges to include in returned slices or None
-    
-  Returns:    
-    An array of the same depth as the input, but altered width, representing
-    the fixed time slice.   
-  """
+
+    Returns:    
+        An array of the same depth as the input, but altered width, representing
+        the fixed points slice.   
+    """
 
     input_length = len(input_series)
 
-    for i in range(RANGE_ATTEMPTS):
-        # Try to get something in one of selection ranges
-        # If we don't get something in RANGE_ATTEMPTS then just use whatever
-        if selection_ranges:
-            selrange = selection_ranges[random_state.choice(len(selection_ranges))]
 
-        if max_time_delta == 0:
-                
-                # Pick a random fixed-length window rather than fixed-time.
-                max_offset = max(input_length - output_length, 0)
-                if max_offset == 0:
-                    start_index = 0
-                else:
-                    start_index = random_state.randint(0, max_offset)
-                end_index = min(start_index + output_length, input_length - 1) # INCLUDE ME WHEN RIPPING OUT REST OF KLUDGE
+    def extract_start_end(min_index, max_index):
+        effective_length = max_index - min_index + 1
+        # Pick a random fixed-length window rather than fixed-time.
+        max_offset = max(effective_length - output_length, 0)
+        start_index = min_index + random_state.randint(0, max_offset + 1)
+        end_index = min(start_index + output_length, max_index) 
+        return start_index, end_index
 
+    assert max_time_delta == 0
+
+    if selection_ranges:
+
+        # Copy and shuffle the ranges so we see them in a random order
+        selection_ranges = list(selection_ranges)
+        random_state.shuffle(selections_ranges)
+
+        for rng in selections_ranges:
+            # For each range figure out the min and max acceptable point in input_series
+            # if these points are at least min_timeslice_size long then we grab that
+            # series
+            rng_start_stamp = (rng.start_time - datetime(1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
+            rng_start_ndx = np.searchsorted(input_series[:, 0], rng_start_stamp) 
+            min_ndx = max(rng_start_ndx - input_length + 1, 0)
+
+            rng_end_stamp = (rng.end_time - datetime(1970, 1, 1, tzinfo=pytz.utc)).total_seconds() 
+            rng_end_ndx = np.searchsorted(input_series[:, 0], rng_end_stamp) 
+            max_ndx = max(rng_end_ndx + input_length - 1, input_length - 1)
+
+            if end_index > start_index:
+                start_index, end_index = extract_start_end(start_index, end_index)
+                break
         else:
-            start_time = input_series[0][0]
-            end_time = input_series[-1][0]
-            max_time_offset = max((end_time - start_time) - max_time_delta, 0)
-            if max_time_offset == 0:
-                time_offset = 0
-            else:
-                time_offset = random_state.randint(0, max_time_offset)
-            start_index = np.searchsorted(
-                input_series[:, 0], start_time + time_offset, side='left')
+            start_index, end_index = extract_start_end(0, input_length - 1)
+    else:
+        start_index, end_index = extract_start_end(0, input_length - 1)
 
-            # Should not start closer than min_timeslice_size points from the end lest the 
-            # series have too few points to be meaningful.
-            start_index = min(start_index, max(0,
-                                               input_length - min_timeslice_size))
-            crop_end_time = min(input_series[start_index][0] + max_time_delta,
-                                end_time)
+    cropped = input_series[start_index:end_index]
+    output_series = np_pad_repeat_slice(cropped, output_length)
 
-            end_index = min(start_index + output_length,
-                            np.searchsorted(
-                                input_series[:, 0], crop_end_time, side='right'))
+    return output_series
 
-        if not selection_ranges:
-            break
 
-        start_time = datetime.datetime.utcfromtimestamp(input_series[start_index][0]).replace(tzinfo=pytz.UTC)
-        end_time = datetime.datetime.utcfromtimestamp(input_series[end_index][0]).replace(tzinfo=pytz.UTC)
 
-        if ((selrange.start_time <= start_time <= selrange.end_time) or 
-            (selrange.start_time <= end_time <= selrange.end_time)):
-            # We are overlapping with our chosen range so use that.
-            break
+def np_array_random_fixed_time_extract(random_state, input_series,
+                                       max_time_delta, output_length,
+                                       min_timeslice_size, 
+                                       selection_ranges):
+    """ Extracts a random fixed-time slice from a 2d numpy array.
+    
+    The input array must be 2d, representing a time series, with the first    
+    column representing a timestamp (sorted ascending). Any values in the series    
+    with a time greater than (first time + max_time_delta) are removed and the    
+    prefix series repeated into the window to pad. 
+    Args:
+        random_state: a numpy randomstate object.
+        input_series: the input series. A 2d array first column representing an
+            ascending time.   
+        max_time_delta: the maximum duration of the returned timeseries in seconds.
+        output_length: the number of points in the output series. Input series    
+            shorter than this will be repeated into the output series.   
+        min_timeslice_size: the minimum number of points in a timeslice for the
+            series to be considered meaningful. 
+        selections_ranges: ranges to include in returned slices or None
+
+    Returns:    
+        An array of the same depth as the input, but altered width, representing
+        the fixed time slice.   
+    """
+    assert max_time_delta != 0
+    assert not selections_ranges, "Using selection ranges not supported for time based windows"
+
+    input_length = len(input_series)
+
+    start_time = input_series[0][0]
+    end_time = input_series[-1][0]
+    max_time_offset = max((end_time - start_time) - max_time_delta, 0)
+    time_offset = random_state.randint(0, max_time_offset + 1)
+
+    start_index = np.searchsorted(
+        input_series[:, 0], start_time + time_offset, side='left')
+
+    # Should not start closer than min_timeslice_size points from the end lest the 
+    # series have too few points to be meaningful.
+    start_index = min(start_index, max(0,
+                                       input_length - min_timeslice_size))
+    crop_end_time = min(input_series[start_index][0] + max_time_delta,
+                        end_time)
+
+    end_index = min(start_index + output_length,
+                    np.searchsorted(
+                        input_series[:, 0], crop_end_time, side='right'))
 
     cropped = input_series[start_index:end_index]
     output_series = np_pad_repeat_slice(cropped, output_length)
@@ -324,9 +362,15 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
       2. The timestamps of each feature point.
       3. The start and end time of the timeslice (in int32 seconds since epoch).
   """
-    features = np_array_random_fixed_time_extract(
-        random_state, input, max_time_delta, window_size, min_timeslice_size,
-        selection_ranges)
+
+    if max_time_delta == 0:
+        features = np_array_random_fixed_points_extract(
+            random_state, input, max_time_delta, window_size, min_timeslice_size,
+            selection_ranges)
+    else:
+        features = np_array_random_fixed_time_extract(
+            random_state, input, max_time_delta, window_size, min_timeslice_size,
+            selection_ranges)
 
     start_time = int(features[0][0])
     end_time = int(features[-1][0])
@@ -723,9 +767,9 @@ def read_vessel_unweighted_metadata(available_mmsis, metadata_file,
 
     # Build a list of vessels + split + and vessel type. Calculate the split on
     # the fly, but deterministically. 
-    min_time_per_mmsi = 1e9 # TODO: is there a better choice for this?
+    min_time_per_mmsi = np.inf 
 
-    NON_FALSE_POS_UPWEIGHT = 100
+    NON_FALSE_POS_UPWEIGHT = 10
     for row in metadata_file_reader(metadata_file):
         mmsi = int(row['mmsi'])
         if mmsi in available_mmsis:
