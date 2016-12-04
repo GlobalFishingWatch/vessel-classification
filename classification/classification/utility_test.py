@@ -24,6 +24,11 @@ class PythonReshapePadTest(tf.test.TestCase):
             self.assertAllEqual(double_padded.eval(), expected)
 
 
+class _FakeRandint(object):
+
+    def randint(start, stop=0, step=0):
+        return 0
+
 class PythonFixedTimeExtractTest(tf.test.TestCase):
     def test_cropped_extract(self):
         with self.test_session():
@@ -49,7 +54,7 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
                                    [4., 9., 0.]])
 
             res = utility.np_array_random_fixed_time_extract(
-                lambda _: 0, input_data, 20, 4, 50, None)
+                _FakeRandint(), input_data, 20, 4, 50, None)
             self.assertAllEqual(res, input_data)
 
     def test_uncropped_extract_pad(self):
@@ -60,7 +65,7 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
                                                        6.], [2., 4., 4.]])
 
             res = utility.np_array_random_fixed_time_extract(
-                lambda _: 0, input_data, 20, 5, 50, None)
+                _FakeRandint(), input_data, 20, 5, 50, None)
             self.assertAllEqual(res, expected_result)
 
 
