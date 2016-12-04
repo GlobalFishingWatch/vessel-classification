@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 import argparse
 import json
-from . import abstract_models
-from . import layers
+from ..alex import abstract_models
+from ..alex import layers
 from classification import utility
 from classification.objectives import (
     FishingLocalizationObjectiveCrossEntropy, RegressionObjective,
