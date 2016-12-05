@@ -70,14 +70,14 @@ object VesselStationaryPeriod {
       StationaryPeriod.fromJson(json \ "visit"))
 }
 
-case class AnchorageGridPoint(meanLocation: LatLon, vessels: Set[VesselMetadata], visits: Seq[VesselStationaryPeriod]) {
+case class AnchorageGridPoint(meanLocation: LatLon, vessels: Set[VesselMetadata], visits: IndexedSeq[VesselStationaryPeriod]) {
   def id: String = meanLocation.getS2CellId(AnchorageParameters.anchoragesS2Scale).toToken
 }
 
 object AnchorageGridPoint {
   implicit val formats = DefaultFormats
 
-  def fromVisits(visits : Seq[VesselStationaryPeriod]) = {
+  def fromVisits(visits : IndexedSeq[VesselStationaryPeriod]) = {
     AnchorageGridPoint(
       LatLon.mean(visits.map(_.visit.location)),
       visits.map(_.metadata).toIndexedSeq.distinct.toSet,
@@ -279,7 +279,7 @@ object Anchorages extends LazyLogging {
         }
     }.groupByKey.map {
       case (cell, visits) =>
-        AnchorageGridPoint.fromVisits(visits.toSeq)
+        AnchorageGridPoint.fromVisits(visits.toIndexedSeq)
     }.filter { _.vessels.size >= AnchorageParameters.minUniqueVesselsForAnchorage }
   }
 

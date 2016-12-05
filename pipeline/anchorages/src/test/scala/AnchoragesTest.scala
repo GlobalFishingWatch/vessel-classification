@@ -135,7 +135,7 @@ class AnchoragesGroupingTests extends PipelineSpec with Matchers {
   def anchoragePointFromS2CellToken(token: String,
                                     vessels: Set[VesselMetadata]) =
     AnchorageGridPoint(LatLon.fromS2CellId(S2CellId.fromToken(token)),
-                   vessels, Seq[VesselStationaryPeriod]())
+                   vessels, IndexedSeq[VesselStationaryPeriod]())
 
   "Anchorage merging" should "work!" in {
     val anchorages = IndexedSeq(
