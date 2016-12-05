@@ -81,6 +81,7 @@ def main(args):
     feature_dimensions = int(args.feature_dimensions)
     chosen_model = Model(feature_dimensions, vessel_metadata)
 
+    # TODO: training verbosity --training-verbosity
     trainer = Trainer(chosen_model, args.root_feature_path,
                       args.training_output_path)
 

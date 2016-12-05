@@ -36,6 +36,7 @@ class Model(abstract_models.MisconceptionModel):
         return 500
 
     def __init__(self, num_feature_dimensions, vessel_metadata):
+        # TODO: add verbosity flag
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
 
         def length_or_none(mmsi):
@@ -82,6 +83,7 @@ class Model(abstract_models.MisconceptionModel):
 
         features = self.zero_pad_features(features)
 
+        # TODO: pass verbosity flag in here
         layers.misconception_model(features, self.window_size, self.stride,
                                    self.feature_depth, self.levels,
                                    self.training_objectives, False)

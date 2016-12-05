@@ -258,6 +258,7 @@ class ClassificationObjective(ObjectiveBase):
         return Trainer(loss, update_ops)
 
     def build_evaluation(self, timestamps, mmsis):
+        # TODO: accept verbose flag, which controls how much stuff log.
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, training_label_lookup,
                          classes, num_classes, prediction):
@@ -299,7 +300,8 @@ class ClassificationObjective(ObjectiveBase):
                     metrics_map["%s/Class-%s-Precision" % (self.name, cls)] = recall
                     metrics_map["%s/Class-%s-Recall" % (self.name, cls)] = precision
                     metrics_map["%s/Class-%s-F1-Score" % (self.name, cls)] = f1(recall, precision)
-
+                    metrics_map["%s/Class-%s-ROC-AUC" % (self.name, cls)] = metrics.streaming_auc(
+                        preds, trues, weights=label_mask)
                 return metrics.aggregate_metric_map(metrics_map)
 
 
@@ -533,6 +535,8 @@ class MultiClassificationObjective(ObjectiveBase):
                     metrics_map["%s/Class-%s-Precision" % (self.name, cls)] = recall
                     metrics_map["%s/Class-%s-Recall" % (self.name, cls)] = precision
                     metrics_map["%s/Class-%s-F1-Score" % (self.name, cls)] = f1(recall, precision)
+                    metrics_map["%s/Class-%s-ROC-AUC" % (self.name, cls)] = metrics.streaming_auc(
+                        preds, trues, weights=label_mask)
 
                 for i, cls in enumerate(utility.VESSEL_CLASS_NAMES):
                     # Also include coarse classes, but only if they are not
@@ -548,7 +552,8 @@ class MultiClassificationObjective(ObjectiveBase):
                     metrics_map["%s/Class-%s-Precision" % (self.name, cls)] = recall
                     metrics_map["%s/Class-%s-Recall" % (self.name, cls)] = precision
                     metrics_map["%s/Class-%s-F1-Score" % (self.name, cls)] = f1(recall, precision)
-
+                    metrics_map["%s/Class-%s-ROC-AUC" % (self.name, cls)] = metrics.streaming_auc(
+                        preds, trues, weights=label_mask)
 
                 return metrics.aggregate_metric_map(metrics_map)
 
