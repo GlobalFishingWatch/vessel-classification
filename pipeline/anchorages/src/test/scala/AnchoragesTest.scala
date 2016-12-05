@@ -15,6 +15,8 @@ import org.skytruth.common._
 import org.skytruth.common.AdditionalUnits._
 
 import scala.collection.{mutable, immutable}
+import com.spotify.scio._
+import com.spotify.scio.values.SCollection
 
 class AnchorageSerializationTests extends PipelineSpec with Matchers {
   val anchoragePoints = Seq(AnchoragePoint(LatLon(4.0.of[degrees], 9.0.of[degrees]),
@@ -138,30 +140,30 @@ class AnchoragesGroupingTests extends PipelineSpec with Matchers {
                    vessels, IndexedSeq[VesselStationaryPeriod]())
 
   "Anchorage merging" should "work!" in {
-    val anchorages = IndexedSeq(
-      anchoragePointFromS2CellToken("89c19c9c",
-                                    Set(VesselMetadata(1), VesselMetadata(2), VesselMetadata(3))),
-      anchoragePointFromS2CellToken("89c19b64", Set(VesselMetadata(1), VesselMetadata(2))),
-      anchoragePointFromS2CellToken("89c1852c", Set(VesselMetadata(1))),
-      anchoragePointFromS2CellToken("89c19b04",
-                                    Set(VesselMetadata(1), VesselMetadata(2))),
-      anchoragePointFromS2CellToken("89c19bac",
-                                    Set(VesselMetadata(1), VesselMetadata(2))),
-      anchoragePointFromS2CellToken("89c19bb4",
-                                    Set(VesselMetadata(1), VesselMetadata(2))))
+    runWithContext { sc =>
+      val anchorages = IndexedSeq(
+        anchoragePointFromS2CellToken("89c19c9c",
+                                      Set(VesselMetadata(1), VesselMetadata(2), VesselMetadata(3))),
+        anchoragePointFromS2CellToken("89c19b64", Set(VesselMetadata(1), VesselMetadata(2))),
+        anchoragePointFromS2CellToken("89c1852c", Set(VesselMetadata(1))),
+        anchoragePointFromS2CellToken("89c19b04",
+                                      Set(VesselMetadata(1), VesselMetadata(2))),
+        anchoragePointFromS2CellToken("89c19bac",
+                                      Set(VesselMetadata(1), VesselMetadata(2))),
+        anchoragePointFromS2CellToken("89c19bb4",
+                                      Set(VesselMetadata(1), VesselMetadata(2))))
 
-    val groupedAnchorages = Anchorages.mergeAdjacentAnchorageGridPoints(anchorages)
+      val groupedAnchorages : SCollection[AnchorageGridCluster] = Anchorages.buildAnchorageGridClusters(sc.parallelize(anchorages))
 
-    groupedAnchorages should have size 3
+      val expected =
+        Seq(AnchorageGridCluster(LatLon(40.016824742437635.of[degrees], -74.07113588841028.of[degrees]),
+                      Set(anchorages(2))),
+            AnchorageGridCluster(LatLon(39.994377589412146.of[degrees], -74.12517039688245.of[degrees]),
+                      Set(anchorages(0), anchorages(1))),
+            AnchorageGridCluster(LatLon(39.96842156104703.of[degrees], -74.0828838592642.of[degrees]),
+                      Set(anchorages(3), anchorages(4), anchorages(5))))
 
-    val expected =
-      Seq(AnchorageGridCluster(LatLon(40.016824742437635.of[degrees], -74.07113588841028.of[degrees]),
-                    Set(anchorages(2))),
-          AnchorageGridCluster(LatLon(39.994377589412146.of[degrees], -74.12517039688245.of[degrees]),
-                    Set(anchorages(0), anchorages(1))),
-          AnchorageGridCluster(LatLon(39.96842156104703.of[degrees], -74.0828838592642.of[degrees]),
-                    Set(anchorages(3), anchorages(4), anchorages(5))))
-
-    groupedAnchorages should contain theSameElementsAs expected
+      groupedAnchorages should containInAnyOrder(expected)
+    }
   }
 }

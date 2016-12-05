@@ -283,41 +283,46 @@ object Anchorages extends LazyLogging {
     }.filter { _.vessels.size >= AnchorageParameters.minUniqueVesselsForAnchorage }
   }
 
-  def mergeAdjacentAnchorageGridPoints(anchoragePoints: Iterable[AnchorageGridPoint]): Seq[AnchorageGridCluster] = {
-    val anchoragesById =
-      anchoragePoints.map(anchoragePoint => (anchoragePoint.id, anchoragePoint)).toMap
+  def groupS2Cells(tokens: Set[String]) : Map[String, String] = {
+    val unionFind = new UnionFind[String](tokens.asJava)
 
-    // Merge adjacent anchorages.
-    val unionFind = new UnionFind[AnchorageGridPoint](anchoragePoints.toSet.asJava)
-    anchoragePoints.foreach { ancorage =>
+    tokens.foreach { token =>
       val neighbourCells = Array.fill[S2CellId](4) { new S2CellId() }
-      ancorage.meanLocation
-        .getS2CellId(AnchorageParameters.anchoragesS2Scale)
+
+      S2CellId
+        .fromToken(token)
         .getEdgeNeighbors(neighbourCells)
 
-      neighbourCells.flatMap { nc =>
-        anchoragesById.get(nc.toToken)
-      }.foreach { neighbour =>
-        unionFind.union(ancorage, neighbour)
-      }
+      neighbourCells
+        .filter(nc => tokens.contains(nc.toToken))
+        .foreach(neighbour => unionFind.union(token, neighbour.toToken))
     }
-
-    // Build anchorage groups.
-    anchoragePoints.groupBy { anchoragePoint =>
-      unionFind.find(anchoragePoint).id
-    }.map {
-      case (_, anchoragePoints) =>
-        AnchorageGridCluster.fromAnchorageGridPoints(anchoragePoints)
-    }.toSeq
+    
+    tokens
+      .map(token => (token, unionFind.find(token)))
+      .toMap
   }
 
   def buildAnchorageGridClusters(
-      anchorages: SCollection[AnchorageGridPoint]): SCollection[AnchorageGridCluster] =
-    anchorages.groupAll
-    // Build anchorage group list.
-    .flatMap { anchorages =>
-      mergeAdjacentAnchorageGridPoints(anchorages)
-    }
+      anchorages: SCollection[AnchorageGridPoint]): SCollection[AnchorageGridCluster] = {
+    val anchorageGrouping = anchorages
+      .map(_.id)
+      .groupAll
+      .map { anchoragePoints =>
+        groupS2Cells(anchoragePoints.toSet)
+      }
+      .asSingletonSideInput
+
+    anchorages
+      .withSideInputs(anchorageGrouping)
+      .map((anchorage, ctx) => (ctx(anchorageGrouping).get(anchorage.id), anchorage))
+      .toSCollection
+      .groupByKey
+      .map {
+        case (_, anchorages) =>
+          AnchorageGridCluster.fromAnchorageGridPoints(anchorages)
+      }
+  }
 
   def findNearestAnchorage(point : AnchoragePoint, anchorages : Seq[Anchorage]) : (Anchorage, DoubleU[kilometer]) = {
     anchorages.map(
