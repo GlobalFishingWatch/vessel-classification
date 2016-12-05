@@ -94,7 +94,8 @@ table {
 
 """
 
-# basic metrics 
+# basic metrics
+
 
 def precision_score(y_true, y_pred):
     y_true = np.asarray(y_true, dtype=bool)
@@ -149,9 +150,9 @@ def weights(labels, y_true, y_pred, max_weight=200):
     return weights / weights.sum()
 
 
-def base_confusion_matrix(y_true, y_pred, labels):    
+def base_confusion_matrix(y_true, y_pred, labels):
     n = len(labels)
-    label_map = {lbl : i for i, lbl in enumerate(labels)}
+    label_map = {lbl: i for i, lbl in enumerate(labels)}
     cm = np.zeros([n, n], dtype=int)
 
     for yt, yp in zip(y_true, y_pred):
@@ -164,9 +165,6 @@ def base_confusion_matrix(y_true, y_pred, labels):
         cm[label_map[yt], label_map[yp]] += 1
 
     return cm
-
-
-
 
 # Helper function formatting as HTML (using yattag)
 
@@ -273,17 +271,21 @@ def ydump_length(doc, results):
         for lbl in labels:
             mask = (lbl == true_labels)
             err = RMS(true_lengths[mask], pred_lengths[mask])
-            results.append((lbl, err, true_lengths[mask].mean(), true_lengths[mask].std()))
+            results.append((lbl, err, true_lengths[mask].mean(),
+                            true_lengths[mask].std()))
         return results
 
     with tag('div', klass="unbreakable"):
         line('h3', 'RMS Error by Label')
-        ydump_table(doc, ['Label', 'RMS Error (m)', 'Mean Length (m)', 'StdDev Length (m)'], [
-            (a, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
-            for (a, b, c, d
-                 ) in RMS_by_label(consolidated.true_lengths, consolidated.
-                                   inferred_lengths, consolidated.true_labels)
-        ])
+        ydump_table(
+            doc,
+            ['Label', 'RMS Error (m)', 'Mean Length (m)', 'StdDev Length (m)'],
+            [
+                (a, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
+                for (a, b, c, d) in RMS_by_label(consolidated.true_lengths,
+                                                 consolidated.inferred_lengths,
+                                                 consolidated.true_labels)
+            ])
 
 
 def ydump_metrics(doc, results):
@@ -322,21 +324,21 @@ def ydump_metrics(doc, results):
 
     with tag('div', klass="unbreakable"):
         line('h3', 'Metrics by Label')
-        row_vals = precision_recall_f1(
-                         consolidated.label_list, 
-                         consolidated.true_labels,
-                         consolidated.inferred_labels)
-        ydump_table(doc, ['Label', 'Precision', 'Recall', 'F1-Score'],
-                    [(a, '{:.2f}'.format(b), "{:.2f}".format(c), "{:.2f}".format(d))
-                     for (a, b, c, d) in row_vals])
-        wts = weights(consolidated.label_list, 
-                         consolidated.true_labels,
-                         consolidated.inferred_labels)
+        row_vals = precision_recall_f1(consolidated.label_list,
+                                       consolidated.true_labels,
+                                       consolidated.inferred_labels)
+        ydump_table(doc, ['Label', 'Precision', 'Recall', 'F1-Score'], [
+            (a, '{:.2f}'.format(b), "{:.2f}".format(c), "{:.2f}".format(d))
+            for (a, b, c, d) in row_vals
+        ])
+        wts = weights(consolidated.label_list, consolidated.true_labels,
+                      consolidated.inferred_labels)
         line('h4', 'Accuracy with equal class weight')
-        text(            str(accuracy_score( 
-                         consolidated.true_labels,
-                         consolidated.inferred_labels,
-                         wts)))
+        text(
+            str(
+                accuracy_score(consolidated.true_labels,
+                               consolidated.inferred_labels, wts)))
+
 
 def ydump_fishing_localisation(doc, results):
     doc, tag, text, line = doc.ttl()
@@ -406,9 +408,9 @@ def precision_recall_f1(labels, y_true, y_pred):
         positives = (y_pred == lbl)
         if trues.sum() and positives.sum():
             # Only return cases where there are least one vessel present in both cases
-            results.append((lbl, precision_score(trues, positives),
-                                    recall_score(trues, positives),
-                                    f1_score(trues, positives)))
+            results.append(
+                (lbl, precision_score(trues, positives),
+                 recall_score(trues, positives), f1_score(trues, positives)))
     return results
 
 
@@ -485,8 +487,8 @@ def confusion_matrix(results):
 
     """
     EPS = 1e-10
-    cm_raw = base_confusion_matrix(
-        results.true_labels, results.inferred_labels, results.label_list)
+    cm_raw = base_confusion_matrix(results.true_labels,
+                                   results.inferred_labels, results.label_list)
 
     # For off axis, normalize harmonic mean of row / col inverse errors.
     # The idea here is that this average will go to 1 => BAD, as
@@ -532,7 +534,7 @@ class ClassificationExtractor(object):
         self.start_dates = []
         self.scores = []
         self.all_labels = set(label_map.values())
-   
+
     def extract(self, row):
         mmsi = row['mmsi']
         lbl = self.label_map.get(mmsi, "Unknown")
@@ -808,7 +810,8 @@ def dump_html(args, results):
         doc.stag('hr')
 
     # TODO: make localization results a class with __nonzero__ method
-    if not args.skip_localisation_metrics and results['localisation'].true_fishing_by_mmsi:
+    if not args.skip_localisation_metrics and results[
+            'localisation'].true_fishing_by_mmsi:
         doc.line('h2', 'Fishing Localisation')
         ydump_fishing_localisation(doc, results['localisation'])
         doc.stag('hr')
