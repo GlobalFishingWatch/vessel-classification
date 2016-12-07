@@ -112,6 +112,7 @@ class Trainer:
                 update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
 
             logging.info("Starting slim training loop.")
+            session_config = tf.ConfigProto(allow_soft_placement=True)
             slim.learning.train(
                 train_op,
                 self.checkpoint_dir,
@@ -120,7 +121,8 @@ class Trainer:
                 number_of_steps=500000,
                 save_summaries_secs=30,
                 save_interval_secs=60,
-                saver=self._make_saver())
+                saver=self._make_saver(),
+                session_config=session_config)
 
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
