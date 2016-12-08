@@ -33,7 +33,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     def window_max_points(self):
         return 512
 
-    def __init__(self, num_feature_dimensions, vessel_metadata):
+    def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
 
         def length_or_none(mmsi):
@@ -47,7 +47,8 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             'fishing_localisation',
             'Fishing localisation',
             vessel_metadata,
-            loss_weight=50.0)
+            loss_weight=50.0,
+            metrics=metrics)
 
         self.classification_training_objectives = []
         self.training_objectives = [self.fishing_localisation_objective]

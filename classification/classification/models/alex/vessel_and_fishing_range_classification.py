@@ -33,7 +33,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     def window_max_points(self):
         return 512
 
-    def __init__(self, num_feature_dimensions, vessel_metadata):
+    def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
 
         def length_or_none(mmsi):
@@ -45,25 +45,34 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
         self.classification_training_objectives = [
             VesselMetadataClassificationObjective(
-                'is_fishing', 'Fishing', vessel_metadata,
-                utility.FISHING_NONFISHING_NAMES),
-            VesselMetadataClassificationObjective('label', 'Vessel class',
-                                                  vessel_metadata,
-                                                  utility.VESSEL_CLASS_NAMES),
-            VesselMetadataClassificationObjective(
-                'sublabel', 'Vessel detailed class', vessel_metadata,
-                utility.VESSEL_CLASS_DETAILED_NAMES), RegressionObjective(
-                    'length',
-                    'Vessel length regression',
-                    length_or_none,
-                    loss_weight=0.1)
+                'is_fishing',
+                'Fishing',
+                vessel_metadata,
+                utility.FISHING_NONFISHING_NAMES,
+                metrics=metrics), VesselMetadataClassificationObjective(
+                    'label',
+                    'Vessel class',
+                    vessel_metadata,
+                    utility.VESSEL_CLASS_NAMES,
+                    metrics=metrics), VesselMetadataClassificationObjective(
+                        'sublabel',
+                        'Vessel detailed class',
+                        vessel_metadata,
+                        utility.VESSEL_CLASS_DETAILED_NAMES,
+                        metrics=metrics), RegressionObjective(
+                            'length',
+                            'Vessel length regression',
+                            length_or_none,
+                            loss_weight=0.1,
+                            metrics=metrics)
         ]
 
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
             'fishing_localisation',
             'Fishing localisation',
             vessel_metadata,
-            loss_weight=50.0)
+            loss_weight=50.0,
+            metrics=metrics)
 
         self.training_objectives = self.classification_training_objectives + [
             self.fishing_localisation_objective

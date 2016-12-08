@@ -771,7 +771,8 @@ def find_available_mmsis(feature_path):
         root_output_path, _ = os.path.split(feature_path)
         # The feature pipeline stage that outputs the MMSI list is sharded to only
         # produce a single file, so no need to glob or loop here.
-        mmsi_list_tensor = tf.read_file(root_output_path + '/mmsis/part-00000-of-00001.txt')
+        mmsi_list_tensor = tf.read_file(root_output_path +
+                                        '/mmsis/part-00000-of-00001.txt')
         els = sess.run(mmsi_list_tensor).split('\n')
         mmsi_list = [int(mmsi) for mmsi in els if mmsi != '']
 

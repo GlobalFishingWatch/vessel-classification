@@ -22,14 +22,22 @@ Trainer = namedtuple("Trainer", ["loss", "update_ops"])
 TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 
 
+def f1(recall, precision):
+    rval, rop = recall
+    pval, pop = precision
+    f1 = 2.0 / (1.0 / rval + 1.0 / pval)
+    return (f1, f1)
+
+
 class ObjectiveBase(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, metadata_label, name, loss_weight):
+    def __init__(self, metadata_label, name, loss_weight, metrics):
         self.metadata_label = metadata_label
         self.name = name
         self.loss_weight = loss_weight
         self.prediction = None
+        self.metrics = metrics
 
     @abc.abstractmethod
     def build(self, net):
@@ -47,12 +55,14 @@ class ObjectiveBase(object):
 class EvaluationBase(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, metadata_label, name, prediction, timestamps, mmsis):
+    def __init__(self, metadata_label, name, prediction, timestamps, mmsis,
+                 metrics):
         self.metadata_label = metadata_label
         self.name = name
         self.prediction = prediction
         self.timestamps = timestamps
         self.mmsis = mmsis
+        self.metrics = metrics
 
     @abc.abstractmethod
     def build_test_metrics(self):
@@ -64,8 +74,9 @@ class EvaluationBase(object):
 
 
 class SummaryObjective(ObjectiveBase):
-    def __init__(self, metadata_label, name):
-        super(SummaryObjective, self).__init__(metadata_label, name, 0.0)
+    def __init__(self, metadata_label, name, metrics):
+        super(SummaryObjective, self).__init__(metadata_label, name, 0.0,
+                                               metrics)
 
     def build(self, net):
         self.inputs = net
@@ -73,12 +84,21 @@ class SummaryObjective(ObjectiveBase):
     def _build_summary(self):
         #TODO(bitsofbits): pull these names from someplace
         ops = {}
-        for i, name in enumerate(['log_timestampDeltaSeconds', 'log_distanceDeltaMeters', 'log_speedMps', 'log_integratedSpeedMps',
-                    'cogDeltaDegrees_div_180', 'localTodFeature', 'localMonthOfYearFeature', 'integratedCogDeltaDegrees_div_180',
-                    'log_distanceToShoreKm', 'log_distanceToBoundingAnchorageKm', 'log_timeToBoundingAnchorageS']):
-            ops[name] = tf.histogram_summary("input/{}-{}".format(name, i), tf.reshape(self.inputs[:, :, :, i], [-1]), 
-                #TODO(bitsofbits): may need not need all of these collection keys
-                collections=[tf.GraphKeys.UPDATE_OPS, tf.GraphKeys.SUMMARIES])
+        if self.metrics == 'all':
+            for i, name in enumerate(
+                ['log_timestampDeltaSeconds', 'log_distanceDeltaMeters',
+                 'log_speedMps', 'log_integratedSpeedMps',
+                 'cogDeltaDegrees_div_180', 'localTodFeature',
+                 'localMonthOfYearFeature',
+                 'integratedCogDeltaDegrees_div_180', 'log_distanceToShoreKm',
+                 'log_distanceToBoundingAnchorageKm',
+                 'log_timeToBoundingAnchorageS']):
+                ops[name] = tf.histogram_summary(
+                    "input/{}-{}".format(name, i),
+                    tf.reshape(self.inputs[:, :, :, i], [-1]),
+                    #TODO(bitsofbits): may need not need all of these collection keys
+                    collections=[tf.GraphKeys.UPDATE_OPS,
+                                 tf.GraphKeys.SUMMARIES])
         return ops
 
     def build_trainer(self, timestamps, mmsis):
@@ -92,7 +112,6 @@ class SummaryObjective(ObjectiveBase):
         build_summary = self._build_summary
 
         class Evaluation(EvaluationBase):
-
             def build_test_metrics(self):
                 ops = build_summary()
 
@@ -101,12 +120,19 @@ class SummaryObjective(ObjectiveBase):
             def build_json_results(self, prediction, timestamps):
                 return {}
 
-        return Evaluation(self.metadata_label, self.name, None, None, None)    
+        return Evaluation(self.metadata_label, self.name, None, None, None,
+                          self.metrics)
 
 
 class RegressionObjective(ObjectiveBase):
-    def __init__(self, metadata_label, name, value_from_mmsi, loss_weight=1.0):
-        super(RegressionObjective, self).__init__(metadata_label, name, loss_weight)
+    def __init__(self,
+                 metadata_label,
+                 name,
+                 value_from_mmsi,
+                 loss_weight=1.0,
+                 metrics='all'):
+        super(RegressionObjective, self).__init__(metadata_label, name,
+                                                  loss_weight, metrics)
         self.value_from_mmsi = value_from_mmsi
 
     def build(self, net):
@@ -158,9 +184,10 @@ class RegressionObjective(ObjectiveBase):
     def build_evaluation(self, timestamps, mmsis):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, masked_mean_error,
-                         prediction):
-                super(Evaluation, self).__init__(
-                    metadata_label, name, prediction, timestamps, mmsis)
+                         prediction, metrics):
+                super(Evaluation, self).__init__(metadata_label, name,
+                                                 prediction, timestamps, mmsis,
+                                                 metrics)
                 self.masked_mean_error = masked_mean_error
                 self.mmsis = mmsis
 
@@ -176,7 +203,8 @@ class RegressionObjective(ObjectiveBase):
                 return {'name': self.name, 'value': float(prediction)}
 
         return Evaluation(self.metadata_label, self.name,
-                          self._masked_mean_error, self.prediction)
+                          self._masked_mean_error, self.prediction,
+                          self.metrics)
 
 
 class ClassificationObjective(ObjectiveBase):
@@ -186,9 +214,10 @@ class ClassificationObjective(ObjectiveBase):
                  label_from_mmsi,
                  classes,
                  transformer=None,
-                 loss_weight=1.0):
+                 loss_weight=1.0,
+                 metrics='all'):
         super(ClassificationObjective, self).__init__(metadata_label, name,
-                                                      loss_weight)
+                                                      loss_weight, metrics)
         self.label_from_mmsi = label_from_mmsi
         self.classes = classes
         self.class_indices = dict(zip(classes, range(len(classes))))
@@ -253,9 +282,10 @@ class ClassificationObjective(ObjectiveBase):
     def build_evaluation(self, timestamps, mmsis):
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, training_label_lookup,
-                         classes, num_classes, prediction):
+                         classes, num_classes, prediction, metrics):
                 super(Evaluation, self).__init__(metadata_label, name,
-                                                 prediction, timestamps, mmsis)
+                                                 prediction, timestamps, mmsis,
+                                                 metrics)
                 self.training_label_lookup = training_label_lookup
                 self.classes = classes
                 self.num_classes = num_classes
@@ -277,10 +307,31 @@ class ClassificationObjective(ObjectiveBase):
                     tf.equal(labels, -1), tf.zeros_like(labels),
                     tf.ones_like(labels))
 
-                return metrics.aggregate_metric_map({
+                metrics_map = {
                     '%s/Test accuracy' % self.name: metrics.streaming_accuracy(
                         predictions, labels, weights=label_mask),
-                })
+                }
+
+                if self.metrics == 'all':
+                    for i, cls in enumerate(self.classes):
+                        trues = tf.to_int32(tf.equal(labels, i))
+                        preds = tf.to_int32(tf.equal(predictions, i))
+                        recall = metrics.streaming_recall(
+                            preds, trues, weights=label_mask)
+                        precision = metrics.streaming_precision(
+                            preds, trues, weights=label_mask)
+                        metrics_map["%s/Class-%s-Precision" %
+                                    (self.name, cls)] = recall
+                        metrics_map["%s/Class-%s-Recall" %
+                                    (self.name, cls)] = precision
+                        metrics_map["%s/Class-%s-F1-Score" %
+                                    (self.name, cls)] = f1(recall, precision)
+                        metrics_map["%s/Class-%s-ROC-AUC" %
+                                    (self.name, cls)] = metrics.streaming_auc(
+                                        self.prediction[:, i],
+                                        trues,
+                                        weights=label_mask)
+                return metrics.aggregate_metric_map(metrics_map)
 
             def build_json_results(self, prediction, timestamps):
                 max_prob_index = np.argmax(prediction)
@@ -297,13 +348,19 @@ class ClassificationObjective(ObjectiveBase):
                 }
 
         return Evaluation(self.metadata_label, self.name, self.training_label,
-                          self.classes, self.num_classes, self.prediction)
+                          self.classes, self.num_classes, self.prediction,
+                          self.metrics)
 
 
 class MultiClassificationObjective(ObjectiveBase):
-    def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0):
-        super(MultiClassificationObjective, self).__init__(metadata_label,
-                                                           name, loss_weight)
+    def __init__(self,
+                 metadata_label,
+                 name,
+                 vessel_metadata,
+                 loss_weight=1.0,
+                 metrics='all'):
+        super(MultiClassificationObjective, self).__init__(
+            metadata_label, name, loss_weight, metrics)
         self.vessel_metadata = vessel_metadata
         self.classes = utility.VESSEL_CLASS_DETAILED_NAMES
         self.num_classes = utility.multihot_lookup_table.shape[-1]
@@ -385,9 +442,10 @@ class MultiClassificationObjective(ObjectiveBase):
 
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, training_label_lookup,
-                         classes, num_classes, prediction):
+                         classes, num_classes, prediction, metrics):
                 super(Evaluation, self).__init__(metadata_label, name,
-                                                 prediction, timestamps, mmsis)
+                                                 prediction, timestamps, mmsis,
+                                                 metrics)
                 self.training_label_lookup = training_label_lookup
                 self.classes = classes
                 self.num_classes = num_classes
@@ -487,17 +545,62 @@ class MultiClassificationObjective(ObjectiveBase):
 
                 # TODO: (bitsofbits) refactor to make not horrible
 
-                return metrics.aggregate_metric_map({
-                    '%s/Test fine accuracy' % self.name:
+                metrics_map = {
+                    '%s/Test-fine-accuracy' % self.name:
                     metrics.streaming_accuracy(
                         fine_predictions, fine_labels, weights=fine_mask),
-                    '%s/Test coarse accuracy' % self.name:
+                    '%s/Test-coarse-accuracy' % self.name:
                     metrics.streaming_accuracy(
                         coarse_prediction, coarse_labels, weights=coarse_mask),
-                    '%s/Test fishing accuracy' % self.name:
+                    '%s/Test-fishing-accuracy' % self.name:
                     metrics.streaming_accuracy(
                         fishing_prediction, is_fishing, weights=fishing_mask),
-                })
+                }
+
+                if self.metrics == 'all':
+                    for i, cls in enumerate(self.classes):
+                        trues = tf.to_int32(tf.equal(fine_labels, i))
+                        preds = tf.to_int32(tf.equal(fine_predictions, i))
+                        recall = metrics.streaming_recall(
+                            preds, trues, weights=fine_mask)
+                        precision = metrics.streaming_precision(
+                            preds, trues, weights=fine_mask)
+                        metrics_map["%s/Class-%s-Precision" %
+                                    (self.name, cls)] = recall
+                        metrics_map["%s/Class-%s-Recall" %
+                                    (self.name, cls)] = precision
+                        metrics_map["%s/Class-%s-F1-Score" %
+                                    (self.name, cls)] = f1(recall, precision)
+                        metrics_map["%s/Class-%s-ROC-AUC" %
+                                    (self.name, cls)] = metrics.streaming_auc(
+                                        self.prediction[:, i],
+                                        trues,
+                                        weights=fine_mask)
+
+                    for i, cls in enumerate(utility.VESSEL_CLASS_NAMES):
+                        # Also include coarse classes, but only if they are not
+                        # already included in the fine classes
+                        if cls in self.classes:
+                            continue
+                        trues = tf.to_int32(tf.equal(coarse_labels, i))
+                        preds = tf.to_int32(tf.equal(coarse_prediction, i))
+                        recall = metrics.streaming_recall(
+                            preds, trues, weights=coarse_mask)
+                        precision = metrics.streaming_precision(
+                            preds, trues, weights=coarse_mask)
+                        metrics_map["%s/Class-%s-Precision" %
+                                    (self.name, cls)] = recall
+                        metrics_map["%s/Class-%s-Recall" %
+                                    (self.name, cls)] = precision
+                        metrics_map["%s/Class-%s-F1-Score" %
+                                    (self.name, cls)] = f1(recall, precision)
+                        metrics_map["%s/Class-%s-ROC-AUC" %
+                                    (self.name, cls)] = metrics.streaming_auc(
+                                        raw_coarse_prediction[:, i],
+                                        trues,
+                                        weights=coarse_mask)
+
+                return metrics.aggregate_metric_map(metrics_map)
 
             def build_json_results(self, class_probabilities):
                 max_prob_index = np.argmax(class_probabilities)
@@ -514,12 +617,18 @@ class MultiClassificationObjective(ObjectiveBase):
                 }
 
         return Evaluation(self.metadata_label, self.name, self.training_label,
-                          self.classes, self.num_classes, logits)
+                          self.classes, self.num_classes, logits, self.metrics)
 
 
 class AbstractFishingLocalizationObjective(ObjectiveBase):
-    def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0):
-        ObjectiveBase.__init__(self, metadata_label, name, loss_weight)
+    def __init__(self,
+                 metadata_label,
+                 name,
+                 vessel_metadata,
+                 loss_weight=1.0,
+                 metrics='all'):
+        ObjectiveBase.__init__(self, metadata_label, name, loss_weight,
+                               metrics)
         self.vessel_metadata = vessel_metadata
 
     def dense_labels(self, template_shape, timestamps, mmsis):
@@ -585,9 +694,10 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
 
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, prediction, timestamps,
-                         mmsis):
+                         mmsis, metrics):
                 super(Evaluation, self).__init__(metadata_label, name,
-                                                 prediction, timestamps, mmsis)
+                                                 prediction, timestamps, mmsis,
+                                                 metrics)
 
             def build_test_metrics(self):
                 dense_labels = dense_labels_fn(
@@ -597,17 +707,25 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 ones = tf.to_int32(dense_labels > 0.5)
                 weights = tf.to_float(valid)
 
+                recall = slim.metrics.streaming_recall(
+                    thresholded_prediction, ones, weights=weights)
+
+                precision = slim.metrics.streaming_precision(
+                    thresholded_prediction, ones, weights=weights)
+
                 raw_metrics = {
-                    'Test MSE': slim.metrics.streaming_mean_squared_error(
+                    'Test-MSE': slim.metrics.streaming_mean_squared_error(
                         self.prediction, tf.to_float(ones), weights=weights),
-                    'Test accuracy': slim.metrics.streaming_accuracy(
+                    'Test-accuracy': slim.metrics.streaming_accuracy(
                         thresholded_prediction, ones, weights=weights),
-                    'Test precision': slim.metrics.streaming_precision(
-                        thresholded_prediction, ones, weights=weights),
-                    'Test recall': slim.metrics.streaming_recall(
-                        thresholded_prediction, ones, weights=weights),
-                    'Test fishing fraction': slim.metrics.streaming_accuracy(
-                        thresholded_prediction, valid, weights=weights)
+                    'Test-precision': precision,
+                    'Test-recall': recall,
+                    'Test-F1-score': f1(recall, precision),
+                    'Test-prediction-fraction':
+                    slim.metrics.streaming_accuracy(
+                        thresholded_prediction, valid, weights=weights),
+                    'Test-label-fraction': slim.metrics.streaming_accuracy(
+                        ones, valid, weights=weights)
                 }
 
                 return metrics.aggregate_metric_map(
@@ -638,7 +756,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                         for (start_time, end_time) in fishing_ranges]
 
         return Evaluation(self.metadata_label, self.name, self.prediction,
-                          timestamps, mmsis)
+                          timestamps, mmsis, self.metrics)
 
 
 class FishingLocalizationObjectiveMSE(AbstractFishingLocalizationObjective):
@@ -663,8 +781,9 @@ class VesselMetadataClassificationObjective(ClassificationObjective):
                  vessel_metadata,
                  classes,
                  transformer=None,
-                 loss_weight=1.0):
+                 loss_weight=1.0,
+                 metrics='all'):
         super(VesselMetadataClassificationObjective, self).__init__(
             metadata_label, name,
             lambda mmsi: vessel_metadata.vessel_label(metadata_label, mmsi),
-            classes, transformer, loss_weight)
+            classes, transformer, loss_weight, metrics)

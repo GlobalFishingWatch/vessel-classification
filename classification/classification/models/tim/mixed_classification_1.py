@@ -6,8 +6,8 @@ import tensorflow.contrib.slim as slim
 import logging
 
 from classification.model import ModelBase
-from classification.objectives import (SummaryObjective,
-    TrainNetInfo, VesselMetadataClassificationObjective,
+from classification.objectives import (
+    SummaryObjective, TrainNetInfo, VesselMetadataClassificationObjective,
     FishingLocalizationObjectiveCrossEntropy)
 
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
@@ -34,33 +34,43 @@ class Model(ModelBase):
                                                       )]
     ]
 
-    def __init__(self, num_feature_dimensions, vessel_metadata):
+    def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(self.__class__, self).__init__(num_feature_dimensions,
                                              vessel_metadata)
 
         # TODO(bitsofbits): consider moving these to cached properties instead so we don't need init
         self.classification_training_objectives = [
-            VesselMetadataClassificationObjective('is_fishing', 'Fishing',
-                                                  vessel_metadata,
-                                                  ['Fishing', 'Non-fishing']),
-            VesselMetadataClassificationObjective('label', 'Vessel class',
-                                                  vessel_metadata,
-                                                  utility.VESSEL_CLASS_NAMES),
             VesselMetadataClassificationObjective(
-                'sublabel', 'Vessel detailed class', vessel_metadata,
-                utility.VESSEL_CLASS_DETAILED_NAMES),
+                'is_fishing',
+                'Fishing',
+                vessel_metadata, ['Fishing', 'Non-fishing'],
+                metrics=metrics),
+            VesselMetadataClassificationObjective(
+                'label',
+                'Vessel class',
+                vessel_metadata,
+                utility.VESSEL_CLASS_NAMES,
+                metrics=metrics),
+            VesselMetadataClassificationObjective(
+                'sublabel',
+                'Vessel detailed class',
+                vessel_metadata,
+                utility.VESSEL_CLASS_DETAILED_NAMES,
+                metrics=metrics),
         ]
 
         self.summary_objective = SummaryObjective(
-                'histograms', 'Histograms')
+            'histograms', 'Histograms', metrics=metrics)
 
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
-            'fishing_localisation', 'Fishing localisation', vessel_metadata)
+            'fishing_localisation',
+            'Fishing localisation',
+            vessel_metadata,
+            metrics=metrics)
 
         self.training_objectives = self.classification_training_objectives + [
             self.fishing_localisation_objective, self.summary_objective
         ]
-
 
     @property
     def max_window_duration_seconds(self):
@@ -153,8 +163,6 @@ class Model(ModelBase):
 
         self.fishing_localisation_objective.build(fishing_logits)
 
-
-
         return logit_list, fishing_logits
 
     def build_inference_net(self, features, timestamps, mmsis):
@@ -169,8 +177,8 @@ class Model(ModelBase):
             self.fishing_localisation_objective.build_evaluation(timestamps,
                                                                  mmsis))
 
-        evaluations.append(self.summary_objective.build_evaluation(timestamps,
-                                                                 mmsis))
+        evaluations.append(
+            self.summary_objective.build_evaluation(timestamps, mmsis))
 
         return evaluations
 
