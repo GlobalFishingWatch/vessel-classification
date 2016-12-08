@@ -906,6 +906,19 @@ def find_available_mmsis(feature_path):
         return set(mmsi_list)
 
 
+def parse_date(date):
+    try:
+        unix_timestamp = float(date)
+        return datetime.datetime.utcfromtimestamp(unix_timestamp).replace(tzinfo=pytz.utc)
+    except:
+        try:
+            return dateutil.parser.parse(date)
+        except:
+            logging.fatal('could not parse date "{}"'.format(data))
+            raise
+
+
+
 def read_fishing_ranges(fishing_range_file):
     """ Read vessel fishing ranges, return a dict of mmsi to classified fishing
         or non-fishing ranges for that vessel.
@@ -915,8 +928,8 @@ def read_fishing_ranges(fishing_range_file):
         for l in f.readlines()[1:]:
             els = l.split(',')
             mmsi = int(els[0])
-            start_time = dateutil.parser.parse(els[1])
-            end_time = dateutil.parser.parse(els[2])
+            start_time = parse_date(els[1])
+            end_time = parse_date(els[2])
             is_fishing = float(els[3])
 
             fishing_range_dict[mmsi].append(
