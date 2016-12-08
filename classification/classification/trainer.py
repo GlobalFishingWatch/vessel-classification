@@ -23,6 +23,7 @@ class Trainer:
 
     num_parallel_readers = 32
 
+    # TODO:  Pass in training verbosity flag
     def __init__(self, model, base_feature_path, train_scratch_path):
         self.model = model
         self.training_objectives = model.training_objectives

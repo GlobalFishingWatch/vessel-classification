@@ -31,14 +31,14 @@ class ModelsTest(tf.test.TestCase):
 
     def _build_model_training_net(self, model_class):
         vmd = utility.VesselMetadata({}, {})
-        model = model_class(self.num_feature_dimensions, vmd)
+        model = model_class(self.num_feature_dimensions, vmd, metrics='all')
         features, timestamps, mmsis = self._build_model_input(model)
 
         return model.build_training_net(features, timestamps, mmsis)
 
     def _build_model_inference_net(self, model_class):
         vmd = utility.VesselMetadata({}, {})
-        model = model_class(self.num_feature_dimensions, vmd)
+        model = model_class(self.num_feature_dimensions, vmd, metrics='all')
         features, timestamps, mmsis = self._build_model_input(model)
 
         return model.build_inference_net(features, timestamps, mmsis)

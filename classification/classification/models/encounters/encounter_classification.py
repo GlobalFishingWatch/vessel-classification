@@ -38,7 +38,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     def window_max_points(self):
         return 512
 
-    def __init__(self, num_feature_dimensions, vessel_metadata):
+    def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
 
         def length_or_none(mmsi):

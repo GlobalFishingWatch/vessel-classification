@@ -40,7 +40,8 @@ def launch(environment, model_name, job_name, config_file):
         output_path=gcp.model_path(), model_name=model_name)
 
     timestamp = gcp.start_time.strftime('%Y%m%dT%H%M%S')
-    job_id = ('%s_%s_%s' % (model_name, job_name, timestamp)).replace('.', '_').replace('-', '_')
+    job_id = ('%s_%s_%s' % (model_name, job_name, timestamp)).replace(
+        '.', '_').replace('-', '_')
 
     # Kick off the job on CloudML
     with tempfile.NamedTemporaryFile() as temp:
@@ -75,7 +76,8 @@ if __name__ == "__main__":
     parser.add_argument('--env', help='environment for run: prod/dev.')
     parser.add_argument('--model_name', help='module name of model.')
     parser.add_argument('--job_name', help='unique name for this job.')
-    parser.add_argument('--config_file', help='configuration file path.', default="deploy_cloudml_config_template.txt")
+    parser.add_argument('--config_file', help='configuration file path.', 
+                        default='deploy_cloudml_config_template.txt')
 
     args = parser.parse_args()
 

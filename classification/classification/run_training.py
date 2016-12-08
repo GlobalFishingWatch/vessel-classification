@@ -78,8 +78,9 @@ def main(args):
         fishing_ranges, int(args.fishing_range_training_upweight))
 
     feature_dimensions = int(args.feature_dimensions)
-    chosen_model = Model(feature_dimensions, vessel_metadata)
+    chosen_model = Model(feature_dimensions, vessel_metadata, args.metrics)
 
+    # TODO: training verbosity --training-verbosity
     trainer = Trainer(chosen_model, args.root_feature_path,
                       args.training_output_path)
 
@@ -131,6 +132,11 @@ def parse_args():
     argparser.add_argument(
         '--fishing_ranges_file',
         help='Path to fishing range file.')
+
+    argparser.add_argument(
+        '--metrics',
+        default='all',
+        help='How many metrics to dump ["all" | "minimal"]')
 
     return argparser.parse_args()
 
