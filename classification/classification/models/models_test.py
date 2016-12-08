@@ -5,15 +5,13 @@ from classification import utility
 from alex import (fishing_range_classification, vessel_classification,
                   vessel_and_fishing_range_classification)
 from tim import mixed_classification_1
-from encounters import encounter_classification
 
 # TODO(alexwilson): Feed some data in. Also check evaluation.build_json_results
 
 
 class ModelsTest(tf.test.TestCase):
     num_feature_dimensions = 11
-    model_classes = [encounter_classification.Model,
-                     mixed_classification_1.Model,
+    model_classes = [mixed_classification_1.Model,
                      vessel_classification.Model,
                      vessel_and_fishing_range_classification.Model
                      ]
