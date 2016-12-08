@@ -221,7 +221,7 @@ def np_array_random_fixed_length_extract(random_state, input_series,
 
 
 def np_array_random_fixed_points_extract(random_state, input_series,
-                                       max_time_delta, output_length,
+                                       output_length,
                                        min_timeslice_size, 
                                        selection_ranges):
     """ Extracts a random fixed-points slice from a 2d numpy array.
@@ -238,7 +238,9 @@ def np_array_random_fixed_points_extract(random_state, input_series,
             shorter than this will be repeated into the output series.   
         min_timeslice_size: the minimum number of points in a timeslice for the
             series to be considered meaningful. 
-        selections_ranges: ranges to include in returned slices or None
+        selection_ranges: Either a list of time ranges that should be preferentially 
+            selected from (we try to get at least on point from one of the ranges), or 
+            None if to disable this behaviour. 
 
     Returns:    
         An array of the same depth as the input, but altered width, representing
@@ -256,23 +258,21 @@ def np_array_random_fixed_points_extract(random_state, input_series,
         end_index = min(start_index + output_length, max_index) 
         return start_index, end_index
 
-    assert max_time_delta == 0
-
     if selection_ranges:
 
         # Copy and shuffle the ranges so we see them in a random order
         selection_ranges = list(selection_ranges)
         random_state.shuffle(selections_ranges)
 
-        for rng in selections_ranges:
+        for sel_range in selections_ranges:
             # For each range figure out the min and max acceptable point in input_series
             # if these points are at least min_timeslice_size long then we grab that
             # series
-            rng_start_stamp = (rng.start_time - datetime(1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
+            rng_start_stamp = (sel_range.start_time - datetime(1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
             rng_start_ndx = np.searchsorted(input_series[:, 0], rng_start_stamp) 
             min_ndx = max(rng_start_ndx - input_length + 1, 0)
 
-            rng_end_stamp = (rng.end_time - datetime(1970, 1, 1, tzinfo=pytz.utc)).total_seconds() 
+            rng_end_stamp = (sel_range.end_time - datetime(1970, 1, 1, tzinfo=pytz.utc)).total_seconds() 
             rng_end_ndx = np.searchsorted(input_series[:, 0], rng_end_stamp) 
             max_ndx = max(rng_end_ndx + input_length - 1, input_length - 1)
 
@@ -293,8 +293,7 @@ def np_array_random_fixed_points_extract(random_state, input_series,
 
 def np_array_random_fixed_time_extract(random_state, input_series,
                                        max_time_delta, output_length,
-                                       min_timeslice_size, 
-                                       selection_ranges):
+                                       min_timeslice_size):
     """ Extracts a random fixed-time slice from a 2d numpy array.
     
     The input array must be 2d, representing a time series, with the first    
@@ -310,14 +309,12 @@ def np_array_random_fixed_time_extract(random_state, input_series,
             shorter than this will be repeated into the output series.   
         min_timeslice_size: the minimum number of points in a timeslice for the
             series to be considered meaningful. 
-        selections_ranges: ranges to include in returned slices or None
 
     Returns:    
         An array of the same depth as the input, but altered width, representing
         the fixed time slice.   
     """
-    assert max_time_delta != 0
-    assert not selection_ranges, "Using selection ranges not supported for time based windows"
+    assert max_time_delta != 0, 'max_time_delta must be non zerof for time based windows'
 
     input_length = len(input_series)
 
@@ -354,7 +351,18 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
   the chosen timeslice to further augment the training data.
 
   Args:
+    random_state: a numpy RandomState object.
     input: the input data as a 2d numpy array.
+    max_time_delta: the maximum duration of the returned timeseries in seconds.
+    window_size: the number of points in the window
+    min_timeslice_size: the minimum number of points in a timeslice for the
+                        series to be considered meaningful.
+    selection_ranges: Either a list of timeranges that should be preferentially selected 
+                      from (we try to get at least on point from one of the ranges), or None if
+                      to disable this behaviour. 
+
+    Note that if max_time_delta must be zero, or selection_ranges must be None, but not
+    both.
 
   Returns:
     A tuple comprising:
@@ -365,12 +373,12 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
 
     if max_time_delta == 0:
         features = np_array_random_fixed_points_extract(
-            random_state, input, max_time_delta, window_size, min_timeslice_size,
+            random_state, input, window_size, min_timeslice_size,
             selection_ranges)
     else:
+        assert not selection_ranges, "Using selection ranges not supported for time based windows"
         features = np_array_random_fixed_time_extract(
-            random_state, input, max_time_delta, window_size, min_timeslice_size,
-            selection_ranges)
+            random_state, input, max_time_delta, window_size, min_timeslice_size)
 
     start_time = int(features[0][0])
     end_time = int(features[-1][0])
@@ -701,7 +709,7 @@ class VesselMetadata(object):
         fishing_ranges_mmsis = []
         for mmsi, (row, weight) in self.metadata_by_split[split].iteritems():
             if row_filter(row):
-                if mmsi in self.fishing_ranges_map: # XXX multiply only if one present
+                if mmsi in self.fishing_ranges_map: 
                     fishing_ranges_mmsis.append(mmsi)
                     weight = weight * self.fishing_range_training_upweight
 
@@ -769,22 +777,16 @@ def read_vessel_unweighted_metadata(available_mmsis, metadata_file,
     # the fly, but deterministically. 
     min_time_per_mmsi = np.inf 
 
-    NON_FALSE_POS_UPWEIGHT = 10
     for row in metadata_file_reader(metadata_file):
         mmsi = int(row['mmsi'])
         if mmsi in available_mmsis:
-            is_fp = True
             if is_test(mmsi):
                 split = 'Test'
             else:
                 split = 'Training'
             time_for_this_mmsi = 0
-            for rng in fishing_range_dict[mmsi]:
-                time_for_this_mmsi += (rng.end_time - rng.start_time).total_seconds()
-                if rng.is_fishing > 0.5:
-                    is_fp = False
-            if not is_fp:
-                time_for_this_mmsi *= NON_FALSE_POS_UPWEIGHT
+            for fish_range in fishing_range_dict[mmsi]:
+                time_for_this_mmsi += (fish_range.end_time - fish_range.start_time).total_seconds()
             metadata_dict[split][mmsi] = (row, time_for_this_mmsi)
             if time_for_this_mmsi:
                 min_time_per_mmsi = min(min_time_per_mmsi, time_for_this_mmsi)

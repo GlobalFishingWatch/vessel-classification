@@ -44,7 +44,7 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
                     return 0
 
             res = utility.np_array_random_fixed_time_extract(
-                FakeRandomState(), input_data, 5, 8, 50, None)
+                FakeRandomState(), input_data, 5, 8, 50)
 
             self.assertAllEqual(res, expected_result)
 
@@ -54,7 +54,7 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
                                    [4., 9., 0.]])
 
             res = utility.np_array_random_fixed_time_extract(
-                _FakeRandint(), input_data, 20, 4, 50, None)
+                _FakeRandint(), input_data, 20, 4, 50)
             self.assertAllEqual(res, input_data)
 
     def test_uncropped_extract_pad(self):
@@ -65,7 +65,7 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
                                                        6.], [2., 4., 4.]])
 
             res = utility.np_array_random_fixed_time_extract(
-                _FakeRandint(), input_data, 20, 5, 50, None)
+                _FakeRandint(), input_data, 20, 5, 50)
             self.assertAllEqual(res, expected_result)
 
 
