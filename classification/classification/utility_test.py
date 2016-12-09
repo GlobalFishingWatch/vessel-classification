@@ -4,6 +4,7 @@ import model
 import numpy as np
 import utility
 import tensorflow as tf
+from datetime import datetime
 
 
 class PythonReshapePadTest(tf.test.TestCase):
@@ -22,6 +23,7 @@ class PythonReshapePadTest(tf.test.TestCase):
                                    [7., 8.]]]])
 
             self.assertAllEqual(double_padded.eval(), expected)
+
 
 
 class _FakeRandint(object):
@@ -70,24 +72,42 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
 
 
 class VesselMetadataFileReaderTest(tf.test.TestCase):
+    raw_lines = [
+        'mmsi,label,length\n',
+        '100001,Longliner,10.0\n',
+        '100002,Longliner,24.0\n',
+        '100003,Longliner,7.0\n',
+        '100004,Longliner,8.0\n',
+        '100005,Trawler,10.0\n',
+        '100006,Trawler,24.0\n',
+        '100007,Passenger,24.0\n',
+        '100008,Trawler,24.0\n',
+        '100009,Trawler,10.0\n',
+        '100010,Trawler,24.0\n',
+        '100011,Tug,60.0\n',
+        '100012,Tug,5.0\n',
+        '100013,Tug,24.0\n',
+    ]
+
+    fishing_range_dict = {
+        100001 : [utility.FishingRange(datetime(2015, 3, 1), datetime(2015, 3, 2), 1.0)],
+        100002 : [utility.FishingRange(datetime(2015, 3, 1), datetime(2015, 3, 2), 1.0)],
+        100003 : [utility.FishingRange(datetime(2015, 3, 1), datetime(2015, 3, 2), 1.0)],
+        100004 : [utility.FishingRange(datetime(2015, 3, 1), datetime(2015, 3, 2), 1.0)],
+        100005 : [utility.FishingRange(datetime(2015, 3, 1), datetime(2015, 3, 2), 1.0)],
+        100006 : [utility.FishingRange(datetime(2015, 3, 1), datetime(2015, 3, 2), 1.0)],
+        100007 : [utility.FishingRange(datetime(2015, 3, 1), datetime(2015, 3, 2), 1.0)],
+        100008 : [utility.FishingRange(datetime(2015, 3, 1), datetime(2015, 3, 2), 1.0)],
+        100009 : [utility.FishingRange(datetime(2015, 3, 1), datetime(2015, 3, 4), 1.0)], # Thrice as much fishing
+        100010 : [],
+        100011 : [],
+        100012 : [],
+        100013 : [],
+    }
+
+
     def test_metadata_file_reader(self):
-        raw_lines = [
-            'mmsi,label,length\n',
-            '100001,Longliner,10.0\n',
-            '100002,Longliner,24.0\n',
-            '100003,Longliner,7.0\n',
-            '100004,Longliner,8.0\n',
-            '100005,Trawler,10.0\n',
-            '100006,Trawler,24.0\n',
-            '100007,Passenger,24.0\n',
-            '100008,Trawler,24.0\n',
-            '100009,Trawler,10.0\n',
-            '100010,Trawler,24.0\n',
-            '100011,Tug,60.0\n',
-            '100012,Tug,5.0\n',
-            '100013,Tug,24.0\n',
-        ]
-        parsed_lines = csv.DictReader(raw_lines)
+        parsed_lines = csv.DictReader(self.raw_lines)
         available_vessels = set(range(100001, 100013))
         result = utility.read_vessel_multiclass_metadata_lines(
             available_vessels, parsed_lines, {}, 1)
@@ -96,27 +116,47 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
         self.assertEquals(1.0, result.vessel_weight(100002))
         self.assertEquals(1.5, result.vessel_weight(100011))
 
+        self._check_splits(result)
+
+    def test_fixed_time_reader(self):
+        parsed_lines = csv.DictReader(self.raw_lines)
+        available_vessels = set(range(100001, 100013))
+        result = utility.read_vessel_time_weighted_metadata_lines(
+            available_vessels, parsed_lines, self.fishing_range_dict)
+
+        self.assertEquals(1.0, result.vessel_weight(100001))
+        self.assertEquals(1.0, result.vessel_weight(100002))
+        self.assertEquals(3.0, result.vessel_weight(100009))
+        self.assertEquals(0.0, result.vessel_weight(100012))
+
+        self._check_splits(result)
+
+
+    def _check_splits(self, result):
+
         self.assertTrue('Training' in result.metadata_by_split)
         self.assertTrue('Test' in result.metadata_by_split)
         self.assertTrue('Passenger', result.vessel_label('label', 100007))
 
-        self.assertEquals(result.metadata_by_split['Test'][100001],
-                          ({'label': 'Longliner',
+        self.assertEquals(result.metadata_by_split['Test'][100001][0],
+                          {'label': 'Longliner',
                             'length': '10.0',
-                            'mmsi': '100001'}, 3.0))
-        self.assertEquals(result.metadata_by_split['Test'][100005],
-                          ({'label': 'Trawler',
+                            'mmsi': '100001'})
+        self.assertEquals(result.metadata_by_split['Test'][100005][0],
+                          {'label': 'Trawler',
                             'length': '10.0',
-                            'mmsi': '100005'}, 1.0))
-
-        self.assertEquals(result.metadata_by_split['Training'][100002],
-                          ({'label': 'Longliner',
+                            'mmsi': '100005'})
+        self.assertEquals(result.metadata_by_split['Training'][100002][0],
+                          {'label': 'Longliner',
                             'length': '24.0',
-                            'mmsi': '100002'}, 1.0))
-        self.assertEquals(result.metadata_by_split['Training'][100003],
-                          ({'label': 'Longliner',
+                            'mmsi': '100002'})
+        self.assertEquals(result.metadata_by_split['Training'][100003][0],
+                          {'label': 'Longliner',
                             'length': '7.0',
-                            'mmsi': '100003'}, 1.0))
+                            'mmsi': '100003'})
+
+
+
 
 
 def _get_metadata_files():

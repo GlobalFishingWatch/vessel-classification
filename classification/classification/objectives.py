@@ -33,6 +33,14 @@ class ObjectiveBase(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, metadata_label, name, loss_weight, metrics):
+        """
+        args:
+            metadata_label:
+            name: name of this objective (for metrics)
+            loss_weight: weight of this objective (so that can increase decrease relative to other objectives)
+            metrics: which metrics to include. Options are currently ['all', 'minimal']
+
+        """
         self.metadata_label = metadata_label
         self.name = name
         self.loss_weight = loss_weight
@@ -767,8 +775,20 @@ class FishingLocalizationObjectiveMSE(AbstractFishingLocalizationObjective):
 class FishingLocalizationObjectiveCrossEntropy(
         AbstractFishingLocalizationObjective):
 
-    def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0, pos_weight=1.0, metrics='all'):
-        super(FishingLocalizationObjectiveCrossEntropy, self).__init__(metadata_label, name, vessel_metadata, loss_weight)
+    def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0, metrics='all', pos_weight=1.0):
+        """
+
+        args:
+            metadata_label: label that we are classifying by.
+            name: name of this objective (for metrics)
+            vessel_metadata: info on classes for each mmsi loaded
+            loss_weight: weight of this objective (so that can increase decrease relative to other objectives)
+            metrics: which metrics to include. Options are currently ['all', 'minimal']
+            pos_weight: increases the weight of getting positive values right, so an increased `pos_weight`
+                        should increase recall at the expense of precision.
+
+        """
+        super(FishingLocalizationObjectiveCrossEntropy, self).__init__(metadata_label, name, vessel_metadata, loss_weight, metrics)
         self.pos_weight = pos_weight    
 
     def loss_function(self, dense_labels):

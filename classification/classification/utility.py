@@ -17,6 +17,12 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
 
+# There are a large number of vessels included in the
+# training because they were detected as false positives.
+# To keep them from overwhelming fishing / nonfishing
+# detection, we upweight other vessels.
+NON_FALSE_POSITIVE_UPWEIGHT = 10
+
 
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
@@ -233,7 +239,6 @@ def np_array_random_fixed_points_extract(random_state, input_series,
         random_state: a numpy randomstate object.
         input_series: the input series. A 2d array first column representing an
             ascending time.   
-        max_time_delta: the maximum duration of the returned timeseries in seconds.
         output_length: the number of points in the output series. Input series    
             shorter than this will be repeated into the output series.   
         min_timeslice_size: the minimum number of points in a timeslice for the
@@ -314,7 +319,7 @@ def np_array_random_fixed_time_extract(random_state, input_series,
         An array of the same depth as the input, but altered width, representing
         the fixed time slice.   
     """
-    assert max_time_delta != 0, 'max_time_delta must be non zerof for time based windows'
+    assert max_time_delta != 0, 'max_time_delta must be non zero for time based windows'
 
     input_length = len(input_series)
 
@@ -436,8 +441,13 @@ def random_feature_cropping_file_reader(vessel_metadata, filename_queue,
     by the weight assigned to the particular vessel.
 
     Args:
-        TODO: add args, old ones were wrong
-
+        vessel_metadata: VesselMetadata object
+        filename_queue: a queue of filenames for feature files to read.
+        max_time_delta: the maximum duration of the returned timeseries in seconds.
+        window_size: the number of points in the window
+        min_timeslice_size: the minimum number of points in a timeslice for the
+                            series to be considered meaningful.
+        select_ranges: bool; should we choose ranges based on fishing_range_map
     Returns:
         A tuple comprising, for the n samples drawn for each vessel:
             1. A tensor of the feature timeslices drawn, of dimension
@@ -757,15 +767,17 @@ def is_test(mmsi):
     return (_hash_mmsi_to_double(mmsi) >= 0.5)
 
 
-def read_vessel_unweighted_metadata(available_mmsis, metadata_file,
-                                          fishing_range_dict,
-                                          fishing_range_training_upweight):
+def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
+                                          fishing_range_dict):
     """ For a set of vessels, read metadata; use flat weights
 
     Args:
         available_mmsis: a set of all mmsis for which we have feature data.
-        lines: 
-        # TODO: update
+        lines: a list of comma-separated vessel metadata lines. Columns are
+            the mmsi and a set of vessel type columns, containing at least one
+            called 'label' being the primary/coarse type of the vessel e.g.
+            (Longliner/Passenger etc.).
+        fishing_range_dict: dictionary of mapping mmsi to lists of fishing ranges
 
     Returns:
         A VesselMetadata object with weights and labels for each vessel.
@@ -777,16 +789,25 @@ def read_vessel_unweighted_metadata(available_mmsis, metadata_file,
     # the fly, but deterministically. 
     min_time_per_mmsi = np.inf 
 
-    for row in metadata_file_reader(metadata_file):
+    for row in lines:
         mmsi = int(row['mmsi'])
         if mmsi in available_mmsis:
+            # Is this mmsi included only to supress false positives
+            # Symptoms; fishing score for this MMSI never different from 0
+            is_false_positive = False
             if is_test(mmsi):
                 split = 'Test'
             else:
                 split = 'Training'
             time_for_this_mmsi = 0
-            for fish_range in fishing_range_dict[mmsi]:
-                time_for_this_mmsi += (fish_range.end_time - fish_range.start_time).total_seconds()
+            for rng in fishing_range_dict[mmsi]:
+                time_for_this_mmsi += (rng.end_time - rng.start_time).total_seconds()
+                if rng.is_fishing > 0:
+                    is_false_positive = False
+            if not is_false_positive:
+                # If this MMSI is not a false positive it, upweight it to prevent
+                # domination by false positive vessels.
+                time_for_this_mmsi *= NON_FALSE_POSITIVE_UPWEIGHT
             metadata_dict[split][mmsi] = (row, time_for_this_mmsi)
             if time_for_this_mmsi:
                 min_time_per_mmsi = min(min_time_per_mmsi, time_for_this_mmsi)
@@ -797,7 +818,18 @@ def read_vessel_unweighted_metadata(available_mmsis, metadata_file,
             split_dict[mmsi] = (row, time / min_time_per_mmsi)
 
     return VesselMetadata(metadata_dict, fishing_range_dict,
-                          fishing_range_training_upweight)
+                          1.0)
+
+
+
+def read_vessel_time_weighted_metadata(available_mmsis,
+                                    metadata_file,
+                                    fishing_range_dict={}):
+    reader = metadata_file_reader(metadata_file)
+
+
+    return read_vessel_time_weighted_metadata_lines(
+        available_mmsis, reader, fishing_range_dict)
 
 
 def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
@@ -811,7 +843,9 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
             the mmsi and a set of vessel type columns, containing at least one
             called 'label' being the primary/coarse type of the vessel e.g.
             (Longliner/Passenger etc.).
-
+        fishing_range_dict: dictionary of mapping mmsi to lists of fishing ranges
+        fishing_range_training_upweight: amount to upweight mmsi with fishing
+           ranges to assure adequate coverage.
     Returns:
         A VesselMetadata object with weights and labels for each vessel.
     """
