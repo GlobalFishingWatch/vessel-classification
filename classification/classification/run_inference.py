@@ -15,7 +15,6 @@ import tensorflow.contrib.slim as slim
 import tensorflow as tf
 import time
 from . import model
-from . import params
 from . import utility
 
 
@@ -149,20 +148,27 @@ def main(args):
 
     mmsis = utility.find_available_mmsis(args.root_feature_path)
 
+    module = "classification.models.{}".format(args.model_name)
+    try:
+        Model = importlib.import_module(module).Model
+    except:
+        logging.error("Could not load model: {}".format(module))
+        raise
+
     if args.dataset_split:
         if args.dataset_split in ['Training', 'Test']:
             metadata_file = os.path.abspath(
-                resource_filename('classification.data', params.metadata_file))
+                resource_filename('classification.data', args.metadata_file))
             fishing_range_file = os.path.abspath(
                 resource_filename('classification.data',
-                                  params.fishing_ranges_file))
+                                  args.fishing_ranges_file))
             if not os.path.exists(metadata_file):
                 logging.fatal("Could not find metadata file: %s.",
                               metadata_file)
                 sys.exit(-1)
 
             fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
-            vessel_metadata = utility.read_vessel_multiclass_metadata(
+            vessel_metadata = Model.read_metadata(
                 mmsis, metadata_file, fishing_range_dict=fishing_ranges)
 
             mmsis.intersection_update(
@@ -179,12 +185,7 @@ def main(args):
 
     logging.info("Running inference with %d mmsis", len(mmsis))
 
-    module = "classification.models.{}".format(args.model_name)
-    try:
-        Model = importlib.import_module(module).Model
-    except:
-        logging.error("Could not load model: {}".format(module))
-        raise
+
 
     feature_dimensions = int(args.feature_dimensions)
     chosen_model = Model(feature_dimensions, None)

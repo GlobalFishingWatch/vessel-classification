@@ -33,6 +33,14 @@ class ObjectiveBase(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, metadata_label, name, loss_weight, metrics):
+        """
+        args:
+            metadata_label:
+            name: name of this objective (for metrics)
+            loss_weight: weight of this objective (so that can increase decrease relative to other objectives)
+            metrics: which metrics to include. Options are currently ['all', 'minimal']
+
+        """
         self.metadata_label = metadata_label
         self.name = name
         self.loss_weight = loss_weight
@@ -557,6 +565,7 @@ class MultiClassificationObjective(ObjectiveBase):
                         fishing_prediction, is_fishing, weights=fishing_mask),
                 }
 
+
                 if self.metrics == 'all':
                     for i, cls in enumerate(self.classes):
                         trues = tf.to_int32(tf.equal(fine_labels, i))
@@ -708,10 +717,10 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 weights = tf.to_float(valid)
 
                 recall = slim.metrics.streaming_recall(
-                    thresholded_prediction, ones, weights=weights)
+                        thresholded_prediction, ones, weights=weights)
 
                 precision = slim.metrics.streaming_precision(
-                    thresholded_prediction, ones, weights=weights)
+                        thresholded_prediction, ones, weights=weights)
 
                 raw_metrics = {
                     'Test-MSE': slim.metrics.streaming_mean_squared_error(
@@ -721,8 +730,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                     'Test-precision': precision,
                     'Test-recall': recall,
                     'Test-F1-score': f1(recall, precision),
-                    'Test-prediction-fraction':
-                    slim.metrics.streaming_accuracy(
+                    'Test-prediction-fraction': slim.metrics.streaming_accuracy(
                         thresholded_prediction, valid, weights=weights),
                     'Test-label-fraction': slim.metrics.streaming_accuracy(
                         ones, valid, weights=weights)
@@ -766,12 +774,29 @@ class FishingLocalizationObjectiveMSE(AbstractFishingLocalizationObjective):
 
 class FishingLocalizationObjectiveCrossEntropy(
         AbstractFishingLocalizationObjective):
+
+    def __init__(self, metadata_label, name, vessel_metadata, loss_weight=1.0, metrics='all', pos_weight=1.0):
+        """
+
+        args:
+            metadata_label: label that we are classifying by.
+            name: name of this objective (for metrics)
+            vessel_metadata: info on classes for each mmsi loaded
+            loss_weight: weight of this objective (so that can increase decrease relative to other objectives)
+            metrics: which metrics to include. Options are currently ['all', 'minimal']
+            pos_weight: increases the weight of getting positive values right, so an increased `pos_weight`
+                        should increase recall at the expense of precision.
+
+        """
+        super(FishingLocalizationObjectiveCrossEntropy, self).__init__(metadata_label, name, vessel_metadata, loss_weight, metrics)
+        self.pos_weight = pos_weight    
+
     def loss_function(self, dense_labels):
         fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
         fishing_targets = tf.to_float(dense_labels > 0.5)
         return (tf.reduce_mean(fishing_mask *
-                               tf.nn.sigmoid_cross_entropy_with_logits(
-                                   self.logits, fishing_targets)))
+                               tf.nn.weighted_cross_entropy_with_logits(
+                                   self.logits, fishing_targets, pos_weight=self.pos_weight)))
 
 
 class VesselMetadataClassificationObjective(ClassificationObjective):
