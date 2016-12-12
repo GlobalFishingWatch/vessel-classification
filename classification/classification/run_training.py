@@ -8,7 +8,6 @@ from pkg_resources import resource_filename
 import sys
 from . import model
 from . import utility
-from . import params
 from .trainer import Trainer
 import importlib
 import tensorflow as tf
@@ -58,13 +57,13 @@ def main(args):
         raise
 
     metadata_file = os.path.abspath(
-        resource_filename('classification.data', params.metadata_file))
+        resource_filename('classification.data', args.metadata_file))
     if not os.path.exists(metadata_file):
         logging.fatal("Could not find metadata file: %s.", metadata_file)
         sys.exit(-1)
 
     fishing_range_file = os.path.abspath(
-        resource_filename('classification.data', params.fishing_ranges_file))
+        resource_filename('classification.data', args.fishing_ranges_file))
     if not os.path.exists(fishing_range_file):
         logging.fatal("Could not find fishing range file: %s.",
                       fishing_range_file)
@@ -74,13 +73,14 @@ def main(args):
 
     all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
 
-    vessel_metadata = utility.read_vessel_multiclass_metadata(
+    vessel_metadata = Model.read_metadata(
         all_available_mmsis, metadata_file,
         fishing_ranges, int(args.fishing_range_training_upweight))
 
     feature_dimensions = int(args.feature_dimensions)
-    chosen_model = Model(feature_dimensions, vessel_metadata)
+    chosen_model = Model(feature_dimensions, vessel_metadata, args.metrics)
 
+    # TODO: training verbosity --training-verbosity
     trainer = Trainer(chosen_model, args.root_feature_path,
                       args.training_output_path)
 
@@ -124,6 +124,19 @@ def parse_args():
         '--fishing_range_training_upweight',
         default=1.0,
         help='The amount to upweight vessels that have fishing ranges when training.')
+
+    argparser.add_argument(
+        '--metadata_file',
+        help='Path to metadata.')
+
+    argparser.add_argument(
+        '--fishing_ranges_file',
+        help='Path to fishing range file.')
+
+    argparser.add_argument(
+        '--metrics',
+        default='all',
+        help='How many metrics to dump ["all" | "minimal"]')
 
     return argparser.parse_args()
 

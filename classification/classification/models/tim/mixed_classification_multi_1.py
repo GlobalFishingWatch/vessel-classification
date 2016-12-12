@@ -8,9 +8,10 @@ import numpy as np
 
 from classification.model import ModelBase
 
-from classification.objectives import (SummaryObjective,
-    TrainNetInfo, VesselMetadataClassificationObjective, RegressionObjective,
-    MultiClassificationObjective, FishingLocalizationObjectiveCrossEntropy)
+from classification.objectives import (
+    SummaryObjective, TrainNetInfo, VesselMetadataClassificationObjective,
+    RegressionObjective, MultiClassificationObjective,
+    FishingLocalizationObjectiveCrossEntropy)
 
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm
@@ -35,7 +36,7 @@ class Model(ModelBase):
                                                        )]
     ]
 
-    def __init__(self, num_feature_dimensions, vessel_metadata):
+    def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(self.__class__, self).__init__(num_feature_dimensions,
                                              vessel_metadata)
 
@@ -47,22 +48,27 @@ class Model(ModelBase):
             return np.float32(length)
 
         self.classification_objective = MultiClassificationObjective(
-            "Multiclass", "Vessel detailed class", vessel_metadata)
+            "Multiclass",
+            "Vessel detailed class",
+            vessel_metadata,
+            metrics=metrics)
 
         self.length_objective = RegressionObjective(
             'length',
             'Vessel length regression',
             length_or_none,
-            loss_weight=0.1)
+            loss_weight=0.1,
+            metrics=metrics)
 
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
             'fishing_localisation',
             'Fishing localisation',
             vessel_metadata,
-            loss_weight=100)
+            loss_weight=100,
+            metrics=metrics)
 
         self.summary_objective = SummaryObjective(
-                'histograms', 'Histograms')
+            'histograms', 'Histograms', metrics=metrics)
 
         self.objectives = [self.classification_objective,
                            self.length_objective,
