@@ -22,6 +22,7 @@ class MisconceptionModel(ModelBase):
 
         return padded
 
+
 class MisconceptionWithFishingRangesModel(MisconceptionModel):
     def __init__(self, num_feature_dimensions, vessel_metadata):
         super(MisconceptionWithFishingRangesModel, self).__init__(

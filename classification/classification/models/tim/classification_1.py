@@ -115,7 +115,7 @@ class Model(ModelBase):
                 if tp.keep_prob < 1:
                     current = dropout_layer(current, is_training, tp.keep_prob)
 
-        return tf.squeeze(current, axis=[1, 2])
+        return tf.squeeze(current, squeeze_dims=[1, 2])
 
     def build_model(self, is_training, current):
 
