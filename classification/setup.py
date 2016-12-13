@@ -2,7 +2,8 @@ import setuptools
 import glob
 import os
 
-data_files = [os.path.basename(x) for x in glob.glob("classification/data/*.csv")]
+data_files = [os.path.basename(x)
+              for x in glob.glob("classification/data/*.csv")]
 
 setuptools.setup(
     name='vessel_classification',
@@ -15,7 +16,8 @@ setuptools.setup(
     packages=[
         'common', 'classification', 'classification.data',
         'classification.models', 'classification.models.alex',
-        'classification.models.tim'],
+        'classification.models.tim'
+    ],
     install_requires=[
         'NewlineJSON'
     ])

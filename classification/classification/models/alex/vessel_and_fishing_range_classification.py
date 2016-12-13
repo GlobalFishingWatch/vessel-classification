@@ -48,13 +48,12 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
                 "Multiclass",
                 "Vessel detailed class",
                 vessel_metadata,
-                metrics=metrics), 
-            RegressionObjective(
-                'length',
-                'Vessel length regression',
-                length_or_none,
-                loss_weight=0.1,
-                metrics=metrics)
+                metrics=metrics), RegressionObjective(
+                    'length',
+                    'Vessel length regression',
+                    length_or_none,
+                    loss_weight=0.1,
+                    metrics=metrics)
         ]
 
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(

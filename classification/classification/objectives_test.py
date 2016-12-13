@@ -82,7 +82,6 @@ class FishingLocalisationLossTest(tf.test.TestCase):
             self.assertAlmostEqual(0.0, loss.eval())
 
 
-
 # Check we are actually getting vessels with fishing
 # localisation info (check loading the metadata, and choosing the
 # segments).
@@ -108,9 +107,6 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
 
         objective.build(logits)
         return objective.build_trainer(epoch_timestamps, mmsis)
-
-
-
 
 
 if __name__ == '__main__':

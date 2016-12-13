@@ -9,9 +9,8 @@ import numpy as np
 from classification.model import ModelBase
 
 from classification.objectives import (
-    SummaryObjective, TrainNetInfo,
-    RegressionObjective, MultiClassificationObjective,
-    FishingLocalizationObjectiveCrossEntropy)
+    SummaryObjective, TrainNetInfo, RegressionObjective,
+    MultiClassificationObjective, FishingLocalizationObjectiveCrossEntropy)
 
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm

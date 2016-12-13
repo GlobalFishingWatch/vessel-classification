@@ -5,8 +5,7 @@ from . import abstract_models
 from . import layers
 from classification import utility
 from classification.objectives import (
-    FishingLocalizationObjectiveCrossEntropy,
-    TrainNetInfo)
+    FishingLocalizationObjectiveCrossEntropy, TrainNetInfo)
 import logging
 import math
 import numpy as np

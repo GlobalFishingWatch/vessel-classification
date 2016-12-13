@@ -8,9 +8,9 @@ import numpy as np
 
 from classification.model import ModelBase
 
-from classification.objectives import (
-    SummaryObjective, TrainNetInfo,
-    RegressionObjective, MultiClassificationObjective)
+from classification.objectives import (SummaryObjective, TrainNetInfo,
+                                       RegressionObjective,
+                                       MultiClassificationObjective)
 
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm
@@ -26,7 +26,6 @@ class Model(ModelBase):
     learning_decay_rate = 0.99
     decay_examples = 10000
     momentum = 0.9
-
 
     tower_params = [
         TowerParams(*x)
@@ -58,13 +57,11 @@ class Model(ModelBase):
             loss_weight=0.1,
             metrics=metrics)
 
-
         self.summary_objective = SummaryObjective(
             'histograms', 'Histograms', metrics=metrics)
 
         self.objectives = [self.classification_objective,
-                           self.length_objective,
-                           self.summary_objective]
+                           self.length_objective, self.summary_objective]
 
     @property
     def max_window_duration_seconds(self):
@@ -126,7 +123,6 @@ class Model(ModelBase):
             self.classification_objective.build(output)
             self.length_objective.build(output)
 
-
     def build_inference_net(self, features, timestamps, mmsis):
 
         self.build_model(tf.constant(False), features)
@@ -136,7 +132,6 @@ class Model(ModelBase):
             evaluations.append(obj.build_evaluation(timestamps, mmsis))
 
         return evaluations
-
 
     def build_training_net(self, features, timestamps, mmsis):
 
@@ -152,6 +147,7 @@ class Model(ModelBase):
             self.initial_learning_rate, example, self.decay_examples,
             self.learning_decay_rate)
 
-        optimizer = tf.train.MomentumOptimizer(learning_rate, self.momentum, use_nesterov=True)
+        optimizer = tf.train.MomentumOptimizer(
+            learning_rate, self.momentum, use_nesterov=True)
 
         return TrainNetInfo(optimizer, trainers)

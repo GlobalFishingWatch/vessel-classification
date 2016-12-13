@@ -663,8 +663,7 @@ def load_true_fishing_ranges_by_mmsi(fishing_range_path, threshold=True):
             val = float(row['is_fishing'])
             if threshold:
                 val = val > 0.5
-            rng = (val, parse(row['start_time']),
-                   parse(row['end_time']))
+            rng = (val, parse(row['start_time']), parse(row['end_time']))
             ranges_by_mmsi[mmsi].append(rng)
     return ranges_by_mmsi
 
@@ -748,11 +747,12 @@ def compare_fishing_localisation(extracted_ranges, fishing_range_path,
     return LocalisationResults(true_by_mmsi, pred_by_mmsi, label_map)
 
 
-def compute_fishing_range_agreement(extracted_ranges, fishing_range_agreement_path,
-                                 label_map):
+def compute_fishing_range_agreement(extracted_ranges,
+                                    fishing_range_agreement_path, label_map):
 
     logging.debug("loading fishing agreement ranges")
-    true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(fishing_range_agreement_path, threshold=False)
+    true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(
+        fishing_range_agreement_path, threshold=False)
     pred_ranges_by_mmsi = {k: extracted_ranges.ranges_by_mmsi[k]
                            for k in true_ranges_by_mmsi}
     pred_coverage_by_mmsi = {k: extracted_ranges.coverage_by_mmsi[k]
@@ -828,17 +828,17 @@ def compute_fishing_range_agreement(extracted_ranges, fishing_range_agreement_pa
             assert np.alltrue(matches <= n)
             agreement.append(matches)
             counts.append(n)
-            human_agreement.append(a * (a - 1) + b * (b- 1))
+            human_agreement.append(a * (a - 1) + b * (b - 1))
             human_pairs.append(n * (n - 1))
-
 
     agreement = np.concatenate(agreement, axis=0)
     counts = np.concatenate(counts, axis=0)
     human_agreement = np.concatenate(human_agreement)
     human_pairs = np.concatenate(human_pairs)
-    logging.info("Model agreement with humans over predicted ranges: %s", agreement.sum() / counts.sum())
-    logging.info("Human agreement over predicted ranges: %s", human_agreement.sum() / human_pairs.sum())
-
+    logging.info("Model agreement with humans over predicted ranges: %s",
+                 agreement.sum() / counts.sum())
+    logging.info("Human agreement over predicted ranges: %s",
+                 human_agreement.sum() / human_pairs.sum())
 
 
 def compute_results(args):
@@ -884,9 +884,9 @@ def compute_results(args):
             results['fishing_ranges'], args.fishing_ranges, maps['label'])
 
     if args.agreement_ranges_path:
-        compute_fishing_range_agreement(results['fishing_ranges'], args.agreement_ranges_path,
-                                     maps['label'])
-
+        compute_fishing_range_agreement(results['fishing_ranges'],
+                                        args.agreement_ranges_path,
+                                        maps['label'])
 
     return results
 
@@ -949,8 +949,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--dump-labels-to',
         help='dump csv file mapping csv to consolidated gear-type labels')
-    parser.add_argument(
-        '--agreement-ranges-path')
+    parser.add_argument('--agreement-ranges-path')
     args = parser.parse_args()
 
     results = compute_results(args)

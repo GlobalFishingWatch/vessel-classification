@@ -50,13 +50,12 @@ class Model(abstract_models.MisconceptionModel):
                 "Multiclass",
                 "Vessel detailed class",
                 vessel_metadata,
-                metrics=metrics), 
-            RegressionObjective(
-                'length',
-                'Vessel length regression',
-                length_or_none,
-                loss_weight=0.1,
-                metrics=metrics)
+                metrics=metrics), RegressionObjective(
+                    'length',
+                    'Vessel length regression',
+                    length_or_none,
+                    loss_weight=0.1,
+                    metrics=metrics)
         ]
 
     def build_training_net(self, features, timestamps, mmsis):

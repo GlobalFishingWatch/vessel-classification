@@ -76,8 +76,10 @@ if __name__ == "__main__":
     parser.add_argument('--env', help='environment for run: prod/dev.')
     parser.add_argument('--model_name', help='module name of model.')
     parser.add_argument('--job_name', help='unique name for this job.')
-    parser.add_argument('--config_file', help='configuration file path.', 
-                        default='deploy_cloudml_config_template.txt')
+    parser.add_argument(
+        '--config_file',
+        help='configuration file path.',
+        default='deploy_cloudml_config_template.txt')
 
     args = parser.parse_args()
 

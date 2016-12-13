@@ -185,8 +185,6 @@ def main(args):
 
     logging.info("Running inference with %d mmsis", len(mmsis))
 
-
-
     feature_dimensions = int(args.feature_dimensions)
     chosen_model = Model(feature_dimensions, None)
 
