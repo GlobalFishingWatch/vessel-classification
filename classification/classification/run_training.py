@@ -125,13 +125,10 @@ def parse_args():
         default=1.0,
         help='The amount to upweight vessels that have fishing ranges when training.')
 
-    argparser.add_argument(
-        '--metadata_file',
-        help='Path to metadata.')
+    argparser.add_argument('--metadata_file', help='Path to metadata.')
 
     argparser.add_argument(
-        '--fishing_ranges_file',
-        help='Path to fishing range file.')
+        '--fishing_ranges_file', help='Path to fishing range file.')
 
     argparser.add_argument(
         '--metrics',

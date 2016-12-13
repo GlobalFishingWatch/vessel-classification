@@ -6,7 +6,7 @@ from . import layers
 from classification import utility
 from classification.objectives import (
     FishingLocalizationObjectiveCrossEntropy, RegressionObjective,
-    TrainNetInfo, VesselMetadataClassificationObjective)
+    TrainNetInfo, MultiClassificationObjective)
 import logging
 import math
 import numpy as np
@@ -44,27 +44,16 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             return np.float32(length)
 
         self.classification_training_objectives = [
-            VesselMetadataClassificationObjective(
-                'is_fishing',
-                'Fishing',
+            MultiClassificationObjective(
+                "Multiclass",
+                "Vessel detailed class",
                 vessel_metadata,
-                utility.FISHING_NONFISHING_NAMES,
-                metrics=metrics), VesselMetadataClassificationObjective(
-                    'label',
-                    'Vessel class',
-                    vessel_metadata,
-                    utility.VESSEL_CLASS_NAMES,
-                    metrics=metrics), VesselMetadataClassificationObjective(
-                        'sublabel',
-                        'Vessel detailed class',
-                        vessel_metadata,
-                        utility.VESSEL_CLASS_DETAILED_NAMES,
-                        metrics=metrics), RegressionObjective(
-                            'length',
-                            'Vessel length regression',
-                            length_or_none,
-                            loss_weight=0.1,
-                            metrics=metrics)
+                metrics=metrics), RegressionObjective(
+                    'length',
+                    'Vessel length regression',
+                    length_or_none,
+                    loss_weight=0.1,
+                    metrics=metrics)
         ]
 
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
@@ -101,7 +90,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             self.fishing_localisation_objective.build_trainer(timestamps,
                                                               mmsis))
 
-        optimizer = tf.train.AdamOptimizer(1e-4)
+        optimizer = tf.train.AdamOptimizer()
 
         return TrainNetInfo(optimizer, trainers)
 

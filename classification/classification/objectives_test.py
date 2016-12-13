@@ -82,19 +82,6 @@ class FishingLocalisationLossTest(tf.test.TestCase):
             self.assertAlmostEqual(0.0, loss.eval())
 
 
-class FishingLocalisationMseTest(tf.test.TestCase):
-    def test_simple_mse(self):
-        with self.test_session():
-            predictions = np.array([[1, 0, 0, 1, 0], [1, 0, 1, 1, 0]],
-                                   np.float32)
-            targets = np.array([[1, 0, -1, 0, -1], [1, 0, 0, -1, -1]],
-                               np.float32)
-
-            mse = utility.fishing_localisation_mse(predictions, targets)
-
-            self.assertAlmostEqual(0.33333333, mse.eval())
-
-
 # Check we are actually getting vessels with fishing
 # localisation info (check loading the metadata, and choosing the
 # segments).
@@ -120,53 +107,6 @@ class ObjectiveFunctionsTest(tf.test.TestCase):
 
         objective.build(logits)
         return objective.build_trainer(epoch_timestamps, mmsis)
-
-    def test_fishing_range_objective_no_ranges(self):
-        logits = [[np.inf, np.inf, np.inf, -np.inf, -np.inf, -np.inf]]
-        vmd = utility.VesselMetadata(self.vmd_dict, {}, 1.0)
-
-        o = objectives.FishingLocalizationObjectiveMSE(
-            'fishing_localisation', 'Fishing Localisation', vmd)
-
-        with self.test_session() as sess:
-            trainer = self._build_trainer(logits, o)
-            self.assertAlmostEqual(0.0, trainer.loss.eval())
-
-    def test_fishing_range_objective_half_specified(self):
-        logits = [[np.inf, np.inf, np.inf, -np.inf, -np.inf, -np.inf]]
-        fishing_range_dict = {100001: [self.range1]}
-        vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
-
-        o = objectives.FishingLocalizationObjectiveMSE(
-            'fishing_localisation', 'Fishing Localisation', vmd)
-
-        with self.test_session() as sess:
-            trainer = self._build_trainer(logits, o)
-            self.assertAlmostEqual(0.0, trainer.loss.eval())
-
-    def test_fishing_range_objective_fully_specified(self):
-        logits = [[np.inf, np.inf, np.inf, -np.inf, -np.inf, -np.inf]]
-        fishing_range_dict = {100001: [self.range1, self.range2]}
-        vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
-
-        o = objectives.FishingLocalizationObjectiveMSE(
-            'fishing_localisation', 'Fishing Localisation', vmd)
-
-        with self.test_session() as sess:
-            trainer = self._build_trainer(logits, o)
-            self.assertAlmostEqual(0.0, trainer.loss.eval())
-
-    def test_fishing_range_objective_fully_specified_mismatch(self):
-        logits = [[np.inf, np.inf, np.inf, np.inf, -np.inf, -np.inf]]
-        fishing_range_dict = {100001: [self.range1, self.range2]}
-        vmd = utility.VesselMetadata(self.vmd_dict, fishing_range_dict, 1.0)
-
-        o = objectives.FishingLocalizationObjectiveMSE(
-            'fishing_localisation', 'Fishing Localisation', vmd)
-
-        with self.test_session() as sess:
-            trainer = self._build_trainer(logits, o)
-            self.assertAlmostEqual(0.16666667, trainer.loss.eval())
 
 
 if __name__ == '__main__':

@@ -21,7 +21,10 @@ def misconception_layer(input,
   """
     with tf.name_scope(scope):
         with slim.arg_scope(
-            [slim.conv2d], padding='SAME', activation_fn=tf.nn.elu):
+            [slim.conv2d],
+                padding='SAME',
+                activation_fn=tf.nn.elu,
+                normalizer_fn=slim.batch_norm):
             stage_conv = slim.conv2d(
                 input, depth, [1, window_size], stride=[1, stride])
             stage_max_pool_reduce = slim.max_pool2d(
@@ -72,7 +75,7 @@ def misconception_model(input, window_size, stride, depth, levels,
                           stride, depth, is_training)
         net = slim.flatten(net)
         net = slim.dropout(net, 0.5, is_training=is_training)
-        net = slim.fully_connected(net, 100)
+        net = slim.fully_connected(net, 100, normalizer_fn=slim.batch_norm)
         net = slim.dropout(net, 0.5, is_training=is_training)
 
         outputs = [of.build(net) for of in objective_functions]

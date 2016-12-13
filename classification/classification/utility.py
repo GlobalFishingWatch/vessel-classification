@@ -22,8 +22,6 @@ import threading
 # To keep them from overwhelming fishing / nonfishing
 # detection, we upweight other vessels.
 NON_FALSE_POSITIVE_UPWEIGHT = 10
-
-
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
@@ -227,9 +225,8 @@ def np_array_random_fixed_length_extract(random_state, input_series,
 
 
 def np_array_random_fixed_points_extract(random_state, input_series,
-                                       output_length,
-                                       min_timeslice_size, 
-                                       selection_ranges):
+                                         output_length, min_timeslice_size,
+                                         selection_ranges):
     """ Extracts a random fixed-points slice from a 2d numpy array.
     
     The input array must be 2d, representing a time series, with the first    
@@ -254,13 +251,12 @@ def np_array_random_fixed_points_extract(random_state, input_series,
 
     input_length = len(input_series)
 
-
     def extract_start_end(min_index, max_index):
         effective_length = max_index - min_index + 1
         # Pick a random fixed-length window rather than fixed-time.
         max_offset = max(effective_length - output_length, 0)
         start_index = min_index + random_state.randint(0, max_offset + 1)
-        end_index = min(start_index + output_length, max_index) 
+        end_index = min(start_index + output_length, max_index)
         return start_index, end_index
 
     if selection_ranges:
@@ -273,16 +269,20 @@ def np_array_random_fixed_points_extract(random_state, input_series,
             # For each range figure out the min and max acceptable point in input_series
             # if these points are at least min_timeslice_size long then we grab that
             # series
-            rng_start_stamp = (sel_range.start_time - datetime(1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
-            rng_start_ndx = np.searchsorted(input_series[:, 0], rng_start_stamp) 
+            rng_start_stamp = (sel_range.start_time - datetime(
+                1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
+            rng_start_ndx = np.searchsorted(input_series[:, 0],
+                                            rng_start_stamp)
             min_ndx = max(rng_start_ndx - input_length + 1, 0)
 
-            rng_end_stamp = (sel_range.end_time - datetime(1970, 1, 1, tzinfo=pytz.utc)).total_seconds() 
-            rng_end_ndx = np.searchsorted(input_series[:, 0], rng_end_stamp) 
+            rng_end_stamp = (sel_range.end_time - datetime(
+                1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
+            rng_end_ndx = np.searchsorted(input_series[:, 0], rng_end_stamp)
             max_ndx = max(rng_end_ndx + input_length - 1, input_length - 1)
 
             if end_index > start_index:
-                start_index, end_index = extract_start_end(start_index, end_index)
+                start_index, end_index = extract_start_end(start_index,
+                                                           end_index)
                 break
         else:
             start_index, end_index = extract_start_end(0, input_length - 1)
@@ -293,7 +293,6 @@ def np_array_random_fixed_points_extract(random_state, input_series,
     output_series = np_pad_repeat_slice(cropped, output_length)
 
     return output_series
-
 
 
 def np_array_random_fixed_time_extract(random_state, input_series,
@@ -333,8 +332,7 @@ def np_array_random_fixed_time_extract(random_state, input_series,
 
     # Should not start closer than min_timeslice_size points from the end lest the 
     # series have too few points to be meaningful.
-    start_index = min(start_index, max(0,
-                                       input_length - min_timeslice_size))
+    start_index = min(start_index, max(0, input_length - min_timeslice_size))
     crop_end_time = min(input_series[start_index][0] + max_time_delta,
                         end_time)
 
@@ -383,7 +381,8 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
     else:
         assert not selection_ranges, "Using selection ranges not supported for time based windows"
         features = np_array_random_fixed_time_extract(
-            random_state, input, max_time_delta, window_size, min_timeslice_size)
+            random_state, input, max_time_delta, window_size,
+            min_timeslice_size)
 
     start_time = int(features[0][0])
     end_time = int(features[-1][0])
@@ -430,9 +429,12 @@ def np_array_extract_n_random_features(random_state, input, n, max_time_delta,
     return zip(*samples)
 
 
-def random_feature_cropping_file_reader(vessel_metadata, filename_queue,
-                                        num_features, max_time_delta,
-                                        window_size, min_timeslice_size,
+def random_feature_cropping_file_reader(vessel_metadata,
+                                        filename_queue,
+                                        num_features,
+                                        max_time_delta,
+                                        window_size,
+                                        min_timeslice_size,
                                         select_ranges=False):
     """ Set up a file reader and training feature extractor for the files in a queue.
 
@@ -465,7 +467,8 @@ def random_feature_cropping_file_reader(vessel_metadata, filename_queue,
 
     num_slices_per_mmsi = 8
 
-    ranges = vessel_metadata.fishing_ranges_map.get(mmsi) if select_ranges else None
+    ranges = vessel_metadata.fishing_ranges_map.get(
+        mmsi) if select_ranges else None
 
     def replicate_extract(input, mmsi):
         # Extract several random windows from each vessel track
@@ -719,7 +722,7 @@ class VesselMetadata(object):
         fishing_ranges_mmsis = []
         for mmsi, (row, weight) in self.metadata_by_split[split].iteritems():
             if row_filter(row):
-                if mmsi in self.fishing_ranges_map: 
+                if mmsi in self.fishing_ranges_map:
                     fishing_ranges_mmsis.append(mmsi)
                     weight = weight * self.fishing_range_training_upweight
 
@@ -768,7 +771,7 @@ def is_test(mmsi):
 
 
 def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
-                                          fishing_range_dict):
+                                             fishing_range_dict):
     """ For a set of vessels, read metadata; use flat weights
 
     Args:
@@ -786,8 +789,8 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
     metadata_dict = defaultdict(lambda: {})
 
     # Build a list of vessels + split + and vessel type. Calculate the split on
-    # the fly, but deterministically. 
-    min_time_per_mmsi = np.inf 
+    # the fly, but deterministically.
+    min_time_per_mmsi = np.inf
 
     for row in lines:
         mmsi = int(row['mmsi'])
@@ -801,7 +804,8 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
                 split = 'Training'
             time_for_this_mmsi = 0
             for rng in fishing_range_dict[mmsi]:
-                time_for_this_mmsi += (rng.end_time - rng.start_time).total_seconds()
+                time_for_this_mmsi += (
+                    rng.end_time - rng.start_time).total_seconds()
                 if rng.is_fishing > 0:
                     is_false_positive = False
             if not is_false_positive:
@@ -817,19 +821,16 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
             row, time = split_dict[mmsi]
             split_dict[mmsi] = (row, time / min_time_per_mmsi)
 
-    return VesselMetadata(metadata_dict, fishing_range_dict,
-                          1.0)
-
+    return VesselMetadata(metadata_dict, fishing_range_dict, 1.0)
 
 
 def read_vessel_time_weighted_metadata(available_mmsis,
-                                    metadata_file,
-                                    fishing_range_dict={}):
+                                       metadata_file,
+                                       fishing_range_dict={}):
     reader = metadata_file_reader(metadata_file)
 
-
-    return read_vessel_time_weighted_metadata_lines(
-        available_mmsis, reader, fishing_range_dict)
+    return read_vessel_time_weighted_metadata_lines(available_mmsis, reader,
+                                                    fishing_range_dict)
 
 
 def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
@@ -920,12 +921,9 @@ def read_vessel_multiclass_metadata(available_mmsis,
                                     fishing_range_training_upweight=1.0):
     reader = metadata_file_reader(metadata_file)
 
-
     return read_vessel_multiclass_metadata_lines(
         available_mmsis, reader, fishing_range_dict,
         fishing_range_training_upweight)
-
-
 
 
 def find_available_mmsis(feature_path):
@@ -946,14 +944,14 @@ def find_available_mmsis(feature_path):
 def parse_date(date):
     try:
         unix_timestamp = float(date)
-        return datetime.datetime.utcfromtimestamp(unix_timestamp).replace(tzinfo=pytz.utc)
+        return datetime.datetime.utcfromtimestamp(unix_timestamp).replace(
+            tzinfo=pytz.utc)
     except:
         try:
             return dateutil.parser.parse(date)
         except:
             logging.fatal('could not parse date "{}"'.format(data))
             raise
-
 
 
 def read_fishing_ranges(fishing_range_file):

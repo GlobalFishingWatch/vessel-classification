@@ -5,8 +5,7 @@ from . import abstract_models
 from . import layers
 from classification import utility
 from classification.objectives import (
-    FishingLocalizationObjectiveCrossEntropy, RegressionObjective,
-    TrainNetInfo, VesselMetadataClassificationObjective)
+    FishingLocalizationObjectiveCrossEntropy, TrainNetInfo)
 import logging
 import math
 import numpy as np
@@ -71,7 +70,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
                                                               mmsis)
         ]
 
-        optimizer = tf.train.AdamOptimizer(1e-4)
+        optimizer = tf.train.AdamOptimizer()
 
         return TrainNetInfo(optimizer, trainers)
 
