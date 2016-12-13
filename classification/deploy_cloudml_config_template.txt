@@ -6,12 +6,12 @@ trainingInput:
     "--training_output_path", "{output_path}/{model_name}",
     "--fishing_range_training_upweight", "1",
     "--metadata_file", "net_training_20161115.csv",
-    "--fishing_ranges_file", "combined_fishing_ranges.csv"
+    "--fishing_ranges_file", "combined_fishing_ranges.csv",
     "--metrics", "all"
     ]
   scaleTier: CUSTOM
   masterType: "standard"
   parameterServerType: "standard"
-  workerType: "standard_gpu"
+  workerType: "large_model"
   workerCount: 4
   parameterServerCount: 1

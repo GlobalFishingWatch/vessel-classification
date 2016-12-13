@@ -215,150 +215,6 @@ class RegressionObjective(ObjectiveBase):
                           self.metrics)
 
 
-class ClassificationObjective(ObjectiveBase):
-    def __init__(self,
-                 metadata_label,
-                 name,
-                 label_from_mmsi,
-                 classes,
-                 transformer=None,
-                 loss_weight=1.0,
-                 metrics='all'):
-        super(ClassificationObjective, self).__init__(metadata_label, name,
-                                                      loss_weight, metrics)
-        self.label_from_mmsi = label_from_mmsi
-        self.classes = classes
-        self.class_indices = dict(zip(classes, range(len(classes))))
-        self.num_classes = len(classes)
-        self.transformer = transformer
-
-    def build(self, net):
-        self.logits = slim.fully_connected(net, self.num_classes)
-        self.prediction = slim.softmax(self.logits)
-
-    def training_label(self, mmsi):
-        """ Return the index of this training label, or if it's unset, return
-            -1 so the loss function can ignore the example.
-        """
-        label_value = self.label_from_mmsi(mmsi)
-        if self.transformer:
-            label_value = self.transformer(label_value)
-        if label_value:
-            return self.class_indices[label_value]
-        else:
-            return -1
-
-    def build_trainer(self, timestamps, mmsis):
-        def labels_from_mmsis(mmsis_array):
-            return np.vectorize(
-                self.training_label, otypes=[np.int32])(mmsis_array)
-
-        # Look up the labels for each mmsi.
-        labels = tf.reshape(
-            tf.py_func(labels_from_mmsis, [mmsis], [tf.int32]),
-            shape=tf.shape(mmsis))
-
-        # Labels outside the one-hot num_classes range are just encoded
-        # to all-zeros, so the use of -1 for unknown works fine here
-        # when combined with a mask below.
-        one_hot_labels = slim.one_hot_encoding(labels, self.num_classes)
-
-        # Set the label weights to zero when we don't know the class.
-        label_weights = tf.select(
-            tf.equal(labels, -1),
-            tf.zeros_like(
-                labels, dtype=tf.float32),
-            tf.ones_like(
-                labels, dtype=tf.float32))
-
-        raw_loss = slim.losses.softmax_cross_entropy(
-            self.logits, one_hot_labels, weight=label_weights)
-        loss = raw_loss * self.loss_weight
-        class_predictions = tf.cast(tf.argmax(self.logits, 1), tf.int32)
-
-        update_ops = []
-        update_ops.append(
-            tf.summary.scalar('%s/Training loss' % self.name, raw_loss))
-
-        accuracy = slim.metrics.accuracy(
-            labels, class_predictions, weights=label_weights)
-        update_ops.append(
-            tf.summary.scalar('%s/Training accuracy' % self.name, accuracy))
-
-        return Trainer(loss, update_ops)
-
-    def build_evaluation(self, timestamps, mmsis):
-        class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name, training_label_lookup,
-                         classes, num_classes, prediction, metrics):
-                super(Evaluation, self).__init__(metadata_label, name,
-                                                 prediction, timestamps, mmsis,
-                                                 metrics)
-                self.training_label_lookup = training_label_lookup
-                self.classes = classes
-                self.num_classes = num_classes
-
-            def build_test_metrics(self):
-                def labels_from_mmsis(mmsis_array):
-                    return np.vectorize(
-                        self.training_label_lookup,
-                        otypes=[np.int32])(mmsis_array)
-
-                predictions = tf.cast(tf.argmax(self.prediction, 1), tf.int32)
-
-                # Look up the labels for each mmsi.
-                labels = tf.reshape(
-                    tf.py_func(labels_from_mmsis, [self.mmsis], [tf.int32]),
-                    shape=tf.shape(mmsis))
-
-                label_mask = tf.select(
-                    tf.equal(labels, -1), tf.zeros_like(labels),
-                    tf.ones_like(labels))
-
-                metrics_map = {
-                    '%s/Test accuracy' % self.name: metrics.streaming_accuracy(
-                        predictions, labels, weights=label_mask),
-                }
-
-                if self.metrics == 'all':
-                    for i, cls in enumerate(self.classes):
-                        trues = tf.to_int32(tf.equal(labels, i))
-                        preds = tf.to_int32(tf.equal(predictions, i))
-                        recall = metrics.streaming_recall(
-                            preds, trues, weights=label_mask)
-                        precision = metrics.streaming_precision(
-                            preds, trues, weights=label_mask)
-                        metrics_map["%s/Class-%s-Precision" %
-                                    (self.name, cls)] = recall
-                        metrics_map["%s/Class-%s-Recall" %
-                                    (self.name, cls)] = precision
-                        metrics_map["%s/Class-%s-F1-Score" %
-                                    (self.name, cls)] = f1(recall, precision)
-                        metrics_map["%s/Class-%s-ROC-AUC" %
-                                    (self.name, cls)] = metrics.streaming_auc(
-                                        self.prediction[:, i],
-                                        trues,
-                                        weights=label_mask)
-                return metrics.aggregate_metric_map(metrics_map)
-
-            def build_json_results(self, prediction, timestamps):
-                max_prob_index = np.argmax(prediction)
-                max_probability = float(prediction[max_prob_index])
-                max_label = self.classes[max_prob_index]
-                full_scores = dict(
-                    zip(self.classes, [float(v) for v in prediction]))
-
-                return {
-                    'name': self.name,
-                    'max_label': max_label,
-                    'max_label_probability': max_probability,
-                    'label_scores': full_scores
-                }
-
-        return Evaluation(self.metadata_label, self.name, self.training_label,
-                          self.classes, self.num_classes, self.prediction,
-                          self.metrics)
-
 
 class MultiClassificationObjective(ObjectiveBase):
     def __init__(self,
@@ -767,11 +623,6 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                           timestamps, mmsis, self.metrics)
 
 
-class FishingLocalizationObjectiveMSE(AbstractFishingLocalizationObjective):
-    def loss_function(self, dense_labels):
-        return utility.fishing_localisation_mse(self.prediction, dense_labels)
-
-
 class FishingLocalizationObjectiveCrossEntropy(
         AbstractFishingLocalizationObjective):
 
@@ -799,16 +650,4 @@ class FishingLocalizationObjectiveCrossEntropy(
                                    self.logits, fishing_targets, pos_weight=self.pos_weight)))
 
 
-class VesselMetadataClassificationObjective(ClassificationObjective):
-    def __init__(self,
-                 metadata_label,
-                 name,
-                 vessel_metadata,
-                 classes,
-                 transformer=None,
-                 loss_weight=1.0,
-                 metrics='all'):
-        super(VesselMetadataClassificationObjective, self).__init__(
-            metadata_label, name,
-            lambda mmsi: vessel_metadata.vessel_label(metadata_label, mmsi),
-            classes, transformer, loss_weight, metrics)
+

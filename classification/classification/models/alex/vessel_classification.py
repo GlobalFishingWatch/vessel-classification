@@ -5,7 +5,7 @@ from . import abstract_models
 from . import layers
 from classification import utility
 from classification.objectives import (
-    TrainNetInfo, VesselMetadataClassificationObjective, RegressionObjective)
+    TrainNetInfo, MultiClassificationObjective, RegressionObjective)
 import logging
 import math
 import numpy as np
@@ -46,26 +46,17 @@ class Model(abstract_models.MisconceptionModel):
             return np.float32(length)
 
         self.training_objectives = [
-            VesselMetadataClassificationObjective(
-                'is_fishing',
-                'Fishing',
-                vessel_metadata, ['Fishing', 'Non-fishing'],
-                metrics=metrics), VesselMetadataClassificationObjective(
-                    'label',
-                    'Vessel class',
-                    vessel_metadata,
-                    utility.VESSEL_CLASS_NAMES,
-                    metrics=metrics), VesselMetadataClassificationObjective(
-                        'sublabel',
-                        'Vessel detailed class',
-                        vessel_metadata,
-                        utility.VESSEL_CLASS_DETAILED_NAMES,
-                        metrics=metrics), RegressionObjective(
-                            'length',
-                            'Vessel length regression',
-                            length_or_none,
-                            loss_weight=0.1,
-                            metrics=metrics)
+            MultiClassificationObjective(
+                "Multiclass",
+                "Vessel detailed class",
+                vessel_metadata,
+                metrics=metrics), 
+            RegressionObjective(
+                'length',
+                'Vessel length regression',
+                length_or_none,
+                loss_weight=0.1,
+                metrics=metrics)
         ]
 
     def build_training_net(self, features, timestamps, mmsis):
@@ -81,7 +72,7 @@ class Model(abstract_models.MisconceptionModel):
             trainers.append(self.training_objectives[i].build_trainer(
                 timestamps, mmsis))
 
-        optimizer = tf.train.AdamOptimizer(1e-5)
+        optimizer = tf.train.AdamOptimizer()
 
         return TrainNetInfo(optimizer, trainers)
 
