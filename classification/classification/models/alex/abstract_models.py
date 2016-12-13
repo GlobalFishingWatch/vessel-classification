@@ -7,12 +7,6 @@ import tensorflow.contrib.slim as slim
 
 
 class MisconceptionModel(ModelBase):
-
-    initial_learning_rate = 0.01
-    learning_decay_rate = 0.99
-    decay_examples = 10000
-    momentum = 0.9
-
     def __init__(self, num_feature_dimensions, vessel_metadata):
         super(MisconceptionModel, self).__init__(num_feature_dimensions,
                                                  vessel_metadata)
@@ -27,7 +21,6 @@ class MisconceptionModel(ModelBase):
         padded = tf.concat(3, [features, zero_padding])
 
         return padded
-        
 
 class MisconceptionWithFishingRangesModel(MisconceptionModel):
     def __init__(self, num_feature_dimensions, vessel_metadata):
