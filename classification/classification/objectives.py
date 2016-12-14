@@ -101,7 +101,7 @@ class SummaryObjective(ObjectiveBase):
                  'integratedCogDeltaDegrees_div_180', 'log_distanceToShoreKm',
                  'log_distanceToBoundingAnchorageKm',
                  'log_timeToBoundingAnchorageS']):
-                ops[name] = tf.histogram_summary(
+                ops[name] = tf.summary.histogram(
                     "input/{}-{}".format(name, i),
                     tf.reshape(self.inputs[:, :, :, i], [-1]),
                     #TODO(bitsofbits): may need not need all of these collection keys
@@ -183,7 +183,7 @@ class RegressionObjective(ObjectiveBase):
 
         update_ops = []
         update_ops.append(
-            tf.summary.scalar('%s/Training loss' % self.name, raw_loss))
+            tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
 
         loss = raw_loss * self.loss_weight
 
@@ -203,7 +203,7 @@ class RegressionObjective(ObjectiveBase):
                 raw_loss = self.masked_mean_error(self.prediction, self.mmsis)
 
                 return metrics.aggregate_metric_map({
-                    '%s/Test error' % self.name:
+                    '%s/Test-error' % self.name:
                     metrics.streaming_mean(raw_loss)
                 })
 
@@ -293,7 +293,7 @@ class MultiClassificationObjective(ObjectiveBase):
 
         update_ops = []
         update_ops.append(
-            tf.summary.scalar('%s/Training loss' % self.name, raw_loss))
+            tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
 
         return Trainer(loss, update_ops)
 
@@ -422,6 +422,7 @@ class MultiClassificationObjective(ObjectiveBase):
 
                 if self.metrics == 'all':
                     for i, cls in enumerate(self.classes):
+                        cls_name = cls.replace(' ', '-')
                         trues = tf.to_int32(tf.equal(fine_labels, i))
                         preds = tf.to_int32(tf.equal(fine_predictions, i))
                         recall = metrics.streaming_recall(
@@ -429,22 +430,23 @@ class MultiClassificationObjective(ObjectiveBase):
                         precision = metrics.streaming_precision(
                             preds, trues, weights=fine_mask)
                         metrics_map["%s/Class-%s-Precision" %
-                                    (self.name, cls)] = recall
+                                    (self.name, cls_name)] = recall
                         metrics_map["%s/Class-%s-Recall" %
-                                    (self.name, cls)] = precision
+                                    (self.name, cls_name)] = precision
                         metrics_map["%s/Class-%s-F1-Score" %
-                                    (self.name, cls)] = f1(recall, precision)
+                                    (self.name, cls_name)] = f1(recall, precision)
                         metrics_map["%s/Class-%s-ROC-AUC" %
-                                    (self.name, cls)] = metrics.streaming_auc(
+                                    (self.name, cls_name)] = metrics.streaming_auc(
                                         self.prediction[:, i],
                                         trues,
                                         weights=fine_mask)
 
-                    for i, cls in enumerate(utility.VESSEL_CLASS_NAMES):
+                    for i, (cls, fine) in enumerate(utility.VESSEL_CATEGORIES['coarse']):
                         # Also include coarse classes, but only if they are not
                         # already included in the fine classes
                         if cls in self.classes:
                             continue
+                        cls_name = cls.replace(' ', '-')
                         trues = tf.to_int32(tf.equal(coarse_labels, i))
                         preds = tf.to_int32(tf.equal(coarse_prediction, i))
                         recall = metrics.streaming_recall(
@@ -452,13 +454,13 @@ class MultiClassificationObjective(ObjectiveBase):
                         precision = metrics.streaming_precision(
                             preds, trues, weights=coarse_mask)
                         metrics_map["%s/Class-%s-Precision" %
-                                    (self.name, cls)] = recall
+                                    (self.name, cls_name)] = recall
                         metrics_map["%s/Class-%s-Recall" %
-                                    (self.name, cls)] = precision
+                                    (self.name, cls_name)] = precision
                         metrics_map["%s/Class-%s-F1-Score" %
-                                    (self.name, cls)] = f1(recall, precision)
+                                    (self.name, cls_name)] = f1(recall, precision)
                         metrics_map["%s/Class-%s-ROC-AUC" %
-                                    (self.name, cls)] = metrics.streaming_auc(
+                                    (self.name, cls_name)] = metrics.streaming_auc(
                                         raw_coarse_prediction[:, i],
                                         trues,
                                         weights=coarse_mask)
@@ -541,12 +543,12 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
         raw_loss = self.loss_function(dense_labels)
 
         update_ops.append(
-            tf.summary.scalar('%s/Training loss' % self.name, raw_loss))
+            tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
 
         accuracy = slim.metrics.accuracy(
             thresholded_prediction, ones, weights=weights)
         update_ops.append(
-            tf.summary.scalar('%s/Training accuracy' % self.name, accuracy))
+            tf.summary.scalar('%s/Training-accuracy' % self.name, accuracy))
 
         loss = raw_loss * self.loss_weight
 

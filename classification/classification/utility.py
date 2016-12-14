@@ -54,11 +54,7 @@ VESSEL_CATEGORIES = {
                          'Seismic vessel', 'Tug', 'Pilot']]
     ]
 }
-""" The coarse vessel label set. """
-VESSEL_CLASS_NAMES = ['Passenger', 'Squid', 'Cargo/Tanker', 'Trawlers',
-                      'Seismic vessel', 'Fixed gear', 'Reefer',
-                      'Drifting longlines', 'Pole and line', 'Purse seines',
-                      'Tug/Pilot']
+
 """ The finer vessel label set. """
 VESSEL_CLASS_DETAILED_NAMES = [
     'Squid', 'Trawlers', 'Seismic vessel', 'Set gillnets', 'Reefer',
@@ -66,11 +62,9 @@ VESSEL_CLASS_DETAILED_NAMES = [
     'Set longlines', 'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
 ]
 
-FISHING_NONFISHING_NAMES = ['Fishing', 'Non-fishing']
 
 TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
-
 
 def repeat_tensor(input, n):
     batch_size, _, width, depth = input.get_shape()
@@ -1019,7 +1013,7 @@ def multihot_encode(is_fishing, coarse, fine):
     """
     #     TODO:(bitsofbits) We are assuming that is_fishing always defined. Check this in code
     n_fine = len(VESSEL_CLASS_DETAILED_NAMES)
-    n_coarse = len(VESSEL_CLASS_NAMES)
+    n_coarse = len(VESSEL_CATEGORIES['coarse'])
     keys = (
         tf.maximum(fine, 0) + tf.to_int32(tf.equal(fine, -1)) *
         (n_fine + tf.maximum(coarse, 0) + tf.to_int32(tf.equal(coarse, -1)) *
