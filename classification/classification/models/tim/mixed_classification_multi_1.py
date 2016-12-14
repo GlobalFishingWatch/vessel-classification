@@ -48,20 +48,20 @@ class Model(ModelBase):
 
         self.classification_objective = MultiClassificationObjective(
             "Multiclass",
-            "Vessel detailed class",
+            "Vessel-class",
             vessel_metadata,
             metrics=metrics)
 
         self.length_objective = RegressionObjective(
             'length',
-            'Vessel length regression',
+            'Vessel-length',
             length_or_none,
             loss_weight=0.1,
             metrics=metrics)
 
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
             'fishing_localisation',
-            'Fishing localisation',
+            'Fishing-localisation',
             vessel_metadata,
             loss_weight=100,
             metrics=metrics)

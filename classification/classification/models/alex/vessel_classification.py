@@ -48,11 +48,11 @@ class Model(abstract_models.MisconceptionModel):
         self.training_objectives = [
             MultiClassificationObjective(
                 "Multiclass",
-                "Vessel detailed class",
+                "Vessel-class",
                 vessel_metadata,
                 metrics=metrics), RegressionObjective(
                     'length',
-                    'Vessel length regression',
+                    'Vessel-length',
                     length_or_none,
                     loss_weight=0.1,
                     metrics=metrics)

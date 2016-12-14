@@ -46,7 +46,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         self.classification_training_objectives = [
             MultiClassificationObjective(
                 "Multiclass",
-                "Vessel detailed class",
+                "Vessel-class",
                 vessel_metadata,
                 metrics=metrics), RegressionObjective(
                     'length',
@@ -58,7 +58,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
         self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
             'fishing_localisation',
-            'Fishing localisation',
+            'Fishing-localisation',
             vessel_metadata,
             loss_weight=50.0,
             metrics=metrics)
