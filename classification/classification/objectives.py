@@ -401,7 +401,7 @@ class MultiClassificationObjective(ObjectiveBase):
 
                 return metrics.aggregate_metric_map(metrics_map)
 
-            def build_json_results(self, class_probabilities):
+            def build_json_results(self, class_probabilities, timestamps):
                 max_prob_index = np.argmax(class_probabilities)
                 max_probability = float(class_probabilities[max_prob_index])
                 max_label = self.classes[max_prob_index]
