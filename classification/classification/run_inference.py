@@ -77,7 +77,8 @@ class Inferer(object):
             shapes=[[
                 1, self.model.window_max_points,
                 self.model.num_feature_dimensions
-            ], [self.model.window_max_points], [2], []])
+            ], [self.model.window_max_points], [2], []],
+            allow_smaller_final_batch=True)
 
         objectives = self.model.build_inference_net(features, timestamps,
                                                     mmsis)
@@ -89,7 +90,7 @@ class Inferer(object):
             inter_op_parallelism_threads=inference_parallelism,
             intra_op_parallelism_threads=inference_parallelism)
         with tf.Session(config=config) as sess:
-            init_op = tf.group(tf.initialize_local_variables(),
+            init_op = tf.group(tf.local_variables_initializer(),
                                tf.initialize_all_variables())
 
             sess.run(init_op)
@@ -110,8 +111,11 @@ class Inferer(object):
                 while True:
                     logging.info("Inference step: %d", i)
                     i += 1
-                    batch_results = sess.run([mmsis, time_ranges, timestamps] +
-                                             all_predictions)
+                    try:
+                        batch_results = sess.run([mmsis, time_ranges, timestamps] +
+                                                 all_predictions)
+                    except tf.errors.OutOfRangeError:
+                        break
                     for result in zip(*batch_results):
                         mmsi = result[0]
                         (start_time_seconds, end_time_seconds) = result[1]
@@ -169,7 +173,7 @@ def main(args):
 
             fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
             vessel_metadata = Model.read_metadata(
-                mmsis, metadata_file, fishing_range_dict=fishing_ranges)
+                mmsis, metadata_file, fishing_ranges=fishing_ranges)
 
             mmsis.intersection_update(
                 vessel_metadata.mmsis_for_split(args.dataset_split))
@@ -186,7 +190,7 @@ def main(args):
     logging.info("Running inference with %d mmsis", len(mmsis))
 
     feature_dimensions = int(args.feature_dimensions)
-    chosen_model = Model(feature_dimensions, None)
+    chosen_model = Model(feature_dimensions, None, None)
 
     infererer = Inferer(chosen_model, model_checkpoint_path, root_feature_path,
                         mmsis)
@@ -233,6 +237,16 @@ def parse_args():
         '--feature_dimensions',
         required=True,
         help='The number of dimensions of a classification feature.')
+
+    argparser.add_argument(
+        '--metadata_file',
+        required=True,
+        help='Name of file containing metadata.')
+
+    argparser.add_argument(
+        '--fishing_ranges_file',
+        required=True,
+        help='Name of the file containing fishing ranges.')
 
     return argparser.parse_args()
 
