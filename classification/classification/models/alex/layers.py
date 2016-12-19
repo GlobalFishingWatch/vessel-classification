@@ -24,7 +24,8 @@ def misconception_layer(input,
             [slim.conv2d],
                 padding='SAME',
                 activation_fn=tf.nn.elu,
-                normalizer_fn=slim.batch_norm):
+                normalizer_fn=slim.batch_norm,
+                normalizer_params={'is_training': is_training}):
             stage_conv = slim.conv2d(
                 input, depth, [1, window_size], stride=[1, stride])
             stage_max_pool_reduce = slim.max_pool2d(
