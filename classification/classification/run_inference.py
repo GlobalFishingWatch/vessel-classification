@@ -259,7 +259,7 @@ def parse_args():
 
     argparser.add_argument(
         '--interval_months',
-        default=6,
+        default=None,
         type=int,
         help="Interval between successive classifications")
 
