@@ -44,6 +44,7 @@ class Inferer(object):
         while True:
             year = start_year + month_count // 12
             month = month_count % 12 + 1
+            month_count += interval_months
             dt = datetime.datetime(year, month, 1, tzinfo=pytz.utc)
             if dt > last_viable_date:
                 break
@@ -211,7 +212,7 @@ def main(args):
         # Break if the user sets a time interval when we can't honor it.
         assert chosen_model.max_window_duration_seconds == 0, "can't set interval for point inferring model"
         interval_months = args.interval_months
-        
+
     infererer.run_inference(inference_parallelism, inference_results_path, interval_months)
 
 
