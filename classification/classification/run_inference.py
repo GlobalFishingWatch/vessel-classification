@@ -90,7 +90,7 @@ class Inferer(object):
             inter_op_parallelism_threads=inference_parallelism,
             intra_op_parallelism_threads=inference_parallelism)
         with tf.Session(config=config) as sess:
-            init_op = tf.group(tf.initialize_local_variables(),
+            init_op = tf.group(tf.local_variables_initializer(),
                                tf.initialize_all_variables())
 
             sess.run(init_op)
