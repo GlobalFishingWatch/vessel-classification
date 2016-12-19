@@ -188,11 +188,6 @@ class MetadataConsistencyTest(tf.test.TestCase):
             # Is fishing should never be blank
             self.assertFalse('' in is_fishing_labels)
 
-            self.assertEquals(is_fishing_labels,
-                              set(utility.FISHING_NONFISHING_NAMES))
-
-            self.assertEquals(coarse_labels, set(utility.VESSEL_CLASS_NAMES))
-
             self.assertEquals(fine_labels,
                               set(utility.VESSEL_CLASS_DETAILED_NAMES))
 
@@ -208,13 +203,6 @@ class MultihotLabelConsistencyTest(tf.test.TestCase):
         self.assertEquals(
             sorted(names), sorted(utility.VESSEL_CLASS_DETAILED_NAMES))
 
-    def test_coarse_label_consistency(self):
-        names = set([c for (c, _) in utility.VESSEL_CATEGORIES['coarse']])
-        self.assertEquals(names, set(utility.VESSEL_CLASS_NAMES))
-
-    def test_fishing_label_consistency(self):
-        names = set([c for (c, _) in utility.VESSEL_CATEGORIES['fishing']])
-        self.assertEquals(names, set(utility.FISHING_NONFISHING_NAMES))
 
 
 if __name__ == '__main__':
