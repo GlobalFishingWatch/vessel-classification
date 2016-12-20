@@ -26,10 +26,11 @@ class Model(ModelBase):
     learning_decay_rate = 0.99
     decay_examples = 10000
     momentum = 0.9
+    final_size = 6
 
     tower_params = [
         TowerParams(*x)
-        for x in [(32, [3], 2, 2, 1.0, True)] * 10 + [(32, [2], 2, 2, 0.8, True
+        for x in [(64, [3], 2, 2, 1.0, True)] * 10 + [(64, [2], 2, 2, 0.8, True
                                                        )]
     ]
 
@@ -69,7 +70,7 @@ class Model(ModelBase):
 
     @property
     def window_max_points(self):
-        length = 1
+        length = self.final_size
         for tp in reversed(self.tower_params):
             length = length * tp.pool_stride + (tp.pool_size - tp.pool_stride)
         return length
@@ -112,6 +113,8 @@ class Model(ModelBase):
                 if tp.keep_prob < 1:
                     current = dropout_layer(current, is_training, tp.keep_prob)
 
+        return conv1d_layer(current, self.final_size, tp.filter_count, stride=self.final_size)
+
         return tf.squeeze(current, squeeze_dims=[1, 2])
 
     def build_model(self, is_training, current):
@@ -121,7 +124,7 @@ class Model(ModelBase):
         with tf.variable_scope('classification-tower'):
             output = self.build_stack(current, is_training, self.tower_params)
             self.classification_objective.build(output)
-            self.length_objective.build(output)
+
 
     def build_inference_net(self, features, timestamps, mmsis):
 
