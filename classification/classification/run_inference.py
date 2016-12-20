@@ -63,9 +63,8 @@ class Inferer(object):
 
             time_starts = self._build_starts(interval_months)
 
-            self.time_ranges = [(s, e)
-                                for (s, e) in zip(time_starts, time_starts[1:])
-                                ]
+            delta = datetime.timedelta(seconds=self.model.max_window_duration_seconds)
+            self.time_ranges = [(int(time.mktime(dt.timetuple())), int(time.mktime((dt + delta).timetuple()))) for dt in time_starts]
             for _ in range(inference_parallelism * 2):
                 reader = utility.cropping_all_slice_feature_file_reader(
                     filename_queue, self.model.num_feature_dimensions + 1,
@@ -210,7 +209,7 @@ def main(args):
         interval_months = 6
     else:
         # Break if the user sets a time interval when we can't honor it.
-        assert chosen_model.max_window_duration_seconds == 0, "can't set interval for point inferring model"
+        assert chosen_model.max_window_duration_seconds != 0, "can't set interval for point inferring model"
         interval_months = args.interval_months
 
     infererer.run_inference(inference_parallelism, inference_results_path, interval_months)
