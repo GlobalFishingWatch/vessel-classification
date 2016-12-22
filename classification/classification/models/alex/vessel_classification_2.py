@@ -38,13 +38,6 @@ class Model(abstract_models.MisconceptionModel):
     def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
 
-        def length_or_none(mmsi):
-            length = vessel_metadata.vessel_label('length', mmsi)
-            if length == '':
-                return None
-
-            return np.float32(length)
-
         self.training_objectives = [
             MultiClassificationObjective(
                 "Multiclass",
