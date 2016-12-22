@@ -51,18 +51,10 @@ class Model(ModelBase):
             vessel_metadata,
             metrics=metrics)
 
-        self.length_objective = RegressionObjective(
-            'length',
-            'Vessel-length',
-            length_or_none,
-            loss_weight=0.1,
-            metrics=metrics)
-
         self.summary_objective = SummaryObjective(
             'histograms', 'Histograms', metrics=metrics)
 
-        self.objectives = [self.classification_objective,
-                           self.length_objective, self.summary_objective]
+        self.objectives = [self.classification_objective, self.summary_objective]
 
     @property
     def max_window_duration_seconds(self):
@@ -113,7 +105,7 @@ class Model(ModelBase):
                 if tp.keep_prob < 1:
                     current = dropout_layer(current, is_training, tp.keep_prob)
 
-        return conv1d_layer(current, self.final_size, tp.filter_count, stride=self.final_size)
+        current = conv1d_layer(current, self.final_size, tp.filter_count, stride=self.final_size)
 
         return tf.squeeze(current, squeeze_dims=[1, 2])
 
