@@ -478,29 +478,32 @@ def consolidate_across_dates(results, date_range=None):
     Optionally accepts a date range, which specifies half open ranges
     for the dates.
     """
+    inferred_mmsi = []
     inferred_labels = []
     true_labels = []
 
-    mmsi_map = {}
-    inferred_mmsi = []
-    mmsi_indices = []
-    for i, m in enumerate(results.mmsi):
-        if m not in mmsi_map:
-            mmsi_map[m] = len(inferred_mmsi)
-            inferred_mmsi.append(m)
-            true_labels.append(results.true_labels[i])
-        mmsi_indices.append(mmsi_map[m])
-    mmsi_indices = np.array(mmsi_indices)
-
     if date_range is None:
-        date_mask = np.ones([len(results.mmsi)], dtype=bool)
+        valid_date_mask = np.ones([len(results.mmsi)], dtype=bool)
     else:
         # TODO: write out end date as well, so that we avoid this hackery
         end_dates = results.start_dates + datetime.timedelta(days=180)
-        date_mask = (results.start_dates >= date_range[0]) & (results.start_dates < date_range[1])
+        valid_date_mask = (results.start_dates >= date_range[0]) & (results.start_dates < date_range[1])
+
+    mmsi_map = {}
+    mmsi_indices = []
+    for i, m in enumerate(results.mmsi):
+        if valid_date_mask[i]:
+            if m not in mmsi_map:
+                mmsi_map[m] = len(inferred_mmsi)
+                inferred_mmsi.append(m)
+                true_labels.append(results.true_labels[i])
+            mmsi_indices.append(mmsi_map[m])
+        else:
+            mmsi_indices.append(-1)
+    mmsi_indices = np.array(mmsi_indices)
 
     scores = np.zeros([len(inferred_mmsi), len(results.label_list)])
-    for i, valid in enumerate(date_mask):
+    for i, valid in enumerate(valid_date_mask):
         if valid:
             scores[mmsi_indices[i]] += results.indexed_scores[i]
 
@@ -1142,6 +1145,8 @@ if __name__ == '__main__':
                                                             (start_date, stop_date))
 
         for name, src in label_source.items():
+            if not len(src.mmsi):
+                continue
             path = os.path.join(args.dump_labels_to, '{}.csv'.format(name))
             logging.info('dumping labels to {}'.format(path))
             with open(path, 'w') as f:
