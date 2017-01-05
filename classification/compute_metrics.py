@@ -22,7 +22,7 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.utility import is_test, VESSEL_CLASS_DETAILED_NAMES
+from classification.utility import is_test, VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES
 import gzip
 import dateutil.parser
 import datetime
@@ -34,6 +34,48 @@ import pytz
 InferenceResults = namedtuple('InferenceResults',
                               ['mmsi', 'inferred_labels', 'true_labels',
                                'start_dates', 'scores', 'label_list'])
+class InferenceResults(object):
+
+    _indexed_scores = None
+
+    def __init__(self, # TODO: Consider reordering args so that label_list is first
+        mmsi, inferred_labels, true_labels, start_dates, scores, 
+        label_list,
+        all_mmsi=None, all_inferred_labels=None, all_true_labels=None, all_start_dates=None, all_scores=None):
+
+        self.label_list = label_list
+        #
+        self.all_mmsi = all_mmsi
+        self.all_inferred_labels = all_inferred_labels
+        self.all_true_labels = all_true_labels
+        self.all_start_dates = all_start_dates
+        self.all_scores = all_scores
+        #
+        self.mmsi = mmsi
+        self.inferred_labels = inferred_labels
+        self.true_labels = true_labels
+        self.start_dates = start_dates
+        self.scores = scores
+        #
+
+
+    def all_results(self):
+        return InferenceResults(self.all_mmsi, self.all_inferred_labels, self.all_true_labels,
+                                self.all_start_dates, self.all_scores, self.label_list)
+
+    @property
+    def indexed_scores(self):
+        if self._indexed_scores is None:
+            logging.debug("create index_scores")
+            iscores = np.zeros([len(self.mmsi), len(self.label_list)])
+            for i, mmsi in enumerate(self.mmsi):
+                for j, lbl in enumerate(self.label_list):
+                    iscores[i, j] = self.scores[i][lbl]
+            self._indexed_scores = iscores
+            logging.debug("done")
+        return self._indexed_scores
+
+
 
 LengthResults = namedtuple(
     'LengthResults',
@@ -46,8 +88,9 @@ LocalisationResults = namedtuple('LocalisationResults',
 ConfusionMatrix = namedtuple('ConfusionMatrix', ['raw', 'scaled'])
 
 CLASSIFICATION_METRICS = [
-    ('fishing', 'is_fishing', 'Is Fishing'),
-    ('coarse', 'label', 'Coarse Labels'), ('fine', 'sublabel', 'Fine Labels')
+    ('fishing', 'Is Fishing'),
+    ('coarse', 'Coarse Labels'), 
+    ('fine', 'Fine Labels'),
 ]
 
 css = """
@@ -424,30 +467,46 @@ def accuracy_for_date(date, true_labels, inferred_labels, scores, dates):
     return accuracy(true_labels[mask], inferred_labels[mask])
 
 
-def consolidate_across_dates(results):
+def consolidate_across_dates(results, date_range=None):
     """Consolidate scores for each MMSI across available dates.
 
     For each mmsi, we take the scores at all available dates, sum
     them and use argmax to find the predicted results.
 
+    Optionally accepts a date range, which specifies half open ranges
+    for the dates.
     """
     inferred_labels = []
     true_labels = []
-    mmsi = sorted(set(results.mmsi))
-    label_map = {x: i for (i, x) in enumerate(results.label_list)}
-    for m in mmsi:
-        mask = (results.mmsi == m)
-        scores = np.zeros(len(results.label_list), dtype=float)
-        for i in np.arange(len(results.mmsi))[mask]:
-            for lbl in results.scores[i]:
-                try:
-                    scores[label_map[lbl]] += results.scores[i][lbl]
-                except:
-                    logging.error(label_map, lbl, results.scores[i].keys())
-                    raise
-        inferred_labels.append(results.label_list[np.argmax(scores)])
-        true_labels.append(results.true_labels[mask][0])
-    return InferenceResults(mmsi, np.array(inferred_labels),
+
+    mmsi_map = {}
+    inferred_mmsi = []
+    mmsi_indices = []
+    for i, m in enumerate(results.mmsi):
+        if m not in mmsi_map:
+            mmsi_map[m] = len(inferred_mmsi)
+            inferred_mmsi.append(m)
+            true_labels.append(results.true_labels[i])
+        mmsi_indices.append(mmsi_map[m])
+    mmsi_indices = np.array(mmsi_indices)
+
+    if date_range is None:
+        date_mask = np.ones([len(results.mmsi)], dtype=bool)
+    else:
+        # TODO: write out end date as well, so that we avoid this hackery
+        end_dates = results.start_dates + datetime.timedelta(days=180)
+        date_mask = (results.start_dates >= date_range[0]) & (results.start_dates < date_range[1])
+
+    scores = np.zeros([len(inferred_mmsi), len(results.label_list)])
+    for i, valid in enumerate(date_mask):
+        if valid:
+            scores[mmsi_indices[i]] += results.indexed_scores[i]
+
+    inferred_labels = []
+    for s in scores:
+        inferred_labels.append(results.label_list[np.argmax(s)])
+
+    return InferenceResults(np.array(inferred_mmsi), np.array(inferred_labels),
                             np.array(true_labels), None, None,
                             results.label_list)
 
@@ -524,31 +583,54 @@ def load_inferred(inference_path, extractors):
         ext.finalize()
 
 
-class ClassificationExtractor(object):
+class ClassificationExtractor(InferenceResults):
+    # Conceptually an InferenceResult
+    # TODO: fix to make true subclass or return true inference result at finalization time or something.
     def __init__(self, field, label_map):
         self.field = field
         self.label_map = label_map
+        #
+        self.all_mmsi = []
+        self.all_inferred_labels = []
+        self.all_true_labels = []
+        self.all_start_dates = []
+        self.all_scores = []
+        #
         self.mmsi = []
         self.inferred_labels = []
         self.true_labels = []
         self.start_dates = []
         self.scores = []
+        #
         self.all_labels = set(label_map.values())
+
+
 
     def extract(self, row):
         mmsi = row['mmsi']
-        lbl = self.label_map.get(mmsi, "Unknown")
-        if lbl == "Unknown":
-            return
+        lbl = self.label_map.get(mmsi)
         if self.field not in row:
             return
-        self.mmsi.append(mmsi)
         label_scores = row[self.field]['label_scores']
         self.all_labels |= set(label_scores.keys())
-        self.start_dates.append(dateutil.parser.parse(row['start_time']))
-        self.true_labels.append(self.label_map[mmsi])
-        self.inferred_labels.append(row[self.field]['max_label'])
-        self.scores.append(label_scores)
+        start_date = dateutil.parser.parse(row['start_time'])
+        # TODO: write out TZINFO in inference
+        if start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=pytz.utc)
+        inferred = row[self.field]['max_label']
+        # Every row that has inference values get stored in all_
+        self.all_mmsi.append(mmsi)
+        self.all_start_dates.append(start_date)
+        self.all_true_labels.append(lbl)
+        self.all_inferred_labels.append(inferred)
+        self.all_scores.append(label_scores)
+        # Only values that have a known component get stored in the not all_ arrays
+        if lbl is not None:
+            self.mmsi.append(mmsi)
+            self.start_dates.append(start_date)
+            self.true_labels.append(lbl)
+            self.inferred_labels.append(inferred)
+            self.scores.append(label_scores)
 
     def finalize(self):
         self.inferred_labels = np.array(self.inferred_labels)
@@ -632,6 +714,49 @@ class FishingRangeExtractor(object):
         return len(self.ranges_by_mmsi) > 0
 
 
+def assemble_composite(results, mapping, label_map):
+    """
+
+    Args:
+        results: InferenceResults instance
+        mapping: sequence of (composite_key, [base_keys])
+
+    """
+
+    label_list = [lbl for (lbl, base_labels) in mapping]
+    inferred_scores = []
+    inferred_labels = []    
+    true_labels = []
+    start_dates = []
+
+    base_label_map = {x: i for (i, x) in enumerate(results.label_list)}
+
+    for i, mmsi in enumerate(results.all_mmsi):
+        scores = {}
+        for (new_label, base_labels) in mapping:
+            scores[new_label] = 0
+            for lbl in base_labels:
+                scores[new_label] += results.all_scores[i][lbl]
+        inferred_scores.append(scores)
+        inferred_labels.append(max(scores, key=scores.__getitem__))
+        true_labels.append(label_map.get(mmsi))
+        start_dates.append(results.all_start_dates[i])
+
+    def trim(seq):
+        return np.array([x for (i, x) in enumerate(seq) if true_labels[i]])
+
+
+
+    return InferenceResults(trim(results.all_mmsi), trim(inferred_labels),
+                               trim(true_labels), trim(start_dates), trim(inferred_scores),
+                            label_list, 
+                            np.array(results.all_mmsi), np.array(inferred_labels), 
+                            np.array(true_labels), np.array(start_dates), np.array(inferred_scores))
+
+
+
+
+
 def get_local_inference_path(args):
     """Return a local path to inference data.
 
@@ -674,6 +799,40 @@ def datetime_to_minute(dt):
     return int(timestamp // 60)
 
 
+# logistic_mmsis = {'Drifting longlines': [224456000,
+#   224545000,
+#   224071000,
+#   224933000,
+#   224122000,
+#   224120840,
+#   224597000,
+#   224173000],
+#  'Purse seines': [224029580,
+#   224021550,
+#   239139000,
+#   238288740,
+#   224042740,
+#   224106260,
+#   227635680,
+#   224088000,
+#   224004420,
+#   247239900,
+#   224022490,
+#   237963000],
+#  'Trawlers': [246269000,
+#   224027970,
+#   224067690,
+#   230034210,
+#   247120760,
+#   211238930,
+#   275141000,
+#   247051830,
+#   246338000,
+#   211351000,
+#   247143860,
+#   512236000]}
+
+
 def compare_fishing_localisation(extracted_ranges, fishing_range_path,
                                  label_map):
 
@@ -687,6 +846,7 @@ def compare_fishing_localisation(extracted_ranges, fishing_range_path,
     true_by_mmsi = {}
     pred_by_mmsi = {}
 
+    # processed_mmsi = defaultdict(list)
     for mmsi in sorted(true_ranges_by_mmsi.keys()):
         logging.debug("processing %s", mmsi)
         if mmsi not in pred_ranges_by_mmsi:
@@ -743,6 +903,8 @@ def compare_fishing_localisation(extracted_ranges, fishing_range_path,
 
             true_by_mmsi[mmsi] = minutes[mask, 0]
             pred_by_mmsi[mmsi] = minutes[mask, 1]
+
+    # logging.info("Processed MMSI: %s", processed_mmsi)
 
     return LocalisationResults(true_by_mmsi, pred_by_mmsi, label_map)
 
@@ -859,7 +1021,6 @@ def compute_results(args):
         if mmsi not in maps['sublabel']:
             if maps['label'][mmsi] in VESSEL_CLASS_DETAILED_NAMES:
                 maps['sublabel'][mmsi] = maps['label'][mmsi]
-
     results = {}
 
     if not args.skip_localisation_metrics:
@@ -867,9 +1028,7 @@ def compute_results(args):
         results['fishing_ranges'] = ext
 
     if (not args.skip_class_metrics) or args.dump_labels_to:
-        for key, field, name in CLASSIFICATION_METRICS:
-            ext = ClassificationExtractor(field, maps[field])
-            results[key] = ext
+        results['fine'] = ClassificationExtractor('Multiclass', maps['sublabel'])
 
     if not args.skip_length_metrics:
         ext = LengthExtractor(maps['length'], maps['label'])
@@ -877,6 +1036,14 @@ def compute_results(args):
 
     logging.info('Loading inference data')
     load_inferred(inference_path, results.values())
+
+    # TODO: rip out unused data parts above
+
+    # Assemble coarse and is_fishiing scores:
+    logging.info("Assembling coarse data")
+    results['coarse'] = assemble_composite(results['fine'], VESSEL_CATEGORIES['coarse'], maps['label'])
+    logging.info("Assembling fishing data")
+    results['fishing'] = assemble_composite(results['fine'], VESSEL_CATEGORIES['fishing'], maps['is_fishing'])
 
     if not args.skip_localisation_metrics:
         logging.info('Comparing localisation')
@@ -899,13 +1066,15 @@ def dump_html(args, results):
         doc.asis(css)
 
     if not args.skip_class_metrics:
-        for key, field, heading in CLASSIFICATION_METRICS:
+        for key, heading in CLASSIFICATION_METRICS:
             if results[key]:
+                logging.info('Dumping "{}"'.format(heading))
                 doc.line('h2', heading)
                 ydump_metrics(doc, results[key])
                 doc.stag('hr')
 
     if not args.skip_length_metrics and results['length']:
+        logging.info('Dumping Length')
         doc.line('h2', 'Length Inference')
         ydump_length(doc, results['length'])
         doc.stag('hr')
@@ -913,11 +1082,13 @@ def dump_html(args, results):
     # TODO: make localization results a class with __nonzero__ method
     if not args.skip_localisation_metrics and results[
             'localisation'].true_fishing_by_mmsi:
+        logging.info('Dumping Localisation')
         doc.line('h2', 'Fishing Localisation')
         ydump_fishing_localisation(doc, results['localisation'])
         doc.stag('hr')
 
     with open(args.dest_path, 'w') as f:
+        logging.info("Writing output")
         f.write(yattag.indent(doc.getvalue(), indent_text=True))
 
 # TODO:
@@ -930,7 +1101,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 temp_dir = os.path.join(this_dir, 'temp')
 
 if __name__ == '__main__':
-    logging.getLogger().setLevel('INFO')
+    logging.getLogger().setLevel('DEBUG')
 
     parser = argparse.ArgumentParser(
         description='Test inference results and output metrics.\n')
@@ -946,6 +1117,7 @@ if __name__ == '__main__':
     parser.add_argument('--skip-localisation-metrics', action='store_true')
     parser.add_argument('--skip-length-metrics', action='store_true')
     # It's convenient to be able to dump the consolidated gear types
+
     parser.add_argument(
         '--dump-labels-to',
         help='dump csv file mapping csv to consolidated gear-type labels')
@@ -956,11 +1128,29 @@ if __name__ == '__main__':
 
     dump_html(args, results)
 
-    if args.dump_labels_to:
-        if not args.dump_labels_to.endswith('.csv'):
-            logging.warn('dump-labels-to file does not end with ".csv"')
-        with open(args.dump_labels_to, 'w') as f:
-            f.write('mmsi,label\n')
-            for mmsi, label in zip(results['coarse'].mmsi,
-                                   results['coarse'].inferred_labels):
-                f.write('{},{}\n'.format(mmsi, label))
+    if args.dump_labels_to:        
+
+        logging.info("Processing label dump for ALL")
+        label_source = {'ALL': consolidate_across_dates(results['coarse'].all_results())}
+
+        year = 2012
+        while True:
+            start_date = datetime.datetime(year=year, month=1, day=1, tzinfo=pytz.utc)
+            stop_date = datetime.datetime(year=year+1, month=1, day=1, tzinfo=pytz.utc)
+            if start_date >= datetime.datetime.now(pytz.utc):
+                break
+            year += 1
+            logging.info("Processing label dump for {}".format(year))
+            label_source['{}'.format(start_date.year)] = consolidate_across_dates(results['coarse'].all_results(), 
+                                                            (start_date, stop_date))
+
+        for name, src in label_source.items():
+            path = os.path.join(args.dump_labels_to, "{}.csv".format(name))
+            logging.info("dumping labels to {}".format(path))
+            with open(path, 'w') as f:
+                f.write('mmsi,inferred,known\n')
+                lexical_indices =  np.argsort([str(x) for x in src.mmsi])
+                for i in lexical_indices:
+                    f.write('{},{},{}\n'.format(src.mmsi[i], 
+                                                src.inferred_labels[i], 
+                                                src.true_labels[i] or ''))
