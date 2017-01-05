@@ -2,10 +2,12 @@
 
 Example:
 
-python compute_metrics.py \
-    --inference-path  gs://world-fishing-827/scratch/alex/test_vessel_classification_277947.json.gz \
-    --label-path ../../mussidae/mussidae/data-precursors/time-range-sources/non-public-sources/mmsi_to_vessel_type.csv \
-    --dest-path example_output.html
+
+python compute_metrics.py     --inference-path classification_results.json.gz     \
+                              --label-path classification/data/net_training_20161115.csv   \
+                              --dest-path fltest.html --fishing-ranges classification/data/combined_fishing_ranges.csv  \
+                              --dump-labels-to . \
+                              --skip-localisation-metrics
 
 """
 from __future__ import division
@@ -66,13 +68,13 @@ class InferenceResults(object):
     @property
     def indexed_scores(self):
         if self._indexed_scores is None:
-            logging.debug("create index_scores")
+            logging.debug('create index_scores')
             iscores = np.zeros([len(self.mmsi), len(self.label_list)])
             for i, mmsi in enumerate(self.mmsi):
                 for j, lbl in enumerate(self.label_list):
                     iscores[i, j] = self.scores[i][lbl]
             self._indexed_scores = iscores
-            logging.debug("done")
+            logging.debug('done')
         return self._indexed_scores
 
 
@@ -222,16 +224,16 @@ def ydump_confusion_matrix(doc, cm, labels, **kwargs):
             labels for confusion matrix
     """
     doc, tag, text, line = doc.ttl()
-    with tag('table', klass="confusion-matrix", **kwargs):
+    with tag('table', klass='confusion-matrix', **kwargs):
         with tag('tr'):
             line('th', '')
             for x in labels:
-                with tag('th', klass="col"):
+                with tag('th', klass='col'):
                     with tag('div'):
                         line('span', x)
         for i, (l, row) in enumerate(zip(labels, cm.scaled)):
             with tag('tr'):
-                line('th', str(l), klass="row")
+                line('th', str(l), klass='row')
                 for j, x in enumerate(row):
                     if i == j:
                         if x > 0.5:
@@ -242,13 +244,13 @@ def ydump_confusion_matrix(doc, cm, labels, **kwargs):
                             cval = np.clip(int(round(512 * x)), 0, 255)
                             hexcode = '{:02x}'.format(cval)
                             color = '#FF{}00'.format(hexcode)
-                        klass = "diagonal"
+                        klass = 'diagonal'
                     else:
                         cval = np.clip(int(round(255 * x)), 0, 255)
                         hexcode = '{:02x}'.format(cval)
                         invhexcode = '{:02x}'.format(255 - cval)
                         color = '#FF{}{}'.format(invhexcode, invhexcode)
-                        klass = "offdiagonal"
+                        klass = 'offdiagonal'
                     with tag('td', klass=klass, bgcolor=color):
                         raw = cm.raw[i, j]
                         with tag('font',
@@ -296,14 +298,14 @@ def ydump_length(doc, results):
         rows.append([dt, RMS(results.true_lengths[mask],
                              results.inferred_lengths[mask])])
 
-    with tag('div', klass="unbreakable"):
+    with tag('div', klass='unbreakable'):
         line('h3', 'RMS Error (m) by Date')
         ydump_table(doc, ['Start Date', 'RMS Error'],
                     [(a.date(), '{:.2f}'.format(b)) for (a, b) in rows])
 
     consolidated = consolidate_length_across_dates(results)
 
-    with tag('div', klass="unbreakable"):
+    with tag('div', klass='unbreakable'):
         line('h3', 'Overall RMS Error')
         text('{:.2f}'.format(
             RMS(consolidated.true_lengths, consolidated.inferred_lengths)))
@@ -318,7 +320,7 @@ def ydump_length(doc, results):
                             true_lengths[mask].std()))
         return results
 
-    with tag('div', klass="unbreakable"):
+    with tag('div', klass='unbreakable'):
         line('h3', 'RMS Error by Label')
         ydump_table(
             doc,
@@ -347,31 +349,31 @@ def ydump_metrics(doc, results):
         for x in np.unique(results.start_dates)
     ]
 
-    with tag('div', klass="unbreakable"):
+    with tag('div', klass='unbreakable'):
         line('h3', 'Accuracy by Date')
         ydump_table(doc, ['Start Date', 'Accuracy'],
                     [(a.date(), '{:.2f}'.format(b)) for (a, b) in rows])
 
     consolidated = consolidate_across_dates(results)
 
-    with tag('div', klass="unbreakable"):
+    with tag('div', klass='unbreakable'):
         line('h3', 'Overall Accuracy')
         text('{:.2f}'.format(
             accuracy(consolidated.true_labels, consolidated.inferred_labels)))
 
     cm = confusion_matrix(consolidated)
 
-    with tag('div', klass="unbreakable"):
+    with tag('div', klass='unbreakable'):
         line('h3', 'Confusion Matrix')
         ydump_confusion_matrix(doc, cm, results.label_list)
 
-    with tag('div', klass="unbreakable"):
+    with tag('div', klass='unbreakable'):
         line('h3', 'Metrics by Label')
         row_vals = precision_recall_f1(consolidated.label_list,
                                        consolidated.true_labels,
                                        consolidated.inferred_labels)
         ydump_table(doc, ['Label', 'Precision', 'Recall', 'F1-Score'], [
-            (a, '{:.2f}'.format(b), "{:.2f}".format(c), "{:.2f}".format(d))
+            (a, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
             for (a, b, c, d) in row_vals
         ])
         wts = weights(consolidated.label_list, consolidated.true_labels,
@@ -389,13 +391,13 @@ def ydump_fishing_localisation(doc, results):
     y_true = np.concatenate(results.true_fishing_by_mmsi.values())
     y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
 
-    header = ["Gear Type", "Precision", "Recall", "Accuracy", "F1-Score"]
+    header = ['Gear Type', 'Precision', 'Recall', 'Accuracy', 'F1-Score']
     rows = []
-    logging.info("Overall localisation accuracy %s",
+    logging.info('Overall localisation accuracy %s',
                  accuracy_score(y_true, y_pred))
-    logging.info("Overall localisation precision %s",
+    logging.info('Overall localisation precision %s',
                  precision_score(y_true, y_pred))
-    logging.info("Overall localisation recall %s",
+    logging.info('Overall localisation recall %s',
                  recall_score(y_true, y_pred))
 
     for cls in sorted(set(results.label_map.values())):
@@ -428,7 +430,7 @@ def ydump_fishing_localisation(doc, results):
                  accuracy_score(y_true, y_pred),
                  f1_score(y_true, y_pred), ])
 
-    with tag('div', klass="unbreakable"):
+    with tag('div', klass='unbreakable'):
         ydump_table(
             doc, header,
             [[('{:.2f}'.format(x) if isinstance(x, float) else x) for x in row]
@@ -656,8 +658,8 @@ class LengthExtractor(object):
 
     def extract(self, row):
         mmsi = row['mmsi']
-        lbl = self.label_map.get(mmsi, "Unknown")
-        if lbl == "Unknown" or mmsi not in self.length_map:
+        lbl = self.label_map.get(mmsi, 'Unknown')
+        if lbl == 'Unknown' or mmsi not in self.length_map:
             return
         if 'length' not in row:
             return
@@ -688,10 +690,10 @@ class FishingRangeExtractor(object):
     def _parse(x):
         # 2014-08-28T13:56:16+00:00
         # TODO: fix generation to generate consistent datetimes
-        if x[-6:] == "+00:00":
+        if x[-6:] == '+00:00':
             x = x[:-6]
         try:
-            dt = datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S")
+            dt = datetime.datetime.strptime(x, '%Y-%m-%dT%H:%M:%S')
         except:
             logging.fatal('Could not parse "%s"', x)
             raise
@@ -836,7 +838,7 @@ def datetime_to_minute(dt):
 def compare_fishing_localisation(extracted_ranges, fishing_range_path,
                                  label_map):
 
-    logging.debug("loading fishing ranges")
+    logging.debug('loading fishing ranges')
     true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(fishing_range_path)
     pred_ranges_by_mmsi = {k: extracted_ranges.ranges_by_mmsi[k]
                            for k in true_ranges_by_mmsi}
@@ -846,9 +848,8 @@ def compare_fishing_localisation(extracted_ranges, fishing_range_path,
     true_by_mmsi = {}
     pred_by_mmsi = {}
 
-    # processed_mmsi = defaultdict(list)
     for mmsi in sorted(true_ranges_by_mmsi.keys()):
-        logging.debug("processing %s", mmsi)
+        logging.debug('processing %s', mmsi)
         if mmsi not in pred_ranges_by_mmsi:
             continue
         true_ranges = true_ranges_by_mmsi[mmsi]
@@ -857,8 +858,8 @@ def compare_fishing_localisation(extracted_ranges, fishing_range_path,
 
         # Determine minutes from start to finish of this mmsi, create an array to
         # hold results and fill with -1 (unknown)
-        logging.debug("processing %s true ranges", len(true_ranges))
-        logging.debug("finding overall range")
+        logging.debug('processing %s true ranges', len(true_ranges))
+        logging.debug('finding overall range')
         _, start, end = true_ranges[0]
         for (_, s, e) in true_ranges[1:]:
             start = min(start, s)
@@ -869,7 +870,7 @@ def compare_fishing_localisation(extracted_ranges, fishing_range_path,
         minutes.fill(-1)
 
         # Fill in minutes[:, 0] with known true / false values
-        logging.debug("filling 0s")
+        logging.debug('filling 0s')
         for (is_fishing, s, e) in true_ranges:
             s_min = datetime_to_minute(s)
             e_min = datetime_to_minute(e)
@@ -877,7 +878,7 @@ def compare_fishing_localisation(extracted_ranges, fishing_range_path,
                 minutes[m, 0] = is_fishing
 
         # fill in minutes[:, 1] with 0 (default) in areas with coverage
-        logging.debug("filling 1s")
+        logging.debug('filling 1s')
         for (s, e) in pred_coverage_by_mmsi[mmsi]:
             s_min = datetime_to_minute(s)
             e_min = datetime_to_minute(e)
@@ -886,7 +887,7 @@ def compare_fishing_localisation(extracted_ranges, fishing_range_path,
                     minutes[m, 1] = 0
 
         # fill in minutes[:, 1] with 1 where fishing is predicted
-        logging.debug("filling in predicted values")
+        logging.debug('filling in predicted values')
         for (s, e) in pred_ranges_by_mmsi[mmsi]:
             s_min = datetime_to_minute(s)
             e_min = datetime_to_minute(e)
@@ -899,12 +900,10 @@ def compare_fishing_localisation(extracted_ranges, fishing_range_path,
         if mask.sum():
             accuracy = (
                 (minutes[:, 0] == minutes[:, 1]) * mask).sum() / mask.sum()
-            logging.debug("Accuracy for MMSI %s: %s", mmsi, accuracy)
+            logging.debug('Accuracy for MMSI %s: %s', mmsi, accuracy)
 
             true_by_mmsi[mmsi] = minutes[mask, 0]
             pred_by_mmsi[mmsi] = minutes[mask, 1]
-
-    # logging.info("Processed MMSI: %s", processed_mmsi)
 
     return LocalisationResults(true_by_mmsi, pred_by_mmsi, label_map)
 
@@ -912,7 +911,7 @@ def compare_fishing_localisation(extracted_ranges, fishing_range_path,
 def compute_fishing_range_agreement(extracted_ranges,
                                     fishing_range_agreement_path, label_map):
 
-    logging.debug("loading fishing agreement ranges")
+    logging.debug('loading fishing agreement ranges')
     true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(
         fishing_range_agreement_path, threshold=False)
     pred_ranges_by_mmsi = {k: extracted_ranges.ranges_by_mmsi[k]
@@ -926,7 +925,7 @@ def compute_fishing_range_agreement(extracted_ranges,
     counts = []
 
     for mmsi in sorted(true_ranges_by_mmsi.keys()):
-        logging.debug("processing %s", mmsi)
+        logging.debug('processing %s', mmsi)
         if mmsi not in pred_ranges_by_mmsi:
             continue
         true_ranges = true_ranges_by_mmsi[mmsi]
@@ -935,8 +934,8 @@ def compute_fishing_range_agreement(extracted_ranges,
 
         # Determine minutes from start to finish of this mmsi, create an array to
         # hold results and fill with -1 (unknown)
-        logging.debug("processing %s true ranges", len(true_ranges))
-        logging.debug("finding overall range")
+        logging.debug('processing %s true ranges', len(true_ranges))
+        logging.debug('finding overall range')
         _, start, end = true_ranges[0]
         for (_, s, e) in true_ranges[1:]:
             start = min(start, s)
@@ -947,7 +946,7 @@ def compute_fishing_range_agreement(extracted_ranges,
         minutes.fill(-1)
 
         # Fill in minutes[:, :2] with human trues and ranges
-        logging.debug("filling in predicted values")
+        logging.debug('filling in predicted values')
         for (encoded, s, e) in true_ranges:
             s_min = datetime_to_minute(s)
             e_min = datetime_to_minute(e)
@@ -959,7 +958,7 @@ def compute_fishing_range_agreement(extracted_ranges,
                 minutes[m, 1] = n_total
 
         # fill in minutes[:, 2] with 0 (default) in areas with coverage
-        logging.debug("filling 0s")
+        logging.debug('filling 0s')
         for (s, e) in pred_coverage_by_mmsi[mmsi]:
             s_min = datetime_to_minute(s)
             e_min = datetime_to_minute(e)
@@ -968,7 +967,7 @@ def compute_fishing_range_agreement(extracted_ranges,
                     minutes[m, 2] = 0
 
         # fill in minutes[:, 2] with 1 where fishing is predicted
-        logging.debug("filling 1s")
+        logging.debug('filling 1s')
         for (s, e) in pred_ranges_by_mmsi[mmsi]:
             s_min = datetime_to_minute(s)
             e_min = datetime_to_minute(e)
@@ -997,9 +996,9 @@ def compute_fishing_range_agreement(extracted_ranges,
     counts = np.concatenate(counts, axis=0)
     human_agreement = np.concatenate(human_agreement)
     human_pairs = np.concatenate(human_pairs)
-    logging.info("Model agreement with humans over predicted ranges: %s",
+    logging.info('Model agreement with humans over predicted ranges: %s',
                  agreement.sum() / counts.sum())
-    logging.info("Human agreement over predicted ranges: %s",
+    logging.info('Human agreement over predicted ranges: %s',
                  human_agreement.sum() / human_pairs.sum())
 
 
@@ -1040,9 +1039,9 @@ def compute_results(args):
     # TODO: rip out unused data parts above
 
     # Assemble coarse and is_fishiing scores:
-    logging.info("Assembling coarse data")
+    logging.info('Assembling coarse data')
     results['coarse'] = assemble_composite(results['fine'], VESSEL_CATEGORIES['coarse'], maps['label'])
-    logging.info("Assembling fishing data")
+    logging.info('Assembling fishing data')
     results['fishing'] = assemble_composite(results['fine'], VESSEL_CATEGORIES['fishing'], maps['is_fishing'])
 
     if not args.skip_localisation_metrics:
@@ -1062,7 +1061,7 @@ def dump_html(args, results):
 
     doc = yattag.Doc()
 
-    with doc.tag("style", type="text/css"):
+    with doc.tag('style', type='text/css'):
         doc.asis(css)
 
     if not args.skip_class_metrics:
@@ -1088,13 +1087,11 @@ def dump_html(args, results):
         doc.stag('hr')
 
     with open(args.dest_path, 'w') as f:
-        logging.info("Writing output")
+        logging.info('Writing output')
         f.write(yattag.indent(doc.getvalue(), indent_text=True))
 
 # TODO:
-#    * Date range
 #    * Thresholds
-#    * Load all labels at once for better speed
 #    * Use real temp directory (current approach good for development); remove `temp` from gitignore
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1130,8 +1127,8 @@ if __name__ == '__main__':
 
     if args.dump_labels_to:        
 
-        logging.info("Processing label dump for ALL")
-        label_source = {'ALL': consolidate_across_dates(results['coarse'].all_results())}
+        logging.info('Processing label dump for ALL')
+        label_source = {'ALL_YEARS': consolidate_across_dates(results['coarse'].all_results())}
 
         year = 2012
         while True:
@@ -1140,13 +1137,13 @@ if __name__ == '__main__':
             if start_date >= datetime.datetime.now(pytz.utc):
                 break
             year += 1
-            logging.info("Processing label dump for {}".format(year))
+            logging.info('Processing label dump for {}'.format(year))
             label_source['{}'.format(start_date.year)] = consolidate_across_dates(results['coarse'].all_results(), 
                                                             (start_date, stop_date))
 
         for name, src in label_source.items():
-            path = os.path.join(args.dump_labels_to, "{}.csv".format(name))
-            logging.info("dumping labels to {}".format(path))
+            path = os.path.join(args.dump_labels_to, '{}.csv'.format(name))
+            logging.info('dumping labels to {}'.format(path))
             with open(path, 'w') as f:
                 f.write('mmsi,inferred,known\n')
                 lexical_indices =  np.argsort([str(x) for x in src.mmsi])
