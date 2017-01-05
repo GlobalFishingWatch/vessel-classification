@@ -75,9 +75,9 @@ def misconception_model(input, window_size, stride, depth, levels,
         net = slim.repeat(net, levels, misconception_with_bypass, window_size,
                           stride, depth, is_training)
         net = slim.flatten(net)
-        net = slim.dropout(net, 0.5, is_training=is_training)
+        net = slim.dropout(net, 0.2, is_training=is_training)
         net = slim.fully_connected(net, 100, normalizer_fn=slim.batch_norm)
-        net = slim.dropout(net, 0.5, is_training=is_training)
+        net = slim.dropout(net, 0.2, is_training=is_training)
 
         outputs = [of.build(net) for of in objective_functions]
 
