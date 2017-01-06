@@ -54,7 +54,7 @@ def misconception_with_bypass(input,
 
 
 def misconception_model(input, window_size, stride, depth, levels,
-                        objective_functions, is_training):
+                        objective_functions, is_training, dense_count=100, final_keep_prob=0.5):
     """ A misconception tower.
 
   Args:
@@ -75,7 +75,10 @@ def misconception_model(input, window_size, stride, depth, levels,
         net = slim.repeat(net, levels, misconception_with_bypass, window_size,
                           stride, depth, is_training)
         net = slim.flatten(net)
-        net = slim.dropout(net, 0.2, is_training=is_training)
+        net = slim.dropout(net, final_keep_prob, is_training=is_training)
+        net = slim.fully_connected(net, dense_count, normalizer_fn=slim.batch_norm, 
+                                                     normalizer_params={'is_training': is_training})
+        net = slim.dropout(net, final_keep_prob, is_training=is_training)
 
         outputs = [of.build(net) for of in objective_functions]
 
