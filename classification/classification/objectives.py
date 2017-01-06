@@ -216,6 +216,9 @@ class RegressionObjective(ObjectiveBase):
 
 
 class MultiClassificationObjective(ObjectiveBase):
+
+    fine_weight = 0.1
+
     def __init__(self,
                  metadata_label,
                  name,
@@ -274,14 +277,21 @@ class MultiClassificationObjective(ObjectiveBase):
 
         empty_labels = tf.zeros_like(fine_labels) - 1
 
-        multihot_labels = utility.multihot_encode(
+        fine_labels = utility.multihot_encode(
             is_fishing=fishing_labels, coarse=coarse_labels, fine=fine_labels)
 
+        coarse_labels = utility.multihot_encode(
+            is_fishing=fishing_labels, coarse=coarse_labels, fine=empty_labels)
+
         with tf.variable_scope("custom-loss"):
-            total_positives = tf.reduce_sum(
-                tf.to_float(multihot_labels) * self.prediction,
+            fine_positives = tf.reduce_sum(
+                tf.to_float(fine_labels) * self.prediction,
                 reduction_indices=[1])
-            raw_loss = -tf.reduce_mean(tf.log(total_positives))
+            coarse_positives = tf.reduce_sum(
+                tf.to_float(coarse_labels) * self.prediction,
+                reduction_indices=[1])
+            raw_loss = -(tf.reduce_mean(tf.log(coarse_positives)) + 
+                self.fine_weight * tf.reduce_mean(tf.log(fine_positives)))
 
         loss = raw_loss * self.loss_weight
 
