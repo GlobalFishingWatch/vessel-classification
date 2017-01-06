@@ -3,9 +3,9 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
 
-def weight_variable(shape):
+def weight_variable(shape, name='W'):
     initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.get_variable("W", initializer=initial)
+    return tf.get_variable(name, initializer=initial)
 
 
 def bias_variable(shape):
@@ -49,6 +49,23 @@ def conv1d_layer(inputs,
         b = bias_variable([filter_count])
         return (tf.nn.conv2d(
             inputs, W, strides=[1, 1, stride, 1], padding=padding) + b)
+
+
+def separable_conv1d_layer(inputs,
+                 filter_size,
+                 filter_count,
+                 filter_mult=1,
+                 stride=1,
+                 padding="SAME",
+                 name='sep-conv1d-layer'):
+    with tf.variable_scope(name):
+        h, w, n = [int(x) for x in inputs.get_shape().dims[1:]]
+        assert h == 1
+        W_pw = weight_variable([1, filter_size, n, filter_mult], name='W_pw')
+        W_dw = weight_variable([1, 1, filter_mult * n, filter_count], name='W_dw')
+        b = bias_variable([filter_count])
+        return (tf.nn.separable_conv2d(
+            inputs, W_pw, W_dw, strides=[1, 1, stride, 1], padding=padding) + b)
 
 
 def atrous_conv1d_layer(inputs,
