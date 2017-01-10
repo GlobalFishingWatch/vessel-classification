@@ -232,7 +232,11 @@ class MultiClassificationObjective(ObjectiveBase):
         self.num_classes = utility.multihot_lookup_table.shape[-1]
 
     def build(self, net):
-        self.logits = slim.fully_connected(net, self.num_classes)
+        self.logits = slim.fully_connected(net, self.num_classes, activation_fn=None)
+        self.prediction = slim.softmax(self.logits)
+
+    def build_from_logits(self, logits):
+        self.logits = logits
         self.prediction = slim.softmax(self.logits)
 
     def training_label(self, mmsi, label):
