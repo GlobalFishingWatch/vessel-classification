@@ -2,7 +2,6 @@ from __future__ import print_function, division
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
-
 def weight_variable(shape, name='W'):
     initial = tf.truncated_normal(shape, stddev=0.1)
     return tf.get_variable(name, initializer=initial)
@@ -123,6 +122,7 @@ def misconception_layer(inputs,
                         filter_count,
                         is_training,
                         filter_size=3,
+                        stride=1,
                         decay=None,
                         padding="SAME",
                         name='misconception_layer'):
@@ -130,19 +130,21 @@ def misconception_layer(inputs,
     with tf.variable_scope(name):
         # Input is a n_batch x width x 1 x n_filter
         #
-        conv = conv1d_layer(inputs, filter_size, filter_count, padding=padding)
+        conv = tf.nn.elu(
+                    batch_norm(
+                        conv1d_layer(inputs, filter_size, filter_count, stride=stride, padding=padding),
+                            is_training, **decay_arg))
         #
         pool = tf.nn.max_pool(
-            inputs, [1, 1, filter_size, 1], [1, 1, 1, 1],
+            inputs, [1, 1, filter_size, 1], [1, 1, stride, 1],
             padding=padding,
             data_format='NHWC')
         #
-        joint = tf.nn.elu(
-            batch_norm(tf.concat(3, [conv, pool]), is_training, **decay_arg))
+        joint = tf.concat(3, [conv, pool])
         #
-        return tf.nn.elu(
-            batch_norm(
-                conv1d_layer(
-                    joint, 1, filter_count, name="NIN"),
-                is_training,
-                **decay_arg))
+        return conv1d_layer(
+                    joint, 1, filter_count, name="NIN")
+
+
+
+
