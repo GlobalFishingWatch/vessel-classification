@@ -34,28 +34,37 @@ class Inferer(object):
             for mmsi in self.mmsis
         ]
 
-    def _build_starts(self, interval_length_seconds):
-        today = datetime.datetime.now(pytz.utc)
+    def _build_starts(self, interval_months):
+        # TODO: should use min_window_duration here
+        window_dur_seconds = self.model.max_window_duration_seconds
+        last_viable_date = datetime.datetime.now(pytz.utc) - datetime.timedelta(seconds=window_dur_seconds)
         time_starts = []
-        iter = datetime.datetime(2012, 1, 1, tzinfo=pytz.utc)
-        while iter < today:
-            time_starts.append(int(time.mktime(iter.timetuple())))
-            iter += datetime.timedelta(seconds=interval_length_seconds)
+        start_year = 2012
+        month_count = 0
+        while True:
+            year = start_year + month_count // 12
+            month = month_count % 12 + 1
+            month_count += interval_months
+            dt = datetime.datetime(year, month, 1, tzinfo=pytz.utc)
+            if dt > last_viable_date:
+                break
+            else:
+                time_starts.append(dt)
         return time_starts
 
-    def run_inference(self, inference_parallelism, inference_results_path):
+    def run_inference(self, inference_parallelism, inference_results_path, interval_months):
         matching_files = self._feature_files(self.mmsis)
         filename_queue = tf.train.input_producer(
             matching_files, shuffle=False, num_epochs=1)
 
         readers = []
         if self.model.max_window_duration_seconds != 0:
-            time_starts = self._build_starts(
-                self.model.max_window_duration_seconds)
 
-            self.time_ranges = [(s, e)
-                                for (s, e) in zip(time_starts, time_starts[1:])
-                                ]
+
+            time_starts = self._build_starts(interval_months)
+
+            delta = datetime.timedelta(seconds=self.model.max_window_duration_seconds)
+            self.time_ranges = [(int(time.mktime(dt.timetuple())), int(time.mktime((dt + delta).timetuple()))) for dt in time_starts]
             for _ in range(inference_parallelism * 2):
                 reader = utility.cropping_all_slice_feature_file_reader(
                     filename_queue, self.model.num_feature_dimensions + 1,
@@ -194,7 +203,16 @@ def main(args):
 
     infererer = Inferer(chosen_model, model_checkpoint_path, root_feature_path,
                         mmsis)
-    infererer.run_inference(inference_parallelism, inference_results_path)
+
+    if args.interval_months is None:
+        # This is ignored for point inference, but we can't care.
+        interval_months = 6
+    else:
+        # Break if the user sets a time interval when we can't honor it.
+        assert chosen_model.max_window_duration_seconds != 0, "can't set interval for point inferring model"
+        interval_months = args.interval_months
+
+    infererer.run_inference(inference_parallelism, inference_results_path, interval_months)
 
 
 def parse_args():
@@ -247,6 +265,12 @@ def parse_args():
         '--fishing_ranges_file',
         required=True,
         help='Name of the file containing fishing ranges.')
+
+    argparser.add_argument(
+        '--interval_months',
+        default=None,
+        type=int,
+        help="Interval between successive classifications")
 
     return argparser.parse_args()
 

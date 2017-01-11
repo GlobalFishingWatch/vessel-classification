@@ -13,25 +13,19 @@ from classification.objectives import (SummaryObjective, TrainNetInfo,
                                        MultiClassificationObjective)
 
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
-from .tf_layers import batch_norm
+from .tf_layers import batch_norm, separable_conv1d_layer, leaky_rectify
 
 TowerParams = namedtuple("TowerParams",
-                         ["filter_count", "filter_widths", "pool_size",
+                         ["filter_widths", "pool_size",
                           "pool_stride", "keep_prob", "shunt"])
 
 
 class Model(ModelBase):
 
-    initial_learning_rate = 0.01
-    learning_decay_rate = 0.99
-    decay_examples = 10000
-    momentum = 0.9
+    final_size = 25
 
-    tower_params = [
-        TowerParams(*x)
-        for x in [(32, [3], 2, 2, 1.0, True)] * 10 + [(32, [2], 2, 2, 0.8, True
-                                                       )]
-    ]
+    filter_count = 80
+    tower_depth = 9
 
     def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(self.__class__, self).__init__(num_feature_dimensions,
@@ -50,18 +44,10 @@ class Model(ModelBase):
             vessel_metadata,
             metrics=metrics)
 
-        self.length_objective = RegressionObjective(
-            'length',
-            'Vessel-length',
-            length_or_none,
-            loss_weight=0.1,
-            metrics=metrics)
-
         self.summary_objective = SummaryObjective(
             'histograms', 'Histograms', metrics=metrics)
 
-        self.objectives = [self.classification_objective,
-                           self.length_objective, self.summary_objective]
+        self.objectives = [self.classification_objective, self.summary_objective]
 
     @property
     def max_window_duration_seconds(self):
@@ -69,59 +55,54 @@ class Model(ModelBase):
 
     @property
     def window_max_points(self):
-        length = 1
-        for tp in reversed(self.tower_params):
-            length = length * tp.pool_stride + (tp.pool_size - tp.pool_stride)
+        length = self.final_size
+        for _ in range(self.tower_depth):
+            length = 2 * length + 2
         return length
 
-    def build_stack(self, current, is_training, tower_params):
+    def build_stack(self, current, is_training):
 
-        for i, tp in enumerate(tower_params):
+        for i in range(self.tower_depth):
             with tf.variable_scope('tower-segment-{}'.format(i + 1)):
 
                 # Misconception stack
-                mc = current
 
-                for j, w in enumerate(tp.filter_widths):
-                    H, W, C = [int(x) for x in mc.get_shape().dims[1:]]
-                    mc = misconception_layer(
-                        mc,
-                        tp.filter_count,
-                        is_training,
-                        filter_size=w,
-                        padding="SAME",
-                        name='misconception-{}'.format(j))
+                mc = misconception_layer(
+                                    current,
+                                    self.filter_count,
+                                    is_training,
+                                    filter_size=3,
+                                    stride = 2, 
+                                    padding="VALID",
+                                    name='misconception-{}'.format(1))
 
-                if tp.shunt:
-                    # Build a shunt layer (resnet) to help convergence
-                    with tf.variable_scope('shunt'):
-                        # Trim current before making the skip layer so that it matches the dimensons of
-                        # the mc stack
-                        shunt = tf.nn.elu(
-                            batch_norm(
-                                conv1d_layer(current, 1, tp.filter_count),
-                                is_training))
-                    current = shunt + mc
+                if i > 0:
+                    shunt = tf.nn.avg_pool(
+                        current, [1, 1, 3, 1],
+                        [1, 1, 2, 1],
+                        padding="VALID")
+                    current = mc + shunt
                 else:
                     current = mc
 
-                current = tf.nn.max_pool(
-                    current, [1, 1, tp.pool_size, 1],
-                    [1, 1, tp.pool_stride, 1],
-                    padding="VALID")
-                if tp.keep_prob < 1:
-                    current = dropout_layer(current, is_training, tp.keep_prob)
+                current = tf.nn.elu(batch_norm(current, is_training=is_training))
 
-        return tf.squeeze(current, squeeze_dims=[1, 2])
+        # 
+        current = slim.flatten(current)
+        current = dropout_layer(current, is_training, 0.1)
+
+        return current
+
+
 
     def build_model(self, is_training, current):
 
         self.summary_objective.build(current)
 
         with tf.variable_scope('classification-tower'):
-            output = self.build_stack(current, is_training, self.tower_params)
+            output = self.build_stack(current, is_training)
             self.classification_objective.build(output)
-            self.length_objective.build(output)
+
 
     def build_inference_net(self, features, timestamps, mmsis):
 
@@ -141,13 +122,6 @@ class Model(ModelBase):
         for obj in self.objectives:
             trainers.append(obj.build_trainer(timestamps, mmsis))
 
-        example = slim.get_or_create_global_step() * self.batch_size
-
-        learning_rate = tf.train.exponential_decay(
-            self.initial_learning_rate, example, self.decay_examples,
-            self.learning_decay_rate)
-
-        optimizer = tf.train.MomentumOptimizer(
-            learning_rate, self.momentum, use_nesterov=True)
+        optimizer = tf.train.AdamOptimizer()
 
         return TrainNetInfo(optimizer, trainers)

@@ -216,6 +216,9 @@ class RegressionObjective(ObjectiveBase):
 
 
 class MultiClassificationObjective(ObjectiveBase):
+
+    fine_weight = 0.1
+
     def __init__(self,
                  metadata_label,
                  name,
@@ -229,7 +232,11 @@ class MultiClassificationObjective(ObjectiveBase):
         self.num_classes = utility.multihot_lookup_table.shape[-1]
 
     def build(self, net):
-        self.logits = slim.fully_connected(net, self.num_classes)
+        self.logits = slim.fully_connected(net, self.num_classes, activation_fn=None)
+        self.prediction = slim.softmax(self.logits)
+
+    def build_from_logits(self, logits):
+        self.logits = logits
         self.prediction = slim.softmax(self.logits)
 
     def training_label(self, mmsi, label):
@@ -274,14 +281,21 @@ class MultiClassificationObjective(ObjectiveBase):
 
         empty_labels = tf.zeros_like(fine_labels) - 1
 
-        multihot_labels = utility.multihot_encode(
+        fine_labels = utility.multihot_encode(
             is_fishing=fishing_labels, coarse=coarse_labels, fine=fine_labels)
 
+        coarse_labels = utility.multihot_encode(
+            is_fishing=fishing_labels, coarse=coarse_labels, fine=empty_labels)
+
         with tf.variable_scope("custom-loss"):
-            total_positives = tf.reduce_sum(
-                tf.to_float(multihot_labels) * self.prediction,
+            fine_positives = tf.reduce_sum(
+                tf.to_float(fine_labels) * self.prediction,
                 reduction_indices=[1])
-            raw_loss = -tf.reduce_mean(tf.log(total_positives))
+            coarse_positives = tf.reduce_sum(
+                tf.to_float(coarse_labels) * self.prediction,
+                reduction_indices=[1])
+            raw_loss = -(tf.reduce_mean(tf.log(coarse_positives)) + 
+                self.fine_weight * tf.reduce_mean(tf.log(fine_positives)))
 
         loss = raw_loss * self.loss_weight
 

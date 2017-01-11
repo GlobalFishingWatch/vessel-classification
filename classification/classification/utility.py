@@ -864,16 +864,16 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
             dataset_kind_counts[split][coarse_vessel_type] += 1
             vessel_type_set.add(coarse_vessel_type)
 
-    # Calculate weights for each vessel type per split: the weight is the count
-    # of the most frequent vessel type divided by the count for the current
-    # vessel type. Used to sample more frequently from less-represented vessel
-    # types.
+    # Calculate weights for each vessel type per split: the sqrt of the
+    # weight is the count of the most frequent vessel type divided by the
+    # count for the current vessel type. Used to sample more frequently from
+    # less-represented vessel types.
     dataset_kind_weights = defaultdict(lambda: {})
     for split, counts in dataset_kind_counts.iteritems():
         max_count = max(counts.values())
         for coarse_vessel_type, count in counts.iteritems():
-            dataset_kind_weights[split][coarse_vessel_type] = float(
-                max_count) / float(count)
+            dataset_kind_weights[split][coarse_vessel_type] = np.sqrt(
+                float(max_count) / float(count))
 
     metadata_dict = defaultdict(lambda: {})
     for mmsi, split, coarse_vessel_type, row in vessel_types:

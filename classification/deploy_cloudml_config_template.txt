@@ -7,11 +7,11 @@ trainingInput:
     "--fishing_range_training_upweight", "1",
     "--metadata_file", "net_training_20161115.csv",
     "--fishing_ranges_file", "combined_fishing_ranges.csv",
-    "--metrics", "all"
+    "--metrics", "minimal"
     ]
   scaleTier: CUSTOM
   masterType: "standard"
   parameterServerType: "standard"
   workerType: "standard_gpu"
-  workerCount: 4
+  workerCount: 5
   parameterServerCount: 1
