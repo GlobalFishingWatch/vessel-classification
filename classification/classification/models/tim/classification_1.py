@@ -89,7 +89,7 @@ class Model(ModelBase):
 
         # 
         current = slim.flatten(current)
-        current = dropout_layer(current, is_training, 0.2)
+        current = dropout_layer(current, is_training, 0.1)
 
         return current
 
