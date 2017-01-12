@@ -1041,11 +1041,12 @@ def compute_results(args):
 
     # TODO: rip out unused data parts above
 
-    # Assemble coarse and is_fishiing scores:
-    logging.info('Assembling coarse data')
-    results['coarse'] = assemble_composite(results['fine'], VESSEL_CATEGORIES['coarse'], maps['label'])
-    logging.info('Assembling fishing data')
-    results['fishing'] = assemble_composite(results['fine'], VESSEL_CATEGORIES['fishing'], maps['is_fishing'])
+    if not args.skip_class_metrics:
+        # Assemble coarse and is_fishiing scores:
+        logging.info('Assembling coarse data')
+        results['coarse'] = assemble_composite(results['fine'], VESSEL_CATEGORIES['coarse'], maps['label'])
+        logging.info('Assembling fishing data')
+        results['fishing'] = assemble_composite(results['fine'], VESSEL_CATEGORIES['fishing'], maps['is_fishing'])
 
     if not args.skip_localisation_metrics:
         logging.info('Comparing localisation')

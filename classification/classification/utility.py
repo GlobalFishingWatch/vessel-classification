@@ -70,7 +70,7 @@ def repeat_tensor(input, n):
     batch_size, _, width, depth = input.get_shape()
     repeated = tf.concat(3, [input] * n)
     return tf.reshape(repeated,
-                      [int(batch_size), 1, int(width) * n, int(depth)])
+                      [-1, 1, int(width) * n, int(depth)])
 
 
 FishingRange = namedtuple('FishingRange',
