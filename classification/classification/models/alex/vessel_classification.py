@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 import argparse
 import json
 from . import abstract_models
@@ -29,7 +29,12 @@ class Model(abstract_models.MisconceptionModel):
 
     @property
     def window_max_points(self):
-        return (self.max_window_duration_seconds / (5 * 60)) / 4
+        nominal_max_points = (self.max_window_duration_seconds / (5 * 60)) / 4
+        layer_reductions = 2 ** self.levels
+        final_size = int(round(nominal_max_points / layer_reductions))
+        max_points = final_size * layer_reductions
+        logging.info('Using %s points', max_points)
+        return max_points
 
     @property
     def min_viable_timeslice_length(self):
