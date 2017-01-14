@@ -217,8 +217,6 @@ class RegressionObjective(ObjectiveBase):
 
 class MultiClassificationObjective(ObjectiveBase):
 
-    fine_weight = 0.1
-
     def __init__(self,
                  metadata_label,
                  name,
@@ -245,57 +243,40 @@ class MultiClassificationObjective(ObjectiveBase):
         """
         return self.vessel_metadata.vessel_label(label, mmsi) or -1
 
-    def derived_labels(self, names, label_name, mmsis):
+    def multihot_labels(self, mmsis):
 
-        def labels_from_mmsis(seq, label, class_indices):
-            result = np.empty([len(seq)], dtype=np.int32)
+        class_count = len(utility.VESSEL_CLASS_DETAILED_NAMES)
+
+        def labels_from_mmsis(seq, class_indices):
+            encoded = np.zeros([len(seq), class_count], 
+                                dtype=np.int32)
             for i, m in enumerate(seq):
-                lbl_str = self.vessel_metadata.vessel_label(label, m)
+                lbl_str = self.vessel_metadata.vessel_label('label', m).strip()
                 if lbl_str:
-                    result[i] = class_indices[lbl_str]
-                else:
-                    result[i] = -1
-            return result
+                    for lbl in lbl_str.split('|'):
+                        j = class_indices[lbl]
+                        encoded[i] += utility.multihot_lookup_table[j]
+            return encoded
 
-        indices = {k: i for (i, k) in enumerate(names) }
-        labels = tf.reshape(
-            tf.py_func(lambda x: labels_from_mmsis(x, label_name, indices),
-                           [mmsis], [tf.int32]),
-            shape=tf.shape(mmsis))
+        indices = {k[0]: i for (i, k) in enumerate(utility.VESSEL_CATEGORIES) }
 
-        mask = tf.to_float(tf.not_equal(labels, -1))
+        labels = tf.py_func(lambda x: labels_from_mmsis(x, indices),
+                           [mmsis], [tf.int32])
 
-        return labels, mask
+        labels = tf.reshape(labels, shape=tf.concat(0, [tf.shape(mmsis), [class_count]]))
+
+        return labels
 
 
     def build_trainer(self, timestamps, mmsis):
 
-        fine_labels, _  = self.derived_labels(
-                                    utility.VESSEL_CLASS_DETAILED_NAMES, 'sublabel', mmsis)
-
-        coarse_labels, _ = self.derived_labels(
-                                    OrderedDict(utility.VESSEL_CATEGORIES['coarse']), 'label', mmsis)
-
-        fishing_labels, _ = self.derived_labels(
-                                    OrderedDict(utility.VESSEL_CATEGORIES['fishing']), 'is_fishing', mmsis)
-
-        empty_labels = tf.zeros_like(fine_labels) - 1
-
-        fine_labels = utility.multihot_encode(
-            is_fishing=fishing_labels, coarse=coarse_labels, fine=fine_labels)
-
-        coarse_labels = utility.multihot_encode(
-            is_fishing=fishing_labels, coarse=coarse_labels, fine=empty_labels)
+        labels = self.multihot_labels(mmsis)
 
         with tf.variable_scope("custom-loss"):
-            fine_positives = tf.reduce_sum(
-                tf.to_float(fine_labels) * self.prediction,
+            positives = tf.reduce_sum(
+                tf.to_float(labels) * self.prediction,
                 reduction_indices=[1])
-            coarse_positives = tf.reduce_sum(
-                tf.to_float(coarse_labels) * self.prediction,
-                reduction_indices=[1])
-            raw_loss = -(tf.reduce_mean(tf.log(coarse_positives)) + 
-                self.fine_weight * tf.reduce_mean(tf.log(fine_positives)))
+            raw_loss = -tf.reduce_mean(tf.log(positives)) 
 
         loss = raw_loss * self.loss_weight
 
@@ -309,7 +290,7 @@ class MultiClassificationObjective(ObjectiveBase):
 
         logits = self.logits
 
-        derived_labels = self.derived_labels
+        multihot_labels = self.multihot_labels
 
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, training_label_lookup,
@@ -323,95 +304,40 @@ class MultiClassificationObjective(ObjectiveBase):
                 self.prediction = slim.softmax(logits)
 
 
-
-
-            def _derived_prediction(self, lookup_table):
-                batch_size = tf.shape(self.mmsis)[0]
-                lookup = tf.to_float(
-                    tf.tile(
-                        tf.convert_to_tensor(
-                            lookup_table[
-                                np.newaxis, :, :]), [batch_size, 1, 1]))
-                raw_prediction = tf.reshape(
-                    tf.batch_matmul(lookup, tf.reshape(
-                        self.prediction,
-                        [batch_size, len(utility.VESSEL_CLASS_DETAILED_NAMES),
-                         1])),
-                    [batch_size, len(lookup_table)])
-
-                return raw_prediction, tf.to_int32(tf.argmax(raw_prediction, 1))
-
-
             def build_test_metrics(self):
 
-                fine_labels, fine_mask  = derived_labels(
-                                            utility.VESSEL_CLASS_DETAILED_NAMES, 'sublabel', self.mmsis)
-                fine_predictions = tf.to_int32(tf.argmax(self.prediction, 1))
+                raw_labels = multihot_labels(self.mmsis)
+                mask = tf.to_float(tf.equal(tf.reduce_sum(raw_labels, 1), 1))
+                labels = tf.to_int32(tf.argmax(raw_labels, 1))
 
-                coarse_labels, coarse_mask = derived_labels(
-                                            OrderedDict(utility.VESSEL_CATEGORIES['coarse']), 'label', self.mmsis)
-                raw_coarse_prediction, coarse_prediction = self._derived_prediction(utility.multihot_coarse_lookup_table)
-
-                fishing_labels, fishing_mask = derived_labels(
-                                            OrderedDict(utility.VESSEL_CATEGORIES['fishing']), 'is_fishing', self.mmsis)
-                _, fishing_prediction = self._derived_prediction(utility.multihot_fishing_lookup_table)
+                predictions = tf.to_int32(tf.argmax(self.prediction, 1))
 
                 metrics_map = {
-                    '%s/Test-fine-accuracy' % self.name:
+                    '%s/Test-accuracy' % self.name:
                     metrics.streaming_accuracy(
-                        fine_predictions, fine_labels, weights=fine_mask),
-                    '%s/Test-coarse-accuracy' % self.name:
-                    metrics.streaming_accuracy(
-                        coarse_prediction, coarse_labels, weights=coarse_mask),
-                    '%s/Test-fishing-accuracy' % self.name:
-                    metrics.streaming_accuracy(
-                        fishing_prediction, fishing_labels, weights=fishing_mask),
+                        predictions, labels, weights=mask)
                 }
 
-                if self.metrics == 'all':
-                    for i, cls in enumerate(self.classes):
-                        cls_name = cls.replace(' ', '-')
-                        trues = tf.to_int32(tf.equal(fine_labels, i))
-                        preds = tf.to_int32(tf.equal(fine_predictions, i))
-                        recall = metrics.streaming_recall(
-                            preds, trues, weights=fine_mask)
-                        precision = metrics.streaming_precision(
-                            preds, trues, weights=fine_mask)
-                        metrics_map["%s/Class-%s-Precision" %
-                                    (self.name, cls_name)] = recall
-                        metrics_map["%s/Class-%s-Recall" %
-                                    (self.name, cls_name)] = precision
-                        metrics_map["%s/Class-%s-F1-Score" %
-                                    (self.name, cls_name)] = f1(recall, precision)
-                        metrics_map["%s/Class-%s-ROC-AUC" %
-                                    (self.name, cls_name)] = metrics.streaming_auc(
-                                        self.prediction[:, i],
-                                        trues,
-                                        weights=fine_mask)
-
-                    for i, (cls, fine) in enumerate(utility.VESSEL_CATEGORIES['coarse']):
-                        # Also include coarse classes, but only if they are not
-                        # already included in the fine classes
-                        if cls in self.classes:
-                            continue
-                        cls_name = cls.replace(' ', '-')
-                        trues = tf.to_int32(tf.equal(coarse_labels, i))
-                        preds = tf.to_int32(tf.equal(coarse_prediction, i))
-                        recall = metrics.streaming_recall(
-                            preds, trues, weights=coarse_mask)
-                        precision = metrics.streaming_precision(
-                            preds, trues, weights=coarse_mask)
-                        metrics_map["%s/Class-%s-Precision" %
-                                    (self.name, cls_name)] = recall
-                        metrics_map["%s/Class-%s-Recall" %
-                                    (self.name, cls_name)] = precision
-                        metrics_map["%s/Class-%s-F1-Score" %
-                                    (self.name, cls_name)] = f1(recall, precision)
-                        metrics_map["%s/Class-%s-ROC-AUC" %
-                                    (self.name, cls_name)] = metrics.streaming_auc(
-                                        raw_coarse_prediction[:, i],
-                                        trues,
-                                        weights=coarse_mask)
+                # if self.metrics == 'all':
+                #     for i, cls in enumerate(self.classes):
+                #         cls_name = cls.replace(' ', '-')
+                #         trues = tf.to_int32(tf.equal(labels, i))
+                #         preds = tf.to_int32(tf.equal(predictions, i))
+                #         recall = metrics.streaming_recall(
+                #             preds, trues, weights=mask)
+                #         precision = metrics.streaming_precision(
+                #             preds, trues, weights=mask)
+                #         metrics_map["%s/Class-%s-Precision" %
+                #                     (self.name, cls_name)] = recall
+                #         metrics_map["%s/Class-%s-Recall" %
+                #                     (self.name, cls_name)] = precision
+                #         metrics_map["%s/Class-%s-F1-Score" %
+                #                     (self.name, cls_name)] = f1(recall, precision)
+                #         metrics_map["%s/Class-%s-ROC-AUC" %
+                #                     (self.name, cls_name)] = metrics.streaming_auc(
+                #                         self.prediction[:, i],
+                #                         trues,
+                #                         weights=fine_mask)
 
                 return metrics.aggregate_metric_map(metrics_map)
 

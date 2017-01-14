@@ -35,31 +35,39 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 #TODO: (bitsofbits) replace the lists of (name, list) with ordered dicts. And/or consider other ways
 # to express the treelike structure so that it is more clear.
 
-VESSEL_CATEGORIES = {
-    'coarse': [
-        ['Trawlers', ['Trawlers']],
-        ['Fixed gear', ['Pots and traps', 'Set gillnets', 'Set longlines']],
-        ['Drifting longlines', ['Drifting longlines']],
-        ['Purse seines', ['Purse seines']], ['Squid', ['Squid']],
-        ['Pole and line', ['Pole and line']], [
-            'Cargo/Tanker', ['Cargo', 'Tanker']
-        ], ['Reefer', ['Reefer']], ['Passenger', ['Sailing']],
-        ['Seismic vessel', ['Seismic vessel']], ['Tug/Pilot', ['Tug', 'Pilot']]
-    ],
-    'fishing': [
-        ['Fishing',
-         ['Drifting longlines', 'Set longlines', 'Trawlers', 'Pots and traps',
-          'Set gillnets', 'Purse seines', 'Squid', 'Pole and line']],
-        ['Non-fishing', ['Cargo', 'Tanker', 'Reefer', 'Sailing',
-                         'Seismic vessel', 'Tug', 'Pilot']]
-    ]
-}
-
 """ The finer vessel label set. """
 VESSEL_CLASS_DETAILED_NAMES = [
-    'Squid', 'Trawlers', 'Seismic vessel', 'Set gillnets', 'Reefer',
-    'Pole and line', 'Purse seines', 'Pots and traps', 'Cargo', 'Sailing',
-    'Set longlines', 'Drifting longlines', 'Tanker', 'Tug', 'Pilot'
+'cargo',
+'drifting_longlines',
+'motor_passenger',
+'other_fishing',
+'other_not_fishing',
+'pole_and_line',
+'pots_and_traps',
+'purse_seines',
+'reefer',
+'sailing',
+'seismic_vessel',
+'set_gillnets',
+'set_longlines',
+'squid_jigger',
+'tanker',
+'trawlers',
+'trollers',
+'tug',
+]
+
+VESSEL_CATEGORIES = [[x, [x]] for x in VESSEL_CLASS_DETAILED_NAMES]
+
+VESSEL_CATEGORIES += [
+    ['unknown_fishing',
+        ['drifting_longlines', 'set_longlines', 'trawlers', 'pots_and_traps', 'trollers',
+            'set_gillnets', 'purse_seines', 'squid_jigger', 'pole_and_line', 'other_fishing']],
+    ['unknown_not_fishing', ['cargo', 'tanker', 'reefer', 'sailing', 'motor_passenger',
+            'seismic_vessel', 'tug', 'other_not_fishing']],
+
+    ['unknown_longline', ['drifting_longlines', 'set_longlines']],
+    ['passenger', ['motor_passenger', 'sailing']],
 ]
 
 
@@ -889,11 +897,8 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
 
 
 def metadata_file_reader(metadata_file):
-    """Add sublabels to missing sublabel fields as appropriate
+    """
 
-    Much of the current machinery expects that if a sublabel is
-    missing that field gets the label value, as long as that 
-    label is all a valid detailed name.
 
     """
     with open(metadata_file, 'r') as f:
@@ -901,9 +906,6 @@ def metadata_file_reader(metadata_file):
         logging.info("Metadata columns: %s", reader.fieldnames)
         for row in reader:
             label = row['label'].strip()
-            sublabel = row['sublabel'].strip()
-            if (sublabel == '') and (label in VESSEL_CLASS_DETAILED_NAMES):
-                row['sublabel'] = label
             yield row
 
 
@@ -966,55 +968,29 @@ def read_fishing_ranges(fishing_range_file):
 
 
 def build_multihot_lookup_table():
-    # There are three levels of categories we are concerned with fishing / nonfishing, coarse labels, and fine
-    # labels. All items should have fishing / nonfishing.
-    n_fine = len(VESSEL_CLASS_DETAILED_NAMES)
-    n_coarse = len(VESSEL_CATEGORIES['coarse'])
-    n_fishing = len(VESSEL_CATEGORIES['fishing'])
-    assert n_fishing == 2
-    # Items with a fine label go in [0, n_fine), with a coarse label in [n_fine, n_fine + n_coarse), 
-    # while fishing/ non-fishing for in [n_fine + n_coarse, n_fine + n_coarse + 2)
-    multihot_lookup_table = np.zeros(
-        [n_fine + n_coarse + 2, n_fine], dtype=np.int32)
-    for i in range(n_fine):
-        multihot_lookup_table[i, i] = 1
-    for i, (clbl, fine_labels) in enumerate(VESSEL_CATEGORIES['coarse']):
-        for flbl in fine_labels:
-            j = VESSEL_CLASS_DETAILED_NAMES.index(flbl)
-            multihot_lookup_table[n_fine + i, j] = 1
-    for i, (clbl, fine_labels) in enumerate(VESSEL_CATEGORIES['fishing']):
-        for flbl in fine_labels:
-            j = VESSEL_CLASS_DETAILED_NAMES.index(flbl)
-            multihot_lookup_table[n_fine + n_coarse + i, j] = 1
-    return (multihot_lookup_table,
-            multihot_lookup_table[n_fine:n_fine + n_coarse],
-            multihot_lookup_table[n_fine + n_coarse:])
+    n_base = len(VESSEL_CLASS_DETAILED_NAMES)
+    n_categories = len(VESSEL_CATEGORIES)
+    #
+    table = np.zeros([n_categories, n_base], dtype=np.int32)
+    for i, (_, base_labels) in enumerate(VESSEL_CATEGORIES):
+        for lbl in base_labels:
+            j = VESSEL_CLASS_DETAILED_NAMES.index(lbl)
+            table[i, j] = 1
+    return table
+
+multihot_lookup_table = build_multihot_lookup_table()
 
 
-(multihot_lookup_table,
- multihot_coarse_lookup_table,
- multihot_fishing_lookup_table) = build_multihot_lookup_table()
-
-
-def multihot_encode(is_fishing, coarse, fine):
+def multihot_encode(label):
     """Multihot encode based on fine, coarse and is_fishing label
 
     Args:
-        is_fishing: Tensor (int)
-        coarse: Tensor (int)
-        fine: Tensor (int)
+        label: Tensor (int)
 
     Returns:
         Tensor with bits set for every allowable vessel type based on the inputs
 
 
     """
-    #     TODO:(bitsofbits) We are assuming that is_fishing always defined. Check this in code
-    n_fine = len(VESSEL_CLASS_DETAILED_NAMES)
-    n_coarse = len(VESSEL_CATEGORIES['coarse'])
-    keys = (
-        tf.maximum(fine, 0) + tf.to_int32(tf.equal(fine, -1)) *
-        (n_fine + tf.maximum(coarse, 0) + tf.to_int32(tf.equal(coarse, -1)) *
-         (n_coarse + is_fishing)))
     tf_multihot_lookup_table = tf.convert_to_tensor(multihot_lookup_table)
-    return tf.gather(tf_multihot_lookup_table, keys)
+    return tf.gather(tf_multihot_lookup_table, label)

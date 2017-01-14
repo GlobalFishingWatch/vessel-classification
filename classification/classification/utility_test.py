@@ -165,7 +165,7 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
 
 def _get_metadata_files():
     from pkg_resources import resource_filename
-    for name in ["net_training_20161115.csv"]:
+    for name in ["training_classes.csv"]:
         # TODO: rework to test encounters as well.
         yield os.path.abspath(resource_filename('classification.data', name))
 
@@ -174,32 +174,25 @@ class MetadataConsistencyTest(tf.test.TestCase):
     def test_metadata_consistency(self):
         for metadata_file in _get_metadata_files():
             self.assertTrue(os.path.exists(metadata_file))
-            is_fishing_labels = set()
             # By putting '' in these sets we can safely remove it later
-            coarse_labels = set([''])
-            fine_labels = set([''])
+            labels = set([''])
             for row in utility.metadata_file_reader(metadata_file):
-                is_fishing_labels.add(row['is_fishing'].strip())
-                coarse_labels.add(row['label'].strip())
-                fine_labels.add(row['sublabel'].strip())
-            coarse_labels.remove('')
-            fine_labels.remove('')
+                label_str = row['label']
+                for lbl in label_str.split('|'):
+                    labels.add(lbl.strip())
+            labels.remove('')
 
-            # Is fishing should never be blank
-            self.assertFalse('' in is_fishing_labels)
-
-            self.assertEquals(fine_labels,
-                              set(utility.VESSEL_CLASS_DETAILED_NAMES))
+            expected = set([lbl for (lbl, _) in utility.VESSEL_CATEGORIES])
+            self.assertEquals(labels, expected)
 
 
 class MultihotLabelConsistencyTest(tf.test.TestCase):
     def test_fine_label_consistency(self):
         names = []
-        for name, category in utility.VESSEL_CATEGORIES.items():
-            for coarse, fine_list in category:
-                for fine in fine_list:
-                    if fine not in names:
-                        names.append(fine)
+        for coarse, fine_list in utility.VESSEL_CATEGORIES:
+            for fine in fine_list:
+                if fine not in names:
+                    names.append(fine)
         self.assertEquals(
             sorted(names), sorted(utility.VESSEL_CLASS_DETAILED_NAMES))
 
