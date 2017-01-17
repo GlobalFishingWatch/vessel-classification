@@ -651,35 +651,6 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
     return features_list, timeseries, time_bounds_list, mmsis
 
 
-def _hash_mmsi_to_double(mmsi, salt=''):
-    """Take a value and hash it to return a value in the range [0, 1.0).
-     To be used as a deterministic probability for vessel dataset
-     assignment: e.g. if we decide vessels should go in the training set at
-     probability 0.2, then we map from mmsi to a probability, then if the value
-     is <= 0.2 we assign this vessel to the training set.
-    Args:
-        mmsi: the input MMSI as an integer.
-        salt: a salt concatenated to the mmsi to allow more than one value to be
-                    generated per mmsi.
-    Returns:
-        A value in the range [0, 1.0).
-    """
-    assert isinstance(mmsi, int)
-    hasher = hashlib.md5()
-    i = '%s_%s' % (mmsi, salt)
-    hasher.update(i)
-
-    # Pick a number of bytes from the bottom of the hash, and scale the value
-    # by the max value that an unsigned integer of that size can have, to get a
-    # value in the range [0, 1.0)
-    hash_bytes_for_value = 4
-    hash_value = struct.unpack('I', hasher.digest()[:hash_bytes_for_value])[0]
-    sample = float(hash_value) / math.pow(2.0, hash_bytes_for_value * 8)
-    assert sample >= 0.0
-    assert sample <= 1.0
-    return sample
-
-
 class VesselMetadata(object):
     def __init__(self,
                  metadata_dict,
