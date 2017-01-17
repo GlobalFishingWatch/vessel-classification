@@ -24,14 +24,55 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.utility import is_test, VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES
+from classification.utility import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT
 import gzip
 import dateutil.parser
 import datetime
 import pytz
 
+
+
+
+
+coarse_mapping = [
+ ['cargo_or_tanker', {'tanker', 'cargo'}],
+ ['reefer', {'reefer'}],
+ ['passenger', {'motor_passenger', 'sailing'}],
+ ['seismic_vessel', ['seismic_vessel']],
+ ['tug', {'tug'}],
+ # ['other_not_fishing', {'other_not_fishing'}],  # Currently aren't any 'other_not_fishing' test vessels
+ ['drifting_longlines', {'drifting_longlines'}],
+ ['purse_seines', {'purse_seines'}],
+ ['fixed_gear', {'pots_and_traps', 'set_gillnets', 'set_longlines'}],
+ ['squid_jigger', ['squid_jigger']],
+ ['trawlers', {'trawlers'}],
+ ['other_fishing', {'pole_and_line', 'trollers', 'other_fishing'}]
+]
+
+fishing_mapping = [
+ ['fishing', {'drifting_longlines',
+             'other_fishing',
+             'pole_and_line',
+             'pots_and_traps',
+             'purse_seines',
+             'set_gillnets',
+             'set_longlines',
+             'squid_jigger',
+             'trawlers',
+             'trollers'}],
+ ['non_fishing',  {'cargo',
+                   'motor_passenger',
+                   'other_not_fishing',
+                   'reefer',
+                   'sailing',
+                   'seismic_vessel',
+                   'tanker',
+                   'tug'}]
+]
+
+
 # Fix fine CM
-# COmmit HTML with comment before model feature fixes
+# Commit HTML with comment before model feature fixes
 
 InferenceResults = namedtuple('InferenceResults',
                               ['mmsi', 'inferred_labels', 'true_labels',
@@ -236,7 +277,10 @@ def ydump_confusion_matrix(doc, cm, labels, **kwargs):
                 line('th', str(l), klass='row')
                 for j, x in enumerate(row):
                     if i == j:
-                        if x > 0.5:
+                        if x == -1:
+                            # No values present in this row, column
+                            color == '#000000'
+                        elif x > 0.5:
                             cval = np.clip(int(round(512 * (x - 0.5))), 0, 255)
                             invhexcode = '{:02x}'.format(255 - cval)
                             color = '#{}FF00'.format(invhexcode)
@@ -316,7 +360,8 @@ def ydump_length(doc, results):
         for lbl in labels:
             mask = (lbl == true_labels)
             err = RMS(true_lengths[mask], pred_lengths[mask])
-            results.append((lbl, err, true_lengths[mask].mean(),
+            count = mask.sum()
+            results.append((lbl, count, err, true_lengths[mask].mean(),
                             true_lengths[mask].std()))
         return results
 
@@ -324,12 +369,12 @@ def ydump_length(doc, results):
         line('h3', 'RMS Error by Label')
         ydump_table(
             doc,
-            ['Label', 'RMS Error (m)', 'Mean Length (m)', 'StdDev Length (m)'],
+            ['Label', 'Count', 'RMS Error (m)', 'Mean Length (m)', 'StdDev Length (m)'],
             [
-                (a, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
-                for (a, b, c, d) in RMS_by_label(consolidated.true_lengths,
-                                                 consolidated.inferred_lengths,
-                                                 consolidated.true_labels)
+                (a, count, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
+                for (a, count, b, c, d) in RMS_by_label(consolidated.true_lengths,
+                                                        consolidated.inferred_lengths,
+                                                        consolidated.true_labels)
             ])
 
 
@@ -561,16 +606,19 @@ def confusion_matrix(results):
     # label OR the actual values for this label.  A standard mean will only
     # go to zero if it dominates both, but these can become decoupled with 
     # unbalanced classes.
-    row_totals = cm_raw.sum(axis=1, keepdims=True) + EPS
-    col_totals = cm_raw.sum(axis=0, keepdims=True) + EPS
-    inv_row_fracs = 1 - cm_raw / row_totals
-    inv_col_fracs = 1 - cm_raw / col_totals
+    row_totals = cm_raw.sum(axis=1, keepdims=True) 
+    col_totals = cm_raw.sum(axis=0, keepdims=True)
+    inv_row_fracs = 1 - cm_raw / (row_totals + EPS)
+    inv_col_fracs = 1 - cm_raw / (col_totals + EPS)
     cm_normalized = 1 - harmonic_mean(inv_col_fracs, inv_row_fracs)
     # For on axis, use the F1-score (also a harmonic mean!)
     for i in range(len(cm_raw)):
-        recall = cm_raw[i, i] / row_totals[i, 0]
-        precision = cm_raw[i, i] / col_totals[0, i]
-        cm_normalized[i, i] = harmonic_mean(recall, precision)
+        recall = cm_raw[i, i] / (row_totals[i, 0] + EPS)
+        precision = cm_raw[i, i] / (col_totals[0, i] + EPS)
+        if row_totals[i, 0] == col_totals[0, i] == 0:
+            cm_normalized[i, i] = -1 # Not values to compute from 
+        else:
+            cm_normalized[i, i] = harmonic_mean(recall, precision)
 
     return ConfusionMatrix(cm_raw, cm_normalized)
 
@@ -642,7 +690,7 @@ class ClassificationExtractor(InferenceResults):
         self.true_labels = np.array(self.true_labels)
         self.start_dates = np.array(self.start_dates)
         self.scores = np.array(self.scores)
-        self.label_list = sorted(self.all_labels)
+        self.label_list = sorted(self.all_labels, key=VESSEL_CLASS_DETAILED_NAMES.index)
         self.mmsi = np.array(self.mmsi)
 
     def __nonzero__(self):
@@ -724,7 +772,7 @@ def assemble_composite(results, mapping, label_map):
 
     Args:
         results: InferenceResults instance
-        mapping: sequence of (composite_key, [base_keys])
+        mapping: sequence of (composite_key, {base_keys})
 
     """
 
@@ -734,6 +782,10 @@ def assemble_composite(results, mapping, label_map):
     true_labels = []
     start_dates = []
 
+    inverse_mapping = {}
+    for new_label, base_labels in mapping:
+        for lbl in base_labels:
+            inverse_mapping[lbl] = new_label
     base_label_map = {x: i for (i, x) in enumerate(results.label_list)}
 
     for i, mmsi in enumerate(results.all_mmsi):
@@ -744,7 +796,9 @@ def assemble_composite(results, mapping, label_map):
                 scores[new_label] += results.all_scores[i][lbl]
         inferred_scores.append(scores)
         inferred_labels.append(max(scores, key=scores.__getitem__))
-        true_labels.append(label_map.get(mmsi))
+        old_label = label_map.get(mmsi)
+        new_label = None if (old_label is None) else inverse_mapping[old_label]
+        true_labels.append(new_label)
         start_dates.append(results.all_start_dates[i])
 
     def trim(seq):
@@ -788,7 +842,7 @@ def load_true_fishing_ranges_by_mmsi(fishing_range_path, threshold=True):
     with open(fishing_range_path) as f:
         for row in csv.DictReader(f):
             mmsi = int(row['mmsi'].strip())
-            if not is_test(mmsi):
+            if not row['split'] == TEST_SPLIT:
                 continue
             val = float(row['is_fishing'])
             if threshold:
@@ -803,39 +857,6 @@ def datetime_to_minute(dt):
         1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
     return int(timestamp // 60)
 
-
-# logistic_mmsis = {'Drifting longlines': [224456000,
-#   224545000,
-#   224071000,
-#   224933000,
-#   224122000,
-#   224120840,
-#   224597000,
-#   224173000],
-#  'Purse seines': [224029580,
-#   224021550,
-#   239139000,
-#   238288740,
-#   224042740,
-#   224106260,
-#   227635680,
-#   224088000,
-#   224004420,
-#   247239900,
-#   224022490,
-#   237963000],
-#  'Trawlers': [246269000,
-#   224027970,
-#   224067690,
-#   230034210,
-#   247120760,
-#   211238930,
-#   275141000,
-#   247051830,
-#   246338000,
-#   211351000,
-#   247143860,
-#   512236000]}
 
 
 def compare_fishing_localisation(extracted_ranges, fishing_range_path,
@@ -1013,16 +1034,14 @@ def compute_results(args):
     with open(args.label_path) as f:
         for row in csv.DictReader(f):
             mmsi = int(row['mmsi'].strip())
-            if not is_test(mmsi):
+            if not row['split'] == TEST_SPLIT:
                 continue
-            for field in ['is_fishing', 'label', 'sublabel', 'length']:
+            for field in ['label', 'length']: 
                 if row[field]:
-                    maps[field][mmsi] = clean_label(row[field])
-    # Fill in any missing fine fields with coarse values
-    for mmsi in maps['label']:
-        if mmsi not in maps['sublabel']:
-            if maps['label'][mmsi] in VESSEL_CLASS_DETAILED_NAMES:
-                maps['sublabel'][mmsi] = maps['label'][mmsi]
+                    if field == 'label':
+                        if row[field].strip() not in VESSEL_CLASS_DETAILED_NAMES:
+                            continue
+                    maps[field][mmsi] = row[field] 
     results = {}
 
     if not args.skip_localisation_metrics:
@@ -1030,7 +1049,7 @@ def compute_results(args):
         results['fishing_ranges'] = ext
 
     if (not args.skip_class_metrics) or args.dump_labels_to:
-        results['fine'] = ClassificationExtractor('Multiclass', maps['sublabel'])
+        results['fine'] = ClassificationExtractor('Multiclass', maps['label'])
 
     if not args.skip_length_metrics:
         ext = LengthExtractor(maps['length'], maps['label'])
@@ -1042,11 +1061,11 @@ def compute_results(args):
     # TODO: rip out unused data parts above
 
     if not args.skip_class_metrics:
-        # Assemble coarse and is_fishiing scores:
+        # Assemble coarse and is_fishing scores:
         logging.info('Assembling coarse data')
-        results['coarse'] = assemble_composite(results['fine'], VESSEL_CATEGORIES['coarse'], maps['label'])
+        results['coarse'] = assemble_composite(results['fine'], coarse_mapping, maps['label'])
         logging.info('Assembling fishing data')
-        results['fishing'] = assemble_composite(results['fine'], VESSEL_CATEGORIES['fishing'], maps['is_fishing'])
+        results['fishing'] = assemble_composite(results['fine'], fishing_mapping, maps['label'])
 
     if not args.skip_localisation_metrics:
         logging.info('Comparing localisation')
