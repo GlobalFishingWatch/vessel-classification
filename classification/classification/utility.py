@@ -37,24 +37,24 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
 """ The finer vessel label set. """
 VESSEL_CLASS_DETAILED_NAMES = [
+'tanker',
 'cargo',
-'drifting_longlines',
-'motor_passenger',
-'other_fishing',
-'other_not_fishing',
-'pole_and_line',
-'pots_and_traps',
-'purse_seines',
 'reefer',
+'motor_passenger',
 'sailing',
 'seismic_vessel',
+'tug',
+'other_not_fishing',
+'drifting_longlines',
+'pole_and_line',
+'purse_seines',
+'pots_and_traps',
 'set_gillnets',
 'set_longlines',
 'squid_jigger',
-'tanker',
 'trawlers',
 'trollers',
-'tug',
+'other_fishing',
 ]
 
 VESSEL_CATEGORIES = [[x, [x]] for x in VESSEL_CLASS_DETAILED_NAMES]
@@ -766,12 +766,6 @@ class VesselMetadata(object):
         return replicated_mmsis
 
 
-def is_test(mmsi):
-    """Is this mmsi in the test set?
-    """
-    return (_hash_mmsi_to_double(mmsi) >= 0.5)
-
-
 def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
                                              fishing_range_dict):
     """ For a set of vessels, read metadata; use flat weights
@@ -800,10 +794,8 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
             # Is this mmsi included only to supress false positives
             # Symptoms; fishing score for this MMSI never different from 0
             is_false_positive = False
-            if is_test(mmsi):
-                split = 'Test'
-            else:
-                split = 'Training'
+            split = row['split']
+            assert split in ('Training', 'Test')
             time_for_this_mmsi = 0
             for rng in fishing_range_dict[mmsi]:
                 time_for_this_mmsi += (
@@ -864,10 +856,8 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
         mmsi = int(row['mmsi'])
         coarse_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
         if mmsi in available_mmsis and coarse_vessel_type:
-            if is_test(mmsi):
-                split = 'Test'
-            else:
-                split = 'Training'
+            split = row['split']
+            assert split in ('Training', 'Test')
             vessel_types.append((mmsi, split, coarse_vessel_type, row))
             dataset_kind_counts[split][coarse_vessel_type] += 1
             vessel_type_set.add(coarse_vessel_type)

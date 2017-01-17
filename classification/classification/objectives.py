@@ -318,26 +318,26 @@ class MultiClassificationObjective(ObjectiveBase):
                         predictions, labels, weights=mask)
                 }
 
-                # if self.metrics == 'all':
-                #     for i, cls in enumerate(self.classes):
-                #         cls_name = cls.replace(' ', '-')
-                #         trues = tf.to_int32(tf.equal(labels, i))
-                #         preds = tf.to_int32(tf.equal(predictions, i))
-                #         recall = metrics.streaming_recall(
-                #             preds, trues, weights=mask)
-                #         precision = metrics.streaming_precision(
-                #             preds, trues, weights=mask)
-                #         metrics_map["%s/Class-%s-Precision" %
-                #                     (self.name, cls_name)] = recall
-                #         metrics_map["%s/Class-%s-Recall" %
-                #                     (self.name, cls_name)] = precision
-                #         metrics_map["%s/Class-%s-F1-Score" %
-                #                     (self.name, cls_name)] = f1(recall, precision)
-                #         metrics_map["%s/Class-%s-ROC-AUC" %
-                #                     (self.name, cls_name)] = metrics.streaming_auc(
-                #                         self.prediction[:, i],
-                #                         trues,
-                #                         weights=fine_mask)
+                if self.metrics == 'all':
+                    for i, cls in enumerate(self.classes):
+                        cls_name = cls.replace(' ', '-')
+                        trues = tf.to_int32(tf.equal(labels, i))
+                        preds = tf.to_int32(tf.equal(predictions, i))
+                        recall = metrics.streaming_recall(
+                            preds, trues, weights=mask)
+                        precision = metrics.streaming_precision(
+                            preds, trues, weights=mask)
+                        metrics_map["%s/Class-%s-Precision" %
+                                    (self.name, cls_name)] = recall
+                        metrics_map["%s/Class-%s-Recall" %
+                                    (self.name, cls_name)] = precision
+                        metrics_map["%s/Class-%s-F1-Score" %
+                                    (self.name, cls_name)] = f1(recall, precision)
+                        metrics_map["%s/Class-%s-ROC-AUC" %
+                                    (self.name, cls_name)] = metrics.streaming_auc(
+                                        self.prediction[:, i],
+                                        trues,
+                                        weights=mask)
 
                 return metrics.aggregate_metric_map(metrics_map)
 
