@@ -1,4 +1,4 @@
-mmsi,label,length,engine power,tonnage,split
+mmsi,label,length,engine_power,tonnage,split
 1,purse_seines,64.829999999999998,,1555.0,Test
 10421670,drifting_longlines|purse_seines,46.237499999999997,,691.5,Training
 111111110,cargo,,,,Training
@@ -44473,7 +44473,7 @@ mmsi,label,length,engine power,tonnage,split
 357928000,cargo,,,33090.0,Test
 357929000,cargo,,,,Training
 357934000,tanker,,,28323.0,Test
-357937000,seismic_vessel,70.0,,128.77000000000001,Test
+357937000,seismic_vessel,21.336000000000002,,128.77000000000001,Test
 357943000,cargo,,,50238.0,Training
 357946000,tanker,,,4509.0,Training
 357949000,cargo,,,,Test
@@ -46814,7 +46814,7 @@ mmsi,label,length,engine power,tonnage,split
 367338290,motor_passenger,,,97.0,Test
 367338310,unknown_not_fishing,,,1209.0,Training
 367338430,tug,,,143.0,Test
-367338620,seismic_vessel,93.900000000000006,,,Test
+367338620,seismic_vessel,28.620720000000002,,,Test
 367338920,tug,,,52.0,Training
 367338950,sailing,,,,Test
 367339020,tug,,,87.0,Training
@@ -46934,7 +46934,7 @@ mmsi,label,length,engine power,tonnage,split
 367355490,passenger,,,336.0,Training
 367356320,unknown_fishing,,,,Training
 367356580,tug,,,177.0,Test
-367357020,seismic_vessel,65.0,,,Training
+367357020,seismic_vessel,19.812000000000001,,,Training
 367357110,tug,,,580.0,Training
 367357760,motor_passenger,,,,Training
 367357890,tug,,,94.0,Training
@@ -48359,9 +48359,9 @@ mmsi,label,length,engine power,tonnage,split
 367493870,tug,,,457.0,Test
 367493990,unknown_fishing,,,,Training
 367494020,unknown_fishing,,,167.0,Training
-367494190,seismic_vessel,54.0,,,Test
-367494210,seismic_vessel,49.0,,,Training
-367494220,seismic_vessel,47.0,,,Test
+367494190,seismic_vessel,16.459199999999999,,,Test
+367494210,seismic_vessel,14.9352,,,Training
+367494220,seismic_vessel,14.325600000000001,,,Test
 367494230,sailing,,,,Training
 367494530,motor_passenger,,,,Training
 367494670,unknown_fishing,,,,Training
@@ -51765,7 +51765,7 @@ mmsi,label,length,engine power,tonnage,split
 371501000,cargo,,,2252.0,Test
 371502000,purse_seines,74.355000000000004,,2019.0,Training
 371504000,cargo,,,9037.0,Test
-371507000,cargo|seismic_vessel,65.0,,32370.0,Training
+371507000,cargo|seismic_vessel,19.812000000000001,,32370.0,Training
 371508000,tanker,,,19408.0,Test
 371509000,tanker,,,28799.0,Test
 371517000,cargo,,,13647.0,Training
