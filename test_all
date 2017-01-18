@@ -9,6 +9,7 @@ popd
 
 # Run python TF tests.
 pushd classification
+python -m compute_metrics_test
 python -m classification.utility_test
 python -m classification.objectives_test
 python -m classification.models.models_test

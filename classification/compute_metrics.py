@@ -72,9 +72,7 @@ fishing_mapping = [
 # Fix fine CM
 # Commit HTML with comment before model feature fixes
 
-InferenceResults = namedtuple('InferenceResults',
-                              ['mmsi', 'inferred_labels', 'true_labels',
-                               'start_dates', 'scores', 'label_list'])
+
 class InferenceResults(object):
 
     _indexed_scores = None
@@ -89,13 +87,13 @@ class InferenceResults(object):
         self.all_mmsi = all_mmsi
         self.all_inferred_labels = all_inferred_labels
         self.all_true_labels = all_true_labels
-        self.all_start_dates = all_start_dates
+        self.all_start_dates = np.asarray(all_start_dates)
         self.all_scores = all_scores
         #
         self.mmsi = mmsi
         self.inferred_labels = inferred_labels
         self.true_labels = true_labels
-        self.start_dates = start_dates
+        self.start_dates = np.asarray(start_dates)
         self.scores = scores
         #
 
@@ -277,7 +275,7 @@ def ydump_confusion_matrix(doc, cm, labels, **kwargs):
                     if i == j:
                         if x == -1:
                             # No values present in this row, column
-                            color = '#000000'
+                            color = '#FFFFFF'
                         elif x > 0.5:
                             cval = np.clip(int(round(512 * (x - 0.5))), 0, 255)
                             invhexcode = '{:02x}'.format(255 - cval)
@@ -765,12 +763,17 @@ class FishingRangeExtractor(object):
         return len(self.ranges_by_mmsi) > 0
 
 
-def assemble_composite(results, mapping, label_map):
+def assemble_composite(results, mapping):
     """
 
     Args:
         results: InferenceResults instance
         mapping: sequence of (composite_key, {base_keys})
+
+    Returns:
+        InferenceResults instance
+
+    Classes are remapped according to mapping.
 
     """
 
@@ -794,7 +797,7 @@ def assemble_composite(results, mapping, label_map):
                 scores[new_label] += results.all_scores[i][lbl]
         inferred_scores.append(scores)
         inferred_labels.append(max(scores, key=scores.__getitem__))
-        old_label = label_map.get(mmsi)
+        old_label = results.all_true_labels[i]
         new_label = None if (old_label is None) else inverse_mapping[old_label]
         true_labels.append(new_label)
         start_dates.append(results.all_start_dates[i])
@@ -1061,9 +1064,9 @@ def compute_results(args):
     if not args.skip_class_metrics:
         # Assemble coarse and is_fishing scores:
         logging.info('Assembling coarse data')
-        results['coarse'] = assemble_composite(results['fine'], coarse_mapping, maps['label'])
+        results['coarse'] = assemble_composite(results['fine'], coarse_mapping)
         logging.info('Assembling fishing data')
-        results['fishing'] = assemble_composite(results['fine'], fishing_mapping, maps['label'])
+        results['fishing'] = assemble_composite(results['fine'], fishing_mapping)
 
     if not args.skip_localisation_metrics:
         logging.info('Comparing localisation')
