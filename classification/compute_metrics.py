@@ -32,8 +32,6 @@ import pytz
 
 
 
-
-
 coarse_mapping = [
  ['cargo_or_tanker', {'tanker', 'cargo'}],
  ['reefer', {'reefer'}],
@@ -279,7 +277,7 @@ def ydump_confusion_matrix(doc, cm, labels, **kwargs):
                     if i == j:
                         if x == -1:
                             # No values present in this row, column
-                            color == '#000000'
+                            color = '#000000'
                         elif x > 0.5:
                             cval = np.clip(int(round(512 * (x - 0.5))), 0, 255)
                             invhexcode = '{:02x}'.format(255 - cval)
