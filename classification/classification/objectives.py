@@ -255,7 +255,7 @@ class MultiClassificationObjective(ObjectiveBase):
                 if lbl_str:
                     for lbl in lbl_str.split('|'):
                         j = class_indices[lbl]
-                        encoded[i] += utility.multihot_lookup_table[j]
+                        encoded[i] |= utility.multihot_lookup_table[j]
             return encoded
 
         indices = {k[0]: i for (i, k) in enumerate(utility.VESSEL_CATEGORIES) }
