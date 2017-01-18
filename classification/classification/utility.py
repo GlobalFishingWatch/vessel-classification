@@ -11,6 +11,7 @@ import logging
 import newlinejson as nlj
 import numpy as np
 import os
+import time
 import struct
 import sys
 import tensorflow as tf
@@ -195,6 +196,7 @@ def single_feature_file_reader(filename_queue, num_features, max_tries=10):
             if i >= max_tries - 1:
                 # Out of tries, so reraise error
                 raise
+            time.sleep(1)
         logging.warn('DataLoss, retrying %s of %s', i, max_tries)
 
     # The serialized example is converted back to actual values.
