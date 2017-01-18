@@ -11,7 +11,6 @@ import logging
 import newlinejson as nlj
 import numpy as np
 import os
-import time
 import struct
 import sys
 import tensorflow as tf
@@ -171,7 +170,7 @@ def fishing_localisation_mse(predictions, targets):
     return mse_sum / (scale + EPSILON)
 
 
-def single_feature_file_reader(filename_queue, num_features, max_tries=10):
+def single_feature_file_reader(filename_queue, num_features):
     """ Read and interpret data from a set of TFRecord files.
 
   Args:
@@ -185,19 +184,7 @@ def single_feature_file_reader(filename_queue, num_features, max_tries=10):
   """
 
     reader = tf.TFRecordReader()
-
-    # We occasionally get corrupted records and the read doesn't happen, so try 
-    # multiple times
-    for i in range(max_tries):
-        try:
-            _, serialized_example = reader.read(filename_queue)
-            break # successfully read
-        except tf.errors.DataLossError:
-            if i >= max_tries - 1:
-                # Out of tries, so reraise error
-                raise
-            time.sleep(1)
-        logging.warn('DataLoss, retrying %s of %s', i, max_tries)
+    _, serialized_example = reader.read(filename_queue)
 
     # The serialized example is converted back to actual values.
     context_features, sequence_features = tf.parse_single_sequence_example(
