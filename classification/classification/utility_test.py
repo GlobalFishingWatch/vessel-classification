@@ -72,20 +72,20 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
 
 class VesselMetadataFileReaderTest(tf.test.TestCase):
     raw_lines = [
-        'mmsi,label,length\n',
-        '100001,Longliner,10.0\n',
-        '100002,Longliner,24.0\n',
-        '100003,Longliner,7.0\n',
-        '100004,Longliner,8.0\n',
-        '100005,Trawler,10.0\n',
-        '100006,Trawler,24.0\n',
-        '100007,Passenger,24.0\n',
-        '100008,Trawler,24.0\n',
-        '100009,Trawler,10.0\n',
-        '100010,Trawler,24.0\n',
-        '100011,Tug,60.0\n',
-        '100012,Tug,5.0\n',
-        '100013,Tug,24.0\n',
+        'mmsi,label,length,split\n',
+        '100001,Longliner,10.0,Test\n',
+        '100002,Longliner,24.0,Training\n',
+        '100003,Longliner,7.0,Training\n',
+        '100004,Longliner,8.0,Test\n',
+        '100005,Trawler,10.0,Test\n',
+        '100006,Trawler,24.0,Test\n',
+        '100007,Passenger,24.0,Training\n',
+        '100008,Trawler,24.0,Training\n',
+        '100009,Trawler,10.0,Test\n',
+        '100010,Trawler,24.0,Training\n',
+        '100011,Tug,60.0,Test\n',
+        '100012,Tug,5.0,Training\n',
+        '100013,Tug,24.0,Test\n',
     ]
 
     fishing_range_dict = {
@@ -148,19 +148,23 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
         self.assertEquals(result.metadata_by_split['Test'][100001][0],
                           {'label': 'Longliner',
                            'length': '10.0',
-                           'mmsi': '100001'})
+                           'mmsi': '100001',
+                           'split': 'Test'})
         self.assertEquals(result.metadata_by_split['Test'][100005][0],
                           {'label': 'Trawler',
                            'length': '10.0',
-                           'mmsi': '100005'})
+                           'mmsi': '100005',
+                           'split': 'Test'})
         self.assertEquals(result.metadata_by_split['Training'][100002][0],
                           {'label': 'Longliner',
                            'length': '24.0',
-                           'mmsi': '100002'})
+                           'mmsi': '100002',
+                           'split': 'Training'})
         self.assertEquals(result.metadata_by_split['Training'][100003][0],
                           {'label': 'Longliner',
                            'length': '7.0',
-                           'mmsi': '100003'})
+                           'mmsi': '100003',
+                           'split': 'Training'})
 
 
 def _get_metadata_files():
