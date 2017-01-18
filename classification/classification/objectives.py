@@ -255,6 +255,7 @@ class MultiClassificationObjective(ObjectiveBase):
                 if lbl_str:
                     for lbl in lbl_str.split('|'):
                         j = class_indices[lbl]
+                        # Use '|' rather than '+' since classes might not be disjoint
                         encoded[i] |= utility.multihot_lookup_table[j]
             return encoded
 
