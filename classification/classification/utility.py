@@ -195,6 +195,7 @@ def single_feature_file_reader(filename_queue, num_features, max_tries=10):
             if i >= max_tries - 1:
                 # Out of tries, so reraise error
                 raise
+        logging.warn('DataLoss, retrying %s of %s', i, max_tries)
 
     # The serialized example is converted back to actual values.
     context_features, sequence_features = tf.parse_single_sequence_example(
