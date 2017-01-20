@@ -837,13 +837,13 @@ def get_local_inference_path(args):
     return inference_path
 
 
-def load_true_fishing_ranges_by_mmsi(fishing_range_path, threshold=True):
+def load_true_fishing_ranges_by_mmsi(fishing_range_path, split_map, threshold=True):
     ranges_by_mmsi = defaultdict(list)
     parse = dateutil.parser.parse
     with open(fishing_range_path) as f:
         for row in csv.DictReader(f):
             mmsi = int(row['mmsi'].strip())
-            if not row['split'] == TEST_SPLIT:
+            if not split_map.get(mmsi) == TEST_SPLIT:
                 continue
             val = float(row['is_fishing'])
             if threshold:
@@ -861,10 +861,10 @@ def datetime_to_minute(dt):
 
 
 def compare_fishing_localisation(extracted_ranges, fishing_range_path,
-                                 label_map):
+                                 label_map, split_map):
 
     logging.debug('loading fishing ranges')
-    true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(fishing_range_path)
+    true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(fishing_range_path, split_map)
     pred_ranges_by_mmsi = {k: extracted_ranges.ranges_by_mmsi[k]
                            for k in true_ranges_by_mmsi}
     pred_coverage_by_mmsi = {k: extracted_ranges.coverage_by_mmsi[k]
@@ -934,11 +934,11 @@ def compare_fishing_localisation(extracted_ranges, fishing_range_path,
 
 
 def compute_fishing_range_agreement(extracted_ranges,
-                                    fishing_range_agreement_path, label_map):
+                                    fishing_range_agreement_path, label_map, split_map):
 
     logging.debug('loading fishing agreement ranges')
     true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(
-        fishing_range_agreement_path, threshold=False)
+        fishing_range_agreement_path, split_map, threshold=False)
     pred_ranges_by_mmsi = {k: extracted_ranges.ranges_by_mmsi[k]
                            for k in true_ranges_by_mmsi}
     pred_coverage_by_mmsi = {k: extracted_ranges.coverage_by_mmsi[k]
@@ -1037,7 +1037,7 @@ def compute_results(args):
             mmsi = int(row['mmsi'].strip())
             if not row['split'] == TEST_SPLIT:
                 continue
-            for field in ['label', 'length']: 
+            for field in ['label', 'length', 'split']: 
                 if row[field]:
                     if field == 'label':
                         if row[field].strip() not in VESSEL_CLASS_DETAILED_NAMES:
@@ -1071,12 +1071,12 @@ def compute_results(args):
     if not args.skip_localisation_metrics:
         logging.info('Comparing localisation')
         results['localisation'] = compare_fishing_localisation(
-            results['fishing_ranges'], args.fishing_ranges, maps['label'])
+            results['fishing_ranges'], args.fishing_ranges, maps['label'], maps['split'])
 
     if args.agreement_ranges_path:
         compute_fishing_range_agreement(results['fishing_ranges'],
                                         args.agreement_ranges_path,
-                                        maps['label'])
+                                        maps['label'], maps['split'])
 
     return results
 
