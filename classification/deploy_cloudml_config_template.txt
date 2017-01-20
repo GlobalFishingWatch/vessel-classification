@@ -10,8 +10,8 @@ trainingInput:
     "--metrics", "minimal"
     ]
   scaleTier: CUSTOM
-  masterType: "standard"
+  masterType: "standard_gpu"
   parameterServerType: "standard"
   workerType: "standard_gpu"
-  workerCount: 5
+  workerCount: 4
   parameterServerCount: 1

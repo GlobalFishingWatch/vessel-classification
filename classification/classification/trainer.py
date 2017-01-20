@@ -147,7 +147,9 @@ class Trainer:
             for update_op in names_to_updates.values():
                 update_ops.append(update_op)
 
-        num_examples = 4096
+        # TODO(timhochberg): Once we switch to local parameter validation set, we can change size so that it
+        # is evenly divisible by batch size and this is stable.
+        num_examples = len(mmsis)
         num_evals = math.ceil(num_examples / float(self.model.batch_size))
 
         # Setup the global step.
