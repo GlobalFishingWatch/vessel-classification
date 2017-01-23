@@ -121,7 +121,7 @@ class Trainer:
                 self.checkpoint_dir,
                 master=master,
                 is_chief=is_chief,
-                number_of_steps=200000,
+                number_of_steps=500000,
                 save_summaries_secs=30,
                 save_interval_secs=60,
                 saver=self._make_saver(),
