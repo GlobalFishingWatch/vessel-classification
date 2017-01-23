@@ -57,7 +57,8 @@ class Trainer:
         """
         input_files = self.model.build_training_file_list(
             self.base_feature_path, split)
-        filename_queue = tf.train.input_producer(input_files, shuffle=True)
+        shuffle = (split == utility.TEST_SPLIT)
+        filename_queue = tf.train.input_producer(input_files, shuffle=shuffle)
         capacity = 1000
         min_size_after_deque = capacity - self.model.batch_size * 4
 
@@ -83,7 +84,7 @@ class Trainer:
                  self.model.num_feature_dimensions
              ], [self.model.window_max_points], [2], []])
 
-        return features, timestamps, time_bounds, mmsis
+        return features, timestamps, time_bounds, mmsis, len(input_files)
 
     def _make_saver(self):
         # TODO(alexwilson): The saver in 0.11.0rc2 is broken. Remove when
@@ -98,7 +99,7 @@ class Trainer:
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
 
-        features, timestamps, time_bounds, mmsis = self._feature_data_reader(
+        features, timestamps, time_bounds, mmsis, count = self._feature_data_reader(
             utility.TRAINING_SPLIT, True)
 
         with tf.device("/gpu:0"):
@@ -129,7 +130,7 @@ class Trainer:
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
 
-        features, timestamps, time_bounds, mmsis = self._feature_data_reader(
+        features, timestamps, time_bounds, mmsis, count = self._feature_data_reader(
             utility.TEST_SPLIT, False)
 
         objectives = self.model.build_inference_net(features, timestamps,
@@ -147,10 +148,7 @@ class Trainer:
             for update_op in names_to_updates.values():
                 update_ops.append(update_op)
 
-        # TODO(timhochberg): Once we switch to local parameter validation set, we can change size so that it
-        # is evenly divisible by batch size and this is stable.
-        num_examples = len(mmsis)
-        num_evals = math.ceil(num_examples / float(self.model.batch_size))
+        num_evals = math.ceil(count / float(self.model.batch_size))
 
         # Setup the global step.
         slim.get_or_create_global_step()

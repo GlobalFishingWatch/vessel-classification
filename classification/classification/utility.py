@@ -689,7 +689,8 @@ class VesselMetadata(object):
                                random_state,
                                split,
                                max_replication_factor,
-                               row_filter=lambda row: True):
+                               row_filter=lambda row: True,
+                               boundary=1):
         replicated_mmsis = []
         logging.info("Training mmsis: %d", len(self.mmsis_for_split(split)))
         fishing_ranges_mmsis = []
@@ -706,7 +707,10 @@ class VesselMetadata(object):
                 frac_n = weight - float(int_n)
                 if (random_state.uniform(0.0, 1.0) <= frac_n):
                     replicated_mmsis.append(mmsi)
-
+        missing = (-len(replicated_mmsis)) % boundary
+        if missing:
+            replicated_mmsis = np.concatenate([replicated_mmsis, 
+                np.random.choice(replicated_mmsis, missing)])
         random_state.shuffle(replicated_mmsis)
         logging.info("Replicated training mmsis: %d", len(replicated_mmsis))
         logging.info("Fishing range mmsis: %d", len(fishing_ranges_mmsis))

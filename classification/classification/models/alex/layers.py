@@ -70,16 +70,17 @@ def misconception_model(input, window_size, stride, depth, levels,
   Returns:
     a tensor of size [batch_size, num_classes].
   """
-    with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu):
-        net = input
-        net = slim.repeat(net, levels, misconception_with_bypass, window_size,
-                          stride, depth, is_training)
-        net = slim.flatten(net)
-        net = slim.dropout(net, final_keep_prob, is_training=is_training)
-        net = slim.fully_connected(net, dense_count, normalizer_fn=slim.batch_norm, 
-                                                     normalizer_params={'is_training': is_training})
-        net = slim.dropout(net, final_keep_prob, is_training=is_training)
+    with slim.arg_scope([slim.batch_norm], decay=0.9999):
+      with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu):
+          net = input
+          net = slim.repeat(net, levels, misconception_with_bypass, window_size,
+                            stride, depth, is_training)
+          net = slim.flatten(net)
+          net = slim.dropout(net, final_keep_prob, is_training=is_training)
+          net = slim.fully_connected(net, dense_count, normalizer_fn=slim.batch_norm, 
+                                                       normalizer_params={'is_training': is_training})
+          net = slim.dropout(net, final_keep_prob, is_training=is_training)
 
-        outputs = [of.build(net) for of in objective_functions]
+          outputs = [of.build(net) for of in objective_functions]
 
-        return outputs
+          return outputs
