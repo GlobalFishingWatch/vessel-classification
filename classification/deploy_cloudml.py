@@ -39,6 +39,8 @@ def launch(environment, model_name, job_name, config_file):
     config_txt = config_template.format(
         output_path=gcp.model_path(), model_name=model_name)
 
+
+
     timestamp = gcp.start_time.strftime('%Y%m%dT%H%M%S')
     job_id = ('%s_%s_%s' % (model_name, job_name, timestamp)).replace(
         '.', '_').replace('-', '_')
@@ -47,6 +49,12 @@ def launch(environment, model_name, job_name, config_file):
     with tempfile.NamedTemporaryFile() as temp:
         temp.write(config_txt)
         temp.flush()
+
+        with open(temp.name) as f:
+            config = yaml.load(f)
+
+        # It seems that we currently need to pass args as both 'args' in the
+        # config file and as args after the '--'?!
         subprocess.check_call([
             'gcloud',
             'beta',
@@ -65,7 +73,10 @@ def launch(environment, model_name, job_name, config_file):
             'classification',
             '--region',
             'us-central1',
-        ])
+            '--'
+        ] + config['trainingInput']['args']
+        )
+
 
     return job_id
 

@@ -72,20 +72,20 @@ class PythonFixedTimeExtractTest(tf.test.TestCase):
 
 class VesselMetadataFileReaderTest(tf.test.TestCase):
     raw_lines = [
-        'mmsi,label,length\n',
-        '100001,Longliner,10.0\n',
-        '100002,Longliner,24.0\n',
-        '100003,Longliner,7.0\n',
-        '100004,Longliner,8.0\n',
-        '100005,Trawler,10.0\n',
-        '100006,Trawler,24.0\n',
-        '100007,Passenger,24.0\n',
-        '100008,Trawler,24.0\n',
-        '100009,Trawler,10.0\n',
-        '100010,Trawler,24.0\n',
-        '100011,Tug,60.0\n',
-        '100012,Tug,5.0\n',
-        '100013,Tug,24.0\n',
+        'mmsi,label,length,split\n',
+        '100001,Longliner,10.0,Test\n',
+        '100002,Longliner,24.0,Training\n',
+        '100003,Longliner,7.0,Training\n',
+        '100004,Longliner,8.0,Test\n',
+        '100005,Trawler,10.0,Test\n',
+        '100006,Trawler,24.0,Test\n',
+        '100007,Passenger,24.0,Training\n',
+        '100008,Trawler,24.0,Training\n',
+        '100009,Trawler,10.0,Test\n',
+        '100010,Trawler,24.0,Training\n',
+        '100011,Tug,60.0,Test\n',
+        '100012,Tug,5.0,Training\n',
+        '100013,Tug,24.0,Test\n',
     ]
 
     fishing_range_dict = {
@@ -120,9 +120,9 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
         result = utility.read_vessel_multiclass_metadata_lines(
             available_vessels, parsed_lines, {}, 1)
 
-        self.assertEquals(np.sqrt(3.0), result.vessel_weight(100001))
-        self.assertEquals(np.sqrt(1.0), result.vessel_weight(100002))
-        self.assertEquals(np.sqrt(1.5), result.vessel_weight(100011))
+        self.assertEquals(1.0, result.vessel_weight(100001))
+        self.assertEquals(1.0, result.vessel_weight(100002))
+        self.assertEquals(1.0, result.vessel_weight(100011))
 
         self._check_splits(result)
 
@@ -148,24 +148,28 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
         self.assertEquals(result.metadata_by_split['Test'][100001][0],
                           {'label': 'Longliner',
                            'length': '10.0',
-                           'mmsi': '100001'})
+                           'mmsi': '100001',
+                           'split': 'Test'})
         self.assertEquals(result.metadata_by_split['Test'][100005][0],
                           {'label': 'Trawler',
                            'length': '10.0',
-                           'mmsi': '100005'})
+                           'mmsi': '100005',
+                           'split': 'Test'})
         self.assertEquals(result.metadata_by_split['Training'][100002][0],
                           {'label': 'Longliner',
                            'length': '24.0',
-                           'mmsi': '100002'})
+                           'mmsi': '100002',
+                           'split': 'Training'})
         self.assertEquals(result.metadata_by_split['Training'][100003][0],
                           {'label': 'Longliner',
                            'length': '7.0',
-                           'mmsi': '100003'})
+                           'mmsi': '100003',
+                           'split': 'Training'})
 
 
 def _get_metadata_files():
     from pkg_resources import resource_filename
-    for name in ["net_training_20161115.csv"]:
+    for name in ["training_classes.csv"]:
         # TODO: rework to test encounters as well.
         yield os.path.abspath(resource_filename('classification.data', name))
 
@@ -174,32 +178,25 @@ class MetadataConsistencyTest(tf.test.TestCase):
     def test_metadata_consistency(self):
         for metadata_file in _get_metadata_files():
             self.assertTrue(os.path.exists(metadata_file))
-            is_fishing_labels = set()
             # By putting '' in these sets we can safely remove it later
-            coarse_labels = set([''])
-            fine_labels = set([''])
+            labels = set([''])
             for row in utility.metadata_file_reader(metadata_file):
-                is_fishing_labels.add(row['is_fishing'].strip())
-                coarse_labels.add(row['label'].strip())
-                fine_labels.add(row['sublabel'].strip())
-            coarse_labels.remove('')
-            fine_labels.remove('')
+                label_str = row['label']
+                for lbl in label_str.split('|'):
+                    labels.add(lbl.strip())
+            labels.remove('')
 
-            # Is fishing should never be blank
-            self.assertFalse('' in is_fishing_labels)
-
-            self.assertEquals(fine_labels,
-                              set(utility.VESSEL_CLASS_DETAILED_NAMES))
+            expected = set([lbl for (lbl, _) in utility.VESSEL_CATEGORIES])
+            self.assertEquals(labels, expected)
 
 
 class MultihotLabelConsistencyTest(tf.test.TestCase):
     def test_fine_label_consistency(self):
         names = []
-        for name, category in utility.VESSEL_CATEGORIES.items():
-            for coarse, fine_list in category:
-                for fine in fine_list:
-                    if fine not in names:
-                        names.append(fine)
+        for coarse, fine_list in utility.VESSEL_CATEGORIES:
+            for fine in fine_list:
+                if fine not in names:
+                    names.append(fine)
         self.assertEquals(
             sorted(names), sorted(utility.VESSEL_CLASS_DETAILED_NAMES))
 

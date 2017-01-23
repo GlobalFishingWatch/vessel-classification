@@ -52,9 +52,10 @@ class ModelBase(object):
         self.training_objectives = None
 
     def build_training_file_list(self, base_feature_path, split):
+        boundary = 1 if (split == utility.TRAINING_SPLIT) else self.batch_size
         random_state = np.random.RandomState()
         training_mmsis = self.vessel_metadata.weighted_training_list(
-            random_state, split, self.max_replication_factor)
+            random_state, split, self.max_replication_factor, boundary=boundary)
         return [
             '%s/%d.tfrecord' % (base_feature_path, mmsi)
             for mmsi in training_mmsis

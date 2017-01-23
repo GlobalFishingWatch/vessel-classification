@@ -5,13 +5,13 @@ trainingInput:
     "--root_feature_path", "gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output/features",
     "--training_output_path", "{output_path}/{model_name}",
     "--fishing_range_training_upweight", "1",
-    "--metadata_file", "net_training_20161115.csv",
+    "--metadata_file", "training_classes.csv",
     "--fishing_ranges_file", "combined_fishing_ranges.csv",
     "--metrics", "minimal"
     ]
   scaleTier: CUSTOM
-  masterType: "standard"
+  masterType: "standard_gpu"
   parameterServerType: "standard"
   workerType: "standard_gpu"
-  workerCount: 5
+  workerCount: 4
   parameterServerCount: 1
