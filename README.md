@@ -152,7 +152,7 @@ In order to support the above layout, all our programs need the following common
 In subdirectory `scala`, the feature/ports/encounter pipeline.
 
 The various projects are built using the Scala build tool `sbt`. SBT has a repl, which can be
-entered using the checked-in `sbt` script in the root directory. Some commands:
+entered using the checked-in `sbt` script in the `pipeline` directory. Some commands:
 
 * To compile: 'compile'.
 * To run: 'run'.
@@ -231,11 +231,37 @@ To build and deploy inference, from the root directory:
        - `./deploy_cloudml.py --model_name tim.tmodel_1 --env dev --job_name test2`
 * Running Inference on Compute Engine (See below for setting up inference instance)
        - Start tmux: `tmux` or `tmux attach` depending if you already have a tmux session.
-       - `cd ~/classifiction`
-       # ...
+       - Change to the classifcation directory:
 
-       - Vessel classification: `python -m classification.run_inference alex.vessel_classification --root_feature_path gs://alex-dataflow-scratch/features-scratch/new_features_ports_anchorage/20161018T153546Z/features --inference_results_path=`pwd`/vessel_classification.json.gz --inference_parallelism 20  --feature_dimensions 11 --model_checkpoint_path vessel_classification_model.ckpt-500001`
-       - Fishing localisation: `python -m classification.run_inference alex.fishing_range_classification --root_feature_path gs://alex-dataflow-scratch/features-scratch/new_features_ports_anchorage/20161018T153546Z/features --inference_results_path=`pwd`/fishing_localisation.json.gz --inference_parallelism 20  --feature_dimensions 11 --model_checkpoint_path vessel_classification_model.ckpt-500001`
+          cd ~/vessel-classification-pipeline/classification
+
+       - Copy a model checkpoint locally:
+
+          gsutil cp gs://world-fishing-827-dev-ttl30d/data-production/classification/timothyhochberg/new_split_6/models/alex.vessel_classification_with_decay_20/train/model.ckpt-200001  ./model.ckpt
+
+       - Run inference job:
+
+        * Vessel Classification:
+
+           python -m classification.run_inference alex.vessel_classification_with_decay_20 \
+           --root_feature_path gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output/features \
+           --inference_parallelism 32 \
+           --feature_dimensions 12 \
+           --dataset_split Test \
+           --inference_results_path=./class_decay20.json.gz \
+           --model_checkpoint_path ./model.ckpt \
+           --metadata_file training_classes.csv \
+           --fishing_ranges_file combined_fishing_ranges.csv \
+           --interval_months 6
+
+       - Fishing localisation: [TODO: update command]
+
+           python -m classification.run_inference alex.fishing_range_classification \
+           --root_feature_path gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output/features \
+           --inference_parallelism 32  \
+           --feature_dimensions 12 \
+           --inference_results_path=./fishing_localisation.json.gz \
+           --model_checkpoint_path vessel_classification_model.ckpt-500001
 
 
 * Setting up Compute Engine for Inference.
@@ -264,5 +290,7 @@ To build and deploy inference, from the root directory:
             sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.12.1-cp27-none-linux_x86_64.whl
             sudo pip install google-api-python-client pyyaml pytz newlinejson python-dateutil
             git clone https://github.com/GlobalFishingWatch/vessel-classification-pipeline.git
+
+
 
 
