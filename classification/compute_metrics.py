@@ -210,7 +210,7 @@ def accuracy_score(y_true, y_pred, weights=None):
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
     if weights is None:
-        weights = np.ones_like(y_pred)
+        weights = np.ones_like(y_pred).astype(float)
     weights = np.asarray(weights)
 
     correct = (y_true == y_pred)
@@ -384,9 +384,11 @@ def ydump_metrics(doc, results):
     """
     doc, tag, text, line = doc.ttl()
 
+
+
     rows = [
-        (x, accuracy_for_date(x, results.true_labels, results.inferred_labels,
-                              results.scores, results.start_dates))
+        (x, accuracy_score(results.true_labels, results.inferred_labels,
+                              (results.start_dates == x)))
         for x in np.unique(results.start_dates)
     ]
 
@@ -400,7 +402,7 @@ def ydump_metrics(doc, results):
     with tag('div', klass='unbreakable'):
         line('h3', 'Overall Accuracy')
         text('{:.2f}'.format(
-            accuracy(consolidated.true_labels, consolidated.inferred_labels)))
+            accuracy_score(consolidated.true_labels, consolidated.inferred_labels)))
 
     cm = confusion_matrix(consolidated)
 
@@ -498,16 +500,6 @@ def precision_recall_f1(labels, y_true, y_pred):
                 (lbl, precision_score(trues, positives),
                  recall_score(trues, positives), f1_score(trues, positives)))
     return results
-
-
-def accuracy(true_labels, inferred_labels):
-    overall_true_positives = (inferred_labels == true_labels)
-    return overall_true_positives.sum() / len(inferred_labels)
-
-
-def accuracy_for_date(date, true_labels, inferred_labels, scores, dates):
-    mask = (dates == date)
-    return accuracy(true_labels[mask], inferred_labels[mask])
 
 
 def consolidate_across_dates(results, date_range=None):
@@ -688,6 +680,10 @@ class ClassificationExtractor(InferenceResults):
         self.scores = np.array(self.scores)
         self.label_list = sorted(self.all_labels, key=VESSEL_CLASS_DETAILED_NAMES.index)
         self.mmsi = np.array(self.mmsi)
+        for lbl in self.label_list:
+            true_count = (self.true_labels == lbl).sum()
+            inf_count = (self.inferred_labels == lbl).sum()
+            logging.info("%s true and %s inferred labels for %s", true_count, inf_count, lbl)
 
     def __nonzero__(self):
         return len(self.mmsi) > 0
