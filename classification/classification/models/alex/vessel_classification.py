@@ -23,6 +23,10 @@ class Model(abstract_models.MisconceptionModel):
     feature_depth = 80
     levels = 9
 
+    initial_learning_rate = 1e-3
+    learning_decay_rate = 0.5
+    decay_examples = 40000
+
     @property
     def max_window_duration_seconds(self):
         return 180 * 24 * 3600
@@ -64,7 +68,16 @@ class Model(abstract_models.MisconceptionModel):
             trainers.append(self.training_objectives[i].build_trainer(
                 timestamps, mmsis))
 
-        optimizer = tf.train.AdamOptimizer()
+        step = slim.get_or_create_global_step() 
+
+        learning_rate = tf.train.exponential_decay(
+            self.initial_learning_rate, step, self.decay_examples,
+            self.learning_decay_rate)
+
+        # op = tf.summary.scalar(metric_name, metric_value)
+
+
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 
         return TrainNetInfo(optimizer, trainers)
 

@@ -15,6 +15,8 @@ import tensorflow.contrib.metrics as metrics
 
 from tensorflow.python.framework import errors
 
+# Always test on at least this many examples
+MIN_TEST_EXAMPLES = 4096
 
 class Trainer:
     """ Handles the mechanics of training and evaluating a vessel behaviour
@@ -148,6 +150,7 @@ class Trainer:
             for update_op in names_to_updates.values():
                 update_ops.append(update_op)
 
+        count = max(count, MIN_TEST_EXAMPLES)
         num_evals = math.ceil(count / float(self.model.batch_size))
 
         # Setup the global step.
