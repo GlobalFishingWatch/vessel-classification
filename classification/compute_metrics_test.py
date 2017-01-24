@@ -14,26 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TODO: High-level file comment."""
-
-import unittest
-import ./classification/compute_metrics
-
-
-class FooTest(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-    def testBar(self):
-        pass
-
-
-if __name__ == '__main__':
-    unittest.main()
 from __future__ import division, print_function
 import os
 import csv
