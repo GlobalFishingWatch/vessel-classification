@@ -288,7 +288,7 @@ To build and deploy inference, from the root directory:
             sudo easy_install pip
             sudo pip install --upgrade pip
             sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.12.1-cp27-none-linux_x86_64.whl
-            sudo pip install google-api-python-client pyyaml pytz newlinejson python-dateutil
+            sudo pip install google-api-python-client pyyaml pytz newlinejson python-dateutil yattag
             git clone https://github.com/GlobalFishingWatch/vessel-classification-pipeline.git
 
 
