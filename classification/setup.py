@@ -15,8 +15,10 @@ setuptools.setup(
     },
     packages=[
         'common', 'classification', 'classification.data',
-        'classification.models', 'classification.models.alex',
-        'classification.models.tim'
+        'classification.models', 'classification.models.prod',
+        'classification.models.dev',
+        'classification.models.dev.alex',
+        'classification.models.dev.tim'
     ],
     install_requires=[
         'NewlineJSON'
