@@ -23,6 +23,10 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     feature_depth = 50
     levels = 6
 
+    initial_learning_rate = 1e-3
+    learning_decay_rate = 0.5
+    decay_examples = 40000
+
     @property
     def max_window_duration_seconds(self):
         # A fixed-length rather than fixed-duration window.
@@ -70,8 +74,14 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
                                                               mmsis)
         ]
 
-        optimizer = tf.train.AdamOptimizer()
+        step = slim.get_or_create_global_step() 
 
+        learning_rate = tf.train.exponential_decay(
+            self.initial_learning_rate, step, self.decay_examples,
+            self.learning_decay_rate)
+
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        
         return TrainNetInfo(optimizer, trainers)
 
     def build_inference_net(self, features, timestamps, mmsis):
