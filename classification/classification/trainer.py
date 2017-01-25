@@ -5,15 +5,13 @@ import logging
 import math
 import numpy as np
 import os
-from . import evaluation_loop
 from . import utility
 
 import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import variables
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
-
-from tensorflow.python.framework import errors
+from tensorflow.contrib.slim import evaluation
 
 # Always test on at least this many examples
 MIN_TEST_EXAMPLES = 4096
@@ -89,14 +87,7 @@ class Trainer:
         return features, timestamps, time_bounds, mmsis, len(input_files)
 
     def _make_saver(self):
-        # TODO(alexwilson): The saver in 0.11.0rc2 is broken. Remove when
-        # Cloud ML advances from 0.11.0rc2.
-        if tf.__version__ == '0.11.0rc2':
-            return tf.train.Saver(
-                variables.get_variables_to_restore(),
-                write_version=tf.train.SaverDef.V1)
-        else:
-            return tf.train.Saver(variables.get_variables_to_restore())
+        return tf.train.Saver(variables.get_variables_to_restore())
 
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
@@ -157,7 +148,7 @@ class Trainer:
         slim.get_or_create_global_step()
 
         merged_summary_ops = tf.summary.merge(summary_ops)
-        evaluation_loop.evaluation_loop(
+        evaluation.evaluation_loop(
             master,
             self.checkpoint_dir,
             self.eval_dir,
@@ -166,4 +157,4 @@ class Trainer:
             summary_op=merged_summary_ops,
             eval_interval_secs=120,
             timeout=20 * 60,
-            saver=self._make_saver())
+            variables_to_restore=variables.get_variables_to_restore())
