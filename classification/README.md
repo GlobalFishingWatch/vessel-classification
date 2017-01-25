@@ -1,5 +1,6 @@
 # Neural Net Classification
 
+## Running Stuff
 
 -  `deploy_cloud_ml.py` -- launch a training run on cloudml. Use `--help` to see options
 
@@ -91,7 +92,23 @@
         sudo pip install google-api-python-client pyyaml pytz newlinejson python-dateutil yattag
         git clone https://github.com/GlobalFishingWatch/vessel-classification-pipeline.git
 
+## Adding new models
 
+* For development: create a directory in `classification/classification/models/dev` with the model name 
+  (usually the developer name).  A `__init__.py` is required for the model to be picked up and the model
+  package directory must be added to `setup.py`.
+
+* For production: add the model to `classification/classification/models/prod`
+
+
+## Formatting
+
+[YAPF](https://github.com/google/yapf) is a code formatter for Python. All our python code should
+be autoformatted with YAPF before committing. To install it, run:
+
+* `sudo pip install yapf`
+
+Run `yapf -r -i .` in the top level directory to fix the format of the full project.
 
 
 
