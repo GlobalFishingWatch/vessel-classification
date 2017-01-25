@@ -9,12 +9,12 @@
 
    For example, to run vessel classification in the dev environment with the name `test`:
 
-        `./deploy_cloudml.py --model_name alex.vessel_classification --env dev --job_name test`
+        `./deploy_cloudml.py --model_name prod.vessel_classification --env dev --job_name test`
 
 - *running training locally* -- this is primarily for testing as it will be quite slow unless you
   have a heavy duty machine:
 
-        python -m classification.run_training alex.vessel_classification <...>
+        python -m classification.run_training prod.vessel_classification <...>
 
 
 - `compute_metrics.py` -- evaluate restults and dump vessel lists. Use `--help` to see options
@@ -33,7 +33,7 @@
     * *Vessel Classification*. This command only infers result for only the test data 
       (for evaluation purposes), and infers a seperarate classification every 6 months:
 
-       python -m classification.run_inference alex.vessel_classification \
+       python -m classification.run_inference prod.vessel_classification \
               --root_feature_path GCS_PATH_TO_FEATURES \
               --inference_parallelism 32 \
               --feature_dimensions 12 \
@@ -46,7 +46,7 @@
 
    - *Fishing localisation*: This infers all fishing at all time points (no `--dataset_split` specification)
 
-         python -m classification.run_inference alex.fishing_range_classification \
+         python -m classification.run_inference prod.fishing_range_classification \
                 --root_feature_path GCS_PATH_TO_FEATURES \
                 --inference_parallelism 32 \
                 --feature_dimensions 12 \
