@@ -100,7 +100,8 @@ class Trainer:
         return features, timestamps, time_bounds, mmsis, len(input_files)
 
     def _make_saver(self):
-        return tf.train.Saver(variables.get_variables_to_restore())
+        return tf.train.Saver(variables.get_variables_to_restore(),
+                              write_version=tf.train.SaverDef.V2)
 
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
