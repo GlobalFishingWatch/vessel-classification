@@ -69,29 +69,23 @@ def evaluation_loop(master,
         global_step=None,
         saver=saver)
 
+    step = slim.get_or_create_global_step()
+
     for checkpoint_path in slim.evaluation.checkpoints_iterator(
             checkpoint_dir, eval_interval_secs, timeout):
         logging.info('Starting evaluation at ' + time.strftime(
             '%Y-%m-%d-%H:%M:%S', time.gmtime()))
 
-        if sv.should_stop():
-            break
         with sv.managed_session(master, start_standard_services=False) as sess:
 
             try:
                 sv.saver.restore(sess, checkpoint_path)
-            except ValueError as e:
-                logging.warning('Could not load check point, skipping: %s',
-                                str(e))
-                continue
-            except tf.errors.NotFoundError as e:
+            except (ValueError, tf.errors.NotFoundError) as e:
                 logging.warning('Could not load check point, skipping: %s',
                                 str(e))
                 continue
 
             try:
-                if sv.should_stop():
-                    break
                 sv.start_queue_runners(sess)
                 final_op_value = slim.evaluation.evaluation(
                     sess,
@@ -103,11 +97,9 @@ def evaluation_loop(master,
             except StandardError as err:
                 logging.warning("Evaluation failed due to %s", err)
                 continue
-            logging.info('Evaluation complete')
 
-        logging.info('Finished evaluation at ' + time.strftime(
-            '%Y-%m-%d-%H:%M:%S', time.gmtime()))
+            logging.info('Finished evaluation at ' + time.strftime(
+                '%Y-%m-%d-%H:%M:%S', time.gmtime()))
     else:
-        # Only log this if exit due to timeout; break will skip this.
         logging.info(
             'Timed-out waiting for new checkpoint file. Exiting evaluation loop.')

@@ -11,6 +11,10 @@
 
         `./deploy_cloudml.py --model_name prod.vessel_classification --env dev --job_name test`
 
+   **IMPORTANT**: Even though there is a maximum number of training steps specified, the CloudML
+   process does not shut down reliably.  You need to periodically check on the process and kill it
+   manually if it has completed and is hanging.
+
 - *running training locally* -- this is primarily for testing as it will be quite slow unless you
   have a heavy duty machine:
 
