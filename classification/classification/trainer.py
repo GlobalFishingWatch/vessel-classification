@@ -19,13 +19,12 @@ import logging
 import math
 import numpy as np
 import os
-from . import utility
+from . import utility, evaluation_loop
 
 import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import variables
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
-from tensorflow.contrib.slim import evaluation
 
 # Always test on at least this many examples
 MIN_TEST_EXAMPLES = 4096
@@ -162,7 +161,7 @@ class Trainer:
         slim.get_or_create_global_step()
 
         merged_summary_ops = tf.summary.merge(summary_ops)
-        evaluation.evaluation_loop(
+        evaluation_loop.evaluation_loop(
             master,
             self.checkpoint_dir,
             self.eval_dir,
@@ -171,4 +170,4 @@ class Trainer:
             summary_op=merged_summary_ops,
             eval_interval_secs=120,
             timeout=20 * 60,
-            variables_to_restore=variables.get_variables_to_restore())
+            saver=self._make_saver())
