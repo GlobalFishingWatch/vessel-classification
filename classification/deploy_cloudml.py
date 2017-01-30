@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Copyright 2017 Google Inc. and Skytruth Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,21 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/usr/bin/env python
-# Copyright 2016 Global Fishing Watch. All Rights Reserved.
-# Copyright 2016 Google Inc. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 from __future__ import print_function
 from common.gcp_config import GcpConfig
 import yaml
@@ -46,14 +33,13 @@ def launch(environment, model_name, job_name, config_file):
     # know the train path and don't need to
     # hardcode it here
     with open(config_file) as f:
-        config_template = f.read()
+        config = yaml.load(f.read())
+        tf_config_template = config['tensor_flow_config_template']
 
     gcp = GcpConfig.make_from_env_name(environment, job_name)
 
-    config_txt = config_template.format(
+    tf_config_txt = tf_config_template.format(
         output_path=gcp.model_path(), model_name=model_name)
-
-
 
     timestamp = gcp.start_time.strftime('%Y%m%dT%H%M%S')
     job_id = ('%s_%s_%s' % (model_name, job_name, timestamp)).replace(
@@ -61,11 +47,11 @@ def launch(environment, model_name, job_name, config_file):
 
     # Kick off the job on CloudML
     with tempfile.NamedTemporaryFile() as temp:
-        temp.write(config_txt)
+        temp.write(tf_config_txt)
         temp.flush()
 
         with open(temp.name) as f:
-            config = yaml.load(f)
+            tf_config = yaml.load(f)
 
         # It seems that we currently need to pass args as both 'args' in the
         # config file and as args after the '--'?!
@@ -82,15 +68,14 @@ def launch(environment, model_name, job_name, config_file):
             '--module-name',
             'classification.run_training',
             '--staging-bucket',
-            'gs://world-fishing-827-ml',
+            config['staging_bucket'],
             '--package-path',
             'classification',
             '--region',
-            'us-central1',
+            config['region'],
             '--'
-        ] + config['trainingInput']['args']
+        ] + tf_config['trainingInput']['args']
         )
-
 
     return job_id
 
@@ -104,7 +89,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--config_file',
         help='configuration file path.',
-        default='deploy_cloudml_config_template.txt')
+        default='deploy_cloudml.yaml')
 
     args = parser.parse_args()
 

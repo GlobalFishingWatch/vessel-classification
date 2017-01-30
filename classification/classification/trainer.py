@@ -19,18 +19,17 @@ import logging
 import math
 import numpy as np
 import os
-from . import evaluation_loop
-from . import utility
+from . import utility, evaluation_loop
 
 import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import variables
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 
-from tensorflow.python.framework import errors
-
 # Always test on at least this many examples
 MIN_TEST_EXAMPLES = 4096
+
+NUMBER_OF_STEPS = 500000 # TODO: make this an attribute of the model
 
 class Trainer:
     """ Handles the mechanics of training and evaluating a vessel behaviour
@@ -103,14 +102,8 @@ class Trainer:
         return features, timestamps, time_bounds, mmsis, len(input_files)
 
     def _make_saver(self):
-        # TODO(alexwilson): The saver in 0.11.0rc2 is broken. Remove when
-        # Cloud ML advances from 0.11.0rc2.
-        if tf.__version__ == '0.11.0rc2':
-            return tf.train.Saver(
-                variables.get_variables_to_restore(),
-                write_version=tf.train.SaverDef.V1)
-        else:
-            return tf.train.Saver(variables.get_variables_to_restore())
+        return tf.train.Saver(variables.get_variables_to_restore(),
+                              write_version=tf.train.SaverDef.V2)
 
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """
@@ -137,7 +130,7 @@ class Trainer:
                 self.checkpoint_dir,
                 master=master,
                 is_chief=is_chief,
-                number_of_steps=500000,
+                number_of_steps=NUMBER_OF_STEPS,
                 save_summaries_secs=30,
                 save_interval_secs=60,
                 saver=self._make_saver(),

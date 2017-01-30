@@ -52,6 +52,8 @@ collecting the following features at each point:
 
 The code associated with the Scala pipeline is located under `vessel-classification-pipeline/pipeline`
 and a good place to start examining the code is `vessel-classification-pipeline/pipeline/src/main/scala`.
+More details on the pipeline and instructions for running it are located in
+`vessel-classification-pipeline/pipeline/README.md`
 
 
 ### Neural Networks
@@ -74,12 +76,12 @@ each point. To do this all of the layers of the net are combined, with upscaling
 of the upper layers, to produce. These design of these nets incorporate ideas are borrowed
 from the ResNets and Inception nets among other places but adapted for the 1D environment.
 
-The code associated with the neural networks are associated is located under
-`vessel-classification/classification`. The models 
+The code associated with the neural networks is located in
+`vessel-classification/classification`. The models themselves are located
+in `vessel-classification/classification/classification/models`. More details
+on the neural network code and instructions for running it is located in 
+`vessel-classification-pipeline/classification/README.md`
 
-
-
-# Technical Details
 
 ## Data layout
 
@@ -129,168 +131,6 @@ In order to support the above layout, all our programs need the following common
 * `job-name`: for the name (or date) of the current job.
 * Additionally if the job is a dev job, the programs will read the $USER environment variable
   in order to be able to choose the appropriate subdirectory for the output data.
-
-## Developing
-
-* Code is to be formatted using [YAPF](https://github.com/google/yapf) before submission. See YAPF section below.
-
-
-## Setup and building
-
-### Summary of Requirements
-
-* A JVM.
-* A proto3-compatible version of protoc. See: [protocol buffers](https://developers.google.com/protocol-buffers/).
-* Python.
-* Tensorflow.
-* [Docker](https://docs.docker.com).
-  * For linux, follow the installation instructions on the Docker site, do not use the apt package.
-* [Google Compute Engine](https://console.cloud.google.com) access and [SDK](https://cloud.google.com/sdk) installed locally.
-
-### Scala
-
-In subdirectory `scala`, the feature/ports/encounter pipeline.
-
-The various projects are built using the Scala build tool `sbt`. SBT has a repl, which can be
-entered using the checked-in `sbt` script in the `pipeline` directory. Some commands:
-
-* To compile: 'compile'.
-* To run: 'run'.
-* To test: 'test'.
-* To autoformat the code before check-in: 'scalafmt'.
-* To generate html Scaladoc: 'doc'.
-
-SBT uses maven to handle it's dependencies. So the first time you attempt a build your machine
-may take some time to download all the required libraries.
-
-### Python
-
-In subdirectory `python`, everything related to TF and our NN models plus evaluation.
-
-Python programs have a few dependencies that can be installed using pip.
-
-To install pip:
-
-* `sudo apt-get install python-pip python-dev build-essential`
-* `sudo easy_install pip`
-* `sudo pip install --upgrade virtualenv`
-
-To install TensorFlow, follow [these instructions](https://www.tensorflow.org/versions/r0.11/get_started/os_setup.html#using-pip). For example for Linux, call:
-
-* `sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0rc0-cp27-none-linux_x86_64.whl`
-
-To install the dependencies:
-
-* `sudo pip install google-api-python-client pyyaml`
-
-### YAPF
-
-[YAPF](https://github.com/google/yapf) is a code formatter for Python. All our python code should
-be autoformatted with YAPF before committing. To install it, run:
-
-* `sudo pip install yapf`
-
-Run `yapf -r -i .` in the top level directory to fix the format of the full project.
-
-
-### Deployment
-
-Some of our jobs are run on managed services (for instance the feature pipeline on Cloud Dataflow, the
-tensor flow model training on Cloud ML). But other jobs are deployed to Compute Engine using Docker.
-
-To build a fat jar for any of the pipelines, we use an sbt plugin: 'sbt-assembly'.
-
-* To build a fat jar of the feature pipeline (in sbt console):
-  - `project features`.
-  - `assembly`.
-  - Once done, assembly will report the output path of the fat jar.
-
-To build and deploy inference, from the root directory:
-
-* `docker build -f deploy/inference/Dockerfile .`
-
-
-## Adding new models
-
-* Create a directory in classification/classification/models with the model name (usually the developer name)
-* Add the model to setup.py
-
-## Running jobs
-
-
-* Cloud Dataflow
-   * From the sbt console:
-   * Run jobs, specifying the zone and max number of workers, e.g.
-       - Anchorages: `run --env=dev --zone=europe-west1-c --job-name=anchoragesOnly --maxNumWorkers=600 --diskSizeGb=100`.
-       - Feature pipeline: `run --env=dev --zone=europe-west1-c  --maxNumWorkers=80 --job-name=new_pipeline_features`.
-* Running TF locally:
-   * Training:
-       - `python -m classification.run_training alex.vessel_classification <...>`
-* Cloud ML Training:
-       - `./deploy_cloudml.py --model_name alex.vessel_classification --env dev --job_name test2`
-       - `./deploy_cloudml.py --model_name tim.tmodel_1 --env dev --job_name test2`
-* Running Inference on Compute Engine (See below for setting up inference instance)
-       - Start tmux: `tmux` or `tmux attach` depending if you already have a tmux session.
-       - Change to the classifcation directory:
-
-          cd ~/vessel-classification-pipeline/classification
-
-       - Copy a model checkpoint locally:
-
-          gsutil cp gs://world-fishing-827-dev-ttl30d/data-production/classification/timothyhochberg/new_split_6/models/alex.vessel_classification_with_decay_20/train/model.ckpt-200001  ./model.ckpt
-
-       - Run inference job:
-
-        * Vessel Classification:
-
-           python -m classification.run_inference alex.vessel_classification_with_decay_20 \
-           --root_feature_path gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output/features \
-           --inference_parallelism 32 \
-           --feature_dimensions 12 \
-           --dataset_split Test \
-           --inference_results_path=./class_decay20.json.gz \
-           --model_checkpoint_path ./model.ckpt \
-           --metadata_file training_classes.csv \
-           --fishing_ranges_file combined_fishing_ranges.csv \
-           --interval_months 6
-
-       - Fishing localisation: [TODO: update command]
-
-           python -m classification.run_inference alex.fishing_range_classification \
-           --root_feature_path gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output/features \
-           --inference_parallelism 32  \
-           --feature_dimensions 12 \
-           --inference_results_path=./fishing_localisation.json.gz \
-           --model_checkpoint_path vessel_classification_model.ckpt-500001
-
-
-* Setting up Compute Engine for Inference.
-  * Install the SDK: https://cloud.google.com/sdk/docs/.
-  * Sign in: `gcloud auth application-default login`.
-  * Create an instance:
-      - Need at least 8 cores; here is the command to create a 16 core machine:
-
-            gcloud compute instances create nnet-inference --zone=us-east1-d --machine-type=n1-standard-16
-
-      - SSH into the machine:
-
-            gcloud compute ssh nnet-inference --zone=us-east1-d
-
-      - Install and activate `tmux`:
-
-            sudo apt-get -y update
-            sudo apt-get install -y tmux
-            tmux
-
-      - Install other dependencies:
-
-            sudo apt-get -y install python python-pip python-dev build-essential git virtualenv
-            sudo easy_install pip
-            sudo pip install --upgrade pip
-            sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.12.1-cp27-none-linux_x86_64.whl
-            sudo pip install google-api-python-client pyyaml pytz newlinejson python-dateutil
-            git clone https://github.com/GlobalFishingWatch/vessel-classification-pipeline.git
-
 
 
 
