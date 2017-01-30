@@ -13,7 +13,10 @@
 
    **IMPORTANT**: Even though there is a maximum number of training steps specified, the CloudML
    process does not shut down reliably.  You need to periodically check on the process and kill it
-   manually if it has completed and is hanging.
+   manually if it has completed and is hanging. In addition, there are occasionally other problems
+   where either the master or chief will hang or die so that new checkpoints aren't written, or
+   new validation data isn't written out. Again, killing and restarting the training is the solution.
+   (This will pick up at the last checkpoint saved.)
 
 - *running training locally* -- this is primarily for testing as it will be quite slow unless you
   have a heavy duty machine:
