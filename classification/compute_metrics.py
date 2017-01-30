@@ -1183,11 +1183,11 @@ if __name__ == '__main__':
             with open(path, 'w') as f:
                 f.write('mmsi,inferred,score,known\n')
                 lexical_indices =  np.argsort([str(x) for x in src.mmsi])
-                max_score = max(src.scores[i])
-                # Sanity check
-                if max_score:
-                    assert src.label_list[np.argmax(src.scores[i])] == src.inferred_labels[i]
                 for i in lexical_indices:
+                    max_score = max(src.scores[i])
+                    # Sanity check
+                    if max_score:
+                        assert src.label_list[np.argmax(src.scores[i])] == src.inferred_labels[i]
                     f.write('{},{},{}\n'.format(src.mmsi[i], 
                                                 src.inferred_labels[i], 
                                                 max_score,
