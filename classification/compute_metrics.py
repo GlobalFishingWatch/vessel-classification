@@ -559,7 +559,7 @@ def consolidate_across_dates(results, date_range=None):
         inferred_labels.append(results.label_list[np.argmax(s)])
 
     return InferenceResults(np.array(inferred_mmsi), np.array(inferred_labels),
-                            np.array(true_labels), None, None,
+                            np.array(true_labels), None, scores,
                             results.label_list)
 
 
@@ -1181,9 +1181,14 @@ if __name__ == '__main__':
             path = os.path.join(args.dump_labels_to, '{}.csv'.format(name))
             logging.info('dumping labels to {}'.format(path))
             with open(path, 'w') as f:
-                f.write('mmsi,inferred,known\n')
+                f.write('mmsi,inferred,score,known\n')
                 lexical_indices =  np.argsort([str(x) for x in src.mmsi])
+                max_score = max(src.scores[i])
+                # Sanity check
+                if max_score:
+                    assert src.label_list[np.argmax(src.scores[i])] == src.inferred_labels[i]
                 for i in lexical_indices:
                     f.write('{},{},{}\n'.format(src.mmsi[i], 
                                                 src.inferred_labels[i], 
+                                                max_score,
                                                 src.true_labels[i] or ''))
