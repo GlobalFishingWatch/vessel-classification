@@ -1,0 +1,10 @@
+name: "SBT launcher"
+description:
+  "Launcher for Sbt, a build tool for Scala, Java, and more."
+
+third_party {
+  url {
+    type: HOMEPAGE
+    value: "http://www.scala-sbt.org"
+  }
+}
