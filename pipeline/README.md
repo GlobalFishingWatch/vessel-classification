@@ -5,6 +5,7 @@
 ### Summary of Requirements
 
 * A JVM.
+* [SBT](http://www.scala-sbt.org/), a Scala build tool.
 * A proto3-compatible version of protoc. See: [protocol buffers](https://developers.google.com/protocol-buffers/).
 * Python.
 * Tensorflow.
@@ -17,7 +18,7 @@
 In subdirectory `scala`, the feature/ports/encounter pipeline.
 
 The various projects are built using the Scala build tool `sbt`. SBT has a repl, which can be
-entered using the checked-in `sbt` script in the `pipeline` directory. Some commands:
+entered using by running the `sbt` command in the `pipeline` directory. Some commands:
 
 * To compile: 'compile'.
 * To run: 'run'.
@@ -27,9 +28,6 @@ entered using the checked-in `sbt` script in the `pipeline` directory. Some comm
 
 SBT uses maven to handle it's dependencies. So the first time you attempt a build your machine
 may take some time to download all the required libraries.
-
-
-
 
 
 ### Deployment
@@ -47,8 +45,6 @@ To build a fat jar for any of the pipelines, we use an sbt plugin: 'sbt-assembly
 To build and deploy inference, from the root directory:
 
 * `docker build -f deploy/inference/Dockerfile .`
-
-
 
 
 ## Running jobs
