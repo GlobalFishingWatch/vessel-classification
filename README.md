@@ -1,6 +1,10 @@
 # Global Fishing Watch Vessel Classification Pipeline.
 
-**Vessel classification pipeline: feature generation and model training/inference.**
+[Global Fishing Watch](http://globalfishingwatch.org) is a partnership between [Skytruth](https://skytruth.org), [Google](https://environment.google/projects/fishing-watch/) and [Oceana](http://oceana.org) to map all of the trackable commercial fishing activity in the world, in near-real time, and make it accessible to researchers, regulators, decision-makers, and the public.
+
+This repository contains code to process [AIS](https://en.wikipedia.org/wiki/Automatic_identification_system) data to produce features and to build Tensorflow models to classify vessels and identify fishing behaviour.
+
+(This is not an official Google Product).
 
 [![Build Status](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline.svg?branch=master)](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline)
 
