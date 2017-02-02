@@ -103,7 +103,7 @@ class Trainer:
 
     def _make_saver(self):
         return tf.train.Saver(variables.get_variables_to_restore(),
-                              write_version=tf.train.SaverDef.V2)
+                              write_version=tf.train.SaverDef.V1)
 
     def run_training(self, master, is_chief):
         """ The function for running a training replica on a worker. """

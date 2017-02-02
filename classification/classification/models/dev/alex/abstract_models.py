@@ -25,10 +25,10 @@ class MisconceptionModel(ModelBase):
         super(MisconceptionModel, self).__init__(num_feature_dimensions,
                                                  vessel_metadata)
 
-    def zero_pad_features(self, features):
+    def zero_pad_features(self, features, extra_padding=0):
         """ Zero-pad features in the depth dimension to match requested feature depth. """
 
-        feature_pad_size = self.feature_depth - self.num_feature_dimensions
+        feature_pad_size = self.feature_depth - self.num_feature_dimensions + extra_padding
         assert (feature_pad_size >= 0)
         batch_size, _, _, _ = features.get_shape()
         zero_padding = tf.tile(features[:, :, :, :1] * 0, [1, 1, 1, feature_pad_size])

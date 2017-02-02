@@ -550,16 +550,20 @@ def consolidate_across_dates(results, date_range=None):
     mmsi_indices = np.array(mmsi_indices)
 
     scores = np.zeros([len(inferred_mmsi), len(results.label_list)])
+    counts = np.zeros([len(inferred_mmsi)])
     for i, valid in enumerate(valid_date_mask):
         if valid:
             scores[mmsi_indices[i]] += results.indexed_scores[i]
+            counts[mmsi_indices[i]] += 1
 
     inferred_labels = []
-    for s in scores:
+    for i, s in enumerate(scores):
         inferred_labels.append(results.label_list[np.argmax(s)])
+        if counts[i]:
+            scores[i] /= counts[i]
 
     return InferenceResults(np.array(inferred_mmsi), np.array(inferred_labels),
-                            np.array(true_labels), None, None,
+                            np.array(true_labels), None, scores,
                             results.label_list)
 
 
@@ -1181,9 +1185,14 @@ if __name__ == '__main__':
             path = os.path.join(args.dump_labels_to, '{}.csv'.format(name))
             logging.info('dumping labels to {}'.format(path))
             with open(path, 'w') as f:
-                f.write('mmsi,inferred,known\n')
+                f.write('mmsi,inferred,score,known\n')
                 lexical_indices =  np.argsort([str(x) for x in src.mmsi])
                 for i in lexical_indices:
-                    f.write('{},{},{}\n'.format(src.mmsi[i], 
+                    max_score = max(src.scores[i])
+                    # Sanity check
+                    if max_score:
+                        assert src.label_list[np.argmax(src.scores[i])] == src.inferred_labels[i]
+                    f.write('{},{},{},{}\n'.format(src.mmsi[i], 
                                                 src.inferred_labels[i], 
+                                                max_score,
                                                 src.true_labels[i] or ''))
