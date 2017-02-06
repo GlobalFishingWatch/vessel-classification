@@ -111,6 +111,7 @@ def create_msg(data_line, msg_attributes=None):
 
 def main(argv):
   parser = argparse.ArgumentParser()
+  # TODO - process set of files/subdir
   parser.add_argument("--filename", help="shipping data filename")
   parser.add_argument("--num_lines", type=int, default=0,
             help="The number of lines to process. " +

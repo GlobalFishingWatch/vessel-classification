@@ -54,6 +54,8 @@ object Pipeline extends LazyLogging {
     val dataYearsArg = remaining_args.list("data-years")
     val dataFileGlob =
       remaining_args.getOrElse("data-file-glob", InputDataParameters.defaultDataFileGlob)
+    val PUBSUB_TIMESTAMP_LABEL_KEY = "timestamp"
+
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -77,7 +79,10 @@ object Pipeline extends LazyLogging {
 
       val minValidLocations = 200
 
-      val input = sc.pubsubTopic("projects/aju-vtests2/topics/shipping")
+      // TODO -- add to opts
+      // val input = sc.pubsubTopic("projects/aju-vtests2/topics/shipping")
+      val input = sc.pubsubTopic("projects/aju-vtests2/topics/shipping",
+        timestampLabel = PUBSUB_TIMESTAMP_LABEL_KEY)
       val wstream = input
         .withSlidingWindows(
                 Duration.standardMinutes(60),
