@@ -26,7 +26,9 @@ import resource._
 object GcpConfig extends LazyLogging {
   import Implicits._
 
-  private def projectId = "world-fishing-827"
+  // private def projectId = "world-fishing-827"
+  // TODO: unhwardwire
+  private def projectId = "aju-vtests2"
 
   // TODO(alexwilson): No locally-generated date for prod. Needs to be sourced
   // from outside so all prod stages share the same path.
@@ -34,12 +36,16 @@ object GcpConfig extends LazyLogging {
     val now = new DateTime(DateTimeZone.UTC)
     val rootPath = environment match {
       case "prod" => {
-        s"gs://world-fishing-827/data-production/classification/$jobId"
+        // TODO: unhwardwire
+        // s"gs://world-fishing-827/data-production/classification/$jobId"
+        s"gs://aju-vtests2-ml-amy/gfw/data-production/classification/$jobId"
       }
       case "dev" => {
         sys.env.get("USER") match {
           case Some(user) =>
-            s"gs://world-fishing-827-dev-ttl30d/data-production/classification/$user/$jobId"
+            // TODO: unhwardwire
+            // s"gs://world-fishing-827-dev-ttl30d/data-production/classification/$user/$jobId"
+            s"gs://aju-vtests2-ml-amy/gfw/data-production/classification/$jobId"
           case _ => logger.fatal("USER environment variable cannot be empty for dev runs.")
         }
       }

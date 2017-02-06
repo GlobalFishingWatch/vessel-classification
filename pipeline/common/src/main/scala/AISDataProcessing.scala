@@ -122,6 +122,62 @@ object AISDataProcessing extends LazyLogging {
     }
   }
 
+  // aju TODO -- refactor method above
+  def readJsonRecordsStreaming(
+      input: SCollection[String],
+      knownFishingMMSIs: Set[Int],
+      minRequiredPositions: Long): SCollection[(VesselMetadata, Seq[VesselLocationRecord])] = {
+
+    // val input = SCollection.unionAll(inputs)
+    // Keep only records with a location.
+    val validRecords = input
+      .map(line => parse(line))
+      .filter(json => json.has("lat") && json.has("lon"))
+      // Build a typed location record with units of measure.
+      .map(json => {
+        val mmsi = (json \ "mmsi").extract[Int]
+        val metadata = VesselMetadata(mmsi, knownFishingMMSIs.contains(mmsi))
+        val record =
+          // TODO(alexwilson): Double-check all these units are correct.
+          VesselLocationRecord(Instant.parse(json.getString("timestamp")),
+                               LatLon(angleNormalize(json.getDouble("lat").of[degrees]),
+                                      angleNormalize(json.getDouble("lon").of[degrees])),
+                               (json.getDouble("distance_from_shore") / 1000.0).of[kilometer],
+                               json.getDouble("speed").of[knots],
+                               angleNormalize(json.getDouble("course").of[degrees]),
+                               angleNormalize(json.getDouble("heading").of[degrees]))
+        (metadata, record)
+      })
+      .filter { case (metadata, _) => !blacklistedMmsis.contains(metadata.mmsi) }
+      .filter {
+        case (_, record) =>
+          RangeValidator()
+            .inRange(record.timestamp,
+                     InputDataParameters.minValidTime,
+                     InputDataParameters.maxValidTime)
+            .inRange(record.location.lat, -90.0.of[degrees], 90.0.of[degrees])
+            .inRange(record.location.lon, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.distanceToShore, 0.0.of[kilometer], 20000.0.of[kilometer])
+            .inRange(record.speed, 0.0.of[knots], 100.0.of[knots])
+            .inRange(record.course, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.heading, -180.0.of[degrees], 180.of[degrees])
+            .valid
+      }
+
+    validRecords.groupByKey.flatMap {
+      case (metadata, records) =>
+        if (records.size >= minRequiredPositions) {
+          val dedupedSorted = records.toIndexedSeq
+          // On occasion the same message seems to appear twice in the record. Remove.
+          .distinct.sortBy(_.timestamp.getMillis)
+          Some((metadata, dedupedSorted))
+        } else {
+          None
+        }
+    }
+  }
+
+
   def thinPoints(records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
     val thinnedPoints = mutable.ListBuffer.empty[VesselLocationRecord]
 

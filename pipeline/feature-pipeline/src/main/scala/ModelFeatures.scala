@@ -21,6 +21,9 @@ import com.google.common.geometry.{S2, S2LatLng}
 import com.spotify.scio.values.SCollection
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.joda.time.{DateTimeZone, Duration, Instant, LocalDateTime}
+// import org.json4s._
+// import org.json4s.JsonDSL.WithDouble._
+// import org.json4s.native.JsonMethods._
 import org.skytruth.anchorages._
 import org.skytruth.common._
 import org.skytruth.common.AdditionalUnits._
@@ -214,6 +217,24 @@ object ModelFeatures extends LazyLogging {
         val features = buildSingleVesselFeatures(locations, anchoragesLookup)
         val featuresAsTFExample = buildTFExampleProto(metadata, features)
         (metadata, featuresAsTFExample)
+    }
+  }
+
+  // TODO aju: probably add arg to method above instead
+  def buildVesselFeaturesStreaming(
+      input: SCollection[(VesselMetadata, Seq[VesselLocationRecordWithAdjacency])],
+      anchoragesRootPath: String): SCollection[(VesselMetadata, Seq[Array[Double]])] = {
+
+    val anchoragesLookupCache = ValueCache[AdjacencyLookup[Anchorage]]()
+    input.filter {
+      case (metadata, locations) => locations.size >= 3
+    }.map {
+      case (metadata, locations) =>
+        val anchoragesLookup = anchoragesLookupCache.get { () =>
+          Anchorages.getAnchoragesLookup(anchoragesRootPath)
+        }
+        val features = buildSingleVesselFeatures(locations, anchoragesLookup)
+        (metadata, features)
     }
   }
 }

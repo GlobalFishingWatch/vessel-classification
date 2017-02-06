@@ -27,7 +27,6 @@ import com.google.cloud.dataflow.sdk.options.{
   PipelineOptionsFactory
 }
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
-import org.joda.time.{Duration, Instant}
 import org.json4s._
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
@@ -68,23 +67,16 @@ object Pipeline extends LazyLogging {
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
-      // val aisInputData = InputDataParameters
-      //   .dataFileGlobPerYear(dataYearsArg, dataFileGlob)
-      //   .map(glob => sc.textFile(glob))
+      val aisInputData = InputDataParameters
+        .dataFileGlobPerYear(dataYearsArg, dataFileGlob)
+        .map(glob => sc.textFile(glob))
 
       logger.info("Building pipeline.")
       val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
 
       val minValidLocations = 200
-
-      val input = sc.pubsubTopic("projects/aju-vtests2/topics/shipping")
-      val wstream = input
-        .withSlidingWindows(
-                Duration.standardMinutes(60),
-                Duration.standardMinutes(10))
-
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
-        AISDataProcessing.readJsonRecordsStreaming(wstream,
+        AISDataProcessing.readJsonRecords(aisInputData,
                                           knownFishingMMSIs,
                                           InputDataParameters.minRequiredPositions)
 
@@ -120,33 +112,14 @@ object Pipeline extends LazyLogging {
             case (md, feature) =>
               (s"${md.mmsi}", feature)
           }
-        val featuress =
-          ModelFeatures.buildVesselFeaturesStreaming(locationsWithAdjacency, anchoragesRootPath).map {
-            case (md, feature) =>
-              logger.info("got feature...")
-              // TODO: This is not correct; just experimenting. Need to generate json.
-              var hmmm = ""
-              feature.foreach { elt =>
-                val estring = elt.mkString(", ")
-                hmmm = hmmm + ", [" + estring + "]"
-              }
-              // (s"${md.mmsi}", feature)
-              // feature.mkString(", ")
-              hmmm
-          }
-        featuress
-          .saveAsPubsub("projects/aju-vtests2/topics/gfwfeatures")
-
-        // Also output vessel classifier features.
+        // Output vessel classifier features.
         val outputFeaturePath = config.pipelineOutputPath + "/features"
         val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
       }
 
-      // aju TODO - the write gives an error in streaming mode.  Not clear what it should be
-      // replaced by.
       // Get a list of all MMSIs to save to disk to speed up TF training startup.
-      // val mmsiListPath = config.pipelineOutputPath + "/mmsis"
-      // processed.keys.groupAll.flatMap(_.map(md => s"${md.mmsi}")).saveAsTextFile(mmsiListPath)
+      val mmsiListPath = config.pipelineOutputPath + "/mmsis"
+      processed.keys.groupAll.flatMap(_.map(md => s"${md.mmsi}")).saveAsTextFile(mmsiListPath)
 
       logger.info("Launching pipeline.")
     })
