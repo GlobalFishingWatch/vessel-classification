@@ -143,7 +143,7 @@ def main(argv):
   incident_count = 0
   messages = []
 
-  with open("small_sample", "r") as f:
+  with open(args.filename, "r") as f:
     for line in f:
       jline = json.loads(line)
       # print("jsonified line is: %s" % jline)
