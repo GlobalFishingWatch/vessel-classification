@@ -20,6 +20,7 @@ import io.github.karols.units.defining._
 
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
+import com.spotify.scio.values.WindowOptions
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import com.google.cloud.dataflow.sdk.options.{
   DataflowPipelineOptions,
@@ -27,8 +28,10 @@ import com.google.cloud.dataflow.sdk.options.{
   PipelineOptionsFactory
 }
 import com.google.cloud.dataflow.sdk.runners.{DataflowPipelineRunner}
+import com.google.cloud.dataflow.sdk.transforms.windowing._
 import org.joda.time.{Duration, Instant}
 import org.json4s._
+import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL.WithDouble._
 import org.json4s.native.JsonMethods._
 import org.skytruth.anchorages._
@@ -66,13 +69,6 @@ object Pipeline extends LazyLogging {
     options.setStagingLocation(config.dataflowStagingPath)
 
     managed(ScioContext(options)).acquireAndGet((sc) => {
-      logger.info("Finding matching files.")
-      // Read, filter and build location records. We build a set of matches for all
-      // relevant years, as a single Cloud Dataflow text reader currently can't yet
-      // handle the sheer volume of matching files.
-      // val aisInputData = InputDataParameters
-      //   .dataFileGlobPerYear(dataYearsArg, dataFileGlob)
-      //   .map(glob => sc.textFile(glob))
 
       logger.info("Building pipeline.")
       val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
@@ -80,13 +76,21 @@ object Pipeline extends LazyLogging {
       val minValidLocations = 200
 
       // TODO -- add to opts
-      // val input = sc.pubsubTopic("projects/aju-vtests2/topics/shipping")
       val input = sc.pubsubTopic("projects/aju-vtests2/topics/shipping",
         timestampLabel = PUBSUB_TIMESTAMP_LABEL_KEY)
+      // This is not the final window/trigger def'n that we want.
       val wstream = input
-        .withSlidingWindows(
-                Duration.standardMinutes(60),
-                Duration.standardMinutes(10))
+        .withFixedWindows(Duration.standardMinutes(60),
+          options = WindowOptions(
+            trigger = AfterWatermark.pastEndOfWindow()
+              .withEarlyFirings(AfterProcessingTime.pastFirstElementInPane()
+                .plusDelayOf(Duration.standardMinutes(5)))
+              .withLateFirings(AfterProcessingTime.pastFirstElementInPane()
+                .plusDelayOf(Duration.standardMinutes(10))),
+            accumulationMode = ACCUMULATING_FIRED_PANES,
+            allowedLateness = Duration.standardDays(60)
+            )
+          )
 
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
         AISDataProcessing.readJsonRecordsStreaming(wstream,
@@ -98,54 +102,53 @@ object Pipeline extends LazyLogging {
           locationRecords,
           InputDataParameters.stationaryPeriodMinDuration)
 
-      val locationsWithAdjacency = if (generateEncounters) {
-        val adjacencies =
-          Encounters.calculateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
+      // aju  - deleted the "encounters" processing for this pipeline
+      val locationsWithEmptyAdjacencyx = processed.map {
+        case (vmd, pl) =>
+          val locationsWithEmptyAdjacency =
+            pl.locations.map(vlr => VesselLocationRecordWithAdjacency(vlr, Adjacency(0, None)))
 
-        // Build and output suspected encounters.
-        val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
-        val encounters =
-          Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencies)
-        encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
-
-        Encounters.annotateAdjacency(processed, adjacencies)
-      } else {
-        processed.map {
-          case (vmd, pl) =>
-            val locationsWithEmptyAdjacency =
-              pl.locations.map(vlr => VesselLocationRecordWithAdjacency(vlr, Adjacency(0, None)))
-
-            (vmd, locationsWithEmptyAdjacency)
-        }
+          (vmd, locationsWithEmptyAdjacency)
       }
+      // }
 
-      if (generateModelFeatures) {
-        val features =
-          ModelFeatures.buildVesselFeatures(locationsWithAdjacency, anchoragesRootPath).map {
-            case (md, feature) =>
-              (s"${md.mmsi}", feature)
-          }
+      // if (generateModelFeatures) {
         val featuress =
-          ModelFeatures.buildVesselFeaturesStreaming(locationsWithAdjacency, anchoragesRootPath).map {
+          ModelFeatures.buildVesselFeaturesStreaming(locationsWithEmptyAdjacencyx, anchoragesRootPath).map {
             case (md, feature) =>
-              logger.info("got feature...")
-              // TODO: This is not correct; just experimenting. Need to generate json.
-              var hmmm = ""
-              feature.foreach { elt =>
-                val estring = elt.mkString(", ")
-                hmmm = hmmm + ", [" + estring + "]"
-              }
-              // (s"${md.mmsi}", feature)
-              // feature.mkString(", ")
-              hmmm
+              val urghh =  feature.map { f => f.toList }
+              val json = ("mmsi" -> s"${md.mmsi}") ~
+                          ("feature" -> urghh)
+              compact(render(json))
           }
         featuress
-          .saveAsPubsub("projects/aju-vtests2/topics/gfwfeatures")
+          .saveAsPubsub("projects/aju-vtests2/topics/gfwfeatures")   // TODO - add to opts
 
-        // Also output vessel classifier features.
-        val outputFeaturePath = config.pipelineOutputPath + "/features"
-        val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
-      }
+      // aju - temp removing the other output branch. TODO: add back in properly.
+      // val features =
+      //   ModelFeatures.buildVesselFeatures(locationsWithEmptyAdjacencyx, anchoragesRootPath).map {
+      //     case (md, feature) =>
+      //       (s"${md.mmsi}", feature)
+      //   }
+        // Array[Double](timestampSeconds,
+        //                             math.log(1.0 + timestampDeltaSeconds),
+        //                             math.log(1.0 + distanceDeltaMeters),
+        //                             math.log(1.0 + speedMps),
+        //                             math.log(1.0 + integratedSpeedMps),
+        //                             cogDeltaDegrees / 180.0,
+        //                             localTodFeature,
+        //                             localMonthOfYearFeature,
+        //                             integratedCogDeltaDegrees / 180.0,
+        //                             math.log(1.0 + distanceToShoreKm),
+        //                             math.log(1.0 + distanceToBoundingAnchorageKm),
+        //                             math.log(1.0 + timeToBoundingAnchorageS),
+        //                             a0.numNeighbours)
+
+
+      // Also output vessel classifier features.
+      // val outputFeaturePath = config.pipelineOutputPath + "/features"
+      // val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
+      // }
 
       // aju TODO - the write gives an error in streaming mode.  Not clear what it should be
       // replaced by.

@@ -166,7 +166,9 @@ object AISDataProcessing extends LazyLogging {
 
     validRecords.groupByKey.flatMap {
       case (metadata, records) =>
-        if (records.size >= minRequiredPositions) {
+        // aju - minRequiredPositions is too large with small streaming windows...
+        // if (records.size >= minRequiredPositions) {
+        if (records.size >= 15) {  // testing...  TODO: what is the right value?
           val dedupedSorted = records.toIndexedSeq
           // On occasion the same message seems to appear twice in the record. Remove.
           .distinct.sortBy(_.timestamp.getMillis)

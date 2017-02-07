@@ -160,7 +160,7 @@ def main(argv):
         messages = []
       ts = parse(jline['timestamp']).timestamp()
       print("----got timestamp: %s" % ts)
-      msg_attributes = {'timestamp': str(int(ts))}
+      msg_attributes = {'timestamp': str(int(ts * 1000))}  # need to convert s -> ms
       msg_data = json.dumps(jline)
       msg = create_msg(msg_data, msg_attributes)
       messages.append(msg)
