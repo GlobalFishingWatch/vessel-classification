@@ -56,6 +56,16 @@ To build and deploy inference, from the root directory:
    > run  --env=dev --zone=us-central1-f --experiments=use_mem_shuffle --workerHarnessContainerImage=dataflow.gcr.io/v1beta3/java-batch:1.8.0-mm --maxNumWorkers=200 --job-name=encounters --generate-model-features=false --generate-encounters=true --anchorages-root-path=gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output --minRequiredPositions=0
 
 
+ run  --env=dev --zone=us-central1-f --experiments=use_mem_shuffle --workerHarnessContainerImage=dataflow.gcr.io/v1beta3/java-batch:1.8.0-mm --maxNumWorkers=800 --job-name=encounters --generate-model-features=false --generate-encounters=true --anchorages-root-path=gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output --minRequiredPositions=0
+
+   run  --env=dev --zone=us-central1-f --workerHarnessContainerImage=dataflow.gcr.io/v1beta3/java-batch:1.8.0-mm --maxNumWorkers=200 --job-name=features --generate-model-features=true --generate-encounters=false --anchorages-root-path=gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output --minRequiredPositions=100
+
+
+This runs the annotator, for just 2016, but so far this is still crashing:
+
+run --job-config=ais-annotator/config/2016_annotation.yaml --env=prod --job-name=paper_prep --maxNumWorkers=200  --yearsToRun=2016 --zone=us-central1-f
+
+
 
 OLD:
 * Cloud Dataflow
