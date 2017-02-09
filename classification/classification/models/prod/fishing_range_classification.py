@@ -102,6 +102,11 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         return TrainNetInfo(optimizer, trainers)
 
     def build_inference_net(self, features, timestamps, mmsis):
+
+        # Add inputs to net to `inputs` collections to support CloudML prediction.
+        inputs = {'timestamps': timestamps.name, 'mmsis': mmsis.name, 'features': features.name}
+        tf.add_to_collection('inputs', json.dumps(inputs))
+
         features = self.zero_pad_features(features)
         self.misconception_with_fishing_ranges(features, mmsis, False)
 
@@ -109,5 +114,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             self.fishing_localisation_objective.build_evaluation(timestamps,
                                                                  mmsis)
         ]
+
+        outputs = {'mmsis': mmsis.name, 'timestamps': timestamps.name, 'fishing_scores': self.fishing_localisation_objective.prediction}
 
         return evaluations
