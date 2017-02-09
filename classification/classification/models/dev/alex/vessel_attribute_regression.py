@@ -37,6 +37,10 @@ class Model(abstract_models.MisconceptionModel):
     feature_depth = 80
     levels = 9
 
+    initial_learning_rate = 1e-4
+    learning_decay_rate = 0.5
+    decay_examples = 40000
+
     @property
     def max_window_duration_seconds(self):
         return 180 * 24 * 3600
@@ -52,7 +56,7 @@ class Model(abstract_models.MisconceptionModel):
 
     @property
     def min_viable_timeslice_length(self):
-        return 500
+        return 100
 
     def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
@@ -67,6 +71,7 @@ class Model(abstract_models.MisconceptionModel):
                 return np.float32(x)
 
         self.training_objectives = [
+            # Weights chosen to approximately equalize runtime losses
             RegressionObjective(
                     'length',
                     'Vessel-length',
@@ -77,13 +82,13 @@ class Model(abstract_models.MisconceptionModel):
                     'tonnage',
                     'Vessel-tonnage',
                     XOrNone('tonnage'),
-                    loss_weight=0.1,
+                    loss_weight=0.02,
                     metrics=metrics),
                 RegressionObjective(
                     'engine_power',
                     'Vessel-engine-Power',
                     XOrNone('engine_power'),
-                    loss_weight=0.1,
+                    loss_weight=0.02,
                     metrics=metrics)
         ]
 
@@ -100,7 +105,13 @@ class Model(abstract_models.MisconceptionModel):
             trainers.append(self.training_objectives[i].build_trainer(
                 timestamps, mmsis))
 
-        optimizer = tf.train.AdamOptimizer()
+        step = slim.get_or_create_global_step() 
+
+        learning_rate = tf.train.exponential_decay(
+            self.initial_learning_rate, step, self.decay_examples,
+            self.learning_decay_rate)
+
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 
         return TrainNetInfo(optimizer, trainers)
 

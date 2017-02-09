@@ -16,5 +16,5 @@ tensor_flow_config_template: | # This gets interpolated and then passed onto TF
     masterType: "standard_gpu"
     parameterServerType: "standard"
     workerType: "standard_gpu"
-    workerCount: 4
+    workerCount: 10
     parameterServerCount: 1

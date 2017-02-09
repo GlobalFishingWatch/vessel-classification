@@ -346,6 +346,9 @@ def ydump_attrs(doc, results):
     def RMS(a, b):
         return np.sqrt(np.square(a - b).mean())
 
+    def MAE(a, b):
+        return abs(a - b).mean()
+
     # TODO: move computations out of loops for speed.
     # true_mask = np.array([(x is not None) for x in results.true_attrs])
     # infer_mask = np.array([(x is not None) for x in results.inferred_attrs])
@@ -355,12 +358,15 @@ def ydump_attrs(doc, results):
     for dt in np.unique(results.start_dates):
         mask = true_mask & infer_mask & (results.start_dates == dt)
         rows.append([dt, RMS(results.true_attrs[mask],
-                             results.inferred_attrs[mask])])
+                             results.inferred_attrs[mask]),
+        MAE(results.true_attrs[mask],
+                             results.inferred_attrs[mask])
+        ])
 
     with tag('div', klass='unbreakable'):
         line('h3', 'RMS Error by Date')
-        ydump_table(doc, ['Start Date', 'RMS Error'],
-                    [(a.date(), '{:.2f}'.format(b)) for (a, b) in rows])
+        ydump_table(doc, ['Start Date', 'RMS Error', 'Abs Error'],
+                    [(a.date(), '{:.2f}'.format(b), '{:.2f}'.format(c)) for (a, b, c) in rows])
 
     consolidated = consolidate_attribute_across_dates(results)
     # true_mask = np.array([(x is not None) for x in consolidated.true_attrs])
@@ -373,25 +379,33 @@ def ydump_attrs(doc, results):
         text('{:.2f}'.format(
             RMS(consolidated.true_attrs[true_mask & infer_mask], consolidated.inferred_attrs[true_mask & infer_mask])))
 
-    def RMS_by_label(true_attrs, pred_attrs, true_labels):
+    with tag('div', klass='unbreakable'):
+        line('h3', 'Overall Abs Error')
+        text('{:.2f}'.format(
+            MAE(consolidated.true_attrs[true_mask & infer_mask], consolidated.inferred_attrs[true_mask & infer_mask])))
+
+
+    def RMS_MAE_by_label(true_attrs, pred_attrs, true_labels):
         results = []
         labels = sorted(set(true_labels))
         for lbl in labels:
             mask = true_mask & infer_mask & (lbl == true_labels)
-            err = RMS(true_attrs[mask], pred_attrs[mask])
-            count = mask.sum()
-            results.append((lbl, count, err, true_attrs[mask].mean(),
-                            true_attrs[mask].std()))
+            if mask.sum():
+                err = RMS(true_attrs[mask], pred_attrs[mask])
+                abs_err = MAE(true_attrs[mask], pred_attrs[mask])
+                count = mask.sum()
+                results.append((lbl, count, err, abs_err, true_attrs[mask].mean(),
+                                true_attrs[mask].std()))
         return results
 
     with tag('div', klass='unbreakable'):
         line('h3', 'RMS Error by Label')
         ydump_table(
             doc,
-            ['Label', 'Count', 'RMS Error', 'Mean', 'StdDev'], # TODO: pass in length and units
+            ['Label', 'Count', 'RMS Error', 'Abs Error', 'Mean', 'StdDev'], # TODO: pass in length and units
             [
-                (a, count, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
-                for (a, count, b, c, d) in RMS_by_label(consolidated.true_attrs,
+                (a, count, '{:.2f}'.format(b), '{:.2f}'.format(ab), '{:.2f}'.format(c), '{:.2f}'.format(d))
+                for (a, count, b, ab, c, d) in RMS_MAE_by_label(consolidated.true_attrs,
                                                         consolidated.inferred_attrs,
                                                         consolidated.true_labels)
             ])
@@ -606,7 +620,6 @@ def consolidate_attribute_across_dates(results):
         else:
             true_labels.append("Unknown") 
 
-    print("XXX", len(inferred_attributes), len(true_attributes), len(true_labels))
     return AttributeResults(mmsi, np.array(inferred_attributes),
                          np.array(true_attributes), np.array(true_labels), None)
 
