@@ -102,7 +102,6 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         return TrainNetInfo(optimizer, trainers)
 
     def build_inference_net(self, features, timestamps, mmsis):
-
         features = self.zero_pad_features(features)
         self.misconception_with_fishing_ranges(features, mmsis, False)
 

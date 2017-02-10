@@ -7,10 +7,10 @@
 * A JVM.
 * [SBT](http://www.scala-sbt.org/), a Scala build tool.
 * A proto3-compatible version of protoc. See: [protocol buffers](https://developers.google.com/protocol-buffers/).
-* Python.
-* Tensorflow.
-* [Docker](https://docs.docker.com).
-  * For linux, follow the installation instructions on the Docker site, do not use the apt package.
+
+* [Docker](https://docs.docker.com). -- TODO: do we need this?
+
+
 * [Google Compute Engine](https://console.cloud.google.com) access and [SDK](https://cloud.google.com/sdk) installed locally.
 
 ### Scala
@@ -20,11 +20,13 @@ In subdirectory `scala`, the feature/ports/encounter pipeline.
 The various projects are built using the Scala build tool `sbt`. SBT has a repl, which can be
 entered using by running the `sbt` command in the `pipeline` directory. Some commands:
 
-* To compile: 'compile'.
-* To run: 'run'.
-* To test: 'test'.
-* To autoformat the code before check-in: 'scalafmt'.
-* To generate html Scaladoc: 'doc'.
+* To list projects: `projects`
+* To select a project `project NAME`
+* To compile: `compile`.
+* To run: `run`.
+* To test: `test`.
+* To autoformat the code before check-in: `scalafmt`.
+* To generate html Scaladoc: `doc`.
 
 SBT uses maven to handle it's dependencies. So the first time you attempt a build your machine
 may take some time to download all the required libraries.
