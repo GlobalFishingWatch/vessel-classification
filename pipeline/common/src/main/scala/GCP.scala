@@ -28,7 +28,8 @@ object GcpConfig extends LazyLogging {
 
   // private def projectId = "world-fishing-827"
   // TODO: unhwardwire
-  private def projectId = "aju-vtests2"
+  // private def projectId = "aju-vtests2"
+  private def projectId = "earth-outreach"
 
   // TODO(alexwilson): No locally-generated date for prod. Needs to be sourced
   // from outside so all prod stages share the same path.
@@ -38,14 +39,16 @@ object GcpConfig extends LazyLogging {
       case "prod" => {
         // TODO: unhwardwire
         // s"gs://world-fishing-827/data-production/classification/$jobId"
-        s"gs://aju-vtests2-ml-amy/gfw/data-production/classification/$jobId"
+        // s"gs://aju-vtests2-ml-amy/gfw/data-production/classification/$jobId"
+        s"gs://aju-dataflow-ea/gfw/data-production/classification/$jobId"
       }
       case "dev" => {
         sys.env.get("USER") match {
           case Some(user) =>
             // TODO: unhwardwire
             // s"gs://world-fishing-827-dev-ttl30d/data-production/classification/$user/$jobId"
-            s"gs://aju-vtests2-ml-amy/gfw/data-production/classification/$jobId"
+            // s"gs://aju-vtests2-ml-amy/gfw/data-production/classification/$jobId"
+            s"gs://aju-dataflow-ea/gfw/data-production/classification/$jobId"
           case _ => logger.fatal("USER environment variable cannot be empty for dev runs.")
         }
       }

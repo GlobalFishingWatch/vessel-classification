@@ -35,6 +35,7 @@ import multiprocessing as mp
 import pathlib
 import random
 import string
+import os
 import sys
 import time
 
@@ -79,7 +80,7 @@ def send_loop(client, q, pubsub_topic):  # pragma: NO COVER
 # default; set to your traffic topic. Can override on command line.
 SHIPPING_TOPIC = 'projects/aju-vtests2/topics/shipping'
 
-LINE_BATCHES = 20  # publish in batches
+LINE_BATCHES = 10  # report periodic progress
 
 PUBSUB_SCOPES = ['https://www.googleapis.com/auth/pubsub']
 NUM_RETRIES = 3
@@ -142,14 +143,16 @@ def main(argv):
 
 
   line_count = 0
-  messages = []
 
   filelist = [p for p in pathlib.Path(args.filepath).glob('**/*' ) if p.is_file()]
-  filelist.sort()
   print("\n----filelist: %s" % filelist)
+  dirname = 'bkts/%s' % args.filepath
+  if not os.path.exists(dirname):
+    os.makedirs(dirname)
   time.sleep(5)
 
   for fname in filelist:
+    buckets = [[] for i in range(24)]
     with fname.open() as f:
       print("\n----working on: %s" % fname)
       time.sleep(10)
@@ -163,27 +166,16 @@ def main(argv):
             break
         if (line_count % LINE_BATCHES) == 0:
           sys.stdout.write('.')
-          print("timestamp: %s" % jline['timestamp'])
-          print("----calling q.put at %s" % line_count)
-          q.put(messages)
-          time.sleep(1)
-          # publish(client, pubsub_topic, messages)
-          messages = []
-        ts = parse(jline['timestamp']).timestamp()
-        # print("----got timestamp: %s" % ts)
-        msg_attributes = {'timestamp': str(int(ts * 1000))}  # need to convert s -> ms
-        msg_data = json.dumps(jline)
-        msg = create_msg(msg_data, msg_attributes)
-        messages.append(msg)
-  # pick up the residue
-  print("\n---calling final q.put")
-  # publish(client, pubsub_topic, messages)
-  if messages:
-    q.put(messages)
-  print( "sleeping...")
-  time.sleep(60)
-  print( "end sleep")
+        # print("----got timestamp: %s" % jline['timestamp'])
+        timeinfo = parse(jline['timestamp'])
+        hour = timeinfo.hour
+        buckets[hour].append(line)
 
+    print("appending to buckets")
+    for hour in range(24):
+      bucket_fname = "%s/bucket%02d.json" % (dirname, hour)
+      with open(bucket_fname, "a") as f2:
+        f2.writelines(buckets[hour])
 
 
 

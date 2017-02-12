@@ -221,20 +221,27 @@ object ModelFeatures extends LazyLogging {
   }
 
   // TODO aju: probably add arg to method above instead
+  // TODO aju: try also returning latlon of first (?) elt in seq, for s2 aggregation
+  // expers in 2nd dataflow pipeline
   def buildVesselFeaturesStreaming(
       input: SCollection[(VesselMetadata, Seq[VesselLocationRecordWithAdjacency])],
-      anchoragesRootPath: String): SCollection[(VesselMetadata, Seq[Array[Double]])] = {
+      anchoragesLookup: AdjacencyLookup[Anchorage]
+      // anchoragesRootPath: String
+      ): SCollection[(VesselMetadata, LatLon, Seq[Array[Double]])] = {
 
     val anchoragesLookupCache = ValueCache[AdjacencyLookup[Anchorage]]()
     input.filter {
       case (metadata, locations) => locations.size >= 3
     }.map {
       case (metadata, locations) =>
-        val anchoragesLookup = anchoragesLookupCache.get { () =>
-          Anchorages.getAnchoragesLookup(anchoragesRootPath)
-        }
+        // val anchoragesLookup = anchoragesLookupCache.get { () =>
+          // Anchorages.getAnchoragesLookup(anchoragesRootPath)
+        // }
         val features = buildSingleVesselFeatures(locations, anchoragesLookup)
-        (metadata, features)
+        // aju - testing adding first loc info
+        val firstLocRecord = locations(0)
+        val firstLoc = firstLocRecord.location.location
+        (metadata, firstLoc, features)
     }
   }
 }

@@ -74,21 +74,29 @@ object Pipeline extends LazyLogging {
       val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
 
       val minValidLocations = 200
+      val anchoragesLookupCache = ValueCache[AdjacencyLookup[Anchorage]]()
+      val anchoragesLookup = anchoragesLookupCache.get { () =>
+          Anchorages.getAnchoragesLookup(anchoragesRootPath)
+        }
+
 
       // TODO -- add to opts
-      val input = sc.pubsubTopic("projects/aju-vtests2/topics/shipping",
+      // val input = sc.pubsubTopic("projects/aju-vtests2/topics/shipping",
+      val input = sc.pubsubTopic("projects/earth-outreach/topics/shipping",
         timestampLabel = PUBSUB_TIMESTAMP_LABEL_KEY)
       // This is not the final window/trigger def'n that we want.
+      // aju TODO: window params
       val wstream = input
-        .withFixedWindows(Duration.standardMinutes(60),
+        .withFixedWindows(Duration.standardHours(12),
+        // .withSlidingWindows(Duration.standardHours(2),
+          // Duration.standardMinutes(15),
           options = WindowOptions(
             trigger = AfterWatermark.pastEndOfWindow()
-              .withEarlyFirings(AfterProcessingTime.pastFirstElementInPane()
-                .plusDelayOf(Duration.standardMinutes(5)))
               .withLateFirings(AfterProcessingTime.pastFirstElementInPane()
                 .plusDelayOf(Duration.standardMinutes(10))),
-            accumulationMode = ACCUMULATING_FIRED_PANES,
-            allowedLateness = Duration.standardDays(60)
+            // accumulationMode = ACCUMULATING_FIRED_PANES,
+            accumulationMode = DISCARDING_FIRED_PANES,
+            allowedLateness = Duration.standardDays(60)  // aju TODO: fix this
             )
           )
 
@@ -110,19 +118,27 @@ object Pipeline extends LazyLogging {
 
           (vmd, locationsWithEmptyAdjacency)
       }
-      // }
 
-      // if (generateModelFeatures) {
-        val featuress =
-          ModelFeatures.buildVesselFeaturesStreaming(locationsWithEmptyAdjacencyx, anchoragesRootPath).map {
-            case (md, feature) =>
-              val urghh =  feature.map { f => f.toList }
-              val json = ("mmsi" -> s"${md.mmsi}") ~
-                          ("feature" -> urghh)
-              compact(render(json))
-          }
-        featuress
-          .saveAsPubsub("projects/aju-vtests2/topics/gfwfeatures")   // TODO - add to opts
+      val s2level = 13  // ~1 km
+      val featuresStreaming =
+        ModelFeatures.buildVesselFeaturesStreaming(locationsWithEmptyAdjacencyx, anchoragesLookup)
+         .withTimestamp
+         .map {
+          case ((md, firstLoc, feature), ts) =>
+            val flist =  feature.map { f => f.toList }
+            val json = ("mmsi" -> s"${md.mmsi}") ~
+                        ("s2CellId" -> firstLoc.getS2CellId(s2level).id) ~
+                        ("firstTimestamp" -> Math.round(flist(0)(0)) * 1000) ~
+                        ("firstTimestampStr" -> new Instant(Math.round(flist(0)(0)) * 1000).toString) ~
+                        ("windowTimestampStr" -> ts.toString) ~
+                        ("windowTimestamp" -> ts.getMillis) ~
+                        ("feature" -> flist)
+            compact(render(json))
+        }
+      // aju TODO: add timestamp attr to pubsub element ('firstTimestamp'??)
+      featuresStreaming
+        // .saveAsPubsub("projects/aju-vtests2/topics/gfwfeatures")   // TODO - add to opts
+        .saveAsPubsub("projects/earth-outreach/topics/gfwfeatures")   // TODO - add to opts
 
       // aju - temp removing the other output branch. TODO: add back in properly.
       // val features =

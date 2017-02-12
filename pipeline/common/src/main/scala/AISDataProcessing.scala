@@ -122,7 +122,7 @@ object AISDataProcessing extends LazyLogging {
     }
   }
 
-  // aju TODO -- refactor method above
+  // aju TODO -- refactor method above?
   def readJsonRecordsStreaming(
       input: SCollection[String],
       knownFishingMMSIs: Set[Int],
@@ -146,9 +146,11 @@ object AISDataProcessing extends LazyLogging {
                                json.getDouble("speed").of[knots],
                                angleNormalize(json.getDouble("course").of[degrees]),
                                angleNormalize(json.getDouble("heading").of[degrees]))
-        (metadata, record)
+        // (metadata, record)
+        (mmsi, record)
       })
-      .filter { case (metadata, _) => !blacklistedMmsis.contains(metadata.mmsi) }
+      // .filter { case (metadata, _) => !blacklistedMmsis.contains(metadata.mmsi) }
+      .filter { case (mmsi, _) => !blacklistedMmsis.contains(mmsi) }
       .filter {
         case (_, record) =>
           RangeValidator()
@@ -165,13 +167,16 @@ object AISDataProcessing extends LazyLogging {
       }
 
     validRecords.groupByKey.flatMap {
-      case (metadata, records) =>
+      case (mmsi, records) =>
         // aju - minRequiredPositions is too large with small streaming windows...
         // if (records.size >= minRequiredPositions) {
-        if (records.size >= 15) {  // testing...  TODO: what is the right value?
+        // aju - what are implications of changing this?
+
+        if (records.size >= 1) {  // testing...  TODO: what is the right value?
           val dedupedSorted = records.toIndexedSeq
           // On occasion the same message seems to appear twice in the record. Remove.
           .distinct.sortBy(_.timestamp.getMillis)
+          val metadata = VesselMetadata(mmsi, knownFishingMMSIs.contains(mmsi))
           Some((metadata, dedupedSorted))
         } else {
           None
