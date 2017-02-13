@@ -4,9 +4,9 @@ inputFilePatterns:
   - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2014-*-*/*-of-*"
   - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2015-*-*/*-of-*"
   - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2016-*-*/*-of-*"
-outputFilePath: "gs://world-fishing-827/data-production/classification/release-0.1.0/likely_fishing_annotation"
+outputFilePath: "gs://world-fishing-827/data-production/classification/paper_prep/likely_fishing_annotation_full"
 jsonAnnotations:
-  - inputFilePattern: "gs://world-fishing-827/data-production/classification/release-0.1.0/results/fishing-ranges-likely-fishing.json.gz"
+  - inputFilePattern: "gs://world-fishing-827/data-production/classification/paper_prep/models/prod.fishing_range_classification/fishing-ranges-likely-fishing.json.gz"
     timeRangeFieldName: "fishing_localisation"
     outputFieldName: "measure_new_score"
-    defaultValue: 1.0
+    defaultValue: 0.0

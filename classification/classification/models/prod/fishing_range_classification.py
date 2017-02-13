@@ -94,9 +94,6 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             self.initial_learning_rate, example, self.decay_examples,
             self.learning_decay_rate)
 
-        # op = tf.summary.scalar(metric_name, metric_value)
-
-
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 
         return TrainNetInfo(optimizer, trainers)
