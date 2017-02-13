@@ -140,6 +140,12 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             tf.add_to_collection('inputs', json.dumps(inputs))
 
             build_inference_net(self, features, timestamps, mmsis)
+
+            # Add outputs to net to 'outputs' to support CloudML prediction
+            outputs = {'mmsis': mmsis.name, 'timestamps': timestamps.name, 
+                      'fishing_scores': self.fishing_localisation_objective.prediction}
+            tf.add_to_collection('outputs', json.dumps(outputs))
+
             init_op = tf.global_variables_initializer()
             sess.run(init_op)
             saver = tf.train.Saver()
@@ -148,6 +154,4 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             saver.save(
               sess, os.path.join(output_dir, 'export'), write_meta_graph=False)
 
-            outputs = {'mmsis': mmsis.name, 'timestamps': timestamps.name, 
-                      'fishing_scores': self.fishing_localisation_objective.prediction}
-            tf.add_to_collection('outputs', json.dumps(outputs))
+
