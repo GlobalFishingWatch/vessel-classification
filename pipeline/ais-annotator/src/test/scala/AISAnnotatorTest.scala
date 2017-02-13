@@ -82,8 +82,10 @@ class AnnotatorTests extends PipelineSpec with Matchers {
                                          Instant.parse("20150101T10:00:00Z"),
                                          32.0))
 
+      val allowedMMSIs = Set(123, 456)
+
       val annotations = Seq(sc.parallelize(annot1), sc.parallelize(annot2))
-      val res = AISAnnotator.annotateAllMessages(Seq(sc.parallelize(msgs)), annotations)
+      val res = AISAnnotator.annotateAllMessages(allowedMMSIs, Seq(sc.parallelize(msgs)), annotations)
 
       res should haveSize(9)
 
