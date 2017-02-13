@@ -127,29 +127,29 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         with tf.Session(graph=tf.Graph()) as sess:
             # Build and save prediction meta graph and trained variable values.
             # TODO create placeholders for mmsi, timestamps, features,
-            # TODO (amy): I think we could reshape things here if you want to come in with different shapes 
+            # TODO (amy): I think we could reshape things here if you want to come in with different shapes
             # (for instance single value for MMSI)
             # or (512x12 shape for features)
 
             features = tf.placeholder(tf.float32, shape=(1, 1, self.window_max_points, feature_size))
-            mmsi = tf.placeholder(tf.int32, shape=(1,))
+            mmsis = tf.placeholder(tf.int32, shape=(1,))
             timestamps = tf.placeholder(tf.int32, shape=(1, self.window_max_points))
 
             # Add inputs to net to `inputs` collections to support CloudML prediction.
             inputs = {'timestamps': timestamps.name, 'mmsis': mmsis.name, 'features': features.name}
             tf.add_to_collection('inputs', json.dumps(inputs))
 
-            build_inference_net(self, features, timestamps, mmsis)
+            self.build_inference_net(features, timestamps, mmsis)
 
             # Add outputs to net to 'outputs' to support CloudML prediction
-            outputs = {'mmsis': mmsis.name, 'timestamps': timestamps.name, 
-                      'fishing_scores': self.fishing_localisation_objective.prediction}
+            outputs = {'mmsis': mmsis.name, 'timestamps': timestamps.name,
+                      'fishing_scores': self.fishing_localisation_objective.prediction.name}
             tf.add_to_collection('outputs', json.dumps(outputs))
 
             init_op = tf.global_variables_initializer()
             sess.run(init_op)
             saver = tf.train.Saver()
-            saver.restore(session, last_checkpoint)
+            saver.restore(sess, last_checkpoint)
             saver.export_meta_graph(filename=os.path.join(output_dir, 'export.meta'))
             saver.save(
               sess, os.path.join(output_dir, 'export'), write_meta_graph=False)
