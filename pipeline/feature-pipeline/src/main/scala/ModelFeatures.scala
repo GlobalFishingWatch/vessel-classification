@@ -229,8 +229,9 @@ object ModelFeatures extends LazyLogging {
       input: SCollection[(VesselMetadata, Seq[VesselLocationRecordWithAdjacency])],
       anchoragesLookup: AdjacencyLookup[Anchorage]
       // anchoragesRootPath: String
-      ): SCollection[(VesselMetadata, LatLon, Seq[Array[Double]])] = {
+      ): SCollection[(VesselMetadata, LatLon, Seq[Seq[String]], Seq[Array[Double]])] = {
 
+    val s2level = 13  // ~1 km
     val anchoragesLookupCache = ValueCache[AdjacencyLookup[Anchorage]]()
     input.filter {
       case (metadata, locations) => locations.size >= 3
@@ -240,10 +241,15 @@ object ModelFeatures extends LazyLogging {
           // Anchorages.getAnchoragesLookup(anchoragesRootPath)
         // }
         val features = buildSingleVesselFeatures(locations, anchoragesLookup)
-        // aju - testing adding first loc info
+        val timestamps = features.map {f => Math.round(f(0)).toString}
+        val s2info =  locations.map { l => l.location.location.getS2CellId(s2level).toToken }
+        // arghh. clean this up. (trying to generate something that would jsonify)
+        val timestampsS2Ids =  timestamps zip s2info
+        val arghh = timestampsS2Ids.map {e => List(e._1, e._2)}
+        val arghh2 = arghh.map {a => a.toList}
         val firstLocRecord = locations(0)
         val firstLoc = firstLocRecord.location.location
-        (metadata, firstLoc, features)
+        (metadata, firstLoc, arghh2, features)
     }
   }
 }

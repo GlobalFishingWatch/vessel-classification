@@ -215,6 +215,7 @@ def pull_messages(client, args):
         args.project_name,
         args.subscription)
     # arghh
+    # TODO -- if I need to keep this script, unhardwire.
     topic2 = get_full_topic_name(args.project_name, "gfwfeatures2")
     body = {
         'returnImmediately': False,

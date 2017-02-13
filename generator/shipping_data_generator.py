@@ -79,7 +79,7 @@ def send_loop(client, q, pubsub_topic):  # pragma: NO COVER
 # default; set to your traffic topic. Can override on command line.
 SHIPPING_TOPIC = 'projects/earth-outreach/topics/shipping'
 
-LINE_BATCHES = 50  # publish in batches
+LINE_BATCHES = 150  # publish in batches
 
 PUBSUB_SCOPES = ['https://www.googleapis.com/auth/pubsub']
 NUM_RETRIES = 3

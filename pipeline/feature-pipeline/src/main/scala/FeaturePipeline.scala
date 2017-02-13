@@ -81,22 +81,16 @@ object Pipeline extends LazyLogging {
 
 
       // TODO -- add to opts
-      // val input = sc.pubsubTopic("projects/aju-vtests2/topics/shipping",
       val input = sc.pubsubTopic("projects/earth-outreach/topics/shipping",
         timestampLabel = PUBSUB_TIMESTAMP_LABEL_KEY)
-      // This is not the final window/trigger def'n that we want.
-      // aju TODO: window params
       val wstream = input
-        .withFixedWindows(Duration.standardHours(12),
-        // .withSlidingWindows(Duration.standardHours(2),
-          // Duration.standardMinutes(15),
+        .withFixedWindows(Duration.standardHours(6), // TODO: unhardwire
           options = WindowOptions(
             trigger = AfterWatermark.pastEndOfWindow()
               .withLateFirings(AfterProcessingTime.pastFirstElementInPane()
-                .plusDelayOf(Duration.standardMinutes(10))),
-            // accumulationMode = ACCUMULATING_FIRED_PANES,
+                .plusDelayOf(Duration.standardMinutes(10))), // TODO: unhardwire
             accumulationMode = DISCARDING_FIRED_PANES,
-            allowedLateness = Duration.standardDays(60)  // aju TODO: fix this
+            allowedLateness = Duration.standardDays(60)  // aju TODO: unhardwire
             )
           )
 
@@ -124,15 +118,16 @@ object Pipeline extends LazyLogging {
         ModelFeatures.buildVesselFeaturesStreaming(locationsWithEmptyAdjacencyx, anchoragesLookup)
          .withTimestamp
          .map {
-          case ((md, firstLoc, feature), ts) =>
+          case ((md, firstLoc, timestampsS2Ids, feature), ts) =>
             val flist =  feature.map { f => f.toList }
             val json = ("mmsi" -> s"${md.mmsi}") ~
-                        ("s2CellId" -> firstLoc.getS2CellId(s2level).id) ~
+                        // ("s2CellId" -> firstLoc.getS2CellId(s2level).id) ~
                         ("firstTimestamp" -> Math.round(flist(0)(0)) * 1000) ~
                         ("firstTimestampStr" -> new Instant(Math.round(flist(0)(0)) * 1000).toString) ~
                         ("windowTimestampStr" -> ts.toString) ~
                         ("windowTimestamp" -> ts.getMillis) ~
-                        ("feature" -> flist)
+                        ("feature" -> flist) ~
+                        ("timestampsS2Ids" -> timestampsS2Ids)
             compact(render(json))
         }
       // aju TODO: would be nice to add timestamp attr to pubsub element, apparently not exposed currently.
@@ -141,6 +136,7 @@ object Pipeline extends LazyLogging {
         // .saveAsPubsub("projects/aju-vtests2/topics/gfwfeatures")   // TODO - add to opts
         .saveAsPubsub("projects/earth-outreach/topics/gfwfeatures")   // TODO - add to opts
 
+      // TODO -- adding this branch back in seems to trigger OOM issues...
       // val features =
       //   ModelFeatures.buildVesselFeatures(locationsWithEmptyAdjacencyx, anchoragesLookup).map {
       //     case (md, feature) =>
