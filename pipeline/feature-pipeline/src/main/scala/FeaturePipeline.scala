@@ -135,39 +135,24 @@ object Pipeline extends LazyLogging {
                         ("feature" -> flist)
             compact(render(json))
         }
-      // aju TODO: add timestamp attr to pubsub element ('firstTimestamp'??)
+      // aju TODO: would be nice to add timestamp attr to pubsub element, apparently not exposed currently.
+      // Supporting this via separate "connector" script instead.
       featuresStreaming
         // .saveAsPubsub("projects/aju-vtests2/topics/gfwfeatures")   // TODO - add to opts
         .saveAsPubsub("projects/earth-outreach/topics/gfwfeatures")   // TODO - add to opts
 
-      // aju - temp removing the other output branch. TODO: add back in properly.
       // val features =
-      //   ModelFeatures.buildVesselFeatures(locationsWithEmptyAdjacencyx, anchoragesRootPath).map {
+      //   ModelFeatures.buildVesselFeatures(locationsWithEmptyAdjacencyx, anchoragesLookup).map {
       //     case (md, feature) =>
       //       (s"${md.mmsi}", feature)
       //   }
-        // Array[Double](timestampSeconds,
-        //                             math.log(1.0 + timestampDeltaSeconds),
-        //                             math.log(1.0 + distanceDeltaMeters),
-        //                             math.log(1.0 + speedMps),
-        //                             math.log(1.0 + integratedSpeedMps),
-        //                             cogDeltaDegrees / 180.0,
-        //                             localTodFeature,
-        //                             localMonthOfYearFeature,
-        //                             integratedCogDeltaDegrees / 180.0,
-        //                             math.log(1.0 + distanceToShoreKm),
-        //                             math.log(1.0 + distanceToBoundingAnchorageKm),
-        //                             math.log(1.0 + timeToBoundingAnchorageS),
-        //                             a0.numNeighbours)
 
-
-      // Also output vessel classifier features.
+      // // Also output vessel classifier features.
       // val outputFeaturePath = config.pipelineOutputPath + "/features"
       // val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
-      // }
 
-      // aju TODO - the write gives an error in streaming mode.  Not clear what it should be
-      // replaced by.
+      // aju TODO - this partic write gives an error in streaming mode. Do we
+      // still want this?  Not necess just for demo, would be longer-term.
       // Get a list of all MMSIs to save to disk to speed up TF training startup.
       // val mmsiListPath = config.pipelineOutputPath + "/mmsis"
       // processed.keys.groupAll.flatMap(_.map(md => s"${md.mmsi}")).saveAsTextFile(mmsiListPath)

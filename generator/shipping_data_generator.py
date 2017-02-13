@@ -77,9 +77,9 @@ def send_loop(client, q, pubsub_topic):  # pragma: NO COVER
         q.task_done()
 
 # default; set to your traffic topic. Can override on command line.
-SHIPPING_TOPIC = 'projects/aju-vtests2/topics/shipping'
+SHIPPING_TOPIC = 'projects/earth-outreach/topics/shipping'
 
-LINE_BATCHES = 20  # publish in batches
+LINE_BATCHES = 50  # publish in batches
 
 PUBSUB_SCOPES = ['https://www.googleapis.com/auth/pubsub']
 NUM_RETRIES = 3
@@ -142,49 +142,50 @@ def main(argv):
 
 
   line_count = 0
-  messages = []
+  # messages = []
+  dirs = args.filepath.split(',')
+  print("dirs: %s" % dirs)
 
-  filelist = [p for p in pathlib.Path(args.filepath).glob('**/*' ) if p.is_file()]
-  filelist.sort()
-  print("\n----filelist: %s" % filelist)
-  time.sleep(5)
+  for d in dirs:
 
-  for fname in filelist:
-    with fname.open() as f:
-      print("\n----working on: %s" % fname)
-      time.sleep(10)
-      for line in f:
-        jline = json.loads(line)
-        # print("jsonified line is: %s" % jline)
-        line_count += 1
-        if num_lines:  # if terminating after num_lines processed
-          if line_count >= num_lines:
-            print( "Have processed %s lines" % num_lines)
-            break
-        if (line_count % LINE_BATCHES) == 0:
-          sys.stdout.write('.')
-          print("timestamp: %s" % jline['timestamp'])
-          print("----calling q.put at %s" % line_count)
-          q.put(messages)
-          time.sleep(1)
-          # publish(client, pubsub_topic, messages)
-          messages = []
-        ts = parse(jline['timestamp']).timestamp()
-        # print("----got timestamp: %s" % ts)
-        msg_attributes = {'timestamp': str(int(ts * 1000))}  # need to convert s -> ms
-        msg_data = json.dumps(jline)
-        msg = create_msg(msg_data, msg_attributes)
-        messages.append(msg)
-  # pick up the residue
-  print("\n---calling final q.put")
-  # publish(client, pubsub_topic, messages)
-  if messages:
-    q.put(messages)
-  print( "sleeping...")
-  time.sleep(60)
-  print( "end sleep")
+    messages = []
+    print("working on dir: %s" % d)
+    filelist = [p for p in pathlib.Path(d).glob('**/*' ) if p.is_file()]
+    filelist.sort()
+    print("\n----filelist: %s" % filelist)
+    time.sleep(5)
 
-
+    for fname in filelist:
+      with fname.open() as f:
+        print("\n----working on: %s" % fname)
+        time.sleep(60)
+        for line in f:
+          jline = json.loads(line)
+          # print("jsonified line is: %s" % jline)
+          line_count += 1
+          if num_lines:  # if terminating after num_lines processed
+            if line_count >= num_lines:
+              print( "Have processed %s lines" % num_lines)
+              break
+          if (line_count % LINE_BATCHES) == 0:
+            sys.stdout.write('.')
+            # print("timestamp: %s" % jline['timestamp'])
+            # print("----calling q.put at %s" % line_count)
+            q.put(messages)
+            messages = []
+          ts = parse(jline['timestamp']).timestamp()
+          # print("----got timestamp: %s" % ts)
+          msg_attributes = {'timestamp': str(int(ts * 1000))}  # need to convert s -> ms
+          msg_data = json.dumps(jline)
+          msg = create_msg(msg_data, msg_attributes)
+          messages.append(msg)
+    # pick up the residue
+    print("\n---calling final q.put for %s" % d)
+    # publish(client, pubsub_topic, messages)
+    if messages:
+      q.put(messages)
+    print( "sleeping between dirs...")
+    time.sleep(60)
 
 
 

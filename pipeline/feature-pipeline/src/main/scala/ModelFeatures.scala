@@ -204,16 +204,18 @@ object ModelFeatures extends LazyLogging {
 
   def buildVesselFeatures(
       input: SCollection[(VesselMetadata, Seq[VesselLocationRecordWithAdjacency])],
-      anchoragesRootPath: String): SCollection[(VesselMetadata, SequenceExample)] = {
+      // anchoragesRootPath: String
+      anchoragesLookup: AdjacencyLookup[Anchorage]
+      ): SCollection[(VesselMetadata, SequenceExample)] = {
 
     val anchoragesLookupCache = ValueCache[AdjacencyLookup[Anchorage]]()
     input.filter {
       case (metadata, locations) => locations.size >= 3
     }.map {
       case (metadata, locations) =>
-        val anchoragesLookup = anchoragesLookupCache.get { () =>
-          Anchorages.getAnchoragesLookup(anchoragesRootPath)
-        }
+        // val anchoragesLookup = anchoragesLookupCache.get { () =>
+        //   Anchorages.getAnchoragesLookup(anchoragesRootPath)
+        // }
         val features = buildSingleVesselFeatures(locations, anchoragesLookup)
         val featuresAsTFExample = buildTFExampleProto(metadata, features)
         (metadata, featuresAsTFExample)

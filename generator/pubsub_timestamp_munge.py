@@ -38,7 +38,7 @@ PORT = 6667
 
 NUM_RETRIES = 3
 
-BATCH_SIZE = 10
+BATCH_SIZE = 30
 
 
 def fqrn(resource_type, project, resource):
@@ -232,22 +232,24 @@ def pull_messages(client, args):
         receivedMessages = resp.get('receivedMessages')
         if receivedMessages:
             ack_ids = []
+            messages = []
             for receivedMessage in receivedMessages:
                 message = receivedMessage.get('message')
                 if message:
-                    print(base64.b64decode(str(message.get('data'))))
+                    rint = randint(0,4999)
+                    if not rint:  # print a sampling of what's getting output
+                        print(base64.b64decode(str(message.get('data'))))
                     s_info = base64.b64decode(str(message.get('data')))
                     j_info = json.loads(s_info)
                     timestamp = j_info['firstTimestamp']
-                    if not randint(0,49):  # print a sampling of what's getting output
-                        print("got timestamp: %s" % timestamp)
+                    if not rint:
+                        print("%s : got timestamp: %s" % (rint, timestamp))
                     message['attributes'] = {'timestamp': str(timestamp)}
-                    # republish. arghh. should batch this up.
-                    body2 = {'messages': [message]}
-                    resp = client.projects().topics().publish(
-                        topic=topic2, body=body2).execute(num_retries=NUM_RETRIES)
-
+                    messages.append(message)
                     ack_ids.append(receivedMessage.get('ackId'))
+            body2 = {'messages': messages}
+            resp = client.projects().topics().publish(
+                topic=topic2, body=body2).execute(num_retries=NUM_RETRIES)
             ack_body = {'ackIds': ack_ids}
             client.projects().subscriptions().acknowledge(
                 subscription=subscription, body=ack_body).execute(

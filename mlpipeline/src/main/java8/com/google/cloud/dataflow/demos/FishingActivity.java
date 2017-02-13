@@ -26,15 +26,17 @@ import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.options.Validation;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
+import com.google.cloud.dataflow.sdk.transforms.Filter;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.windowing.AfterProcessingTime;
 import com.google.cloud.dataflow.sdk.transforms.windowing.AfterWatermark;
-import com.google.cloud.dataflow.sdk.transforms.windowing.FixedWindows;
+// import com.google.cloud.dataflow.sdk.transforms.windowing.FixedWindows;
 import com.google.cloud.dataflow.sdk.transforms.windowing.GlobalWindows;
 import com.google.cloud.dataflow.sdk.transforms.windowing.IntervalWindow;
 import com.google.cloud.dataflow.sdk.transforms.windowing.Repeatedly;
+import com.google.cloud.dataflow.sdk.transforms.windowing.SlidingWindows;
 import com.google.cloud.dataflow.sdk.transforms.windowing.Window;
 import com.google.cloud.dataflow.sdk.transforms.MapElements;
 import com.google.cloud.dataflow.sdk.values.KV;
@@ -59,6 +61,7 @@ import java.util.Map;
 import java.util.TimeZone;
 
 import org.apache.avro.reflect.Nullable;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping;
@@ -66,6 +69,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.cloud.dataflow.sdk.coders.AvroCoder;
 import com.google.cloud.dataflow.sdk.coders.DefaultCoder;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import static java.util.stream.Collectors.toList;
 
 
 
@@ -99,6 +103,7 @@ public class FishingActivity {
    * Class to hold info about ship movement sequence
    */
   @DefaultCoder(AvroCoder.class)
+  @JsonIgnoreProperties(ignoreUnknown = true)
   static class ShipInfo {
     @Nullable String mmsi;
     @Nullable List<List<Double>> feature;
@@ -107,6 +112,7 @@ public class FishingActivity {
     @Nullable String firstTimestampStr;
     @Nullable long windowTimestamp;
     @Nullable String windowTimestampStr;
+    @Nullable List<Long> timestampList;
 
     public ShipInfo() {}
 
@@ -121,8 +127,14 @@ public class FishingActivity {
     public List<List<Double>> getFeature() {
       return this.feature;
     }
+    public void setFeature(List<List<Double>> f) {
+      this.feature = f;
+    }
     public long getFirstTimestamp() {
       return this.firstTimestamp;
+    }
+    public void setFirstTimestamp(long ts) {
+      this.firstTimestamp = ts;
     }
     public long getWindowTimestamp() {
       return this.windowTimestamp;
@@ -132,6 +144,15 @@ public class FishingActivity {
     }
     public String getFirstTimestampStr() {
       return this.firstTimestampStr;
+    }
+    public void setFirstTimestampStr(String tsStr) {
+      this.firstTimestampStr = tsStr;
+    }
+    public void setTimestampList(List<Long> tslist) {
+      this.timestampList = tslist;
+    }
+    public List<Long> getTimestampList() {
+      return this.timestampList;
     }
     public void setS2CellId(Long s) {
       this.s2CellId = s;
@@ -143,7 +164,7 @@ public class FishingActivity {
     public String toString() {
       return "mmsi: " + this.mmsi + ", s2cell id: " + this.s2CellId +
         ", first timestamp" + this.firstTimestamp +
-        ", feature seq: " + this.feature;
+        ", feature seq: " + this.feature + ",\ntimestampList: " + this.timestampList;
     }
 
   }
@@ -227,10 +248,10 @@ public class FishingActivity {
     }
   }
 
-  static class GatherStatsMMSI
-      extends DoFn<KV<String, Iterable<ShipInfo>>, KV<String, Integer>> {
+  static class GatherMMSIs
+      extends DoFn<KV<String, Iterable<ShipInfo>>, KV<String, KV<Integer, ShipInfo>>> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(GatherStatsMMSI.class);
+    private static final Logger LOG = LoggerFactory.getLogger(GatherMMSIs.class);
 
     @Override
     public void processElement(ProcessContext c) {
@@ -239,38 +260,48 @@ public class FishingActivity {
       // Iterable<ShipInfo> sInfoList = c.element().getValue();
       List<ShipInfo> sInfoList = Lists.newArrayList(c.element().getValue());
 
-      List<List<Double>> allList = new ArrayList<List<Double>>();
+      List<List<Double>> allFList = new ArrayList<List<Double>>();
       // int fsize = 0;
       for (ShipInfo s : sInfoList) {
         List<List<Double>> feature = s.getFeature();
         // fsize += feature.size();
-        allList.addAll(feature);
-        LOG.info("mmsi " + mmsi + ", s2cell id " + s.getS2CellId() + ", feature list of size : " + feature.size());
+        allFList.addAll(feature);
+        // LOG.info("mmsi " + mmsi + ", s2cell id " + s.getS2CellId() + ", feature list of size : " + feature.size());
       }
-      allList.sort((e1, e2) -> Long.compare(Math.round(e1.get(0)), Math.round(e2.get(0))));
-      // TODO: create new shipinfo object from sorted list. How to define s2cell id?
+      allFList.sort((e1, e2) -> Long.compare(Math.round(e1.get(0)), Math.round(e2.get(0))));
+      if (sInfoList.size() > 1) {
+        LOG.info("total count for: mmsi" + mmsi + " in window " + windowTimestamp + ": " + sInfoList.size());
+        LOG.info("total fsize for: mmsi" + mmsi + " in window " + windowTimestamp + ": " + allFList.size());
+        LOG.info("sorted list: " + allFList);
+      }
+      List<Long> tslist = allFList.stream()  // testing...
+                     .map(elt -> Math.round(elt.get(0)))
+                     .collect(toList());
 
-      LOG.info("total count for: mmsi" + mmsi + " in window " + windowTimestamp + ": " + sInfoList.size());
-      LOG.info("total fsize for: mmsi" + mmsi + " in window " + windowTimestamp + ": " + allList.size());
-      LOG.info("sorted list: " + allList);
+      ShipInfo aggShipInfo = new ShipInfo(mmsi, allFList);
+      aggShipInfo.setS2CellId(sInfoList.get(0).getS2CellId());  // TODO: this is not principled...
+      long fts = Math.round(allFList.get(0).get(0));
+      aggShipInfo.setFirstTimestamp(fts);
+      aggShipInfo.setFirstTimestampStr(new Instant(fts).toString());
+      aggShipInfo.setTimestampList(tslist);
+      c.output(KV.of(mmsi, KV.of(allFList.size(), aggShipInfo)));
     }
   }
 
-  // static class GatherStatsS2
-  //     extends DoFn<KV<Long, Iterable<ShipInfo>>, KV<Long, Integer>> {
+  static class CallMLAPI
+      extends DoFn<KV<String, KV<Integer, ShipInfo>>, KV<String, String>> {
 
-  //   private static final Logger LOG = LoggerFactory.getLogger(GatherStatsS2.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CallMLAPI.class);
 
-  //   @Override
-  //   public void processElement(ProcessContext c) {
-  //     Long s2CellId = c.element().getKey();
-  //     List<ShipInfo> sInfoList = Lists.newArrayList(c.element().getValue());
-  //     Integer count = sInfoList.size();
-  //     LOG.info("for s2 cell id " + s2CellId + ", count is: " + count);
-  //     c.output(KV.of(s2CellId, count));
-  //   }
-  // }
-
+    @Override
+    public void processElement(ProcessContext c) {
+      String mmsi = c.element().getKey();
+      Integer count = c.element().getValue().getKey();
+      ShipInfo si = c.element().getValue().getValue();
+      LOG.info("in CallMLAPI: mmsi " + mmsi + ", count: " + count + ", si: " + si.toString());
+      c.output(KV.of(mmsi, si.toString()));
+    }
+  }
 
 
   public static void main(String[] args) throws Exception {
@@ -301,33 +332,26 @@ public class FishingActivity {
             .withOutputType(new TypeDescriptor<KV<String, ShipInfo>>() {}))
         .apply("window1", Window
               .<KV<String, ShipInfo>>into(
-                FixedWindows.of(Duration.standardHours(49)))
+                // FixedWindows.of(Duration.standardHours(49)))
+                SlidingWindows.of(Duration.standardHours(49))
+                .every(Duration.standardHours(1)))
               .triggering(AfterWatermark
                            .pastEndOfWindow()
                            .withLateFirings(AfterProcessingTime
                                 .pastFirstElementInPane()
                                 .plusDelayOf(Duration.standardMinutes(10))))
-              .discardingFiredPanes()
+              .accumulatingFiredPanes()
               .withAllowedLateness(Duration.standardDays(60)))  // aju TODO: fix this
         .apply(GroupByKey.<String, ShipInfo>create());
-    PCollection<KV<String, Integer>> mmsiStats = mmsis.apply(ParDo.of(new GatherStatsMMSI()));
+    PCollection<KV<String, String>> mmsiAggregates = mmsis
+      .apply(ParDo.of(new GatherMMSIs()))
+      .apply(Filter.byPredicate((KV<String, KV<Integer, ShipInfo>> s) -> s.getValue().getKey() > 100))
+      .apply(ParDo.of(new CallMLAPI()));
 
 
-    // PCollection<KV<Long, Iterable<ShipInfo>>> s2cells = fishingEvents
-    //     .apply("ExtractS2Features",
-    //       MapElements.via((ShipInfo sInfo) -> KV.of(sInfo.getS2CellId(), sInfo))
-    //         .withOutputType(new TypeDescriptor<KV<Long, ShipInfo>>() {}))
-    //     .apply("window1", Window
-    //           .<KV<Long, ShipInfo>>into(FixedWindows.of(Duration.standardMinutes(5))))
-    //     .apply(GroupByKey.<Long, ShipInfo>create());
-    // PCollection<KV<Long, Integer>> s2CellsStats = s2cells.apply(ParDo.of(new GatherStatsS2()));
-
-
-    // Run the pipeline and wait for the pipeline to finish; capture cancellation requests from the
-    // command line.
+    // Run the pipeline.
     PipelineResult result = pipeline.run();
-    dataflowUtils.waitToFinish(result);
+    // dataflowUtils.waitToFinish(result);
   }
-
 
 }
