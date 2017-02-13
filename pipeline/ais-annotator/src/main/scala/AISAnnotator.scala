@@ -132,27 +132,21 @@ object AISAnnotator extends LazyLogging {
   }
 
   def annotateAllMessages(
+      allowedMMSIs: Set[Int],
       aisMessageInputs: Seq[SCollection[JValue]],
       annotationInputs: Seq[SCollection[MessageAnnotation]]): SCollection[JValue] = {
 
     val aisMessages = SCollection.unionAll(aisMessageInputs)
-
     val annotationsByMmsi = SCollection.unionAll(annotationInputs).groupBy(_.mmsi)
-    val mmsisWithAnnotation =
-      annotationsByMmsi.map(_._1).map(x => (0, x)).groupByKey.map(_._2.toSet).asSingletonSideInput
 
     // Do not process messages for MMSIs for which we have no annotations.
-    val allowedMMSIs = ValueCache[Set[Int]]()
     val filteredAISMessages = aisMessages.map { json =>
       (json.getLong("mmsi").toInt, json)
-    }.withSideInputs(mmsisWithAnnotation)
-      .filter {
-        case ((mmsi, json), ctx) =>
-          val mmsiSet = allowedMMSIs.get(() => ctx(mmsisWithAnnotation))
-
-          mmsiSet.contains(mmsi)
-      }
-      .toSCollection
+    }
+    .filter { case (mmsi, _) =>
+      !AISDataProcessing.blacklistedMmsis.contains(mmsi) && (
+        allowedMMSIs.isEmpty || allowedMMSIs.contains(mmsi))
+    }
 
     // Remove all but location messages and key by mmsi.
     val filteredGroupedByMmsi = filteredAISMessages
@@ -174,12 +168,19 @@ object AISAnnotator extends LazyLogging {
     val environment = remaining_args.required("env")
     val jobName = remaining_args.required("job-name")
     val jobConfigurationFile = remaining_args.required("job-config")
+    val onlyFishingMMSIs = remaining_args.boolean("only-fishing", false)
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
     options.setRunner(classOf[DataflowPipelineRunner])
     options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
+
+    val includedMMSIs = if (onlyFishingMMSIs) {
+      AISDataProcessing.loadFishingMMSIs()
+    } else {
+      Set[Int]()
+    }
 
     val annotatorConfig = managed(scala.io.Source.fromFile(jobConfigurationFile)).acquireAndGet {
       s =>
@@ -200,7 +201,7 @@ object AISAnnotator extends LazyLogging {
                                annotation.defaultValue)
       }
 
-      val annotated = annotateAllMessages(inputData, annotations)
+      val annotated = annotateAllMessages(includedMMSIs, inputData, annotations)
       val annotatedToString = annotated.map(json => compact(render(json)))
 
       annotatedToString.saveAsTextFile(annotatorConfig.outputFilePath)

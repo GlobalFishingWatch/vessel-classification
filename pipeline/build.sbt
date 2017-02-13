@@ -45,7 +45,7 @@ lazy val commonSettings = Seq(
   // Main project dependencies.
   libraryDependencies ++= Seq(
     "com.opencsv" % "opencsv" % "3.7",
-    "com.spotify" % "scio-core_2.11" % "0.2.6",
+    "com.spotify" % "scio-core_2.11" % "0.2.11",
     "com.jsuereth" %% "scala-arm" % "1.4",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
     "io.github.karols" %% "units" % "0.2.1",
@@ -60,7 +60,7 @@ lazy val commonSettings = Seq(
   // Test dependencies.
   libraryDependencies ++= Seq(
     "ch.qos.logback" % "logback-classic" % "1.1.7",
-    "com.spotify" % "scio-test_2.11" % "0.2.6" % "test",
+    "com.spotify" % "scio-test_2.11" % "0.2.11" % "test",
     "org.scalactic" %% "scalactic" % "3.0.0" % "test",
     "org.scalatest" %% "scalatest" % "3.0.0" % "test"
   )

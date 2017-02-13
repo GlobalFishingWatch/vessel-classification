@@ -1,0 +1,8 @@
+inputFilePatterns:
+  - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2013-*-*/*-of-*"
+outputFilePath: "gs://world-fishing-827/data-production/classification/paper_prep/likely_fishing_annotation_2013"
+jsonAnnotations:
+  - inputFilePattern: "gs://world-fishing-827/data-production/classification/paper_prep/models/prod.fishing_range_classification/fishing-ranges-likely-fishing.json.gz"
+    timeRangeFieldName: "fishing_localisation"
+    outputFieldName: "measure_new_score"
+    defaultValue: 0.0

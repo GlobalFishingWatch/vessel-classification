@@ -56,7 +56,7 @@ class Model(abstract_models.MisconceptionModel):
 
     @property
     def min_viable_timeslice_length(self):
-        return 500
+        return 100
 
     def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
