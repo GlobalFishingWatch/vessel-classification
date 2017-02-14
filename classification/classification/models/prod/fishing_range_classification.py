@@ -132,6 +132,9 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             mmsis = tf.placeholder(tf.int32, shape=(1,))
             timestamps = tf.placeholder(tf.int32, shape=(1, self.window_max_points))
 
+            oput_mmsis = tf.identity(mmsis, name='oputmmsis')
+            oput_timestamps = tf.identity(timestamps, name='oputtimestamps')
+
             # Add inputs to net to `inputs` collections to support CloudML prediction.
             inputs = {'timestamps': timestamps.name, 'mmsis': mmsis.name, 'features': features.name}
             tf.add_to_collection('inputs', json.dumps(inputs))
@@ -139,7 +142,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             self.build_inference_net(features, timestamps, mmsis)
 
             # Add outputs to net to 'outputs' to support CloudML prediction
-            outputs = {'mmsis': mmsis.name, 'timestamps': timestamps.name,
+            outputs = {'mmsis': oput_mmsis.name, 'timestamps': oput_timestamps.name,
                       'fishing_scores': self.fishing_localisation_objective.prediction.name}
             tf.add_to_collection('outputs', json.dumps(outputs))
 
