@@ -91,10 +91,11 @@ def misconception_model(input, window_size, stride, depth, levels,
                             stride, depth, is_training)
           net = slim.flatten(net)
           net = slim.dropout(net, final_keep_prob, is_training=is_training)
-          net = slim.fully_connected(net, dense_count, normalizer_fn=slim.batch_norm, 
+          outputs = []
+          for ofunc in objective_functions:
+            onet = slim.fully_connected(net, dense_count, normalizer_fn=slim.batch_norm, 
                                                        normalizer_params={'is_training': is_training})
-          net = slim.dropout(net, final_keep_prob, is_training=is_training)
-
-          outputs = [of.build(net) for of in objective_functions]
+            onet = slim.dropout(onet, final_keep_prob, is_training=is_training)
+            outputs.append(ofunc.build(onet))
 
           return outputs
