@@ -83,8 +83,19 @@ fishing_mapping = [
 ]
 
 
-# Fix fine CM
-# Commit HTML with comment before model feature fixes
+
+# Faster than using dateutil
+def _parse(x):
+    # 2014-08-28T13:56:16+00:00
+    # TODO: fix generation to generate consistent datetimes
+    if x[-6:] == '+00:00':
+        x = x[:-6]
+    try:
+        dt = datetime.datetime.strptime(x, '%Y-%m-%dT%H:%M:%S')
+    except:
+        logging.fatal('Could not parse "%s"', x)
+        raise
+    return dt.replace(tzinfo=pytz.UTC)
 
 
 class InferenceResults(object):
@@ -368,17 +379,20 @@ def ydump_attrs(doc, results):
         ydump_table(doc, ['Start Date', 'RMS Error', 'Abs Error'],
                     [(a.date(), '{:.2f}'.format(b), '{:.2f}'.format(c)) for (a, b, c) in rows])
 
+    logging.info('    Consolidating attributes')
     consolidated = consolidate_attribute_across_dates(results)
     # true_mask = np.array([(x is not None) for x in consolidated.true_attrs])
     # infer_mask = np.array([(x is not None) for x in consolidated.inferred_attrs])
     true_mask = ~np.isnan(consolidated.true_attrs)
     infer_mask = ~np.isnan(consolidated.inferred_attrs)
 
+    logging.info('    RMS Error')
     with tag('div', klass='unbreakable'):
         line('h3', 'Overall RMS Error')
         text('{:.2f}'.format(
             RMS(consolidated.true_attrs[true_mask & infer_mask], consolidated.inferred_attrs[true_mask & infer_mask])))
 
+    logging.info('    ABS Error')
     with tag('div', klass='unbreakable'):
         line('h3', 'Overall Abs Error')
         text('{:.2f}'.format(
@@ -398,6 +412,7 @@ def ydump_attrs(doc, results):
                                 true_attrs[mask].std()))
         return results
 
+    logging.info('    Error by Label')
     with tag('div', klass='unbreakable'):
         line('h3', 'RMS Error by Label')
         ydump_table(
@@ -599,26 +614,29 @@ def consolidate_attribute_across_dates(results):
     inferred_attributes = []
     true_attributes = []
     true_labels = []
-    mmsi = sorted(set(results.mmsi))
-    # has_true = np.array([(x is not None) for x in results.true_attrs])
-    # has_label = np.array([(x is not None) for x in results.true_labels])
-    has_true = ~np.isnan(results.true_attrs)
-    has_label = results.true_labels != "Unknown"
-    for m in mmsi:
-        mask = (results.mmsi == m)
-        inferred_attributes.append(results.inferred_attrs[mask].mean())
+    indices = np.argsort(results.mmsi)
+    mmsi = np.unique(results.mmsi)
 
-        mmsi_has_true = mask & has_true
-        if mmsi_has_true.sum():
-            true_attributes.append(results.true_attrs[mmsi_has_true].mean())
+    for m in np.unique(results.mmsi):
+        start = np.searchsorted(results.mmsi, m, side='left', sorter=indices)
+        stop = np.searchsorted(results.mmsi, m, side='right', sorter=indices)
+
+        attrs  = results.inferred_attrs[indices[start:stop]]
+        inferred_attributes.append(attrs.mean())
+
+        trues = results.true_attrs[indices[start:stop]]
+        has_true = ~np.isnan(trues)
+        if has_true.sum():
+            true_attributes.append(trues[has_true].mean())
         else:
             true_attributes.append(np.nan)
 
-        mmsi_has_label = mask & has_label
-        if mmsi_has_label.sum():
-            true_labels.append(results.true_labels[mmsi_has_label][0])
+        labels = results.true_labels[indices[start:stop]]
+        has_labels = (labels != "Unknown")
+        if has_labels.sum():
+            true_labels.append(labels[has_labels][0])
         else:
-            true_labels.append("Unknown") 
+            true_labels.append("Unknown")
 
     return AttributeResults(mmsi, np.array(inferred_attributes),
                          np.array(true_attributes), np.array(true_labels), None)
@@ -672,8 +690,12 @@ def load_inferred(inference_path, extractors):
 
     """
     with gzip.GzipFile(inference_path) as f:
-        with nlj.open(f) as src:
+        with nlj.open(f, json_lib='ujson') as src:
             for row in src:
+                # Parsing dates is expensive and all extractors use dates, so parse them
+                # once up front
+                row['start_time'] = _parse(row['start_time'])
+                #dateutil.parser.parse(row['start_time'])
                 for ext in extractors:
                     ext.extract(row)
     for ext in extractors:
@@ -710,7 +732,7 @@ class ClassificationExtractor(InferenceResults):
             return
         label_scores = row[self.field]['label_scores']
         self.all_labels |= set(label_scores.keys())
-        start_date = dateutil.parser.parse(row['start_time'])
+        start_date = row['start_time']
         # TODO: write out TZINFO in inference
         if start_date.tzinfo is None:
             start_date = start_date.replace(tzinfo=pytz.utc)
@@ -761,7 +783,7 @@ class AttributeExtractor(object):
         if self.key not in row:
             return
         self.mmsi.append(mmsi)
-        self.start_dates.append(dateutil.parser.parse(row['start_time']))
+        self.start_dates.append(row['start_time'])
         self.true_attrs.append(float(self.attr_map[mmsi]) if (mmsi in self.attr_map) else np.nan)
         self.true_labels.append(self.label_map.get(mmsi, 'Unknown'))
         self.inferred_attrs.append(row[self.key]['value'])
@@ -782,29 +804,15 @@ class FishingRangeExtractor(object):
         self.ranges_by_mmsi = defaultdict(list)
         self.coverage_by_mmsi = defaultdict(list)
 
-    # Faster than using dateutil
-    @staticmethod
-    def _parse(x):
-        # 2014-08-28T13:56:16+00:00
-        # TODO: fix generation to generate consistent datetimes
-        if x[-6:] == '+00:00':
-            x = x[:-6]
-        try:
-            dt = datetime.datetime.strptime(x, '%Y-%m-%dT%H:%M:%S')
-        except:
-            logging.fatal('Could not parse "%s"', x)
-            raise
-        return dt.replace(tzinfo=pytz.UTC)
-
     def extract(self, row):
         if 'fishing_localisation' not in row:
             return
         mmsi = row['mmsi']
-        rng = [(self._parse(x['start_time']), self._parse(x['end_time']))
+        rng = [(_parse(x['start_time']), _parse(x['end_time']))
                for x in row['fishing_localisation']]
         self.ranges_by_mmsi[mmsi].extend(rng)
         self.coverage_by_mmsi[mmsi].append(
-            (self._parse(row['start_time']), self._parse(row['end_time'])))
+            (_parse(row['start_time']), _parse(row['end_time'])))
 
     def finalize(self):
         pass
@@ -1107,7 +1115,7 @@ def compute_results(args):
     if (not args.skip_class_metrics) or args.dump_labels_to:
         results['fine'] = ClassificationExtractor('Multiclass', maps['label'])
 
-    if not args.skip_length_metrics: # TODO: change to skip_attribute_metrics
+    if not args.skip_attribute_metrics: # TODO: change to skip_attribute_metrics
         ext = AttributeExtractor('length', maps['length'], maps['label'])
         results['length'] = ext
         ext = AttributeExtractor('tonnage', maps['tonnage'], maps['label'])
@@ -1160,7 +1168,7 @@ def dump_html(args, results):
                 ydump_metrics(doc, results[key])
                 doc.stag('hr')
 
-    if not args.skip_length_metrics and results['length']: # TODO: clean up
+    if not args.skip_attribute_metrics and results['length']: # TODO: clean up
         logging.info('Dumping Length')
         doc.line('h2', 'Length Inference')
         ydump_attrs(doc, results['length'])
@@ -1209,7 +1217,7 @@ if __name__ == '__main__':
     # Specify which things to dump to output file
     parser.add_argument('--skip-class-metrics', action='store_true')
     parser.add_argument('--skip-localisation-metrics', action='store_true')
-    parser.add_argument('--skip-length-metrics', action='store_true')
+    parser.add_argument('--skip-attribute-metrics', action='store_true')
     # It's convenient to be able to dump the consolidated gear types
     parser.add_argument(
         '--dump-labels-to',
