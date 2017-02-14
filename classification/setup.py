@@ -31,8 +31,6 @@ setuptools.setup(
         'common', 'classification', 'classification.data',
         'classification.models', 'classification.models.prod',
         'classification.models.dev',
-        'classification.models.dev.alex',
-        'classification.models.dev.tim'
     ],
     install_requires=[
         'NewlineJSON'
