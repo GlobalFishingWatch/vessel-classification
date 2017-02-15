@@ -19,7 +19,7 @@ from . import abstract_models
 from . import layers
 from classification import utility
 from classification.objectives import (
-    TrainNetInfo, MultiClassificationObjective, RegressionObjective)
+    TrainNetInfo, MultiClassificationObjective, LogRegressionObjective)
 import logging
 import math
 import numpy as np
@@ -72,23 +72,23 @@ class Model(abstract_models.MisconceptionModel):
 
         self.training_objectives = [
             # Weights chosen to approximately equalize runtime losses
-            RegressionObjective(
+            LogRegressionObjective(
                     'length',
                     'Vessel-length',
                     XOrNone('length'),
-                    loss_weight=0.1,
+                    loss_weight=1,
                     metrics=metrics),
-            RegressionObjective(
+            LogRegressionObjective(
                     'tonnage',
                     'Vessel-tonnage',
                     XOrNone('tonnage'),
-                    loss_weight=0.02,
+                    loss_weight=1,
                     metrics=metrics),
-                RegressionObjective(
+                LogRegressionObjective(
                     'engine_power',
                     'Vessel-engine-Power',
                     XOrNone('engine_power'),
-                    loss_weight=0.02,
+                    loss_weight=1,
                     metrics=metrics)
         ]
 

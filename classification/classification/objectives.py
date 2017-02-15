@@ -35,6 +35,7 @@ import utility
 Trainer = namedtuple("Trainer", ["loss", "update_ops"])
 TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 
+EPSILON = 1e-20
 
 def f1(recall, precision):
     rval, rop = recall
@@ -227,6 +228,113 @@ class RegressionObjective(ObjectiveBase):
         return Evaluation(self.metadata_label, self.name,
                           self._masked_mean_error, self.prediction,
                           self.metrics)
+
+# class LogRegressionObjective(RegressionObjective):
+
+
+#     def build(self, net):
+#         self.prediction = tf.exp(tf.squeeze(
+#             slim.fully_connected(
+#                 net, 1, activation_fn=None)))
+
+
+
+class LogRegressionObjective(ObjectiveBase):
+    def __init__(self,
+                 metadata_label,
+                 name,
+                 value_from_mmsi,
+                 loss_weight=1.0,
+                 metrics='all'):
+        super(LogRegressionObjective, self).__init__(metadata_label, name,
+                                                  loss_weight, metrics)
+        self.value_from_mmsi = value_from_mmsi
+
+    def build(self, net):
+        self.prediction = tf.squeeze(
+            slim.fully_connected(
+                net, 1, activation_fn=None))
+
+    def _expected_and_mask(self, mmsis):
+        def impl(mmsis_array):
+            expected = []
+            mask = []
+            for mmsi in mmsis_array:
+                e = self.value_from_mmsi(mmsi)
+                if e != None:
+                    expected.append(e)
+                    mask.append(1.0)
+                else:
+                    expected.append(0.0)
+                    mask.append(0.0)
+            return (np.array(
+                expected, dtype=np.float32), np.array(
+                    mask, dtype=np.float32))
+
+        expected, mask = tf.py_func(impl, [mmsis], [tf.float32, tf.float32])
+
+        return expected, mask
+
+
+
+    def _masked_mean_loss(self, predictions, mmsis):
+        expected, mask = self._expected_and_mask(mmsis)
+        count = tf.reduce_sum(mask)
+        diff = tf.abs(tf.mul(tf.log(expected + EPSILON) - predictions, mask))
+
+        error = tf.reduce_sum(diff) / tf.maximum(count, EPSILON)
+
+        return error
+
+    def _masked_mean_error(self, predictions, mmsis):
+        expected, mask = self._expected_and_mask(mmsis)
+        count = tf.reduce_sum(mask)
+        diff = tf.abs(tf.mul(expected - tf.exp(predictions), mask))
+
+        error = tf.reduce_sum(diff) / tf.maximum(count, EPSILON)
+
+        return error
+
+    def build_trainer(self, timestamps, mmsis):
+        raw_loss = self._masked_mean_loss(self.prediction, mmsis)
+
+        update_ops = []
+        update_ops.append(
+            tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
+
+        loss = raw_loss * self.loss_weight
+
+        return Trainer(loss, update_ops)
+
+    def build_evaluation(self, timestamps, mmsis):
+        class Evaluation(EvaluationBase):
+            def __init__(self, metadata_label, name, masked_mean_loss, masked_mean_error, 
+                         prediction, metrics):
+                super(Evaluation, self).__init__(metadata_label, name,
+                                                 prediction, timestamps, mmsis,
+                                                 metrics)
+                self.masked_mean_loss = masked_mean_loss
+                self.masked_mean_error = masked_mean_error
+                self.mmsis = mmsis
+
+            def build_test_metrics(self):
+                loss = self.masked_mean_loss(self.prediction, self.mmsis)
+                error = self.masked_mean_error(self.prediction, self.mmsis)
+
+                return metrics.aggregate_metric_map({
+                    '%s/Test-loss' % self.name:
+                    metrics.streaming_mean(loss),
+                    '%s/Test-error' % self.name:
+                    metrics.streaming_mean(error)
+                })
+
+            def build_json_results(self, prediction, timestamps):
+                return {'name': self.name, 'value': np.exp(float(prediction))}
+
+        return Evaluation(self.metadata_label, self.name, self._masked_mean_loss,
+                          self._masked_mean_error, self.prediction,
+                          self.metrics)
+
 
 
 class MultiClassificationObjective(ObjectiveBase):
