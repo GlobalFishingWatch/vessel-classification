@@ -9,7 +9,7 @@ At present there are three different pipelines, which have the following functio
 
 * **anchorages** -- find anchorage locations
 
-* **aisAnnotator*** -- attach results from neural net inference to existing AIS data
+* **aisAnnotator*** -- attach results from neural net/encounters inference to existing AIS data
 
 
 ## Summary of Requirements
@@ -29,7 +29,7 @@ repl, which can be entered using by running the `sbt` command in the
 `pipeline` directory. Some useful SBT commands:
 
 * To list projects: `projects`
-* To select a project `project NAME`
+* To select a project `project <name>`
 * To compile: `compile`.
 * To run: `run`.
 * To test: `test`.
@@ -45,24 +45,29 @@ build your machine may take some time to download all the required libraries.
 Jobs are started by invoking `sbt`, selecting the correct project, then invoking
 run with the correct parameters. For example:
 
+```
      $ sbt
      > project PROJECT_NAME
      > run ...
-
+```
 
 ### Examples
 
-**Features**
+#### Features
 
+```
     > project features
     > run run  --env=dev --zone=us-central1-f --experiments=use_mem_shuffle --workerHarnessContainerImage=dataflow.gcr.io/v1beta3/java-batch:1.8.0-mm --maxNumWorkers=200 --job-name=encounters --generate-model-features=true --generate-encounters=false --anchorages-root-path=gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output --minRequiredPositions=100
+```
 
-**Encounters**
+#### Encounters
 
+```
     > project features
     > run  --env=dev --zone=us-central1-f --experiments=use_mem_shuffle --workerHarnessContainerImage=dataflow.gcr.io/v1beta3/java-batch:1.8.0-mm --maxNumWorkers=200 --job-name=encounters --generate-model-features=false --generate-encounters=true --anchorages-root-path=gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output --minRequiredPositions=3 --data-years=2016
+```
 
-**Anchorages**
+#### Anchorages
 
     > project anchorages
   
@@ -70,5 +75,7 @@ run with the correct parameters. For example:
 
 **Annotation**
 
+```
     > project aisAnnotator
     > run --job-config=ais-annotator/config/2015_annotation.yaml --env=dev --job-name=2015_run --maxNumWorkers=100 --diskSizeGb=100 --only-fishing --workerMachineType=n1-highmem-4
+```
