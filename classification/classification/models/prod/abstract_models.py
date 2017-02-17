@@ -69,6 +69,10 @@ class MisconceptionWithFishingRangesModel(MisconceptionModel):
                         net, self.window_size, self.stride, self.feature_depth,
                         is_training)
 
+            # TODO: We currently don't use the last year for fishing classification
+            # Since we don't use this for vessel classification currently, perhaps
+            # we should rememdy that...
+
             net = slim.flatten(net)
             net = slim.dropout(net, 0.5, is_training=is_training)
             net = slim.fully_connected(net, 100)

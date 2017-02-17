@@ -68,7 +68,7 @@ def misconception_with_bypass(input,
 
 
 def misconception_model(input, window_size, stride, depth, levels,
-                        objective_functions, is_training, dense_count=100, final_keep_prob=0.5):
+                        objective_functions, is_training, dense_count=100, dense_layers=1, final_keep_prob=0.5):
     """ A misconception tower.
 
   Args:
@@ -93,8 +93,12 @@ def misconception_model(input, window_size, stride, depth, levels,
           net = slim.dropout(net, final_keep_prob, is_training=is_training)
           outputs = []
           for ofunc in objective_functions:
-            onet = slim.fully_connected(net, dense_count, normalizer_fn=slim.batch_norm, 
-                                                       normalizer_params={'is_training': is_training})
+            onet = net
+            for _ in range(dense_layers - 1):
+              onet = slim.fully_connected(onet, dense_count, normalizer_fn=slim.batch_norm, 
+                                                         normalizer_params={'is_training': is_training})
+            # Don't use batch norm on last layer, just use dropout.
+            onet = slim.fully_connected(onet, dense_count)
             onet = slim.dropout(onet, final_keep_prob, is_training=is_training)
             outputs.append(ofunc.build(onet))
 

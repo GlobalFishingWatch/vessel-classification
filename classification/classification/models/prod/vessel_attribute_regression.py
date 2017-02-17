@@ -98,7 +98,7 @@ class Model(abstract_models.MisconceptionModel):
 
         layers.misconception_model(features, self.window_size, self.stride,
                                    self.feature_depth, self.levels,
-                                   self.training_objectives, True, dense_count=1024)
+                                   self.training_objectives, True, dense_count=1024, dense_layers=2)
 
         trainers = []
         for i in range(len(self.training_objectives)):
@@ -121,7 +121,7 @@ class Model(abstract_models.MisconceptionModel):
 
         layers.misconception_model(features, self.window_size, self.stride,
                                    self.feature_depth, self.levels,
-                                   self.training_objectives, False, dense_count=1024)
+                                   self.training_objectives, False, dense_count=1024, dense_layers=2)
 
         evaluations = []
         for i in range(len(self.training_objectives)):
