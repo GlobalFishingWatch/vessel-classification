@@ -9,7 +9,9 @@
 
    For example, to run vessel classification in the dev environment with the name `test`:
 
-        `./deploy_cloudml.py --model_name prod.vessel_classification --env dev --job_name test`
+```
+        ./deploy_cloudml.py --model_name prod.vessel_classification --env dev --job_name test
+```
 
    **IMPORTANT**: Even though there is a maximum number of training steps specified, the CloudML
    process does not shut down reliably.  You need to periodically check on the process and kill it
@@ -21,10 +23,11 @@
 - *running training locally* -- this is primarily for testing as it will be quite slow unless you
   have a heavy duty machine:
 
+```
         python -m classification.run_training prod.vessel_classification <...>
+```
 
-
-- `compute_metrics.py` -- evaluate restults and dump vessel lists. Use `--help` to see options
+- `compute_metrics.py` -- evaluate results and dump vessel lists. Use `--help` to see options
 
 
 - *running inference* -- Unless you have local access to a heavy duty machine, you should
@@ -33,13 +36,16 @@
 
    - Copy a model checkpoint locally:
 
+```
       gsutil cp GCS_PATH_TO_CHECKPOINT  ./model.ckpt
+```
 
    - Run inference job:
 
     * *Vessel Classification*. This command only infers result for only the test data 
       (for evaluation purposes), and infers a seperarate classification every 6 months:
 
+```
        python -m classification.run_inference prod.vessel_classification \
               --root_feature_path GCS_PATH_TO_FEATURES \
               --inference_parallelism 32 \
@@ -50,9 +56,11 @@
               --metadata_file training_classes.csv \
               --fishing_ranges_file combined_fishing_ranges.csv \
               --interval_months 6
+```
 
    - *Fishing localisation*: This infers all fishing at all time points (no `--dataset_split` specification)
 
+```
          python -m classification.run_inference prod.fishing_range_classification \
                 --root_feature_path GCS_PATH_TO_FEATURES \
                 --inference_parallelism 32 \
@@ -61,7 +69,7 @@
                 --model_checkpoint_path ./model.ckpt \
                 --metadata_file training_classes.csv \
                 --fishing_ranges_file combined_fishing_ranges.csv
-
+```
 
 
 ## Local Environment Setup
@@ -78,26 +86,34 @@
       - Need at least 8 cores; here is the command to create a 16 core machine named 'nnet-inference'
         in the 'us-east1-d' zone:
 
+```
         gcloud compute instances create nnet-inference --zone=us-east1-d --machine-type=n1-standard-16
+```
 
   - SSH into the machine:
 
+```
         gcloud compute ssh nnet-inference --zone=us-east1-d
+```
 
   - Install and activate `tmux`:
 
+```
         sudo apt-get -y update
         sudo apt-get install -y tmux
         tmux
+```
 
   - Install other dependencies:
 
+```
         sudo apt-get -y install python python-pip python-dev build-essential git virtualenv
         sudo easy_install pip
         sudo pip install --upgrade pip
         sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.12.1-cp27-none-linux_x86_64.whl
         sudo pip install google-api-python-client pyyaml pytz newlinejson python-dateutil yattag
         git clone https://github.com/GlobalFishingWatch/vessel-classification-pipeline.git
+```
 
 ## Adding new models
 
