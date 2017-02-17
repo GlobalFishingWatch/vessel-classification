@@ -2,7 +2,7 @@
 
 [Global Fishing Watch](http://globalfishingwatch.org) is a partnership between [Skytruth](https://skytruth.org), [Google](https://environment.google/projects/fishing-watch/) and [Oceana](http://oceana.org) to map all of the trackable commercial fishing activity in the world, in near-real time, and make it accessible to researchers, regulators, decision-makers, and the public.
 
-This repository contains code to process [AIS](https://en.wikipedia.org/wiki/Automatic_identification_system) data to produce features and to build Tensorflow models to classify vessels and identify fishing behaviour.
+This repository contains code to process [AIS](https://en.wikipedia.org/wiki/Automatic_identification_system) data to produce features and to build [Tensorflow](https://www.tensorflow.org/) models to classify vessels and identify fishing behaviour.
 
 (This is not an official Google Product).
 
@@ -23,7 +23,7 @@ Use AIS, and possibly VMS data in the future, to extract various types of inform
   - Port locations
 
 
-The project consists of two parts, a Scala pipleline that ingests and processes AIS data and convolutional
+The project consists of two parts, a [Scala](https://www.scala-lang.org/) [Cloud Dataflow](https://cloud.google.com/dataflow/) pipeline that ingests and processes AIS data and convolutional
 neural networks (CNN) that infers vessel features.
 
 ### Scala Pipeline
@@ -62,8 +62,8 @@ More details on the pipeline and instructions for running it are located in
 
 ### Neural Networks
 
-We have three CNN in production, as well as several experimental nets. One net
-predict vessel class (`longliner`, `cargo`, `sailing`, etc), the second predicts
+We have three CNNs in production, as well as several experimental nets. One net
+predicts vessel class (`longliner`, `cargo`, `sailing`, etc), the second predicts
 vessel length, while the third predicts whether a vessel is fishing or not at
 a given time point.
 
@@ -77,8 +77,11 @@ The nets share a similar structure, consisting of a large number (currently 9)
 of 1-D convolutional layers, followed by a single dense layer. The net for 
 fishing prediction is somewhat more complicated since it must predict fishing at
 each point. To do this all of the layers of the net are combined, with upscaling
-of the upper layers, to produce. These design of these nets incorporate ideas are borrowed
-from the ResNets and Inception nets among other places but adapted for the 1D environment.
+of the upper layers, then combined to generate per-point features taking input from
+multiple levels of the network. These design of these nets incorporate ideas borrowed
+from the [ResNet](https://arxiv.org/abs/1512.03385) and
+[Inception](https://www.robots.ox.ac.uk/~vgg/rg/papers/reinception.pdf) nets
+(among others) but adapted for the 1D environment.
 
 The code associated with the neural networks is located in
 `vessel-classification/classification`. The models themselves are located
@@ -91,9 +94,9 @@ on the neural network code and instructions for running it is located in
 
 The production classification pipeline has multiple stages, computing: feature generation, port
 inference, encounters, model training, vessel type inference, fishing locality inference, accuracy
-evaluation. This is implemented in several stages, each requiring outputs to GCS. In addition we
-run experiments of our own to improve or develop the pipeline further. We need the data to be laid
-out systematically on GCS. Currently we use the following structure:
+evaluation. This is implemented in several stages, each requiring outputs to Google Cloud Storage
+(GCS). In addition we run experiments of our own to improve or develop the pipeline further. We need
+the data to be laid out systematically on GCS. Currently we use the following structure:
 
 * `world-fishing-827/data-production` (prod)
   * `classification`
@@ -104,11 +107,10 @@ out systematically on GCS. Currently we use the following structure:
       * `inference` (for the output from inference + the eval framework).
 * `world-fishing-827-dev-ttl30d/data-production` (dev)
     * `classification`
-      * `alex`
+      * `<user name>`
         * `<job name>`
           * A mirror of the files you see under `production`.
           * Plus a new directory `models`
-      * `tim`
       * etc...
 
 Here, we have a production pipeline running under (probably) cron, generating new results daily to
@@ -117,15 +119,11 @@ We have tight control over the code that's pushed to run on production (probably
 registered on GCR).
 
 We then have a dev directory (`world-fishing-827-dev-ttl30d/data-production`). Anything we're trying
-that hasn't yet hit production will end up in a `dev/<username>` directory, mirroring the
+that hasn't yet hit production will end up in a `dev/<user name>` directory, mirroring the
 directories in prod but isolated from prod and from other developer's experiments. This directory
 has a TTL set on all contents such that anything that is older than 30 days will be automatically
 deleted (to keep our GCS costs low and prevent infinite accumulation of experiments).
 
-I further propose we have also have a subdirectory under `dev`: `models` (or some other name) where
-we experiment with and train new models. Given our models are quite small, I would be inclined to
-package them in the Docker images we deploy rather than store them on GCS. We could commit the
-latest model files to git.
 
 ### Common parameters
 
