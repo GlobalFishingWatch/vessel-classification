@@ -2,9 +2,9 @@
 
 ## Running Stuff
 
--  `deploy_cloud_ml.py` -- launch a training run on cloudml. Use `--help` to see options
+-  `deploy_cloudml.py` -- launch a training run on cloudml. Use `--help` to see options
 
-   If not running in the SkyTruth/GFW environment, you will need to edit `deploy_cloud_ml.cfg`
+   If not running in the SkyTruth/GFW environment, you will need to edit `deploy_cloudml.yaml`
    to set the gcs paths correctly.
 
    For example, to run vessel classification in the dev environment with the name `test`:
