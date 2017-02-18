@@ -34,7 +34,7 @@ class Model(abstract_models.MisconceptionModel):
 
     window_size = 3
     stride = 2
-    feature_depth = 80
+    feature_depth = 128
     levels = 9
 
     initial_learning_rate = 1e-4
