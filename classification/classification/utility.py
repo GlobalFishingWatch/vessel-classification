@@ -336,30 +336,40 @@ def np_array_random_fixed_time_extract(random_state, input_series,
     """
     assert max_time_delta != 0, 'max_time_delta must be non zero for time based windows'
 
-    input_length = len(input_series)
+    # We want to include min_timeslice_size points in our data if we can, so we try picking
+    # slices `TRIALS` time. 
+    TRIALS = 128
 
-    start_time = input_series[0][0]
-    end_time = input_series[-1][0]
-    max_time_offset = max((end_time - start_time) - max_time_delta, 0)
-    time_offset = random_state.randint(0, max_time_offset + 1)
+    for _ in range (TRIALS):
+        input_length = len(input_series)
 
-    start_index = np.searchsorted(
-        input_series[:, 0], start_time + time_offset, side='left')
+        start_time = input_series[0][0]
+        end_time = input_series[-1][0]
+        max_time_offset = max((end_time - start_time) - max_time_delta, 0)
+        time_offset = random_state.randint(0, max_time_offset + 1)
 
-    # Should not start closer than min_timeslice_size points from the end lest the 
-    # series have too few points to be meaningful.
-    start_index = min(start_index, max(0, input_length - min_timeslice_size))
-    crop_end_time = min(input_series[start_index][0] + max_time_delta,
-                        end_time)
+        start_index = np.searchsorted(
+            input_series[:, 0], start_time + time_offset, side='left')
 
-    end_index = min(start_index + output_length,
-                    np.searchsorted(
-                        input_series[:, 0], crop_end_time, side='right'))
+        # Should not start closer than min_timeslice_size points from the end lest the 
+        # series have too few points to be meaningful.
+        start_index = min(start_index, max(0, input_length - min_timeslice_size))
+        crop_end_time = min(input_series[start_index][0] + max_time_delta,
+                            end_time)
 
-    cropped = input_series[start_index:end_index]
-    output_series = np_pad_repeat_slice(cropped, output_length)
+        end_index = min(start_index + output_length,
+                        np.searchsorted(
+                            input_series[:, 0], crop_end_time, side='right'))
 
-    return output_series
+        cropped = input_series[start_index:end_index]
+
+        if len(cropped) >= min_timeslice_size:
+            # Use this try
+            break
+
+        # Otherwise try again unless we are out of trials.
+
+    return np_pad_repeat_slice(cropped, output_length)
 
 
 def np_array_extract_features(random_state, input, max_time_delta, window_size,
