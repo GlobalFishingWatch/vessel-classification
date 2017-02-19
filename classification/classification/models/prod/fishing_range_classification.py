@@ -108,3 +108,50 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         ]
 
         return evaluations
+
+
+    # TODO(bitsofbits): there is an implicit assumption that a given model
+    #  will only call one of build_inference_net or build_training_net, and only once.
+    #  We should enforce that or get rid of the restriction (will require some restructuring)
+
+    def export(self, feature_size, last_checkpoint, output_dir):
+        """Builds a prediction graph and xports the model.
+        Args:
+          last_checkpoint: Path to the latest checkpoint file from training.
+          output_dir: Path to the folder to be used to output the model.
+        """
+        logging.info('Exporting prediction graph to %s', output_dir)
+        with tf.Session(graph=tf.Graph()) as sess:
+            # Build and save prediction meta graph and trained variable values.
+            # TODO create placeholders for mmsi, timestamps, features,
+            # TODO (amy): I think we could reshape things here if you want to come in with different shapes
+            # (for instance single value for MMSI)
+            # or (512x12 shape for features)
+
+            features = tf.placeholder(tf.float32, shape=(1, 1, self.window_max_points, feature_size))
+            mmsis = tf.placeholder(tf.int32, shape=(1,))
+            timestamps = tf.placeholder(tf.int32, shape=(1, self.window_max_points))
+
+            oput_mmsis = tf.identity(mmsis, name='oputmmsis')
+            oput_timestamps = tf.identity(timestamps, name='oputtimestamps')
+
+            # Add inputs to net to `inputs` collections to support CloudML prediction.
+            inputs = {'timestamps': timestamps.name, 'mmsis': mmsis.name, 'features': features.name}
+            tf.add_to_collection('inputs', json.dumps(inputs))
+
+            self.build_inference_net(features, timestamps, mmsis)
+
+            # Add outputs to net to 'outputs' to support CloudML prediction
+            outputs = {'mmsis': oput_mmsis.name, 'timestamps': oput_timestamps.name,
+                      'fishing_scores': self.fishing_localisation_objective.prediction.name}
+            tf.add_to_collection('outputs', json.dumps(outputs))
+
+            init_op = tf.global_variables_initializer()
+            sess.run(init_op)
+            saver = tf.train.Saver()
+            saver.restore(sess, last_checkpoint)
+            saver.export_meta_graph(filename=os.path.join(output_dir, 'export.meta'))
+            saver.save(
+              sess, os.path.join(output_dir, 'export'), write_meta_graph=False)
+
+
