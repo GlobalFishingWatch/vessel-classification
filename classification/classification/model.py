@@ -49,7 +49,7 @@ class ModelBase(object):
 
     @property
     def min_viable_timeslice_length(self):
-        return self.window_max_points / 4
+        return 500
 
     @property
     def max_replication_factor(self):
