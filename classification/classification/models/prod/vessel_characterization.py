@@ -76,19 +76,19 @@ class Model(abstract_models.MisconceptionModel):
                     'length',
                     'Vessel-length',
                     XOrNone('length'),
-                    loss_weight=1,
+                    loss_weight=0.1,
                     metrics=metrics),
             LogRegressionObjective(
                     'tonnage',
                     'Vessel-tonnage',
                     XOrNone('tonnage'),
-                    loss_weight=1,
+                    loss_weight=0.1,
                     metrics=metrics),
             LogRegressionObjective(
                     'engine_power',
                     'Vessel-engine-Power',
                     XOrNone('engine_power'),
-                    loss_weight=1,
+                    loss_weight=0.1,
                     metrics=metrics),
             MultiClassificationObjective(
                     "Multiclass",
