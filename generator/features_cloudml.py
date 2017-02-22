@@ -42,6 +42,10 @@ def get_prediction(ml_service, project, model_name,
 	mmsis, features, timestamps):
   request_dict = make_request_json(mmsis, features, timestamps)
   body = {'instances': [request_dict]}
+  with open("instances.json", 'w') as f:
+  	idict = json.dumps(body)
+  	f.write(idict)
+  	f.write('\n')
 
   # This request will use the default model version.
   parent = 'projects/{}/models/{}'.format(project, model_name)

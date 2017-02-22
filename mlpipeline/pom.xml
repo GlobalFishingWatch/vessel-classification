@@ -255,6 +255,14 @@
       </exclusions>
     </dependency>
 
+    <!-- https://mvnrepository.com/artifact/com.google.apis/google-api-services-discovery -->
+    <dependency>
+        <groupId>com.google.apis</groupId>
+        <artifactId>google-api-services-discovery</artifactId>
+        <version>v1-rev55-1.20.0</version>
+    </dependency>
+
+
     <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-bigquery</artifactId>

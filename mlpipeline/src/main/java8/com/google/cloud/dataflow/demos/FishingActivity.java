@@ -20,6 +20,30 @@ import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableReference;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
+
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.FileContent;
+import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpContent;
+// import com.google.api.client.http.json.JsonHttpContent;
+import com.google.api.client.http.ByteArrayContent;
+import com.google.api.client.http.HttpRequest;
+import com.google.api.client.http.HttpRequestFactory;
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.http.UriTemplate;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.services.discovery.Discovery;
+import com.google.api.services.discovery.Discovery.Builder;
+import com.google.api.services.discovery.Discovery.Apis.GetRest;
+import com.google.api.services.discovery.model.RestDescription;
+import com.google.api.services.discovery.model.RestMethod;
+import com.google.api.services.discovery.model.JsonSchema;
+
+import com.google.api.services.ml.v1beta1.CloudMachineLearningScopes;
+
 import com.google.cloud.dataflow.examples.common.DataflowExampleOptions;
 import com.google.cloud.dataflow.examples.common.DataflowExampleUtils;
 import com.google.cloud.dataflow.examples.common.ExampleBigQueryTableOptions;
@@ -76,6 +100,7 @@ import java.util.TimeZone;
 
 import org.apache.avro.reflect.Nullable;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping;
@@ -115,32 +140,98 @@ public class FishingActivity {
   static final Duration FIVE_MINUTES = Duration.standardMinutes(5);
   static final Duration TEN_MINUTES = Duration.standardMinutes(10);
 
+
+  // ====various incredibly verbose pojo definitions======
+  // Not least b/c an object is apparently needed every time we want to generate/read json.
+
+
   @DefaultCoder(AvroCoder.class)
   @JsonIgnoreProperties(ignoreUnknown = true)
-  static class PredictionResults {
-    @Nullable String mmsi;
+  static class PredictionRequestInstance {
+    @Nullable Integer mmsis;
     @Nullable List<Long> timestamps;
-    @Nullable List<Double> predictedScores;
+    @Nullable List<List<List<Double>>> features; // sigh
 
-    public PredictionResults() {}
+    public PredictionRequestInstance() {}
 
-    public PredictionResults(String mmsi, List<Double> predScores,
-      List<Long> timestamps) {
-      this.mmsi = mmsi;
-      this.predictedScores = predScores;
+    public PredictionRequestInstance(String mmsi, List<List<List<Double>>> features,
+      List<Long> timestamps) throws NumberFormatException {
+      this.mmsis = Integer.parseInt(mmsi);
+      this.features = features;
       this.timestamps = timestamps;
     }
 
     public List<Long> getTimestamps() {
       return this.timestamps;
     }
-    public List<Double> getPredictedScores() {
-      return predictedScores;
+    public List<List<List<Double>>> getFeatures() {
+      return features;
     }
-    public String getMmsi() {
-      return this.mmsi;
+    public Integer getMmsis() {
+      return this.mmsis;
     }
 
+  }
+
+  @DefaultCoder(AvroCoder.class)
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  static class PredictionRequest {
+    @Nullable List<PredictionRequestInstance> instances;
+
+    public PredictionRequest() {}
+
+    public PredictionRequest(List<PredictionRequestInstance> instances) {
+      this.instances = instances;
+    }
+
+    public List<PredictionRequestInstance> getInstances() {
+      return this.instances;
+    }
+  }
+
+  @DefaultCoder(AvroCoder.class)
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  static class PredictionResults {
+    @Nullable List<Prediction> predictions;
+
+    public PredictionResults() {}
+
+    public PredictionResults(List<Prediction> predictions) {
+      this.predictions = predictions;
+    }
+
+    public List<Prediction> getPredictions() {
+      return predictions;
+    }
+  }
+
+
+  @DefaultCoder(AvroCoder.class)
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  static class Prediction {
+    @Nullable Integer mmsis;
+    @Nullable List<Long> timestamps;
+    @JsonProperty("fishing_scores")
+    @Nullable List<Double> fishingScores;
+
+    public Prediction() {}
+
+    public Prediction(Integer mmsis, List<Double> fishingScores,
+      List<Long> timestamps) {
+      this.mmsis = mmsis;
+      this.fishingScores = fishingScores;
+      this.timestamps = timestamps;
+    }
+
+    public List<Long> getTimestamps() {
+      return this.timestamps;
+    }
+    public List<Double> getFishingScores() {
+      return fishingScores;
+    }
+    public Integer getMmsis() {
+      return this.mmsis;
+    }
   }
 
   /**
@@ -222,6 +313,8 @@ public class FishingActivity {
 
   }
 
+
+  // =============================
 
   /**
    * Options supported by {@link FishingActivity}.
@@ -429,24 +522,94 @@ public class FishingActivity {
 
     private static final Logger LOG = LoggerFactory.getLogger(CallMLAPI.class);
 
-    public PredictionResults fakeMLCallResults(String mmsi,
+    public PredictionResults makeMLCall(String mmsi,
       List<List<Double>> trimmedFeatures, List<Long> timestamps) {
 
-      List<Double> predictedScores = new ArrayList<Double>(timestamps.size());
-      for (int i = 0; i < timestamps.size(); i++) {
-        predictedScores.add(i, Math.random());
+      List<List<List<Double>>> featuresList = new ArrayList<List<List<Double>>>();
+      featuresList.add(trimmedFeatures);
+      PredictionRequestInstance pri = new PredictionRequestInstance(mmsi, featuresList, timestamps);
+      List<PredictionRequestInstance> priList = new ArrayList<PredictionRequestInstance>();
+      priList.add(pri);
+      PredictionRequest pr = new PredictionRequest(priList);
+      ObjectMapper mapper = new ObjectMapper();
+      try {
+        String requestJson = mapper.writeValueAsString(pr);
+        LOG.info("Got actual json for ml request: " + requestJson);
+        // Now, try making the actual prediction call...
+        try {
+          //...
+          HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+          JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
+          Discovery discovery = new Discovery.Builder(httpTransport, jsonFactory, null)
+                                             .build();
+
+          RestDescription api = discovery.apis().getRest("ml", "v1beta1").execute();
+          RestMethod method = api.getResources().get("projects").getMethods().get("predict");
+
+          JsonSchema param = new JsonSchema();
+          String projectId = "aju-vtests2";
+          String modelId = "gfw";
+          String versionId = "v2";
+          param.set("name", String.format(
+              "projects/%s/models/%s/versions/%s", projectId, modelId, versionId));
+
+          GenericUrl url = new GenericUrl(UriTemplate.expand(
+              api.getBaseUrl() + method.getPath(), param, true));
+
+          String contentType = "application/json";
+          // HttpContent content = new JsonHttpContent(new JacksonFactory(), pr);
+          HttpContent content = ByteArrayContent.fromString(contentType, requestJson);
+
+          GoogleCredential credential = GoogleCredential.getApplicationDefault()
+            .createScoped(CloudMachineLearningScopes.all());
+          HttpRequestFactory requestFactory = httpTransport.createRequestFactory(credential);
+          HttpRequest request = requestFactory.buildRequest(method.getHttpMethod(), url, content);
+
+          String response = request.execute().parseAsString();
+          LOG.warn("got call response: " + response);
+          PredictionResults pInfo = mapper.readValue(response, PredictionResults.class);
+          return pInfo;
+        } catch (Exception e2) {
+          StringWriter sw = new StringWriter();
+          e2.printStackTrace(new PrintWriter(sw));
+          String exceptionAsString = sw.toString();
+          LOG.warn("Error: " + exceptionAsString);
+        }
+      } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+        // ugh ugh ughhh
+        StringWriter sw = new StringWriter();
+        e.printStackTrace(new PrintWriter(sw));
+        String exceptionAsString = sw.toString();
+        LOG.warn("Error: " + exceptionAsString);
       }
-      PredictionResults predResults = new PredictionResults(mmsi, predictedScores, timestamps);
+      return null;
+    }
+
+    public PredictionResults getMLCallResults(String mmsi,
+      List<List<Double>> trimmedFeatures, List<Long> timestamps) {
+
+      PredictionResults predResults = makeMLCall(mmsi, trimmedFeatures, timestamps);
+
+      // the fake version...
+      // List<Double> fishingScores = new ArrayList<Double>(timestamps.size());
+      // for (int i = 0; i < timestamps.size(); i++) {
+      //   fishingScores.add(i, Math.random());
+      // }
       return predResults;
     }
 
-    public void processPredictedScores(ProcessContext c,
+    public void processfishingScores(ProcessContext c,
       PredictionResults pr, ShipInfo si) {
 
       // get s2 cell id for each score > thresh..?
       Double scoreThreshold = 0.5;
-      List<Long> timestamps = pr.getTimestamps();
-      List<Double> scores = pr.getPredictedScores();
+      if (pr == null) {
+        LOG.warn("Error: null prediction results");
+        return;
+      }
+      Prediction p = pr.getPredictions().get(0);
+      List<Long> timestamps = p.getTimestamps();
+      List<Double> scores = p.getFishingScores();
       try {
         if (timestamps.size() != scores.size()) {
           LOG.warn("timestamps and scores lists not the same size: " + timestamps.size() +
@@ -464,7 +627,7 @@ public class FishingActivity {
           }
           else {
             if (score >= scoreThreshold) {
-              c.output(KV.of(s2CellId, KV.of(pr.getMmsi(), KV.of(ts, score))));
+              c.output(KV.of(s2CellId, KV.of(p.getMmsis().toString(), KV.of(ts, score))));
             }
           }
         }
@@ -505,8 +668,8 @@ public class FishingActivity {
           trimmedFeatures = trimmedFeatures.subList(0, seqLength);
           List<Long> tsList = si.getTimestampList().subList(0, seqLength);
           // (pretend to) make the prediction request.
-          PredictionResults predResults = fakeMLCallResults(mmsi, trimmedFeatures, tsList);
-          processPredictedScores(c, predResults, si);
+          PredictionResults predResults = getMLCallResults(mmsi, trimmedFeatures, tsList);
+          processfishingScores(c, predResults, si);
         }
       } catch (Exception e) {
         e.printStackTrace();
