@@ -30,6 +30,8 @@ import com.google.api.client.http.HttpContent;
 // import com.google.api.client.http.json.JsonHttpContent;
 import com.google.api.client.http.ByteArrayContent;
 import com.google.api.client.http.HttpRequest;
+import com.google.api.client.http.HttpResponse;
+import com.google.api.client.http.HttpResponseException;
 import com.google.api.client.http.HttpRequestFactory;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.UriTemplate;
@@ -565,10 +567,28 @@ public class FishingActivity {
           HttpRequestFactory requestFactory = httpTransport.createRequestFactory(credential);
           HttpRequest request = requestFactory.buildRequest(method.getHttpMethod(), url, content);
 
-          String response = request.execute().parseAsString();
-          LOG.warn("got call response: " + response);
-          PredictionResults pInfo = mapper.readValue(response, PredictionResults.class);
-          return pInfo;
+          int numRetries = 30; // TODO - how many?
+          int retryCount = 0;
+          int retryInterval = 1;
+          while (retryCount < numRetries) {
+            try {
+              HttpResponse resp = request.execute();
+              int status = resp.getStatusCode();
+              String response = resp.parseAsString();
+              LOG.warn("got status " + status + " and call response: " + response);
+              PredictionResults pInfo = mapper.readValue(response, PredictionResults.class);
+              return pInfo;
+            } catch (HttpResponseException e3) {
+              StringWriter sw = new StringWriter();
+              e3.printStackTrace(new PrintWriter(sw));
+              String exceptionAsString = sw.toString();
+              LOG.warn("Sleeping " + retryInterval + "retry count: " + retryCount +
+                ": ML Call Error: " + exceptionAsString);
+              Thread.sleep(retryInterval);
+              retryInterval*=2;
+              retryCount += 1;
+            }
+          }
         } catch (Exception e2) {
           StringWriter sw = new StringWriter();
           e2.printStackTrace(new PrintWriter(sw));
