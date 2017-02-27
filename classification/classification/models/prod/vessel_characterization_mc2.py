@@ -33,10 +33,10 @@ import tensorflow.contrib.metrics as metrics
 class Model(abstract_models.MisconceptionModel):
 
     window_size = 3
-    feature_depth = 64
-    levels = 8
+    feature_depth = 128
+    levels = 9
 
-    initial_learning_rate = 1e-4
+    initial_learning_rate = 0.5e-4
     learning_decay_rate = 0.5
     decay_examples = 40000
 
@@ -47,7 +47,7 @@ class Model(abstract_models.MisconceptionModel):
     @property
     def window_max_points(self):
         nominal_max_points = (self.max_window_duration_seconds / (5 * 60)) / 4
-        layer_reductions = 2 ** self.levels
+        layer_reductions = 2 * 2 ** self.levels
         final_size = int(round(nominal_max_points / layer_reductions))
         max_points = final_size * layer_reductions
         logging.info('Using %s points', max_points)
@@ -98,9 +98,11 @@ class Model(abstract_models.MisconceptionModel):
 
 
     def _build_model(self, features, timestamps, mmsis, is_training):
-        return layers.xception_model3(features, self.window_size,
+        outputs, _ = layers.misconception_model2(features, self.window_size,
                                    self.feature_depth, self.levels,
-                                   self.training_objectives, is_training, dense_count=1024, dense_layers=2)
+                                   self.training_objectives, is_training,
+                                   dense_count=1024)
+        return outputs
 
     def build_training_net(self, features, timestamps, mmsis):
         self._build_model(features, timestamps, mmsis, is_training=True)

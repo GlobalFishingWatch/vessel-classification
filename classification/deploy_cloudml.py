@@ -55,7 +55,7 @@ def launch(environment, model_name, job_name, config_file):
 
         # It seems that we currently need to pass args as both 'args' in the
         # config file and as args after the '--'?!
-        subprocess.check_call([
+        args = [
             'gcloud',
             'beta',
             'ml',
@@ -75,7 +75,11 @@ def launch(environment, model_name, job_name, config_file):
             config['region'],
             '--'
         ] + tf_config['trainingInput']['args']
-        )
+
+        print('Executing:\n', ' '.join(args))
+        print("Config:\n", tf_config_txt)
+
+        subprocess.check_call(args)
 
     return job_id
 
