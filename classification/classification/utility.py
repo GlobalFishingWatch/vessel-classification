@@ -198,7 +198,13 @@ def single_feature_file_reader(filename_queue, num_features):
   """
 
     reader = tf.TFRecordReader()
-    _, serialized_example = reader.read(filename_queue)
+    while True:
+        try:
+            _, serialized_example = reader.read(filename_queue)
+        except tf.errors.DataLossError:
+            warning.warn('ignoring DataLossError in single_feature_file_reader')
+        else:
+            break
 
     # The serialized example is converted back to actual values.
     context_features, sequence_features = tf.parse_single_sequence_example(
