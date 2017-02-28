@@ -201,8 +201,8 @@ def single_feature_file_reader(filename_queue, num_features):
     while True:
         try:
             _, serialized_example = reader.read(filename_queue)
-        except tf.errors.DataLossError:
-            warning.warn('ignoring DataLossError in single_feature_file_reader')
+        except tf.errors.DataLossError as err:
+            warning.warn('ignoring (%s) in single_feature_file_reader', str(err))
         else:
             break
 
