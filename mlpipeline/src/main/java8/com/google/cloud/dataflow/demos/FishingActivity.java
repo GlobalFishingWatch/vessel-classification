@@ -329,12 +329,12 @@ public class FishingActivity {
     void setPubsubTopic(String value);
 
     @Description("Numeric value of window duration, in hours")
-    @Default.Integer(121)
+    @Default.Integer(97)
     Integer getWindowDuration();
     void setWindowDuration(Integer value);
 
     @Description("Numeric value of window slide, in hours")
-    @Default.Integer(1)
+    @Default.Integer(3)
     Integer getWindowSlide();
     void setWindowSlide(Integer value);
 
@@ -409,7 +409,7 @@ public class FishingActivity {
         }
         if (totalSize < threshold) {
           // temp log tracking of what's filtered out
-          int emit = (int) (Math.random() * 1000);
+          int emit = (int) (Math.random() * 5000);
           if (emit == 0) {
             LOG.info("in GatherMMSIs, rejecting aggregate of size " + totalSize);
           }
@@ -448,7 +448,7 @@ public class FishingActivity {
           aggShipInfo.setFirstTimestampStr(new Instant(fts).toString());
           aggShipInfo.setTimestampList(tslist);
           aggShipInfo.setTsS2Map(tsS2Map);
-          LOG.info("aggregate sInfo: " + aggShipInfo);
+          // LOG.info("aggregate sInfo: " + aggShipInfo);
           c.output(KV.of(mmsi, KV.of(allFList.size(), aggShipInfo)));
         }
       }  catch (Exception e) {
@@ -510,7 +510,7 @@ public class FishingActivity {
             .set("processing_time", Instant.now().toString());
 
         String val = "mmsis: " + mmsis + ", count: " + count +
-          "wts: " + c.window().toString() +
+          ", wts: " + c.window().toString() +
           ", min ts: " + new Instant(minTs * 1000).toString() +
           ", max ts: " + new Instant(maxTs * 1000).toString();
         LOG.info("s2cellId " + s2CellId + ", count: " + count + ", info: " + val);
@@ -536,7 +536,7 @@ public class FishingActivity {
       ObjectMapper mapper = new ObjectMapper();
       try {
         String requestJson = mapper.writeValueAsString(pr);
-        LOG.info("Got actual json for ml request: " + requestJson);
+        // LOG.info("Got actual json for ml request: " + requestJson);
         // Now, try making the actual prediction call...
         try {
           //...
@@ -572,17 +572,20 @@ public class FishingActivity {
           int retryInterval = 1;
           while (retryCount < numRetries) {
             try {
+              long startTime = System.currentTimeMillis();
               HttpResponse resp = request.execute();
+              long elapsedTime = System.currentTimeMillis() - startTime;
               int status = resp.getStatusCode();
               String response = resp.parseAsString();
-              LOG.warn("got status " + status + " and call response: " + response);
+              LOG.warn("Elapsed time: " + elapsedTime + ", got status " + status + " and call response: " + response);
               PredictionResults pInfo = mapper.readValue(response, PredictionResults.class);
               return pInfo;
-            } catch (HttpResponseException e3) {
+            // } catch (HttpResponseException|javax.net.ssl.SSLHandshakeException|java.net.SocketTimeoutException e3) {
+            } catch (Exception e3) {
               StringWriter sw = new StringWriter();
               e3.printStackTrace(new PrintWriter(sw));
               String exceptionAsString = sw.toString();
-              LOG.warn("Sleeping " + retryInterval + "retry count: " + retryCount +
+              LOG.warn("Sleeping " + retryInterval + ", retry count: " + retryCount +
                 ": ML Call Error: " + exceptionAsString);
               Thread.sleep(retryInterval);
               retryInterval*=2;
@@ -606,15 +609,20 @@ public class FishingActivity {
     }
 
     public PredictionResults getMLCallResults(String mmsi,
-      List<List<Double>> trimmedFeatures, List<Long> timestamps) {
+      List<List<Double>> trimmedFeatures, List<Long> timestamps) throws java.lang.InterruptedException {
+
+      int retryInterval = 8000;
+      int numRetries = 3;
+      int count = 0;
 
       PredictionResults predResults = makeMLCall(mmsi, trimmedFeatures, timestamps);
-
-      // the fake version...
-      // List<Double> fishingScores = new ArrayList<Double>(timestamps.size());
-      // for (int i = 0; i < timestamps.size(); i++) {
-      //   fishingScores.add(i, Math.random());
-      // }
+      while (predResults == null && count < numRetries) {
+        LOG.warn("in get getMLCallResults with null result; sleeping " + retryInterval);
+        Thread.sleep(retryInterval);
+        retryInterval *= 2;
+        predResults = makeMLCall(mmsi, trimmedFeatures, timestamps);
+        count++;
+      }
       return predResults;
     }
 
@@ -675,9 +683,8 @@ public class FishingActivity {
           List<List<Double>> trimmedFeatures = features.stream()
             .map(elt -> elt.subList(1, elt.size()))
             .collect(toList());
-          // then here would call the ML API:
-          LOG.info("in CallMLAPI: mmsi " + mmsi + ", count: " + count +
-            ", trimmed features: " + trimmedFeatures + ", timestamps: " + si.getTimestampList());
+          // LOG.info("in CallMLAPI: mmsi " + mmsi + ", count: " + count +
+          //   ", trimmed features: " + trimmedFeatures + ", timestamps: " + si.getTimestampList());
           if (trimmedFeatures.size() != si.getTimestampList().size()) {
             LOG.warn("timestamps and features lists not the same size: " + si.getTimestampList().size() +
               ", " + trimmedFeatures.size());
