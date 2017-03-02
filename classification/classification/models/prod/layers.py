@@ -552,6 +552,94 @@ def misconception_model4(input, window_size, depths, strides,
     return outputs, layers
 
 
+def misconception_model5(input, window_size, depths, strides,
+                        objective_functions, is_training, dense_count=256, dense_layers=2, 
+                        sub_levels=1, keep_prob=0.5):
+    """ A misconception tower.
+
+  Args:
+    input: a tensor of size [batch_size, 1, width, depth].
+    window_size: the width of the conv and pooling filters to apply.
+    depth: the depth of the output tensor.
+    levels: the height of the tower in misconception layers.
+    objective_functions: a list of objective functions to add to the top of
+                         the network.
+    is_training: whether the network is training.
+
+  Returns:
+    a tensor of size [batch_size, num_classes].
+  """
+    layers = []
+    with slim.arg_scope([slim.conv2d, slim.separable_conv2d, slim.fully_connected]):
+        with slim.arg_scope([slim.batch_norm], decay=0.9999):
+          with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu):  
+              net = input    
+              layers.append(net)  
+              for depth, stride in zip(depths, strides):
+                net = misconception_with_bypass(net, window_size, stride, depth, is_training, count=sub_levels)
+                layers.append(net)
+              # Flatten
+              net = slim.flatten(net)
+              outputs = []
+              for ofunc in objective_functions:
+                onet = net
+                for _ in range(dense_layers - 1):
+                  onet = slim.fully_connected(onet, dense_count, normalizer_fn=slim.batch_norm, 
+                                                             normalizer_params={'is_training': is_training})
+                # Don't use batch norm on last layer, just use dropout.
+                onet = slim.fully_connected(onet, dense_count)
+                onet = slim.dropout(onet, keep_prob, is_training=is_training)
+                outputs.append(ofunc.build(onet))
+
+    return outputs, layers
+
+
+
+def misconception_model6(input, window_size, depths, strides,
+                        objective_functions, is_training, dense_count=256, dense_layers=2, 
+                        sub_levels=1, keep_prob=0.5):
+    """ A misconception tower.
+
+  Args:
+    input: a tensor of size [batch_size, 1, width, depth].
+    window_size: the width of the conv and pooling filters to apply.
+    depth: the depth of the output tensor.
+    levels: the height of the tower in misconception layers.
+    objective_functions: a list of objective functions to add to the top of
+                         the network.
+    is_training: whether the network is training.
+
+  Returns:
+    a tensor of size [batch_size, num_classes].
+  """
+    layers = []
+    with slim.arg_scope([slim.conv2d, slim.separable_conv2d, slim.fully_connected]):
+        with slim.arg_scope([slim.batch_norm], decay=0.9999):
+          with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu):  
+              net = input    
+              layers.append(net)  
+              for depth, stride in zip(depths, strides):
+                net = misconception_with_bypass(net, window_size, stride, depth, is_training, count=sub_levels)
+                layers.append(net)
+              # Global average pool
+              n = int(net.get_shape().dims[1])
+              net = slim.avg_pool2d(net, [1, n], stride=[1,n])
+              net = slim.flatten(net)
+              outputs = []
+              for ofunc in objective_functions:
+                onet = net
+                for _ in range(dense_layers - 1):
+                  onet = slim.fully_connected(onet, dense_count, normalizer_fn=slim.batch_norm, 
+                                                             normalizer_params={'is_training': is_training})
+                # Don't use batch norm on last layer, just use dropout.
+                onet = slim.fully_connected(onet, dense_count)
+                onet = slim.dropout(onet, keep_prob, is_training=is_training)
+                outputs.append(ofunc.build(onet))
+
+    return outputs, layers
+
+
+
 def inception_model(input, window_size, depth, levels,
                         objective_functions, is_training, dense_count=1024, dense_layers=2, 
                         sub_levels=1, keep_prob=0.5):
@@ -697,4 +785,42 @@ def misconception_fishing(input, window_size, depth, levels,
 
   return objective_function.build(fishing_outputs)
 
+
+def misconception_fishing5(input, window_size, depths, strides,
+                        objective_function, is_training, dense_count=16, dense_layers=2, 
+                        keep_prob=0.5,
+                        l2=1e-6):
+
+  _, layers = misconception_model5(input, window_size, depths, strides,
+                        [], is_training, dense_count=dense_count, dense_layers=2, 
+                        keep_prob=keep_prob)
+
+  # First layer is raw input and we don't want to apply activation to that.
+  # Other layers don't get activation functions in xception_model
+  expanded_layers = [layers[0]]
+  for i, lyr in enumerate(layers):
+    if i > 0:
+      expanded_layers.append(tf.nn.elu(utility.repeat_tensor(lyr, 2**i)))
+
+  embedding = tf.concat(3, expanded_layers)
+
+  for _ in range(dense_layers-1):
+    embedding = slim.conv2d(embedding, dense_count, [1, 1],
+          activation_fn=tf.nn.elu, 
+          normalizer_fn=slim.batch_norm,
+          normalizer_params={'is_training': is_training})
+  embedding = slim.conv2d(embedding, dense_count, [1, 1],
+                          activation_fn=tf.nn.elu,
+                          normalizer_fn=None)
+  embedding = slim.dropout(embedding, keep_prob, is_training=is_training)
+
+  fishing_outputs = tf.squeeze(
+      slim.conv2d(
+          embedding,
+          1, [1, 1],
+          activation_fn=None,
+          normalizer_fn=None),
+      squeeze_dims=[1, 3])
+
+  return objective_function.build(fishing_outputs)
  
