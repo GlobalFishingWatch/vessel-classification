@@ -9,4 +9,4 @@ jsonAnnotations:
   - inputFilePattern: "gs://world-fishing-827/data-production/classification/paper_prep/models/prod.fishing_range_classification/fishing-ranges-likely-fishing.json.gz"
     timeRangeFieldName: "fishing_localisation"
     outputFieldName: "measure_new_score"
-    defaultValue: 0.0
+    defaultValue: 1.0
