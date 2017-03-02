@@ -15,7 +15,7 @@
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from classification import utility
-
+import numpy as np
 
 def misconception_layer(input,
                         window_size,
@@ -801,6 +801,56 @@ def misconception_fishing5(input, window_size, depths, strides,
   for i, lyr in enumerate(layers):
     if i > 0:
       expanded_layers.append(tf.nn.elu(utility.repeat_tensor(lyr, 2**i)))
+
+  embedding = tf.concat(3, expanded_layers)
+
+  for _ in range(dense_layers-1):
+    embedding = slim.conv2d(embedding, dense_count, [1, 1],
+          activation_fn=tf.nn.elu, 
+          normalizer_fn=slim.batch_norm,
+          normalizer_params={'is_training': is_training})
+  embedding = slim.conv2d(embedding, dense_count, [1, 1],
+                          activation_fn=tf.nn.elu,
+                          normalizer_fn=None)
+  embedding = slim.dropout(embedding, keep_prob, is_training=is_training)
+
+  fishing_outputs = tf.squeeze(
+      slim.conv2d(
+          embedding,
+          1, [1, 1],
+          activation_fn=None,
+          normalizer_fn=None),
+      squeeze_dims=[1, 3])
+
+  return objective_function.build(fishing_outputs)
+
+
+
+def misconception_fishing6(input, window_size, depths, strides,
+                        objective_function, is_training, dense_count=16, dense_layers=2, 
+                        keep_prob=0.5,
+                        l2=1e-6):
+
+  _, layers = misconception_model6(input, window_size, depths, strides,
+                        [], is_training, dense_count=dense_count, dense_layers=2, 
+                        keep_prob=keep_prob)
+
+  # First layer is raw input and we don't want to apply activation to that.
+  # Other layers don't get activation functions in xception_model
+  expanded_layers = [layers[0]]
+  for i, lyr in enumerate(layers):
+    if i > 0:
+      expanded_layers.append(tf.nn.elu(utility.repeat_tensor(lyr, 2**i)))
+
+  # Add an edge distance feature that indicates how far we are from edge of
+  # the model.
+  n = int(input.get_shape().dims[2])
+  edge_dist = np.minimum(np.arange(n), np.arange(n)[::-1], dtype='float32')
+  edge_dist /= (n // 2) 
+  edge_dist = edge_dist.reshape([1, 1, n, 1])
+  edge_dist = tf.tile(tf.Variable(edge_dist), [tf.shape(input)[0], 1, 1, 1])
+
+  expanded_layers.append(edge_dist)
 
   embedding = tf.concat(3, expanded_layers)
 
