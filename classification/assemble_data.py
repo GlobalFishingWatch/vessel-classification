@@ -29,4 +29,10 @@ with open(dest_path, 'w') as output:
         for i in range(count):
             output.writelines(lines[1:])
 
+# TODO: add flag to select source directory and refactor.
+# TODO: Create Blank vessel_list if absent
 # TODO: automatically run augment
+# TODO: have augment split items between test and training.
+# TODO: remove current vessel lists from git and add instruction on how to create training lists
+# using augment.
+# Consolidate this and augment into single file with functions (gasp!) and move to classification/data/
