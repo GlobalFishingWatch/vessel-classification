@@ -66,7 +66,7 @@ class Inferer(object):
                 time_starts.append(dt)
         return time_starts
 
-    def run_inference(self, inference_parallelism, inference_results_path, interval_months):
+    def run_inference(self, inference_parallelism, inference_results_path, interval_months, year):
         matching_files = self._feature_files(self.mmsis)
         filename_queue = tf.train.input_producer(
             matching_files, shuffle=False, num_epochs=1)
@@ -83,13 +83,13 @@ class Inferer(object):
                 reader = utility.cropping_all_slice_feature_file_reader(
                     filename_queue, self.model.num_feature_dimensions + 1,
                     self.time_ranges, self.model.window_max_points,
-                    self.min_points_for_classification)
+                    self.min_points_for_classification) # TODO: add year
                 readers.append(reader)
         else:
             for _ in range(inference_parallelism * 2):
                 reader = utility.all_fixed_window_feature_file_reader(
                     filename_queue, self.model.num_feature_dimensions + 1,
-                    self.model.window_max_points)
+                    self.model.window_max_points, year)
                 readers.append(reader)
 
         features, timestamps, time_ranges, mmsis = tf.train.batch_join(
@@ -226,7 +226,7 @@ def main(args):
         assert chosen_model.max_window_duration_seconds != 0, "can't set interval for point inferring model"
         interval_months = args.interval_months
 
-    infererer.run_inference(inference_parallelism, inference_results_path, interval_months)
+    infererer.run_inference(inference_parallelism, inference_results_path, interval_months, args.year)
 
 
 def parse_args():
@@ -285,6 +285,11 @@ def parse_args():
         default=None,
         type=int,
         help="Interval between successive classifications")
+
+    argparse.add_argument('--year',
+        default=None,
+        type=int,
+        help='Year to run inference on (default run on all)')
 
     return argparser.parse_args()
 
