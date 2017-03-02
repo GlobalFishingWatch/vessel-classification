@@ -31,11 +31,8 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
 
-# There are a large number of vessels included in the
-# training because they were detected as false positives.
-# To keep them from overwhelming fishing / nonfishing
-# detection, we upweight other vessels.
-NON_FALSE_POSITIVE_UPWEIGHT = 10
+# Upweight false positives to strongly discourage transits
+FALSE_POSITIVE_UPWEIGHT = 10
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
@@ -198,13 +195,7 @@ def single_feature_file_reader(filename_queue, num_features):
   """
 
     reader = tf.TFRecordReader()
-    while True:
-        try:
-            _, serialized_example = reader.read(filename_queue)
-        except tf.errors.DataLossError as err:
-            warning.warn('ignoring (%s) in single_feature_file_reader', str(err))
-        else:
-            break
+    _, serialized_example = reader.read(filename_queue)
 
     # The serialized example is converted back to actual values.
     context_features, sequence_features = tf.parse_single_sequence_example(
@@ -800,17 +791,20 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
             # Symptoms; fishing score for this MMSI never different from 0
             is_false_positive = False
             split = row['split']
-            assert split in ('Training', 'Test')
+            # assert split in ('Training', 'Test')
+            if split not in ('Training', 'Test'):
+                logging.warning('MMSI %s has no valid split assigned (%s); using for Training', mmsi, split)
+                split = 'Training'
             time_for_this_mmsi = 0
             for rng in fishing_range_dict[mmsi]:
                 time_for_this_mmsi += (
                     rng.end_time - rng.start_time).total_seconds()
                 if rng.is_fishing > 0:
                     is_false_positive = False
-            if not is_false_positive:
+            if is_false_positive:
                 # If this MMSI is not a false positive it, upweight it to prevent
                 # domination by false positive vessels.
-                time_for_this_mmsi *= NON_FALSE_POSITIVE_UPWEIGHT
+                time_for_this_mmsi *= FALSE_POSITIVE_UPWEIGHT
             metadata_dict[split][mmsi] = (row, time_for_this_mmsi)
             if time_for_this_mmsi:
                 min_time_per_mmsi = min(min_time_per_mmsi, time_for_this_mmsi)
