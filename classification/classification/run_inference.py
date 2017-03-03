@@ -286,7 +286,7 @@ def parse_args():
         type=int,
         help="Interval between successive classifications")
 
-    argparse.add_argument('--year',
+    argparser.add_argument('--year',
         default=None,
         type=int,
         help='Year to run inference on (default run on all)')
