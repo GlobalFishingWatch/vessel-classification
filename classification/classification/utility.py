@@ -670,7 +670,7 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
         end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
 
     def replicate_extract(input_series, mmsi):
-        if year is not None:t
+        if year is not None:
             input_series = input_series[start_i: end_i]
         return np_array_extract_all_fixed_slices(input_series, num_features,
                                                  mmsi, window_size)
