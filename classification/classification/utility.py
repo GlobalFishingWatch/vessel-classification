@@ -630,6 +630,15 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
         slices.append(
             (np.stack([without_timestamp]), timeseries, time_bounds, mmsi))
 
+    if slices == []:
+        # Return an appropriately shaped empty numpy array.
+        return (np.empty(
+            [0, 1, window_size, input_series.shape[1] - 1],
+            dtype=np.float32), np.empty(
+                shape=[0, window_size], dtype=np.int32), np.empty(
+                    shape=[0, 2], dtype=np.int32), np.empty(
+                        shape=[0], dtype=np.int32))
+
     return zip(*slices)
 
 
@@ -669,12 +678,9 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
 
     def replicate_extract(input_series, mmsi):
         if year is not None:
-            try:
-                start_i = np.searchsorted(input_series[:, 0], start_stamp, side='left')
-                end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
-                input_series = input_series[start_i: end_i]
-            except:
-                logging.error('trimming failed %s %s %s %s', start_stamp, end_stamp, input_series[0, 0], input_series[-1, 0])
+            start_i = np.searchsorted(input_series[:, 0], start_stamp, side='left')
+            end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
+            input_series = input_series[start_i: end_i]
         return np_array_extract_all_fixed_slices(input_series, num_features,
                                                  mmsi, window_size)
 
