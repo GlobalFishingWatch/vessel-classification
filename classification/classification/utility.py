@@ -666,11 +666,11 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
         end_date = datetime.datetime(year=year + 1, month=1, day=1, hour=0, minute=0, second=0, tzinfo=pytz.utc)
         start_stamp = time.mktime(start_date.timetuple())
         end_stamp = time.mktime(end_date.timetuple())
-        start_i = np.searchsorted(input_series[:, 0], start_stamp, side='left')
-        end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
 
     def replicate_extract(input_series, mmsi):
         if year is not None:
+            start_i = np.searchsorted(input_series[:, 0], start_stamp, side='left')
+            end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
             input_series = input_series[start_i: end_i]
         return np_array_extract_all_fixed_slices(input_series, num_features,
                                                  mmsi, window_size)
