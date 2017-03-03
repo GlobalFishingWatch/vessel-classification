@@ -32,7 +32,7 @@ import tensorflow.contrib.slim as slim
 import threading
 
 # Upweight false positives to strongly discourage transits
-FALSE_POSITIVE_UPWEIGHT = 10
+FALSE_POSITIVE_UPWEIGHT = 100
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
@@ -667,8 +667,8 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
             end_date = datetime.datetime(year=year + 1, day=1, hour=0, minute=0, second=0, tzinfo=pytz.utc)
             start_stamp = time.mktime(start_date.timetuple())
             end_stamp = time.mktime(end_date.timetuple())
-            start_i = np.searchsorted(input_series[:, 0], start_stamp, side=left)
-            end_i = np.searchsorted(input_series[:, 0], end_stamp, side=left)
+            start_i = np.searchsorted(input_series[:, 0], start_stamp, side='left')
+            end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
             input_series = input_series[start_i: end_i]
         return np_array_extract_all_fixed_slices(input_series, num_features,
                                                  mmsi, window_size)
@@ -797,7 +797,7 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
         if mmsi in available_mmsis:
             # Is this mmsi included only to supress false positives
             # Symptoms; fishing score for this MMSI never different from 0
-            is_false_positive = False
+            is_false_positive = True
             split = row['split']
             # assert split in ('Training', 'Test')
             if split not in ('Training', 'Test'):
