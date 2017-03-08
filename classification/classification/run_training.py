@@ -36,23 +36,21 @@ def run_training(config, server, trainer):
         # This task is a parameter server.
         server.join()
     else:
-        with tf.Graph().as_default():
-            if config.is_worker():
-                # This task is a worker, running training and sharing parameters with
-                # other workers via the parameter server.
-                with tf.device(
-                        tf.train.replica_device_setter(
-                            worker_device='/job:%s/task:%d' % (
-                                config.task_type, config.task_index),
-                            cluster=config.cluster_spec)):
-                    # The chief worker is responsible for writing out checkpoints as the
-                    # run progresses.
-                    trainer.run_training(server.target, config.is_chief())
-            elif config.is_master():
-                # This task is the master, running evaluation.
-                trainer.run_evaluation(server.target)
-            else:
-                raise ValueError('Unexpected task type: %s', config.task_type)
+        if config.is_worker():
+            # This task is a worker, running training and sharing parameters with
+            # other workers via the parameter server.
+            device = tf.train.replica_device_setter(
+                worker_device='/job:%s/task:%d' % (
+                    config.task_type, config.task_index),
+                cluster=config.cluster_spec)
+            # The chief worker is responsible for writing out checkpoints as the
+            # run progresses.
+            trainer.run_training(server.target, config.is_chief(), device=device)
+        elif config.is_master():
+            # This task is the master, running evaluation.
+            trainer.run_evaluation(server.target)
+        else:
+            raise ValueError('Unexpected task type: %s', config.task_type)
 
 
 def main(args):

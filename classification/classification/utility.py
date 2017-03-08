@@ -725,8 +725,8 @@ class VesselMetadata(object):
     def mmsis_for_split(self, split):
         assert split in [TRAINING_SPLIT, TEST_SPLIT]
         # Check to make sure we don't have leakage
-        assert not (set(self.metadata_by_split[TRAINING_SPLIT].keys() & 
-                        self.metadata_by_split[TEST_SPLIT].keys())), 'mmsi in both training and test split'
+        assert not (set(self.metadata_by_split[TRAINING_SPLIT].keys()) & 
+                    set(self.metadata_by_split[TEST_SPLIT].keys())), 'mmsi in both training and test split'
         return self.metadata_by_split[split].keys()
 
     def weighted_training_list(self,

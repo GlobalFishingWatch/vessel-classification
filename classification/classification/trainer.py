@@ -20,7 +20,7 @@ import math
 import numpy as np
 import os
 import sys
-from . import utility, evaluation_loop
+from . import utility
 
 import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import variables
@@ -106,79 +106,98 @@ class Trainer:
         return tf.train.Saver(variables.get_variables_to_restore(),
                               write_version=tf.train.SaverDef.V1)
 
-    def run_training(self, master, is_chief):
+    def run_training(self, master, is_chief, device):
         """ The function for running a training replica on a worker. """
 
-        features, timestamps, time_bounds, mmsis, count = self._feature_data_reader(
-            utility.TRAINING_SPLIT, True)
+        while True:
 
-        with tf.device("/gpu:0"):
-            (optimizer, objectives) = self.model.build_training_net(
-                features, timestamps, mmsis)
+            with tf.Graph().as_default():
 
-            loss = tf.reduce_sum(
-                [o.loss for o in objectives], reduction_indices=[0])
+                with tf.device(device):
 
-            train_op = slim.learning.create_train_op(
-                loss,
-                optimizer,
-                update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+                    with tf.device("/gpu:0"):
 
-            logging.info("Starting slim training loop.")
-            session_config = tf.ConfigProto(allow_soft_placement=True)
-            while True:
-                try:
-                    slim.learning.train(
-                        train_op,
+                        features, timestamps, time_bounds, mmsis, count = self._feature_data_reader(
+                            utility.TRAINING_SPLIT, True)
+
+                        (optimizer, objectives) = self.model.build_training_net(
+                            features, timestamps, mmsis)
+                        
+                        loss = tf.reduce_sum(
+                            [o.loss for o in objectives], reduction_indices=[0])
+
+                        train_op = slim.learning.create_train_op(
+                            loss,
+                            optimizer,
+                            update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+
+                        logging.info("Starting slim training loop.")
+                        session_config = tf.ConfigProto(allow_soft_placement=True)
+
+                        try:
+                            slim.learning.train(
+                                train_op,
+                                self.checkpoint_dir,
+                                master=master,
+                                is_chief=is_chief,
+                                number_of_steps=NUMBER_OF_STEPS,
+                                save_summaries_secs=30,
+                                save_interval_secs=60,
+                                saver=self._make_saver(),
+                                session_config=session_config)
+                        except (tf.errors.CancelledError, tf.errors.AbortedError):
+                            logging.warning('Caught cancel/abort while running `slim.learning.train`; reraising')
+                            raise
+                        except:
+                            logging.exception('Error while running slim.learning.train, ignoring',sys.exc_info()[0])
+                            continue
+
+
+    def run_evaluation(self, master):
+        """ The function for running model evaluation on the master. """
+        while True:
+            with tf.Graph().as_default():
+
+                features, timestamps, time_bounds, mmsis, count = self._feature_data_reader(
+                    utility.TEST_SPLIT, False)
+
+                objectives = self.model.build_inference_net(features, timestamps,
+                                                            mmsis)
+
+                aggregate_metric_maps = [o.build_test_metrics() for o in objectives]
+
+                summary_ops = []
+                update_ops = []
+                for names_to_values, names_to_updates in aggregate_metric_maps:
+                    for metric_name, metric_value in names_to_values.iteritems():
+                        op = tf.summary.scalar(metric_name, metric_value)
+                        op = tf.Print(op, [metric_value], metric_name)
+                        summary_ops.append(op)
+                    for update_op in names_to_updates.values():
+                        update_ops.append(update_op)
+
+                count = min(max(count, MIN_TEST_EXAMPLES), MAX_TEST_EXAMPLES)
+                num_evals = math.ceil(count / float(self.model.batch_size))
+
+                # Setup the global step.
+                slim.get_or_create_global_step()
+
+                merged_summary_ops = tf.summary.merge(summary_ops)
+
+                try:        
+                    slim.evaluation.evaluation_loop(
+                        master,
                         self.checkpoint_dir,
-                        master=master,
-                        is_chief=is_chief,
-                        number_of_steps=NUMBER_OF_STEPS,
-                        save_summaries_secs=30,
-                        save_interval_secs=60,
-                        saver=self._make_saver(),
-                        session_config=session_config)
-                except (tf.errors.CancelledError, tf.errors.AbortedErrors):
+                        self.eval_dir,
+                        num_evals=num_evals,
+                        eval_op=update_ops,
+                        summary_op=merged_summary_ops,
+                        eval_interval_secs=120,
+                        timeout=20 * 60,
+                        variables_to_restore=variables.get_variables_to_restore())
+                except (tf.errors.CancelledError, tf.errors.AbortedError):
                     logging.warning('Caught cancel/abort while running `slim.learning.train`; reraising')
                     raise
                 except:
-                    logging.warning('Error while running slim.learning.train, ignoring: %s',sys.exc_info()[0])
+                    logging.exception('Error while running slim.evaluation.evaluation_loop, ignoring')
                     continue
-    def run_evaluation(self, master):
-        """ The function for running model evaluation on the master. """
-
-        features, timestamps, time_bounds, mmsis, count = self._feature_data_reader(
-            utility.TEST_SPLIT, False)
-
-        objectives = self.model.build_inference_net(features, timestamps,
-                                                    mmsis)
-
-        aggregate_metric_maps = [o.build_test_metrics() for o in objectives]
-
-        summary_ops = []
-        update_ops = []
-        for names_to_values, names_to_updates in aggregate_metric_maps:
-            for metric_name, metric_value in names_to_values.iteritems():
-                op = tf.summary.scalar(metric_name, metric_value)
-                op = tf.Print(op, [metric_value], metric_name)
-                summary_ops.append(op)
-            for update_op in names_to_updates.values():
-                update_ops.append(update_op)
-
-        count = min(max(count, MIN_TEST_EXAMPLES), MAX_TEST_EXAMPLES)
-        num_evals = math.ceil(count / float(self.model.batch_size))
-
-        # Setup the global step.
-        slim.get_or_create_global_step()
-
-        merged_summary_ops = tf.summary.merge(summary_ops)
-        evaluation_loop.evaluation_loop(
-            master,
-            self.checkpoint_dir,
-            self.eval_dir,
-            num_evals=num_evals,
-            eval_op=update_ops,
-            summary_op=merged_summary_ops,
-            eval_interval_secs=120,
-            timeout=20 * 60,
-            saver=self._make_saver())
