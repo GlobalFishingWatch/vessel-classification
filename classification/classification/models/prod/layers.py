@@ -174,7 +174,7 @@ def misconception_with_bypass3(input,
                 activation_fn=tf.nn.relu,
                 normalizer_fn=slim.batch_norm,
                 normalizer_params={'is_training': is_training}):
-          residual = misconception_layer2(misconception, window_size, stride, depth,
+          residual = misconception_layer2(input, window_size, stride, depth,
                                             is_training, scope)
 
           if stride > 1:
@@ -1133,7 +1133,7 @@ def misconception_model8(input, window_size, depths, strides,
           net = input    
           layers.append(net)  
           for depth, stride in zip(depths, strides):
-            net = misconception_with_bypass2(net, window_size, stride, depth, is_training)
+            net = misconception_with_bypass3(net, window_size, stride, depth, is_training)
             layers.append(net)
           # Global average pool
           n = int(net.get_shape().dims[1])
@@ -1551,6 +1551,46 @@ def misconception_fishing6(input, window_size, depths, strides,
           normalizer_params={'is_training': is_training})
   embedding = slim.conv2d(embedding, dense_count, [1, 1],
                           activation_fn=tf.nn.elu,
+                          normalizer_fn=None)
+  embedding = slim.dropout(embedding, keep_prob, is_training=is_training)
+
+  fishing_outputs = tf.squeeze(
+      slim.conv2d(
+          embedding,
+          1, [1, 1],
+          activation_fn=None,
+          normalizer_fn=None),
+      squeeze_dims=[1, 3])
+
+  return objective_function.build(fishing_outputs)
+
+
+
+
+def misconception_fishing8(input, window_size, depths, strides,
+                        objective_function, is_training, dense_count=16, dense_layers=2, 
+                        keep_prob=0.5, other_objectives=()):
+
+  _, layers = misconception_model5(input, window_size, depths, strides,
+                        other_objectives, is_training, dense_count=dense_count, dense_layers=2, 
+                        keep_prob=keep_prob)
+
+  # First layer is raw input and we don't want to apply activation to that.
+  # Other layers don't get activation functions in xception_model
+  expanded_layers = [layers[0]]
+  for i, lyr in enumerate(layers):
+    if i > 0:
+      expanded_layers.append(utility.repeat_tensor(lyr, 2**i))
+
+  embedding = tf.concat(3, expanded_layers)
+
+  for _ in range(dense_layers-1):
+    embedding = slim.conv2d(embedding, dense_count, [1, 1],
+          activation_fn=tf.nn.relu, 
+          normalizer_fn=slim.batch_norm,
+          normalizer_params={'is_training': is_training})
+  embedding = slim.conv2d(embedding, dense_count, [1, 1],
+                          activation_fn=tf.nn.relu,
                           normalizer_fn=None)
   embedding = slim.dropout(embedding, keep_prob, is_training=is_training)
 

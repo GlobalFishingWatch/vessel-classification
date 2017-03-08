@@ -32,7 +32,7 @@ import tensorflow.contrib.slim as slim
 import threading
 
 # Upweight false positives to strongly discourage transits
-FALSE_POSITIVE_UPWEIGHT = 100
+FALSE_POSITIVE_UPWEIGHT = 1000
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
@@ -723,6 +723,7 @@ class VesselMetadata(object):
         return self.metadata_by_mmsi[mmsi][0][label_name]
 
     def mmsis_for_split(self, split):
+        assert split in [TRAINING_SPLIT, TEST_SPLIT]
         return self.metadata_by_split[split].keys()
 
     def weighted_training_list(self,
@@ -768,8 +769,11 @@ class VesselMetadata(object):
                      len(fishing_range_only_mmsis))
         for mmsi in fishing_range_only_mmsis:
             weight = min(self.vessel_weight(mmsi), max_replication_factor)
-
+            if weight == 0:
+                logging.info('skipping %s due to zero weight', mmsi)
+                continue
             int_n = int(weight)
+            logging.info("mmis: %s, max_repl_factor: %s, weight: %s, int_n: %s", mmsi, max_replication_factor, self.vessel_weight(mmsi), int_n)
             replicated_mmsis += ([mmsi] * int_n)
             frac_n = weight - float(int_n)
             if (random_state.uniform(0.0, 1.0) <= frac_n):
@@ -806,6 +810,8 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
     for row in lines:
         mmsi = int(row['mmsi'])
         if mmsi in available_mmsis:
+            if mmsi not in fishing_range_dict:
+                continue
             # Is this mmsi included only to supress false positives
             # Symptoms; fishing score for this MMSI never different from 0
             is_false_positive = True
@@ -820,9 +826,8 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
                     rng.end_time - rng.start_time).total_seconds()
                 if rng.is_fishing > 0:
                     is_false_positive = False
-            if is_false_positive:
-                # If this MMSI is not a false positive it, upweight it to prevent
-                # domination by false positive vessels.
+            if time_for_this_mmsi and is_false_positive:
+                logging.info('upweighting MMSI %s by %s as a false positive', mmsi, FALSE_POSITIVE_UPWEIGHT)
                 time_for_this_mmsi *= FALSE_POSITIVE_UPWEIGHT
             metadata_dict[split][mmsi] = (row, time_for_this_mmsi)
             if time_for_this_mmsi:
@@ -833,7 +838,7 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
             row, time = split_dict[mmsi]
             split_dict[mmsi] = (row, time / min_time_per_mmsi)
 
-    return VesselMetadata(metadata_dict, fishing_range_dict, 1.0)
+    return VesselMetadata(dict(metadata_dict), fishing_range_dict, 1.0)
 
 
 def read_vessel_time_weighted_metadata(available_mmsis,
@@ -972,7 +977,7 @@ def read_fishing_ranges(fishing_range_file):
             fishing_range_dict[mmsi].append(
                 FishingRange(start_time, end_time, is_fishing))
 
-    return fishing_range_dict
+    return dict(fishing_range_dict)
 
 
 def build_multihot_lookup_table():
