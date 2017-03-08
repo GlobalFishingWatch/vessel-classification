@@ -19,6 +19,7 @@ import logging
 import math
 import numpy as np
 import os
+import sys
 from . import utility, evaluation_loop
 
 import tensorflow as tf
@@ -27,7 +28,8 @@ import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 
 # Always test on at least this many examples
-MIN_TEST_EXAMPLES = 4096
+MIN_TEST_EXAMPLES = 3200
+MAX_TEST_EXAMPLES = 12800
 
 NUMBER_OF_STEPS = 500000 # TODO: make this an attribute of the model
 
@@ -72,8 +74,7 @@ class Trainer:
         """
         input_files = self.model.build_training_file_list(
             self.base_feature_path, split)
-        shuffle = (split == utility.TEST_SPLIT)
-        filename_queue = tf.train.input_producer(input_files, shuffle=shuffle)
+        filename_queue = tf.train.input_producer(input_files, shuffle=True)
         capacity = 1000
         min_size_after_deque = capacity - self.model.batch_size * 4
 
@@ -125,17 +126,24 @@ class Trainer:
 
             logging.info("Starting slim training loop.")
             session_config = tf.ConfigProto(allow_soft_placement=True)
-            slim.learning.train(
-                train_op,
-                self.checkpoint_dir,
-                master=master,
-                is_chief=is_chief,
-                number_of_steps=NUMBER_OF_STEPS,
-                save_summaries_secs=30,
-                save_interval_secs=60,
-                saver=self._make_saver(),
-                session_config=session_config)
-
+            while True:
+                try:
+                    slim.learning.train(
+                        train_op,
+                        self.checkpoint_dir,
+                        master=master,
+                        is_chief=is_chief,
+                        number_of_steps=NUMBER_OF_STEPS,
+                        save_summaries_secs=30,
+                        save_interval_secs=60,
+                        saver=self._make_saver(),
+                        session_config=session_config)
+                except (tf.errors.CancelledError, tf.errors.AbortedErrors):
+                    logging.warning('Caught cancel/abort while running `slim.learning.train`; reraising')
+                    raise
+                except:
+                    logging.warning('Error while running slim.learning.train, ignoring: %s',sys.exc_info()[0])
+                    continue
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
 
@@ -157,7 +165,7 @@ class Trainer:
             for update_op in names_to_updates.values():
                 update_ops.append(update_op)
 
-        count = max(count, MIN_TEST_EXAMPLES)
+        count = min(max(count, MIN_TEST_EXAMPLES), MAX_TEST_EXAMPLES)
         num_evals = math.ceil(count / float(self.model.batch_size))
 
         # Setup the global step.
