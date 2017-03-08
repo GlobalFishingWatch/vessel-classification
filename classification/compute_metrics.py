@@ -86,6 +86,8 @@ fishing_mapping = [
 
 # Faster than using dateutil
 def _parse(x):
+    if isinstance(x, datetime.datetime):
+        return x
     # 2014-08-28T13:56:16+00:00
     # TODO: fix generation to generate consistent datetimes
     if x[-6:] == '+00:00':
@@ -1127,13 +1129,13 @@ def compute_results(args):
     load_inferred(inference_path, results.values())
 
 
-    # Sanity check attribute values after loading
-    for field in ['length', 'tonnage', 'engine_power']:
-        if not all(results[field].inferred_attrs >= 0):
-            logging.warning('Inferred values less than zero for %s (%s, %s / %s)', field, 
-                min(results[field].inferred_attrs), (results[field].inferred_attrs < 0).sum(), len(results[field].inferred_attrs))
-
     if not args.skip_class_metrics:
+        # Sanity check attribute values after loading
+        for field in ['length', 'tonnage', 'engine_power']:
+            if not all(results[field].inferred_attrs >= 0):
+                logging.warning('Inferred values less than zero for %s (%s, %s / %s)', field, 
+                    min(results[field].inferred_attrs), (results[field].inferred_attrs < 0).sum(), len(results[field].inferred_attrs))
+
         # Assemble coarse and is_fishing scores:
         logging.info('Assembling coarse data')
         results['coarse'] = assemble_composite(results['fine'], coarse_mapping)
