@@ -744,10 +744,10 @@ public class FishingActivity {
         .apply("gbk1", GroupByKey.<String, ShipInfo>create());
     PCollection<KV<String, Iterable<KV<String, KV<Long, Double>>>>> mmsiAggregates = mmsis
       .apply("gatherMMSIs", ParDo.of(new GatherMMSIs()))
-      .apply("callML", ParDo.of(new CallMLAPI()))
-      .apply("gbk2", GroupByKey.<String, KV<String, KV<Long, Double>>>create());
+      .apply("callMLEngine", ParDo.of(new CallMLAPI()))
+      .apply("groupByS2cellID", GroupByKey.<String, KV<String, KV<Long, Double>>>create());
     PCollection<TableRow> tempcoll = mmsiAggregates
-      .apply("writes2groups", ParDo.of(new WriteS2Groups()));
+      .apply("writeS2groups", ParDo.of(new WriteS2Groups()));
     TableReference tableRef = getTableReference(options.getProject(),
         options.getBigQueryDataset(), options.getBigQueryTable());
     tempcoll.apply(BigQueryIO.Write.to(tableRef).withSchema(getSchema()));
