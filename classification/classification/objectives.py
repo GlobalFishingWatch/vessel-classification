@@ -649,8 +649,8 @@ class FishingLocalizationObjectiveCrossEntropy(
     def loss_function(self, dense_labels):
         fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
         fishing_targets = tf.to_float(dense_labels > 0.5)
-        return (tf.reduce_mean(fishing_mask *
+        return tf.reduce_sum(fishing_mask *
                                tf.nn.weighted_cross_entropy_with_logits(
-                                   self.logits,
-                                   fishing_targets,
-                                   pos_weight=self.pos_weight)))
+                                targets=fishing_targets,
+                                logits=self.logits,
+                                   pos_weight=self.pos_weight)) / (tf.reduce_sum(fishing_mask) + EPSILON)

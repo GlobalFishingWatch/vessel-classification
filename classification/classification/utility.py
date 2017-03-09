@@ -32,7 +32,7 @@ import tensorflow.contrib.slim as slim
 import threading
 
 # Upweight false positives to strongly discourage transits
-FALSE_POSITIVE_UPWEIGHT = 1000
+FALSE_POSITIVE_UPWEIGHT = 100
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
