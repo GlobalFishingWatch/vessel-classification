@@ -1717,7 +1717,7 @@ def misconception_fishing9(input, window_size, depths, strides,
 
 
 
-def misconception_fishing9b(input, window_size, depths, output_depths,
+def misconception_fishing9b(input, window_size, depths, strides, output_depths,
                         objective_function, is_training, dense_count=32, dense_layers=2, 
                         keep_prob=0.5, internal_keep_prob=0.5, other_objectives=()):
 
@@ -1811,50 +1811,53 @@ def misconception_fishing11(input, window_size, depths,
 
 
 def misconception_fishing12(input, window_size, depths, rates,
-                        objective_function, is_training):
+                        objective_function, is_training,
+                        l2=1e-5):
 
   assert len(depths) == len(rates)
-  net = input
-  for depth, rate in zip(depths, rates):
-      net = slim.conv2d(net, depth, [1, 3],
-          activation_fn=tf.nn.relu, 
-          normalizer_fn=slim.batch_norm,
-          rate = rate,
-          normalizer_params={'is_training': is_training})
+  with slim.arg_scope([slim.conv2d, slim.separable_conv2d, slim.fully_connected], 
+        weights_regularizer=slim.l2_regularizer(l2)):
+      net = input
+      for depth, rate in zip(depths, rates):
+          net = slim.conv2d(net, depth, [1, 3],
+              activation_fn=tf.nn.relu, 
+              normalizer_fn=slim.batch_norm,
+              rate = rate,
+              normalizer_params={'is_training': is_training})
 
-  fishing_outputs = tf.squeeze(
-      slim.conv2d(
-          net,
-          1, [1, 1],
-          activation_fn=None,
-          normalizer_fn=None),
-      squeeze_dims=[1, 3])
+      fishing_outputs = tf.squeeze(
+          slim.conv2d(
+              net,
+              1, [1, 1],
+              activation_fn=None,
+              normalizer_fn=None),
+          squeeze_dims=[1, 3])
 
   return objective_function.build(fishing_outputs)
 
 
 
 
-def misconception_fishing12(input, window_size, depths, rates,
-                        objective_function, is_training):
+# def misconception_fishing12(input, window_size, depths, rates,
+#                         objective_function, is_training):
 
-  assert len(depths) == len(rates)
-  net = input
-  for depth, rate in zip(depths, rates):
-    net = misconception_with_bypass4(net,
-                              3,
-                              depth,
-                              1, 
-                              rate,
-                              is_training)
+#   assert len(depths) == len(rates)
+#   net = input
+#   for depth, rate in zip(depths, rates):
+#     net = misconception_with_bypass4(net,
+#                               3,
+#                               depth,
+#                               1, 
+#                               rate,
+#                               is_training)
 
-  fishing_outputs = tf.squeeze(
-      slim.conv2d(
-          net,
-          1, [1, 1],
-          activation_fn=None,
-          normalizer_fn=None),
-      squeeze_dims=[1, 3])
+#   fishing_outputs = tf.squeeze(
+#       slim.conv2d(
+#           net,
+#           1, [1, 1],
+#           activation_fn=None,
+#           normalizer_fn=None),
+#       squeeze_dims=[1, 3])
 
-  return objective_function.build(fishing_outputs)
+#   return objective_function.build(fishing_outputs)
  
