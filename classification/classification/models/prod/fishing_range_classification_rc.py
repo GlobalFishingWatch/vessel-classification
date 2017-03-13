@@ -42,6 +42,8 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     learning_decay_rate = 0.1
     decay_examples = 100000
 
+    window = (256, 768)
+
     @property
     def max_window_duration_seconds(self):
         # A fixed-length rather than fixed-duration window.
@@ -79,7 +81,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             vessel_metadata,
             loss_weight=1,
             metrics=metrics,
-            window=(256, 768))
+            window=self.window)
 
         self.classification_training_objectives = []
         self.training_objectives = [self.fishing_localisation_objective]
