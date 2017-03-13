@@ -633,7 +633,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 fishing_ranges = []
                 for ts_raw, is_fishing in combined:
                     ts = datetime.datetime.utcfromtimestamp(int(
-                        ts_raw)).isoformat()
+                        ts_raw))
                     if last and last[0] >= ts:
                         break
                     if is_fishing:
