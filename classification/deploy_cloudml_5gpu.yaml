@@ -1,11 +1,11 @@
-region: us-central1
-staging_bucket: gs://world-fishing-827-ml
+region: us-east1
+staging_bucket: gs://world-fishing-827-ml-east
 tensor_flow_config_template: | # This gets interpolated and then passed onto TF
   trainingInput:
     args: [
       "{model_name}",
       "--feature_dimensions", "12",
-      "--root_feature_path", "gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output/features",
+      "--root_feature_path", "gs://world-fishing-827-dev-ttl30d/data-production/classification/timothyhochberg/features_1.1b/pipeline/output/features",
       "--training_output_path", "{output_path}/{model_name}",
       "--fishing_range_training_upweight", "1",
       "--metadata_file", "training_classes.csv",
@@ -15,6 +15,6 @@ tensor_flow_config_template: | # This gets interpolated and then passed onto TF
     scaleTier: CUSTOM
     masterType: "large_model"
     parameterServerType: "standard"
-    workerType: "large_model"
-    workerCount: 10
+    workerType: "standard_gpu"
+    workerCount: 5
     parameterServerCount: 1
