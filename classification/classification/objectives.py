@@ -715,7 +715,7 @@ class FishingLocalizationObjectiveSquaredError(
                         should increase recall at the expense of precision.
 
         """
-        super(FishingLocalizationObjectiveCrossEntropy, self).__init__(
+        super(FishingLocalizationObjectiveSquaredError, self).__init__(
             metadata_label, name, vessel_metadata, loss_weight, metrics, window)
         self.pos_weight = pos_weight
 
