@@ -90,7 +90,7 @@ class Inferer(object):
                 shift = self.model.window_max_points
             else:
                 b, e = self.model.window
-                shift = b - e
+                shift = e - b
 
             for _ in range(inference_parallelism * 2):
                 reader = utility.all_fixed_window_feature_file_reader(
