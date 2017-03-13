@@ -34,13 +34,13 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
     window_size = 3
     stride = 2
-    feature_depths = [128] * 9
+    feature_depths = [64] * 9
     strides = [2] * 9 
     assert len(strides) == len(feature_depths)
 
-    initial_learning_rate = 1e-4
-    learning_decay_rate = 0.5
-    decay_examples = 10000
+    initial_learning_rate = 1e-2
+    learning_decay_rate = 0.1
+    decay_examples = 100000
 
     @property
     def max_window_duration_seconds(self):
@@ -49,7 +49,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
     @property
     def window_max_points(self):
-        return 2048
+        return 1024
 
     @property
     def max_replication_factor(self):
@@ -77,8 +77,9 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             'fishing_localisation',
             'Fishing-localisation',
             vessel_metadata,
-            loss_weight=50.0,
-            metrics=metrics)
+            loss_weight=1,
+            metrics=metrics,
+            window=(256, 768))
 
         self.classification_training_objectives = []
         self.training_objectives = [self.fishing_localisation_objective]
@@ -95,7 +96,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
 
     def _build_net(self, features, timestamps, mmsis, is_training):
-        objective = layers.misconception_fishing8(features, self.window_size, 
+        layers.misconception_fishing8(features, self.window_size, 
                                            self.feature_depths, self.strides,
                                            self.fishing_localisation_objective, is_training,
                                            dense_count=128,

@@ -86,10 +86,16 @@ class Inferer(object):
                     self.min_points_for_classification) # TODO: add year
                 readers.append(reader)
         else:
+            if self.model.window is None:
+                shift = self.model.window_max_points
+            else:
+                b, e = self.model.window
+                shift = b - e
+
             for _ in range(inference_parallelism * 2):
                 reader = utility.all_fixed_window_feature_file_reader(
                     filename_queue, self.model.num_feature_dimensions + 1,
-                    self.model.window_max_points, year)
+                    self.model.window_max_points, shift, year)
                 readers.append(reader)
 
         features, timestamps, time_ranges, mmsis = tf.train.batch_join(

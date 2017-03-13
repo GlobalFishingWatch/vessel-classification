@@ -16,15 +16,16 @@ import numpy as np
 import tensorflow as tf
 
 from classification import utility
-from prod import vessel_classification, fishing_range_classification
+from prod import vessel_characterization, fishing_range_classification, fishing_score
 
 # TODO(alexwilson): Feed some data in. Also check evaluation.build_json_results
 
 
 class ModelsTest(tf.test.TestCase):
     num_feature_dimensions = 11
-    model_classes = [vessel_classification.Model,
-                     fishing_range_classification.Model]
+    model_classes = [vessel_characterization.Model,
+                     fishing_range_classification.Model,
+                     fishing_score.Model]
 
     def _build_model_input(self, model):
         feature = [0.0] * model.num_feature_dimensions

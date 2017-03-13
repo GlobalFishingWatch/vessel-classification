@@ -1836,6 +1836,59 @@ def misconception_fishing12(input, window_size, depths, rates,
   return objective_function.build(fishing_outputs)
 
 
+def misconception_fishing13(input, window_size, depths, rates,
+                        objective_function, is_training,
+                        l2=1e-5):
+
+  assert len(depths) == len(rates)
+  with slim.arg_scope([slim.conv2d, slim.separable_conv2d, slim.fully_connected], 
+        weights_regularizer=slim.l2_regularizer(l2)):
+      net = input
+      for depth, rate in zip(depths, rates):
+          residual = slim.conv2d(net, depth, [1, 3],
+              activation_fn=tf.nn.relu, 
+              normalizer_fn=slim.batch_norm,
+              rate = rate,
+              normalizer_params={'is_training': is_training})
+          net = zero_pad_features(net, depth) + residual
+
+      fishing_outputs = tf.squeeze(
+          slim.conv2d(
+              net,
+              1, [1, 1],
+              activation_fn=None,
+              normalizer_fn=None),
+          squeeze_dims=[1, 3])
+
+  return objective_function.build(fishing_outputs)
+
+
+def misconception_fishing14(input, window_size, depths, rates,
+                        objective_function, is_training,
+                        l2=1e-5):
+
+  assert len(depths) == len(rates)
+  with slim.arg_scope([slim.conv2d, slim.separable_conv2d, slim.fully_connected], 
+        weights_regularizer=slim.l2_regularizer(l2)):
+      net = slim.batch_norm(input, is_training=is_training)
+      for depth, rate in zip(depths, rates):
+          residual = slim.conv2d(net, depth, [1, 3],
+              activation_fn=tf.nn.relu, 
+              normalizer_fn=slim.batch_norm,
+              rate = rate,
+              normalizer_params={'is_training': is_training})
+          net = zero_pad_features(net, depth) + residual
+
+      fishing_outputs = tf.squeeze(
+          slim.conv2d(
+              net,
+              1, [1, 1],
+              activation_fn=None,
+              normalizer_fn=None),
+          squeeze_dims=[1, 3])
+
+  return objective_function.build(fishing_outputs)
+
 
 
 # def misconception_fishing12(input, window_size, depths, rates,

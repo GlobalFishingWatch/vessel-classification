@@ -35,12 +35,12 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     window_size = 3
     stride = 2
     feature_depths = [64] * 9
-    feature_rates = [1, 2, 4] * 3 
-    assert len(feature_rates) == len(feature_depths)
+    strides = [2] * 9 
+    assert len(strides) == len(feature_depths)
 
-    initial_learning_rate = 1e-4
+    initial_learning_rate = 0.01
     learning_decay_rate = 0.5
-    decay_examples = 10000
+    decay_examples = 40000
 
     @property
     def max_window_duration_seconds(self):
@@ -49,7 +49,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
     @property
     def window_max_points(self):
-        return 2048
+        return 1024
 
     @property
     def max_replication_factor(self):
@@ -77,8 +77,9 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             'fishing_localisation',
             'Fishing-localisation',
             vessel_metadata,
-            loss_weight=1.0,
-            metrics=metrics)
+            loss_weight=1,
+            metrics=metrics,
+            window=(256, 768))
 
         self.classification_training_objectives = []
         self.training_objectives = [self.fishing_localisation_objective]
@@ -95,13 +96,11 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
 
     def _build_net(self, features, timestamps, mmsis, is_training):
-        objective = layers.misconception_fishing12(features, self.window_size, 
-                                           depths=self.feature_depths, rates=self.feature_rates,
-                                           objective_function=self.fishing_localisation_objective, 
-                                           is_training=is_training,
-                                           l2=1e-9)
-
-
+        layers.misconception_fishing8(features, self.window_size, 
+                                           self.feature_depths, self.strides,
+                                           self.fishing_localisation_objective, is_training,
+                                           dense_count=128,
+                                           dense_layers=2)
 
     def build_training_net(self, features, timestamps, mmsis):
         self._build_net(features, timestamps, mmsis, True)

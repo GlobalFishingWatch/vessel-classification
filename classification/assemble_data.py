@@ -1,35 +1,40 @@
 import numpy as np
 import os
+import argparse
 from glob import glob
 
-this_dir = os.path.dirname(os.path.abspath(__file__))
-code_dir = os.path.abspath(os.path.join(this_dir, "../.."))
 
 
-
-src_path = os.path.join(code_dir, 
-    'training-data-source/data/time-ranges')
-
-dest_path = os.path.join(this_dir, 'classification/data/combined_fishing_ranges.csv')
-
-fp_upweight = 100
-
-header = None
-with open(dest_path, 'w') as output:
-    for pth in glob(os.path.join(src_path, '*.csv')):
-        with open(pth) as f:
-            lines = f.readlines()
-        if header:
-            assert header == lines[0]
-        else:
-            header = lines[0]
-            output.write(header)
-        count = fp_upweight if pth.endswith('false_positives.csv') else 1
-        print('using weight {} for {}'.format(count, pth))
-        for i in range(count):
+def assemble_fishing_data(src_dir, output_path):
+    header = None
+    with open(output_path, 'w') as output:
+        for pth in glob(os.path.join(src_dir, '*.csv')):
+            name = os.path.basename(pth)
+            with open(pth) as f:
+                lines = f.readlines()
+            if header:
+                assert header == lines[0]
+            else:
+                header = lines[0]
+                output.write(header)
             output.writelines(lines[1:])
 
-# TODO: add flag to select source directory and refactor.
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Assemble Fishing Data.')
+    # ../../training-data-source/data/time-ranges
+    parser.add_argument('--src-dir', required=True, help='source directory for time range files')
+    # classification/data/combined_fishing_ranges.csv'
+    parser.add_argument('--output-path', required=True, help='location to save generated file to')
+    args = parser.parse_args()
+
+    assemble_fishing_data(args.src_dir, args.output_path)
+"""
+python assemble_data.py --src-dir ../../training-data-source/data/time-ranges --output-path classification/data/combined_fishing_ranges.csv
+"""
+
 # TODO: Create Blank vessel_list if absent
 # TODO: automatically run augment
 # TODO: have augment split items between test and training.
