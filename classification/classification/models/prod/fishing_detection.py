@@ -19,7 +19,7 @@ from . import abstract_models
 from . import layers
 from classification import utility
 from classification.objectives import (
-    FishingLocalizationObjectiveCrossEntropy, TrainNetInfo)
+    FishingLocalizationObjectiveSquaredError, TrainNetInfo)
 import logging
 import math
 import numpy as np
@@ -34,12 +34,15 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
     window_size = 3
     stride = 2
-    feature_depth = 50
-    levels = 6
+    feature_depths = [64] * 9
+    strides = [2] * 9 
+    assert len(strides) == len(feature_depths)
 
-    initial_learning_rate = 1e-4
-    learning_decay_rate = 0.5
-    decay_examples = 10000
+    initial_learning_rate = 1e-2
+    learning_decay_rate = 0.1
+    decay_examples = 100000
+
+    window = (256, 768)
 
     @property
     def max_window_duration_seconds(self):
@@ -48,7 +51,19 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
     @property
     def window_max_points(self):
-        return 512
+        return 1024
+
+    @property
+    def max_replication_factor(self):
+        return 10000.0
+
+    @staticmethod
+    def read_metadata(all_available_mmsis,
+                      metadata_file,
+                      fishing_ranges,
+                      fishing_upweight=1.0):
+        return utility.read_vessel_time_weighted_metadata(
+            all_available_mmsis, metadata_file, fishing_ranges)
 
     def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
@@ -60,12 +75,12 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
             return np.float32(length)
 
-        self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
+        self.fishing_localisation_objective = FishingLocalizationObjectiveSquaredError(
             'fishing_localisation',
             'Fishing-localisation',
             vessel_metadata,
-            loss_weight=50.0,
-            metrics=metrics)
+            metrics=metrics,
+            window=self.window)
 
         self.classification_training_objectives = []
         self.training_objectives = [self.fishing_localisation_objective]
@@ -79,9 +94,17 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             for mmsi in training_mmsis
         ]
 
+
+
+    def _build_net(self, features, timestamps, mmsis, is_training):
+        layers.misconception_fishing(features, self.window_size, 
+                                     self.feature_depths, self.strides,
+                                     self.fishing_localisation_objective, is_training,
+                                     dense_count=128,
+                                     dense_layers=2)
+
     def build_training_net(self, features, timestamps, mmsis):
-        features = self.zero_pad_features(features)
-        self.misconception_with_fishing_ranges(features, mmsis, True)
+        self._build_net(features, timestamps, mmsis, True)
 
         trainers = [
             self.fishing_localisation_objective.build_trainer(timestamps,
@@ -99,8 +122,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         return TrainNetInfo(optimizer, trainers)
 
     def build_inference_net(self, features, timestamps, mmsis):
-        features = self.zero_pad_features(features)
-        self.misconception_with_fishing_ranges(features, mmsis, False)
+        self._build_net(features, timestamps, mmsis, False)
 
         evaluations = [
             self.fishing_localisation_objective.build_evaluation(timestamps,

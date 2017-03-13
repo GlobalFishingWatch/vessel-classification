@@ -33,12 +33,15 @@ import tensorflow.contrib.metrics as metrics
 class Model(abstract_models.MisconceptionModel):
 
     window_size = 3
-    feature_depth = 64
-    levels = 8
+    feature_depths = [128] * 9
+    strides = [2] * 9
 
-    initial_learning_rate = 1e-4
+    assert len(strides) == len(feature_depths)
+
+    initial_learning_rate = 0.5e-4
     learning_decay_rate = 0.5
     decay_examples = 40000
+
 
     @property
     def max_window_duration_seconds(self):
@@ -46,8 +49,8 @@ class Model(abstract_models.MisconceptionModel):
 
     @property
     def window_max_points(self):
-        nominal_max_points = (self.max_window_duration_seconds / (5 * 60)) / 4
-        layer_reductions = 2 ** self.levels
+        nominal_max_points = (self.max_window_duration_seconds / (5 * 60)) / 4 
+        layer_reductions = np.prod(self.strides) 
         final_size = int(round(nominal_max_points / layer_reductions))
         max_points = final_size * layer_reductions
         logging.info('Using %s points', max_points)
@@ -55,7 +58,7 @@ class Model(abstract_models.MisconceptionModel):
 
     @property
     def min_viable_timeslice_length(self):
-        return 100
+        return 500
 
     def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
@@ -98,9 +101,11 @@ class Model(abstract_models.MisconceptionModel):
 
 
     def _build_model(self, features, timestamps, mmsis, is_training):
-        return layers.xception_model3(features, self.window_size,
-                                   self.feature_depth, self.levels,
-                                   self.training_objectives, is_training, dense_count=1024, dense_layers=2)
+        outputs, _ = layers.misconception_model(features, self.window_size,
+                                   self.feature_depths, self.strides, 
+                                   self.training_objectives, is_training,
+                                   dense_count=1024)
+        return outputs
 
     def build_training_net(self, features, timestamps, mmsis):
         self._build_model(features, timestamps, mmsis, is_training=True)
