@@ -19,7 +19,7 @@ from . import abstract_models
 from . import layers
 from classification import utility
 from classification.objectives import (
-    FishingLocalizationObjectiveSquaredError, TrainNetInfo)
+    FishingLocalizationObjectiveCrossEntropy, TrainNetInfo)
 import logging
 import math
 import numpy as np
@@ -75,7 +75,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
             return np.float32(length)
 
-        self.fishing_localisation_objective = FishingLocalizationObjectiveSquaredError(
+        self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
             'fishing_localisation',
             'Fishing-localisation',
             vessel_metadata,
