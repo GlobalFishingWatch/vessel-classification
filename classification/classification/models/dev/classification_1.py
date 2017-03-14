@@ -29,9 +29,8 @@ from classification.objectives import (SummaryObjective, TrainNetInfo,
 from .tf_layers import conv1d_layer, dense_layer, misconception_layer, dropout_layer
 from .tf_layers import batch_norm, separable_conv1d_layer, leaky_rectify
 
-TowerParams = namedtuple("TowerParams",
-                         ["filter_widths", "pool_size",
-                          "pool_stride", "keep_prob", "shunt"])
+TowerParams = namedtuple("TowerParams", ["filter_widths", "pool_size",
+                                         "pool_stride", "keep_prob", "shunt"])
 
 
 class Model(ModelBase):
@@ -53,15 +52,13 @@ class Model(ModelBase):
             return np.float32(length)
 
         self.classification_objective = MultiClassificationObjective(
-            "Multiclass",
-            "Vessel-class",
-            vessel_metadata,
-            metrics=metrics)
+            "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics)
 
         self.summary_objective = SummaryObjective(
             'histograms', 'Histograms', metrics=metrics)
 
-        self.objectives = [self.classification_objective, self.summary_objective]
+        self.objectives = [self.classification_objective,
+                           self.summary_objective]
 
     @property
     def max_window_duration_seconds(self):
@@ -82,32 +79,30 @@ class Model(ModelBase):
                 # Misconception stack
 
                 mc = misconception_layer(
-                                    current,
-                                    self.filter_count,
-                                    is_training,
-                                    filter_size=3,
-                                    stride = 2, 
-                                    padding="VALID",
-                                    name='misconception-{}'.format(1))
+                    current,
+                    self.filter_count,
+                    is_training,
+                    filter_size=3,
+                    stride=2,
+                    padding="VALID",
+                    name='misconception-{}'.format(1))
 
                 if i > 0:
                     shunt = tf.nn.avg_pool(
-                        current, [1, 1, 3, 1],
-                        [1, 1, 2, 1],
-                        padding="VALID")
+                        current, [1, 1, 3, 1], [1, 1, 2, 1], padding="VALID")
                     current = mc + shunt
                 else:
                     current = mc
 
-                current = tf.nn.elu(batch_norm(current, is_training=is_training))
+                current = tf.nn.elu(
+                    batch_norm(
+                        current, is_training=is_training))
 
-        # 
+        #
         current = slim.flatten(current)
         current = dropout_layer(current, is_training, 0.1)
 
         return current
-
-
 
     def build_model(self, is_training, current):
 
@@ -116,7 +111,6 @@ class Model(ModelBase):
         with tf.variable_scope('classification-tower'):
             output = self.build_stack(current, is_training)
             self.classification_objective.build(output)
-
 
     def build_inference_net(self, features, timestamps, mmsis):
 

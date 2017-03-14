@@ -31,7 +31,8 @@ import tensorflow.contrib.metrics as metrics
 MIN_TEST_EXAMPLES = 3200
 MAX_TEST_EXAMPLES = 12800
 
-NUMBER_OF_STEPS = 500000 # TODO: make this an attribute of the model
+NUMBER_OF_STEPS = 500000  # TODO: make this an attribute of the model
+
 
 class Trainer:
     """ Handles the mechanics of training and evaluating a vessel behaviour
@@ -103,8 +104,9 @@ class Trainer:
         return features, timestamps, time_bounds, mmsis, len(input_files)
 
     def _make_saver(self):
-        return tf.train.Saver(variables.get_variables_to_restore(),
-                              write_version=tf.train.SaverDef.V1)
+        return tf.train.Saver(
+            variables.get_variables_to_restore(),
+            write_version=tf.train.SaverDef.V1)
 
     def run_training(self, master, is_chief, device):
         """ The function for running a training replica on a worker. """
@@ -120,19 +122,23 @@ class Trainer:
                         features, timestamps, time_bounds, mmsis, count = self._feature_data_reader(
                             utility.TRAINING_SPLIT, True)
 
-                        (optimizer, objectives) = self.model.build_training_net(
-                            features, timestamps, mmsis)
-                        
+                        (optimizer,
+                         objectives) = self.model.build_training_net(
+                             features, timestamps, mmsis)
+
                         loss = tf.reduce_sum(
-                            [o.loss for o in objectives], reduction_indices=[0])
+                            [o.loss for o in objectives],
+                            reduction_indices=[0])
 
                         train_op = slim.learning.create_train_op(
                             loss,
                             optimizer,
-                            update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+                            update_ops=tf.get_collection(
+                                tf.GraphKeys.UPDATE_OPS))
 
                         logging.info("Starting slim training loop.")
-                        session_config = tf.ConfigProto(allow_soft_placement=True)
+                        session_config = tf.ConfigProto(
+                            allow_soft_placement=True)
 
                         try:
                             slim.learning.train(
@@ -145,13 +151,16 @@ class Trainer:
                                 save_interval_secs=60,
                                 saver=self._make_saver(),
                                 session_config=session_config)
-                        except (tf.errors.CancelledError, tf.errors.AbortedError):
-                            logging.warning('Caught cancel/abort while running `slim.learning.train`; reraising')
+                        except (tf.errors.CancelledError,
+                                tf.errors.AbortedError):
+                            logging.warning(
+                                'Caught cancel/abort while running `slim.learning.train`; reraising')
                             raise
                         except:
-                            logging.exception('Error while running slim.learning.train, ignoring',sys.exc_info()[0])
+                            logging.exception(
+                                'Error while running slim.learning.train, ignoring',
+                                sys.exc_info()[0])
                             continue
-
 
     def run_evaluation(self, master):
         """ The function for running model evaluation on the master. """
@@ -161,15 +170,17 @@ class Trainer:
                 features, timestamps, time_bounds, mmsis, count = self._feature_data_reader(
                     utility.TEST_SPLIT, False)
 
-                objectives = self.model.build_inference_net(features, timestamps,
-                                                            mmsis)
+                objectives = self.model.build_inference_net(features,
+                                                            timestamps, mmsis)
 
-                aggregate_metric_maps = [o.build_test_metrics() for o in objectives]
+                aggregate_metric_maps = [o.build_test_metrics()
+                                         for o in objectives]
 
                 summary_ops = []
                 update_ops = []
                 for names_to_values, names_to_updates in aggregate_metric_maps:
-                    for metric_name, metric_value in names_to_values.iteritems():
+                    for metric_name, metric_value in names_to_values.iteritems(
+                    ):
                         op = tf.summary.scalar(metric_name, metric_value)
                         op = tf.Print(op, [metric_value], metric_name)
                         summary_ops.append(op)
@@ -184,7 +195,7 @@ class Trainer:
 
                 merged_summary_ops = tf.summary.merge(summary_ops)
 
-                try:        
+                try:
                     slim.evaluation.evaluation_loop(
                         master,
                         self.checkpoint_dir,
@@ -194,10 +205,13 @@ class Trainer:
                         summary_op=merged_summary_ops,
                         eval_interval_secs=120,
                         timeout=20 * 60,
-                        variables_to_restore=variables.get_variables_to_restore())
+                        variables_to_restore=variables.
+                        get_variables_to_restore())
                 except (tf.errors.CancelledError, tf.errors.AbortedError):
-                    logging.warning('Caught cancel/abort while running `slim.learning.train`; reraising')
+                    logging.warning(
+                        'Caught cancel/abort while running `slim.learning.train`; reraising')
                     raise
                 except:
-                    logging.exception('Error while running slim.evaluation.evaluation_loop, ignoring')
+                    logging.exception(
+                        'Error while running slim.evaluation.evaluation_loop, ignoring')
                     continue

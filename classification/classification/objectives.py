@@ -37,6 +37,7 @@ TrainNetInfo = namedtuple("TrainNetInfo", ["optimizer", "objective_trainers"])
 
 EPSILON = 1e-20
 
+
 def f1(recall, precision):
     rval, rop = recall
     pval, pop = precision
@@ -231,12 +232,10 @@ class RegressionObjective(ObjectiveBase):
 
 # class LogRegressionObjective(RegressionObjective):
 
-
 #     def build(self, net):
 #         self.prediction = tf.exp(tf.squeeze(
 #             slim.fully_connected(
 #                 net, 1, activation_fn=None)))
-
 
 
 class LogRegressionObjective(ObjectiveBase):
@@ -247,7 +246,7 @@ class LogRegressionObjective(ObjectiveBase):
                  loss_weight=1.0,
                  metrics='all'):
         super(LogRegressionObjective, self).__init__(metadata_label, name,
-                                                  loss_weight, metrics)
+                                                     loss_weight, metrics)
         self.value_from_mmsi = value_from_mmsi
 
     def build(self, net):
@@ -275,12 +274,11 @@ class LogRegressionObjective(ObjectiveBase):
 
         return expected, mask
 
-
-
     def _masked_mean_loss(self, predictions, mmsis):
         expected, mask = self._expected_and_mask(mmsis)
         count = tf.reduce_sum(mask)
-        squared_error = (tf.mul((tf.log(expected + EPSILON) - predictions) ** 2, mask))
+        squared_error = (tf.mul(
+            (tf.log(expected + EPSILON) - predictions)**2, mask))
 
         loss = tf.reduce_sum(squared_error) / tf.maximum(count, EPSILON)
 
@@ -308,8 +306,8 @@ class LogRegressionObjective(ObjectiveBase):
 
     def build_evaluation(self, timestamps, mmsis):
         class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name, masked_mean_loss, masked_mean_error, 
-                         prediction, metrics):
+            def __init__(self, metadata_label, name, masked_mean_loss,
+                         masked_mean_error, prediction, metrics):
                 super(Evaluation, self).__init__(metadata_label, name,
                                                  prediction, timestamps, mmsis,
                                                  metrics)
@@ -322,23 +320,19 @@ class LogRegressionObjective(ObjectiveBase):
                 error = self.masked_mean_error(self.prediction, self.mmsis)
 
                 return metrics.aggregate_metric_map({
-                    '%s/Test-loss' % self.name:
-                    metrics.streaming_mean(loss),
-                    '%s/Test-error' % self.name:
-                    metrics.streaming_mean(error)
+                    '%s/Test-loss' % self.name: metrics.streaming_mean(loss),
+                    '%s/Test-error' % self.name: metrics.streaming_mean(error)
                 })
 
             def build_json_results(self, prediction, timestamps):
                 return {'name': self.name, 'value': np.exp(float(prediction))}
 
-        return Evaluation(self.metadata_label, self.name, self._masked_mean_loss,
-                          self._masked_mean_error, self.prediction,
-                          self.metrics)
-
+        return Evaluation(self.metadata_label, self.name,
+                          self._masked_mean_loss, self._masked_mean_error,
+                          self.prediction, self.metrics)
 
 
 class MultiClassificationObjective(ObjectiveBase):
-
     def __init__(self,
                  metadata_label,
                  name,
@@ -352,7 +346,8 @@ class MultiClassificationObjective(ObjectiveBase):
         self.num_classes = utility.multihot_lookup_table.shape[-1]
 
     def build(self, net):
-        self.logits = slim.fully_connected(net, self.num_classes, activation_fn=None)
+        self.logits = slim.fully_connected(
+            net, self.num_classes, activation_fn=None)
         self.prediction = slim.softmax(self.logits)
 
     def build_from_logits(self, logits):
@@ -370,8 +365,7 @@ class MultiClassificationObjective(ObjectiveBase):
         class_count = len(utility.VESSEL_CLASS_DETAILED_NAMES)
 
         def labels_from_mmsis(seq, class_indices):
-            encoded = np.zeros([len(seq), class_count], 
-                                dtype=np.int32)
+            encoded = np.zeros([len(seq), class_count], dtype=np.int32)
             for i, m in enumerate(seq):
                 lbl_str = self.vessel_metadata.vessel_label('label', m).strip()
                 if lbl_str:
@@ -381,15 +375,15 @@ class MultiClassificationObjective(ObjectiveBase):
                         encoded[i] |= utility.multihot_lookup_table[j]
             return encoded
 
-        indices = {k[0]: i for (i, k) in enumerate(utility.VESSEL_CATEGORIES) }
+        indices = {k[0]: i for (i, k) in enumerate(utility.VESSEL_CATEGORIES)}
 
-        labels = tf.py_func(lambda x: labels_from_mmsis(x, indices),
-                           [mmsis], [tf.int32])
+        labels = tf.py_func(lambda x: labels_from_mmsis(x, indices), [mmsis],
+                            [tf.int32])
 
-        labels = tf.reshape(labels, shape=tf.concat(0, [tf.shape(mmsis), [class_count]]))
+        labels = tf.reshape(
+            labels, shape=tf.concat(0, [tf.shape(mmsis), [class_count]]))
 
         return labels
-
 
     def build_trainer(self, timestamps, mmsis):
 
@@ -397,9 +391,8 @@ class MultiClassificationObjective(ObjectiveBase):
 
         with tf.variable_scope("custom-loss"):
             positives = tf.reduce_sum(
-                tf.to_float(labels) * self.prediction,
-                reduction_indices=[1])
-            raw_loss = -tf.reduce_mean(tf.log(positives)) 
+                tf.to_float(labels) * self.prediction, reduction_indices=[1])
+            raw_loss = -tf.reduce_mean(tf.log(positives))
 
         loss = raw_loss * self.loss_weight
 
@@ -426,7 +419,6 @@ class MultiClassificationObjective(ObjectiveBase):
                 self.num_classes = num_classes
                 self.prediction = slim.softmax(logits)
 
-
             def build_test_metrics(self):
 
                 raw_labels = multihot_labels(self.mmsis)
@@ -436,8 +428,7 @@ class MultiClassificationObjective(ObjectiveBase):
                 predictions = tf.to_int32(tf.argmax(self.prediction, 1))
 
                 metrics_map = {
-                    '%s/Test-accuracy' % self.name:
-                    metrics.streaming_accuracy(
+                    '%s/Test-accuracy' % self.name: metrics.streaming_accuracy(
                         predictions, labels, weights=mask)
                 }
 
@@ -454,13 +445,11 @@ class MultiClassificationObjective(ObjectiveBase):
                                     (self.name, cls_name)] = recall
                         metrics_map["%s/Class-%s-Recall" %
                                     (self.name, cls_name)] = precision
-                        metrics_map["%s/Class-%s-F1-Score" %
-                                    (self.name, cls_name)] = f1(recall, precision)
-                        metrics_map["%s/Class-%s-ROC-AUC" %
-                                    (self.name, cls_name)] = metrics.streaming_auc(
-                                        self.prediction[:, i],
-                                        trues,
-                                        weights=mask)
+                        metrics_map["%s/Class-%s-F1-Score" % (
+                            self.name, cls_name)] = f1(recall, precision)
+                        metrics_map["%s/Class-%s-ROC-AUC" % (
+                            self.name, cls_name)] = metrics.streaming_auc(
+                                self.prediction[:, i], trues, weights=mask)
 
                 return metrics.aggregate_metric_map(metrics_map)
 
@@ -489,7 +478,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                  vessel_metadata,
                  loss_weight=1.0,
                  metrics='all',
-                 window=None,):
+                 window=None, ):
         ObjectiveBase.__init__(self, metadata_label, name, loss_weight,
                                metrics)
         self.vessel_metadata = vessel_metadata
@@ -581,7 +570,8 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 ones = tf.to_int32(dense_labels > 0.5)
                 weights = tf.to_float(valid)
                 prediction = self.prediction
-                unclear = tf.to_int32((self.prediction > 0.333) & (self.prediction < 0.666))
+                unclear = tf.to_int32((self.prediction > 0.333) & (
+                    self.prediction < 0.666))
 
                 if eval_window:
                     b, e = eval_window
@@ -627,20 +617,20 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 combined = zip(timestamps, thresholded_prediction)
                 if eval_window:
                     b, e = eval_window
-                    combined = combined[b: e]
+                    combined = combined[b:e]
 
                 last = None
                 fishing_ranges = []
                 for ts_raw, is_fishing in combined:
-                    ts = datetime.datetime.utcfromtimestamp(int(
-                        ts_raw))
+                    ts = datetime.datetime.utcfromtimestamp(int(ts_raw))
                     if last and last[0] >= ts:
                         break
                     if is_fishing:
                         if last and last[1]:
                             fishing_ranges[-1][1] = ts.isoformat()
                         else:
-                            fishing_ranges.append([ts.isoformat(), ts.isoformat()])
+                            fishing_ranges.append(
+                                [ts.isoformat(), ts.isoformat()])
                     last = (ts, is_fishing)
 
                 return [{'start_time': start_time,
@@ -674,7 +664,8 @@ class FishingLocalizationObjectiveCrossEntropy(
 
         """
         super(FishingLocalizationObjectiveCrossEntropy, self).__init__(
-            metadata_label, name, vessel_metadata, loss_weight, metrics, window)
+            metadata_label, name, vessel_metadata, loss_weight, metrics,
+            window)
         self.pos_weight = pos_weight
 
     def loss_function(self, dense_labels):
@@ -686,12 +677,11 @@ class FishingLocalizationObjectiveCrossEntropy(
             fishing_mask = fishing_mask[:, b:e]
             fishing_targets = fishing_targets[:, b:e]
             logits = logits[:, b:e]
-        return tf.reduce_sum(fishing_mask * 
-                               tf.nn.weighted_cross_entropy_with_logits(
-                                targets=fishing_targets,
-                                logits=logits,
-                                   pos_weight=self.pos_weight)) 
-
+        return tf.reduce_sum(fishing_mask *
+                             tf.nn.weighted_cross_entropy_with_logits(
+                                 targets=fishing_targets,
+                                 logits=logits,
+                                 pos_weight=self.pos_weight))
 
 
 class FishingLocalizationObjectiveSquaredError(
@@ -717,7 +707,8 @@ class FishingLocalizationObjectiveSquaredError(
 
         """
         super(FishingLocalizationObjectiveSquaredError, self).__init__(
-            metadata_label, name, vessel_metadata, loss_weight, metrics, window)
+            metadata_label, name, vessel_metadata, loss_weight, metrics,
+            window)
         self.pos_weight = pos_weight
 
     def loss_function(self, dense_labels):
@@ -729,7 +720,8 @@ class FishingLocalizationObjectiveSquaredError(
             fishing_mask = fishing_mask[:, b:e]
             fishing_targets = fishing_targets[:, b:e]
             logits = logits[:, b:e]
-        return tf.reduce_sum(fishing_mask * (fishing_targets - tf.sigmoid(logits)) ** 2)
+        return tf.reduce_sum(fishing_mask *
+                             (fishing_targets - tf.sigmoid(logits))**2)
 
 
 class AbstractFishingLocalizationSingleObjective(ObjectiveBase):
@@ -738,10 +730,9 @@ class AbstractFishingLocalizationSingleObjective(ObjectiveBase):
                  vessel_metadata,
                  index,
                  loss_weight=1.0,
-                 metrics='all', 
+                 metrics='all',
                  pos_weight=1.0):
-        ObjectiveBase.__init__(self, None, name, loss_weight,
-                               metrics)
+        ObjectiveBase.__init__(self, None, name, loss_weight, metrics)
         self.index = index
         self.pos_weight = pos_weight
         self.vessel_metadata = vessel_metadata
@@ -760,7 +751,8 @@ class AbstractFishingLocalizationSingleObjective(ObjectiveBase):
                         start_range = calendar.timegm(start_time.utctimetuple(
                         ))
                         end_range = calendar.timegm(end_time.utctimetuple())
-                        dense_label = (stamp >= start_range) & (stamp < end_range)
+                        dense_label = (stamp >= start_range) & (
+                            stamp < end_range)
                 dense_labels_list.append(dense_label)
             return np.array(dense_labels_list, dtype='float32')
 
@@ -774,13 +766,16 @@ class AbstractFishingLocalizationSingleObjective(ObjectiveBase):
         fishing_targets = tf.to_float(dense_labels > 0.5)
         logits = self.logits
         return tf.reduce_sum(fishing_mask *
-                               tf.nn.weighted_cross_entropy_with_logits(
-                                targets=fishing_targets,
-                                logits=logits,
-                                   pos_weight=self.pos_weight)) / (tf.reduce_sum(fishing_mask) + EPSILON)
+                             tf.nn.weighted_cross_entropy_with_logits(
+                                 targets=fishing_targets,
+                                 logits=logits,
+                                 pos_weight=self.pos_weight)) / (
+                                     tf.reduce_sum(fishing_mask) + EPSILON)
 
     def build(self, net):
-        self.logits = tf.squeeze(slim.fully_connected(net, 1, activation_fn=None))
+        self.logits = tf.squeeze(
+            slim.fully_connected(
+                net, 1, activation_fn=None))
         self.prediction = tf.sigmoid(self.logits)
 
     def build_trainer(self, timestamps, mmsis):
@@ -819,13 +814,15 @@ class AbstractFishingLocalizationSingleObjective(ObjectiveBase):
                                                  metrics)
 
             def build_test_metrics(self):
-                dense_labels = dense_labels_fn(self.timestamps, self.mmsis, index)
+                dense_labels = dense_labels_fn(self.timestamps, self.mmsis,
+                                               index)
                 thresholded_prediction = tf.to_int32(self.prediction > 0.5)
                 valid = tf.to_int32(tf.not_equal(dense_labels, -1))
                 ones = tf.to_int32(dense_labels > 0.5)
                 weights = tf.to_float(valid)
                 prediction = self.prediction
-                unclear = tf.to_int32((self.prediction > 0.333) & (self.prediction < 0.666))
+                unclear = tf.to_int32((self.prediction > 0.333) & (
+                    self.prediction < 0.666))
 
                 recall = slim.metrics.streaming_recall(
                     thresholded_prediction, ones, weights=weights)
@@ -855,14 +852,13 @@ class AbstractFishingLocalizationSingleObjective(ObjectiveBase):
                     {"{}/{}".format(self.name, k): v
                      for (k, v) in raw_metrics.items()})
 
-
             # TODO: CHECK
 
             def build_json_results(self, prediction, timestamps):
                 assert (len(prediction) == len(timestamps))
-                stamp = datetime.datetime.utcfromtimestamp(int(timestamps[index])).isoformat()
-                return [{'timestamp': stamp, 'score' : prediction}]
-
+                stamp = datetime.datetime.utcfromtimestamp(
+                    int(timestamps[index])).isoformat()
+                return [{'timestamp': stamp, 'score': prediction}]
 
         return Evaluation(self.metadata_label, self.name, self.prediction,
                           timestamps, mmsis, self.metrics)

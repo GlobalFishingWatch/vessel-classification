@@ -35,7 +35,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     window_size = 3
     stride = 2
     feature_depths = [64] * 9
-    strides = [2] * 9 
+    strides = [2] * 9
     assert len(strides) == len(feature_depths)
 
     initial_learning_rate = 1e-2
@@ -94,14 +94,16 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             for mmsi in training_mmsis
         ]
 
-
-
     def _build_net(self, features, timestamps, mmsis, is_training):
-        layers.misconception_fishing(features, self.window_size, 
-                                     self.feature_depths, self.strides,
-                                     self.fishing_localisation_objective, is_training,
-                                     dense_count=128,
-                                     dense_layers=2)
+        layers.misconception_fishing(
+            features,
+            self.window_size,
+            self.feature_depths,
+            self.strides,
+            self.fishing_localisation_objective,
+            is_training,
+            dense_count=128,
+            dense_layers=2)
 
     def build_training_net(self, features, timestamps, mmsis):
         self._build_net(features, timestamps, mmsis, True)

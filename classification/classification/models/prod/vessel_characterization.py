@@ -42,15 +42,14 @@ class Model(abstract_models.MisconceptionModel):
     learning_decay_rate = 0.5
     decay_examples = 40000
 
-
     @property
     def max_window_duration_seconds(self):
         return 180 * 24 * 3600
 
     @property
     def window_max_points(self):
-        nominal_max_points = (self.max_window_duration_seconds / (5 * 60)) / 4 
-        layer_reductions = np.prod(self.strides) 
+        nominal_max_points = (self.max_window_duration_seconds / (5 * 60)) / 4
+        layer_reductions = np.prod(self.strides)
         final_size = int(round(nominal_max_points / layer_reductions))
         max_points = final_size * layer_reductions
         logging.info('Using %s points', max_points)
@@ -66,6 +65,7 @@ class Model(abstract_models.MisconceptionModel):
         class XOrNone:
             def __init__(self, key):
                 self.key = key
+
             def __call__(self, mmsi):
                 x = vessel_metadata.vessel_label(self.key, mmsi)
                 if x == '':
@@ -75,36 +75,36 @@ class Model(abstract_models.MisconceptionModel):
         self.training_objectives = [
             # Weights chosen to approximately equalize runtime losses
             LogRegressionObjective(
-                    'length',
-                    'Vessel-length',
-                    XOrNone('length'),
-                    loss_weight=0.1,
-                    metrics=metrics),
+                'length',
+                'Vessel-length',
+                XOrNone('length'),
+                loss_weight=0.1,
+                metrics=metrics),
             LogRegressionObjective(
-                    'tonnage',
-                    'Vessel-tonnage',
-                    XOrNone('tonnage'),
-                    loss_weight=0.1,
-                    metrics=metrics),
+                'tonnage',
+                'Vessel-tonnage',
+                XOrNone('tonnage'),
+                loss_weight=0.1,
+                metrics=metrics),
             LogRegressionObjective(
-                    'engine_power',
-                    'Vessel-engine-Power',
-                    XOrNone('engine_power'),
-                    loss_weight=0.1,
-                    metrics=metrics),
+                'engine_power',
+                'Vessel-engine-Power',
+                XOrNone('engine_power'),
+                loss_weight=0.1,
+                metrics=metrics),
             MultiClassificationObjective(
-                    "Multiclass",
-                    "Vessel-class",
-                    vessel_metadata,
-                    metrics=metrics)
+                "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics)
         ]
 
-
     def _build_model(self, features, timestamps, mmsis, is_training):
-        outputs, _ = layers.misconception_model(features, self.window_size,
-                                   self.feature_depths, self.strides, 
-                                   self.training_objectives, is_training,
-                                   dense_count=1024)
+        outputs, _ = layers.misconception_model(
+            features,
+            self.window_size,
+            self.feature_depths,
+            self.strides,
+            self.training_objectives,
+            is_training,
+            dense_count=1024)
         return outputs
 
     def build_training_net(self, features, timestamps, mmsis):
@@ -115,11 +115,11 @@ class Model(abstract_models.MisconceptionModel):
             trainers.append(self.training_objectives[i].build_trainer(
                 timestamps, mmsis))
 
-        step = slim.get_or_create_global_step() 
+        step = slim.get_or_create_global_step()
 
-        learning_rate = tf.train.exponential_decay(
-            self.initial_learning_rate, step, self.decay_examples,
-            self.learning_decay_rate)
+        learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
+                                                   step, self.decay_examples,
+                                                   self.learning_decay_rate)
 
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 

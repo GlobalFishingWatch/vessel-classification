@@ -215,6 +215,5 @@ class MultihotLabelConsistencyTest(tf.test.TestCase):
             sorted(names), sorted(utility.VESSEL_CLASS_DETAILED_NAMES))
 
 
-
 if __name__ == '__main__':
     tf.test.main()

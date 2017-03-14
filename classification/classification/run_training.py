@@ -40,12 +40,13 @@ def run_training(config, server, trainer):
             # This task is a worker, running training and sharing parameters with
             # other workers via the parameter server.
             device = tf.train.replica_device_setter(
-                worker_device='/job:%s/task:%d' % (
-                    config.task_type, config.task_index),
+                worker_device='/job:%s/task:%d' % (config.task_type,
+                                                   config.task_index),
                 cluster=config.cluster_spec)
             # The chief worker is responsible for writing out checkpoints as the
             # run progresses.
-            trainer.run_training(server.target, config.is_chief(), device=device)
+            trainer.run_training(
+                server.target, config.is_chief(), device=device)
         elif config.is_master():
             # This task is the master, running evaluation.
             trainer.run_evaluation(server.target)

@@ -23,8 +23,7 @@ from prod import vessel_characterization, fishing_detection
 
 class ModelsTest(tf.test.TestCase):
     num_feature_dimensions = 11
-    model_classes = [vessel_characterization.Model,
-                     fishing_detection.Model]
+    model_classes = [vessel_characterization.Model, fishing_detection.Model]
 
     def _build_model_input(self, model):
         feature = [0.0] * model.num_feature_dimensions

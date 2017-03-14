@@ -16,6 +16,7 @@ from __future__ import print_function, division
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
+
 def weight_variable(shape, name='W'):
     initial = tf.truncated_normal(shape, stddev=0.1)
     return tf.get_variable(name, initializer=initial)
@@ -65,20 +66,22 @@ def conv1d_layer(inputs,
 
 
 def separable_conv1d_layer(inputs,
-                 filter_size,
-                 filter_count,
-                 filter_mult=1,
-                 stride=1,
-                 padding="SAME",
-                 name='sep-conv1d-layer'):
+                           filter_size,
+                           filter_count,
+                           filter_mult=1,
+                           stride=1,
+                           padding="SAME",
+                           name='sep-conv1d-layer'):
     with tf.variable_scope(name):
         h, w, n = [int(x) for x in inputs.get_shape().dims[1:]]
         assert h == 1
         W_pw = weight_variable([1, filter_size, n, filter_mult], name='W_pw')
-        W_dw = weight_variable([1, 1, filter_mult * n, filter_count], name='W_dw')
+        W_dw = weight_variable(
+            [1, 1, filter_mult * n, filter_count], name='W_dw')
         b = bias_variable([filter_count])
         return (tf.nn.separable_conv2d(
-            inputs, W_pw, W_dw, strides=[1, 1, stride, 1], padding=padding) + b)
+            inputs, W_pw, W_dw, strides=[1, 1, stride, 1], padding=padding) + b
+                )
 
 
 def atrous_conv1d_layer(inputs,
@@ -145,9 +148,15 @@ def misconception_layer(inputs,
         # Input is a n_batch x width x 1 x n_filter
         #
         conv = tf.nn.elu(
-                    batch_norm(
-                        conv1d_layer(inputs, filter_size, filter_count, stride=stride, padding=padding),
-                            is_training, **decay_arg))
+            batch_norm(
+                conv1d_layer(
+                    inputs,
+                    filter_size,
+                    filter_count,
+                    stride=stride,
+                    padding=padding),
+                is_training,
+                **decay_arg))
         #
         pool = tf.nn.max_pool(
             inputs, [1, 1, filter_size, 1], [1, 1, stride, 1],
@@ -156,9 +165,4 @@ def misconception_layer(inputs,
         #
         joint = tf.concat(3, [conv, pool])
         #
-        return conv1d_layer(
-                    joint, 1, filter_count, name="NIN")
-
-
-
-
+        return conv1d_layer(joint, 1, filter_count, name="NIN")

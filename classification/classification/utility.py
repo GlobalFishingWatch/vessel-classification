@@ -45,52 +45,50 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
 #TODO: (bitsofbits) replace the lists of (name, list) with ordered dicts. And/or consider other ways
 # to express the treelike structure so that it is more clear.
-
 """ The finer vessel label set. """
 VESSEL_CLASS_DETAILED_NAMES = [
-'tanker',
-'cargo',
-'reefer',
-'motor_passenger',
-'sailing',
-'seismic_vessel',
-'tug',
-'other_not_fishing',
-'drifting_longlines',
-'pole_and_line',
-'purse_seines',
-'pots_and_traps',
-'set_gillnets',
-'set_longlines',
-'squid_jigger',
-'trawlers',
-'trollers',
-'other_fishing',
+    'tanker',
+    'cargo',
+    'reefer',
+    'motor_passenger',
+    'sailing',
+    'seismic_vessel',
+    'tug',
+    'other_not_fishing',
+    'drifting_longlines',
+    'pole_and_line',
+    'purse_seines',
+    'pots_and_traps',
+    'set_gillnets',
+    'set_longlines',
+    'squid_jigger',
+    'trawlers',
+    'trollers',
+    'other_fishing',
 ]
 
 VESSEL_CATEGORIES = [[x, [x]] for x in VESSEL_CLASS_DETAILED_NAMES]
 
 VESSEL_CATEGORIES += [
     ['unknown_fishing',
-        ['drifting_longlines', 'set_longlines', 'trawlers', 'pots_and_traps', 'trollers',
-            'set_gillnets', 'purse_seines', 'squid_jigger', 'pole_and_line', 'other_fishing']],
-    ['unknown_not_fishing', ['cargo', 'tanker', 'reefer', 'sailing', 'motor_passenger',
-            'seismic_vessel', 'tug', 'other_not_fishing']],
-
-    ['unknown_longline', ['drifting_longlines', 'set_longlines']],
+     ['drifting_longlines', 'set_longlines', 'trawlers', 'pots_and_traps',
+      'trollers', 'set_gillnets', 'purse_seines', 'squid_jigger',
+      'pole_and_line', 'other_fishing']], ['unknown_not_fishing', [
+          'cargo', 'tanker', 'reefer', 'sailing', 'motor_passenger',
+          'seismic_vessel', 'tug', 'other_not_fishing'
+      ]], ['unknown_longline', ['drifting_longlines', 'set_longlines']],
     ['passenger', ['motor_passenger', 'sailing']],
     ['unknown', VESSEL_CLASS_DETAILED_NAMES]
 ]
 
-
 TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
+
 
 def repeat_tensor(input, n):
     batch_size, _, width, depth = input.get_shape()
     repeated = tf.concat(3, [input] * n)
-    return tf.reshape(repeated,
-                      [-1, 1, int(width) * n, int(depth)])
+    return tf.reshape(repeated, [-1, 1, int(width) * n, int(depth)])
 
 
 FishingRange = namedtuple('FishingRange',
@@ -287,16 +285,17 @@ def np_array_random_fixed_points_extract(random_state, input_series,
                 1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
             rng_start_ndx = np.searchsorted(input_series[:, 0],
                                             rng_start_stamp)
-            min_ndx = max(rng_start_ndx - min_timeslice_size + 1, 0) # TODO: bitsofbits: CHECK
+            min_ndx = max(rng_start_ndx - min_timeslice_size + 1,
+                          0)  # TODO: bitsofbits: CHECK
 
             rng_end_stamp = (sel_range.end_time - datetime.datetime(
                 1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
             rng_end_ndx = np.searchsorted(input_series[:, 0], rng_end_stamp)
-            max_ndx = min(rng_end_ndx + min_timeslice_size - 1 + 1, input_length - 1) # TODO: bitsofbits: CHECK
+            max_ndx = min(rng_end_ndx + min_timeslice_size - 1 + 1,
+                          input_length - 1)  # TODO: bitsofbits: CHECK
 
             if max_ndx - min_ndx >= min_timeslice_size - 1:
-                start_index, end_index = extract_start_end(min_ndx,
-                                                           max_ndx)
+                start_index, end_index = extract_start_end(min_ndx, max_ndx)
                 break
         else:
             logging.warning('Pulling data for %s from full range', mmsi)
@@ -337,10 +336,10 @@ def np_array_random_fixed_time_extract(random_state, input_series,
     assert max_time_delta != 0, 'max_time_delta must be non zero for time based windows'
 
     # We want to include min_timeslice_size points in our data if we can, so we try picking
-    # slices `TRIALS` time. 
+    # slices `TRIALS` time.
     TRIALS = 128
 
-    for _ in range (TRIALS):
+    for _ in range(TRIALS):
         input_length = len(input_series)
 
         start_time = input_series[0][0]
@@ -353,7 +352,8 @@ def np_array_random_fixed_time_extract(random_state, input_series,
 
         # Should not start closer than min_timeslice_size points from the end lest the 
         # series have too few points to be meaningful.
-        start_index = min(start_index, max(0, input_length - min_timeslice_size))
+        start_index = min(start_index, max(0,
+                                           input_length - min_timeslice_size))
         crop_end_time = min(input_series[start_index][0] + max_time_delta,
                             end_time)
 
@@ -640,11 +640,11 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
     if slices == []:
         # Return an appropriately shaped empty numpy array.
         return (np.empty(
-            [0, 1, window_size, input_series.shape[1] - 1],
-            dtype=np.float32), np.empty(
-                shape=[0, window_size], dtype=np.int32), np.empty(
-                    shape=[0, 2], dtype=np.int32), np.empty(
-                        shape=[0], dtype=np.int32))
+            [0, 1, window_size, input_series.shape[1] - 1], dtype=np.float32),
+                np.empty(
+                    shape=[0, window_size], dtype=np.int32), np.empty(
+                        shape=[0, 2], dtype=np.int32), np.empty(
+                            shape=[0], dtype=np.int32))
 
     return zip(*slices)
 
@@ -678,16 +678,31 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
     mmsi = tf.cast(context_features['mmsi'], tf.int32)
 
     if year is not None:
-        start_date = datetime.datetime(year=year, month=1, day=1, hour=0, minute=0, second=0, tzinfo=pytz.utc)
-        end_date = datetime.datetime(year=year + 1, month=1, day=1, hour=0, minute=0, second=0, tzinfo=pytz.utc)
+        start_date = datetime.datetime(
+            year=year,
+            month=1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            tzinfo=pytz.utc)
+        end_date = datetime.datetime(
+            year=year + 1,
+            month=1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            tzinfo=pytz.utc)
         start_stamp = time.mktime(start_date.timetuple())
         end_stamp = time.mktime(end_date.timetuple())
 
     def replicate_extract(input_series, mmsi):
         if year is not None:
-            start_i = np.searchsorted(input_series[:, 0], start_stamp, side='left')
+            start_i = np.searchsorted(
+                input_series[:, 0], start_stamp, side='left')
             end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
-            input_series = input_series[start_i: end_i]
+            input_series = input_series[start_i:end_i]
         return np_array_extract_all_fixed_slices(input_series, num_features,
                                                  mmsi, window_size, shift)
 
@@ -732,8 +747,9 @@ class VesselMetadata(object):
     def mmsis_for_split(self, split):
         assert split in [TRAINING_SPLIT, TEST_SPLIT]
         # Check to make sure we don't have leakage
-        assert not (set(self.metadata_by_split[TRAINING_SPLIT].keys()) & 
-                    set(self.metadata_by_split[TEST_SPLIT].keys())), 'mmsi in both training and test split'
+        assert not (set(self.metadata_by_split[TRAINING_SPLIT].keys()) &
+                    set(self.metadata_by_split[TEST_SPLIT].keys())
+                    ), 'mmsi in both training and test split'
         return self.metadata_by_split[split].keys()
 
     def weighted_training_list(self,
@@ -751,7 +767,7 @@ class VesselMetadata(object):
             if row_filter(row):
                 if mmsi in self.fishing_ranges_map:
                     fishing_ranges_mmsis.append(mmsi)
-                    weight = weight * self.fishing_range_training_upweight # TODO: rip this out.
+                    weight = weight * self.fishing_range_training_upweight  # TODO: rip this out.
 
                 weight = min(weight, max_replication_factor)
 
@@ -762,8 +778,9 @@ class VesselMetadata(object):
                     replicated_mmsis.append(mmsi)
         missing = (-len(replicated_mmsis)) % boundary
         if missing:
-            replicated_mmsis = np.concatenate([replicated_mmsis, 
-                np.random.choice(replicated_mmsis, missing)])
+            replicated_mmsis = np.concatenate(
+                [replicated_mmsis,
+                 np.random.choice(replicated_mmsis, missing)])
         random_state.shuffle(replicated_mmsis)
         logging.info("Replicated training mmsis: %d", len(replicated_mmsis))
         logging.info("Fishing range mmsis: %d", len(fishing_ranges_mmsis))
@@ -773,12 +790,14 @@ class VesselMetadata(object):
     def fishing_range_only_list(self, random_state, split,
                                 max_replication_factor):
         replicated_mmsis = []
-        fishing_mmsi_set = set([k for (k, v) in self.fishing_ranges_map.items() if v])
+        fishing_mmsi_set = set(
+            [k for (k, v) in self.fishing_ranges_map.items() if v])
         fishing_range_only_mmsis = [mmsi
                                     for mmsi in self.mmsis_for_split(split)
                                     if mmsi in fishing_mmsi_set]
         logging.info("Fishing range training mmsis: %d / %d",
-                     len(fishing_range_only_mmsis), len(self.mmsis_for_split(split)))
+                     len(fishing_range_only_mmsis),
+                     len(self.mmsis_for_split(split)))
         for mmsi in fishing_range_only_mmsis:
             weight = min(self.vessel_weight(mmsi), max_replication_factor)
             assert mmsi in self.fishing_ranges_map
@@ -786,7 +805,9 @@ class VesselMetadata(object):
                 logging.info('skipping %s due to zero weight', mmsi)
                 continue
             int_n = int(weight)
-            logging.info("mmis: %s, max_repl_factor: %s, weight: %s, int_n: %s", mmsi, max_replication_factor, self.vessel_weight(mmsi), int_n)
+            logging.info(
+                "mmis: %s, max_repl_factor: %s, weight: %s, int_n: %s", mmsi,
+                max_replication_factor, self.vessel_weight(mmsi), int_n)
             replicated_mmsis += ([mmsi] * int_n)
             frac_n = weight - float(int_n)
             if (random_state.uniform(0.0, 1.0) <= frac_n):
@@ -831,7 +852,9 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
             split = row['split']
             # assert split in ('Training', 'Test')
             if split not in ('Training', 'Test'):
-                logging.warning('MMSI %s has no valid split assigned (%s); using for Training', mmsi, split)
+                logging.warning(
+                    'MMSI %s has no valid split assigned (%s); using for Training',
+                    mmsi, split)
                 split = 'Training'
             time_for_this_mmsi = 0
             for rng in fishing_range_dict[mmsi]:
@@ -840,7 +863,8 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
                 if rng.is_fishing > 0:
                     is_false_positive = False
             if time_for_this_mmsi and is_false_positive:
-                logging.info('upweighting MMSI %s by %s as a false positive', mmsi, FALSE_POSITIVE_UPWEIGHT)
+                logging.info('upweighting MMSI %s by %s as a false positive',
+                             mmsi, FALSE_POSITIVE_UPWEIGHT)
                 time_for_this_mmsi *= FALSE_POSITIVE_UPWEIGHT
             metadata_dict[split][mmsi] = (row, time_for_this_mmsi)
             if time_for_this_mmsi:
@@ -918,8 +942,9 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
 
     logging.info("Vessel types: %s", list(vessel_type_set))
 
-    return VesselMetadata(dict(metadata_dict), fishing_range_dict,
-                          fishing_range_training_upweight)
+    return VesselMetadata(
+        dict(metadata_dict), fishing_range_dict,
+        fishing_range_training_upweight)
 
 
 def metadata_file_reader(metadata_file):
@@ -1002,6 +1027,7 @@ def build_multihot_lookup_table():
             j = VESSEL_CLASS_DETAILED_NAMES.index(lbl)
             table[i, j] = 1
     return table
+
 
 multihot_lookup_table = build_multihot_lookup_table()
 

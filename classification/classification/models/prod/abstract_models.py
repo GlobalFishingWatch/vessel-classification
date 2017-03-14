@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from classification.model import ModelBase
 from classification import utility
 from . import layers
@@ -32,8 +31,9 @@ class MisconceptionModel(ModelBase):
         feature_pad_size = self.feature_depth - self.num_feature_dimensions
         assert (feature_pad_size >= 0)
         batch_size, _, _, _ = features.get_shape()
-        zero_padding = tf.tile(features[:, :, :, :1] * 0, [1, 1, 1, feature_pad_size])
-	padded = tf.concat(3, [features, zero_padding])
+        zero_padding = tf.tile(features[:, :, :, :1] * 0,
+                               [1, 1, 1, feature_pad_size])
+        padded = tf.concat(3, [features, zero_padding])
 
         return padded
 
