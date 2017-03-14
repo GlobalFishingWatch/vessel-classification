@@ -79,6 +79,7 @@ VESSEL_CATEGORIES += [
 
     ['unknown_longline', ['drifting_longlines', 'set_longlines']],
     ['passenger', ['motor_passenger', 'sailing']],
+    ['unknown', VESSEL_CLASS_DETAILED_NAMES]
 ]
 
 
@@ -749,10 +750,12 @@ class VesselMetadata(object):
         logging.info("Training mmsis: %d", len(self.mmsis_for_split(split)))
         fishing_ranges_mmsis = []
         for mmsi, (row, weight) in self.metadata_by_split[split].iteritems():
+            if row['label'] == 'unknown':
+                continue
             if row_filter(row):
                 if mmsi in self.fishing_ranges_map:
                     fishing_ranges_mmsis.append(mmsi)
-                    weight = weight * self.fishing_range_training_upweight
+                    weight = weight * self.fishing_range_training_upweight # TODO: rip this out.
 
                 weight = min(weight, max_replication_factor)
 
@@ -932,7 +935,6 @@ def metadata_file_reader(metadata_file):
         reader = csv.DictReader(f)
         logging.info("Metadata columns: %s", reader.fieldnames)
         for row in reader:
-            label = row['label'].strip()
             yield row
 
 
