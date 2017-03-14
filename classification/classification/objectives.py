@@ -693,6 +693,7 @@ class FishingLocalizationObjectiveCrossEntropy(
                                    pos_weight=self.pos_weight)) 
 
 
+
 class FishingLocalizationObjectiveSquaredError(
         AbstractFishingLocalizationObjective):
     def __init__(self,

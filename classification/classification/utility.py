@@ -182,10 +182,6 @@ def fishing_localisation_mse(predictions, targets):
     return mse_sum / (scale + EPSILON)
 
 
-# TODO, verify that we are getting correct file from each 
-# Shard!
-
-
 def single_feature_file_reader(filename_queue, num_features):
     """ Read and interpret data from a set of TFRecord files.
 
