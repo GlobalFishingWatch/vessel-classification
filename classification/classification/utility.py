@@ -405,7 +405,6 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
             random_state, input, window_size, min_timeslice_size,
             selection_ranges, mmsi)
     else:
-        assert not selection_ranges, "Using selection ranges not supported for time based windows"
         features = np_array_random_fixed_time_extract(
             random_state, input, max_time_delta, window_size,
             min_timeslice_size)
@@ -498,8 +497,6 @@ def random_feature_cropping_file_reader(vessel_metadata,
         if mmsi in vessel_metadata.fishing_ranges_map:
             ranges = vessel_metadata.fishing_ranges_map[mmsi]
         else:
-            logging.log('%r not in fishing_ranges_map', mmsi)
-            logging.info(repr(vessel_metadata.fishing_ranges_map.keys()[:10]))
             ranges = {}
 
         return np_array_extract_n_random_features(
@@ -728,8 +725,8 @@ class VesselMetadata(object):
 
         intersection_mmsis = set(self.metadata_by_mmsi.keys()).intersection(
             set(fishing_ranges_map.keys()))
-        logging.info("Metadata for %d mmsis." % len(self.metadata_by_mmsi))
-        logging.info("Fishing ranges for %d mmsis." % len(fishing_ranges_map))
+        logging.info("Metadata for %d mmsis.", len(self.metadata_by_mmsi))
+        logging.info("Fishing ranges for %d mmsis.", len(fishing_ranges_map))
         logging.info("Vessels with both types of data: %d",
                      len(intersection_mmsis))
 
@@ -850,7 +847,6 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
             # Symptoms; fishing score for this MMSI never different from 0
             is_false_positive = True
             split = row['split']
-            # assert split in ('Training', 'Test')
             if split not in ('Training', 'Test'):
                 logging.warning(
                     'MMSI %s has no valid split assigned (%s); using for Training',
