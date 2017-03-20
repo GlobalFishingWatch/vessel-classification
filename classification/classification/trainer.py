@@ -158,7 +158,7 @@ class Trainer:
                             raise
                         except:
                             logging.exception(
-                                'Error while running slim.learning.train, ignoring',
+                                'Error while running slim.learning.train, ignoring %s',
                                 sys.exc_info()[0])
                             continue
 
