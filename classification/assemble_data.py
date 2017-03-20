@@ -99,7 +99,7 @@ if __name__ == '__main__':
 python assemble_data.py \
         --fishing-range-dir ../../training-data-source/data/time-ranges \
         --fishing-range-output-path classification/data/combined_fishing_ranges.csv \
-        --training-class-input-path ../../mussidae/mussidae/data/classification_list.csv \
+        --training-class-input-path classification/data/training_classes_base.csv \
         --training-class-output-path classification/data/training_classes.csv \
         --force 
 """
