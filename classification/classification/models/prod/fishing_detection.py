@@ -34,13 +34,11 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
     window_size = 3
     stride = 2
-    feature_depths = [64] * 9
+    feature_depths = [48, 64, 96, 128, 192, 256, 384, 512, 768]
     strides = [2] * 9
     assert len(strides) == len(feature_depths)
 
-    initial_learning_rate = 1e-2
-    learning_decay_rate = 0.1
-    decay_examples = 100000
+    learning_rate = 1e-2
 
     window = (256, 768)
 
@@ -82,6 +80,13 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             metrics=metrics,
             window=self.window)
 
+        self.aux_fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
+            'aux_fishing_localisation',
+            'Aux-Fishing-localisation',
+            vessel_metadata,
+            metrics=metrics,
+            window=self.window)
+
         self.classification_training_objectives = []
         self.training_objectives = [self.fishing_localisation_objective]
 
@@ -95,15 +100,16 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         ]
 
     def _build_net(self, features, timestamps, mmsis, is_training):
-        layers.misconception_fishing(
+        layers.misconception_fishing_sum(
             features,
             self.window_size,
             self.feature_depths,
             self.strides,
             self.fishing_localisation_objective,
             is_training,
-            dense_count=128,
-            dense_layers=2)
+            pre_count=128,
+            post_count=128,
+            post_layers=1)
 
     def build_training_net(self, features, timestamps, mmsis):
         self._build_net(features, timestamps, mmsis, True)
@@ -113,13 +119,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
                                                               mmsis)
         ]
 
-        example = slim.get_or_create_global_step() * self.batch_size
-
-        learning_rate = tf.train.exponential_decay(
-            self.initial_learning_rate, example, self.decay_examples,
-            self.learning_decay_rate)
-
-        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
 
         return TrainNetInfo(optimizer, trainers)
 

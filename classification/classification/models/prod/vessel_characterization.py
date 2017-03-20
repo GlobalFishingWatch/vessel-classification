@@ -33,14 +33,12 @@ import tensorflow.contrib.metrics as metrics
 class Model(abstract_models.MisconceptionModel):
 
     window_size = 3
-    feature_depths = [128] * 9
+    feature_depths = [48, 64, 96, 128, 192, 256, 384, 512, 768]
     strides = [2] * 9
-
     assert len(strides) == len(feature_depths)
+    feature_sub_depths = 1024
 
-    initial_learning_rate = 0.5e-4
-    learning_decay_rate = 0.5
-    decay_examples = 40000
+    learning_rate = 1e-4
 
     @property
     def max_window_duration_seconds(self):
@@ -73,38 +71,35 @@ class Model(abstract_models.MisconceptionModel):
                 return np.float32(x)
 
         self.training_objectives = [
-            # Weights chosen to approximately equalize runtime losses
             LogRegressionObjective(
                 'length',
                 'Vessel-length',
                 XOrNone('length'),
-                loss_weight=0.1,
                 metrics=metrics),
             LogRegressionObjective(
                 'tonnage',
                 'Vessel-tonnage',
                 XOrNone('tonnage'),
-                loss_weight=0.1,
                 metrics=metrics),
             LogRegressionObjective(
                 'engine_power',
                 'Vessel-engine-Power',
                 XOrNone('engine_power'),
-                loss_weight=0.1,
                 metrics=metrics),
             MultiClassificationObjective(
                 "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics)
         ]
 
     def _build_model(self, features, timestamps, mmsis, is_training):
-        outputs, _ = layers.misconception_model(
+        outputs, _ = layers.misconception_model2(
             features,
             self.window_size,
             self.feature_depths,
             self.strides,
             self.training_objectives,
             is_training,
-            dense_count=1024)
+            sub_count=self.feature_sub_depths,
+            sub_layers=2)
         return outputs
 
     def build_training_net(self, features, timestamps, mmsis):
@@ -115,13 +110,7 @@ class Model(abstract_models.MisconceptionModel):
             trainers.append(self.training_objectives[i].build_trainer(
                 timestamps, mmsis))
 
-        step = slim.get_or_create_global_step()
-
-        learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
-                                                   step, self.decay_examples,
-                                                   self.learning_decay_rate)
-
-        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
 
         return TrainNetInfo(optimizer, trainers)
 
