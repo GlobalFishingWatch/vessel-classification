@@ -200,6 +200,10 @@ def misconception_model2(input,
     return outputs, layers
 
 
+
+
+
+
 def misconception_fishing(input,
                           window_size,
                           depths,
@@ -267,16 +271,15 @@ def misconception_fishing_sum(input,
                           internal_keep_prob=0.5,
                           other_objectives=()):
 
-    _, layers = misconception_model(
+    _, layers = misconception_model2(
         input,
         window_size,
         depths,
         strides,
         other_objectives,
         is_training,
-        dense_count=post_count,
-        dense_layers=2,
-        keep_prob=keep_prob)
+        sub_count=post_count,
+        sub_layers=2)
 
     expanded_layers = []
     for i, lyr in enumerate(layers):
@@ -310,6 +313,7 @@ def misconception_fishing_sum(input,
         squeeze_dims=[1, 3])
 
     return objective_function.build(fishing_outputs)
+
 
 
 

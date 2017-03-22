@@ -38,7 +38,11 @@ class Model(abstract_models.MisconceptionModel):
     assert len(strides) == len(feature_depths)
     feature_sub_depths = 1024
 
-    learning_rate = 1e-4
+    learning_rate = 1e-5
+
+    @property
+    def number_of_steps(self):
+        return 1000000
 
     @property
     def max_window_duration_seconds(self):

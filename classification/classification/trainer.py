@@ -31,8 +31,6 @@ import tensorflow.contrib.metrics as metrics
 MIN_TEST_EXAMPLES = 3200
 MAX_TEST_EXAMPLES = 12800
 
-NUMBER_OF_STEPS = 500000  # TODO: make this an attribute of the model
-
 
 class Trainer:
     """ Handles the mechanics of training and evaluating a vessel behaviour
@@ -146,7 +144,7 @@ class Trainer:
                                 self.checkpoint_dir,
                                 master=master,
                                 is_chief=is_chief,
-                                number_of_steps=NUMBER_OF_STEPS,
+                                number_of_steps=self.model.number_of_steps,
                                 save_summaries_secs=30,
                                 save_interval_secs=60,
                                 saver=self._make_saver(),

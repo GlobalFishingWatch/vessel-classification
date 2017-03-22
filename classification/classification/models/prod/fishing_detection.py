@@ -38,9 +38,13 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     strides = [2] * 9
     assert len(strides) == len(feature_depths)
 
-    learning_rate = 1e-2
+    learning_rate = 1e-3
 
     window = (256, 768)
+
+    @property
+    def number_of_steps(self):
+        return 300000
 
     @property
     def max_window_duration_seconds(self):

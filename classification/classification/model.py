@@ -26,6 +26,11 @@ class ModelBase(object):
     __metaclass__ = abc.ABCMeta
 
     @property
+    def number_of_steps(self):
+        """Number of training examples to use"""
+        return 500000
+
+    @property
     def use_ranges_for_training(self):
         """Choose features overlapping with provided ranges during training"""
         return False
