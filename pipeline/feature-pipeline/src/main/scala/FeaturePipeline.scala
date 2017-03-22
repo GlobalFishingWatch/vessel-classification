@@ -51,6 +51,7 @@ object Pipeline extends LazyLogging {
     val anchoragesRootPath = remaining_args("anchorages-root-path")
     val generateEncounters = remaining_args.boolean("generate-encounters", true)
     val dataYearsArg = remaining_args.list("data-years")
+    val extraFeaturesGlob = remaining_args.getOrElse("extra-features-glob", null)
     val dataFileGlob =
       remaining_args.getOrElse("data-file-glob", InputDataParameters.defaultDataFileGlob)
 
@@ -67,9 +68,11 @@ object Pipeline extends LazyLogging {
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
-      val aisInputData = InputDataParameters
-        .dataFileGlobPerYear(dataYearsArg, dataFileGlob)
-        .map(glob => sc.textFile(glob))
+      val baseGlobList = InputDataParameters.dataFileGlobPerYear(dataYearsArg, dataFileGlob)
+      val globList = if (extraFeaturesGlob == null) baseGlobList else (baseGlobList :+ extraFeaturesGlob)
+      logger.info(s"Using globList: $globList.")
+
+      val aisInputData = globList.map(glob => sc.textFile(glob))
 
       logger.info("Building pipeline.")
       val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
