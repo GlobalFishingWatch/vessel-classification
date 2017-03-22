@@ -104,7 +104,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         ]
 
     def _build_net(self, features, timestamps, mmsis, is_training):
-        layers.misconception_fishing_sum(
+        layers.misconception_fishing(
             features,
             self.window_size,
             self.feature_depths,

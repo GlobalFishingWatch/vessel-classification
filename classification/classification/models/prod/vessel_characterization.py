@@ -95,7 +95,7 @@ class Model(abstract_models.MisconceptionModel):
         ]
 
     def _build_model(self, features, timestamps, mmsis, is_training):
-        outputs, _ = layers.misconception_model2(
+        outputs, _ = layers.misconception_model(
             features,
             self.window_size,
             self.feature_depths,
