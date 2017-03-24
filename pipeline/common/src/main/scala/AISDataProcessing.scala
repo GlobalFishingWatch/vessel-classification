@@ -84,13 +84,12 @@ object AISDataProcessing extends LazyLogging {
         val metadata = VesselMetadata(mmsi, knownFishingMMSIs.contains(mmsi))
         val record =
           // TODO(alexwilson): Double-check all these units are correct.
-          VesselLocationRecord(Instant.parse(json.getString("timestamp").replace(" UTC","Z").replace(" ", "T")),
+          VesselLocationRecord(Instant.parse(json.getString("timestamp")),
                                LatLon(angleNormalize(json.getDouble("lat").of[degrees]),
                                       angleNormalize(json.getDouble("lon").of[degrees])),
                                (json.getDouble("distance_from_shore") / 1000.0).of[kilometer],
                                json.getDouble("speed").of[knots],
                                angleNormalize(json.getDouble("course").of[degrees]),
-                               // angleNormalize(json.getDouble("heading").of[degrees]),
                                angleNormalize(json.getDouble("heading").of[degrees]))
         (metadata, record)
       })
@@ -194,8 +193,8 @@ object AISDataProcessing extends LazyLogging {
     }
   }
 
-  def loadFishingMMSIs(knownFishingMMSIs:String = InputDataParameters.knownFishingMMSIs): Set[Int] = {
-    val fishingMMSIreader = new CSVReader(new FileReader(knownFishingMMSIs))
+  def loadFishingMMSIs(): Set[Int] = {
+    val fishingMMSIreader = new CSVReader(new FileReader(InputDataParameters.knownFishingMMSIs))
     fishingMMSIreader
       .readAll()
       .map { l =>

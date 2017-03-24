@@ -21,7 +21,7 @@ import org.joda.time.{Duration, Instant}
 
 object Parameters {
   val adjacencyResamplePeriod = Duration.standardMinutes(10)
-  val maxInterpolateGap = Duration.standardMinutes(120)
+  val maxInterpolateGap = Duration.standardMinutes(60)
 
   val maxClosestNeighbours = 10
   val maxEncounterRadius = 1.0.of[kilometer]

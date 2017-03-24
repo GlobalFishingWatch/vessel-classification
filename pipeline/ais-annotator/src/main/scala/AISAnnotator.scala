@@ -41,7 +41,7 @@ case class JSONFileAnnotatorConfig(inputFilePattern: String,
 
 case class AnnotatorConfig(
     inputFilePatterns: Seq[String],
-    knownFishingMMSIs: String,
+    outputFilePath: String,
     jsonAnnotations: Seq[JSONFileAnnotatorConfig]
 )
 
@@ -168,7 +168,7 @@ object AISAnnotator extends LazyLogging {
     val environment = remaining_args.required("env")
     val jobName = remaining_args.required("job-name")
     val jobConfigurationFile = remaining_args.required("job-config")
-    val outputFilePath = remaining_args.required("output-path")
+    val onlyFishingMMSIs = remaining_args.boolean("only-fishing", false)
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -176,17 +176,15 @@ object AISAnnotator extends LazyLogging {
     options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
 
-
+    val includedMMSIs = if (onlyFishingMMSIs) {
+      AISDataProcessing.loadFishingMMSIs()
+    } else {
+      Set[Int]()
+    }
 
     val annotatorConfig = managed(scala.io.Source.fromFile(jobConfigurationFile)).acquireAndGet {
       s =>
         readYamlConfig(s.mkString)
-    }
-
-    val includedMMSIs = if (annotatorConfig.knownFishingMMSIs != null) {
-      AISDataProcessing.loadFishingMMSIs(annotatorConfig.knownFishingMMSIs)
-    } else {
-      Set[Int]()
     }
 
     managed(ScioContext(options)).acquireAndGet { sc =>
@@ -206,7 +204,7 @@ object AISAnnotator extends LazyLogging {
       val annotated = annotateAllMessages(includedMMSIs, inputData, annotations)
       val annotatedToString = annotated.map(json => compact(render(json)))
 
-      annotatedToString.saveAsTextFile(outputFilePath)
+      annotatedToString.saveAsTextFile(annotatorConfig.outputFilePath)
     }
   }
 }
