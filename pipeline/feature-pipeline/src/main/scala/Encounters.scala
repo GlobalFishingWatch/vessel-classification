@@ -269,7 +269,8 @@ object Encounters extends LazyLogging {
         vesselDistances.map {
           case (md, adjacencies) =>
             val vl = vesselLocationMap(md)
-            val (identity, withoutIdentity) = adjacencies.partition(_._1 == md)
+            val withoutIdentity = adjacencies.filter(_._1 != md)
+                                        .filter(x => (x._1.mmsi >= 1000000000) || (md.mmsi >= 1000000000)) // Hack to only compute encounters when one vessel is VMS 
             val closestN =
               withoutIdentity.toSeq.distinct.sortBy(_._2).take(Parameters.maxClosestNeighbours)
 

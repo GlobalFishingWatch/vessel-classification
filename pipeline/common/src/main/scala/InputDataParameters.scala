@@ -38,7 +38,8 @@ object InputDataParameters {
   val defaultYearsToRun = Seq("2012", "2013", "2014", "2015", "2016")
   val defaultDataFileGlob = "-*-*/*-of-*"
 
-  def dataFileGlobPerYear(dataYearsArg: Seq[String], dataFileGlob: String): Seq[String] = {
+  def dataFileGlobPerYear(dataYearsArg: Seq[String], dataFileGlob: String, 
+          measuresPath: String = inputMeasuresPath): Seq[String] = {
     val dataYears = if (dataYearsArg.isEmpty) {
       InputDataParameters.defaultYearsToRun
     } else {
@@ -46,7 +47,7 @@ object InputDataParameters {
     }
 
     dataYears.map { year =>
-      s"${inputMeasuresPath}/$year$dataFileGlob"
+      s"${measuresPath}/$year$dataFileGlob"
     }
   }
 }
