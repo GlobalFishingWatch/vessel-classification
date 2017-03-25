@@ -183,7 +183,7 @@ object AISAnnotator extends LazyLogging {
         readYamlConfig(s.mkString)
     }
 
-    val includedMMSIs = if (annotatorConfig.knownFishingMMSIs != null) {
+    val includedMMSIs = if (annotatorConfig.knownFishingMMSIs != "") {
       AISDataProcessing.loadFishingMMSIs(annotatorConfig.knownFishingMMSIs)
     } else {
       Set[Int]()

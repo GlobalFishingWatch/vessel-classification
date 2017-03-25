@@ -78,41 +78,34 @@ object AISDataProcessing extends LazyLogging {
     val validRecords = input
       .map(line => parse(line))
       .filter(json => json.has("lat") && json.has("lon"))
-      .filter(json => json.getString("mmsi").toLong <= Int.MaxValue) // Filter to protect from bad VMS records
-      .filter(json => json.getString("distance_from_shore") != "") // Filter to protect from bad VMS records
       // Build a typed location record with units of measure.
       .map(json => {
-        val mmsi = json.getString("mmsi").toInt
+        val mmsi = (json \ "mmsi").extract[Int]
         val metadata = VesselMetadata(mmsi, knownFishingMMSIs.contains(mmsi))
-        val heading = json.getDouble("heading").of[degrees]
-        val course = json.getDouble("course").of[degrees]
-        val distanceToShore = (json.getString("distance_from_shore").toDouble / 1000.0).of[kilometer]
-        val timestamp = Instant.parse(json.getString("timestamp").replace(" UTC","Z").replace(" ", "T"))
-        val speed = json.getDouble("speed").of[knots]
         val record =
           // TODO(alexwilson): Double-check all these units are correct.
-          VesselLocationRecord(timestamp,
+          VesselLocationRecord(Instant.parse(json.getString("timestamp")),
                                LatLon(angleNormalize(json.getDouble("lat").of[degrees]),
                                       angleNormalize(json.getDouble("lon").of[degrees])),
-                               distanceToShore,
-                               speed,
-                               angleNormalize(course),
-                               angleNormalize(heading))
+                               (json.getDouble("distance_from_shore") / 1000.0).of[kilometer],
+                               json.getDouble("speed").of[knots],
+                               angleNormalize(json.getDouble("course").of[degrees]),
+                               angleNormalize(json.getDouble("heading").of[degrees]))
         (metadata, record)
       })
       .filter { case (metadata, _) => !blacklistedMmsis.contains(metadata.mmsi) }
       .filter {
         case (_, record) =>
           RangeValidator()
-            // .inRange(record.timestamp,
-            //          InputDataParameters.minValidTime,
-            //          InputDataParameters.maxValidTime)
-            // .inRange(record.location.lat, -90.0.of[degrees], 90.0.of[degrees])
-            // .inRange(record.location.lon, -180.0.of[degrees], 180.of[degrees])
-            // .inRange(record.distanceToShore, 0.0.of[kilometer], 20000.0.of[kilometer])
-            // .inRange(record.speed, 0.0.of[knots], 100.0.of[knots])
-            // .inRange(record.course, -180.0.of[degrees], 180.of[degrees])
-            // .inRange(record.heading, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.timestamp,
+                     InputDataParameters.minValidTime,
+                     InputDataParameters.maxValidTime)
+            .inRange(record.location.lat, -90.0.of[degrees], 90.0.of[degrees])
+            .inRange(record.location.lon, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.distanceToShore, 0.0.of[kilometer], 20000.0.of[kilometer])
+            .inRange(record.speed, 0.0.of[knots], 100.0.of[knots])
+            .inRange(record.course, -180.0.of[degrees], 180.of[degrees])
+            .inRange(record.heading, -180.0.of[degrees], 180.of[degrees])
             .valid
       }
 
@@ -202,11 +195,13 @@ object AISDataProcessing extends LazyLogging {
 
   def loadFishingMMSIs(knownFishingMMSIs:String = InputDataParameters.knownFishingMMSIs): Set[Int] = {
     val fishingMMSIreader = new CSVReader(new FileReader(knownFishingMMSIs))
-    fishingMMSIreader
+    val mmsis = fishingMMSIreader
       .readAll()
       .map { l =>
         l(0).toInt
       }
       .toSet
+    logger.info(s"mmsi count: ${mmsis.size}")
+    mmsis
   }
 }
