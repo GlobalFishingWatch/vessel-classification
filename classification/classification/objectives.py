@@ -22,6 +22,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 import utility
+import pytz
 """ Terminology in the context of objectives.
     
     Net: the raw input to an objective function, an embeddeding that has not
@@ -628,8 +629,17 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                         break
                     if is_fishing:
                         if last and last[1]:
+                            if ts.date() > last[0].date():
+                                # We are crossing a day boundary here, so break into two ranges
+                                end_of_day = datetime.combine(last[0].date(), 
+                                    datetime.time(hour=23, minute=59, second=59, microsecond=999999, tzinfo=pytz.UTC))
+                                start_of_day = datetime.combine(ts.date(), 
+                                    datetime.time(hour=0, minute=0, second=0, microsecond=0, tzinfo=pytz.UTC))
+                                fishing_ranges[-1][1] = end_of_day.isoformat()
+                                fishing_ranges.append(start_of_day.isoformat(), None)
                             fishing_ranges[-1][1] = ts.isoformat()
                         else:
+                            # TODO, append min(half the distance to previous / next point)
                             fishing_ranges.append(
                                 [ts.isoformat(), ts.isoformat()])
                     last = (ts, is_fishing)
