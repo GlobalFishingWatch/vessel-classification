@@ -636,7 +636,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                                 start_of_day = datetime.datetime.combine(ts.date(), 
                                     datetime.time(hour=0, minute=0, second=0, microsecond=0, tzinfo=pytz.UTC))
                                 fishing_ranges[-1][1] = end_of_day.isoformat()
-                                fishing_ranges.append((start_of_day.isoformat(), None))
+                                fishing_ranges.append([start_of_day.isoformat(), None])
                             fishing_ranges[-1][1] = ts.isoformat()
                         else:
                             # TODO, append min(half the distance to previous / next point)
