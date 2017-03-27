@@ -136,14 +136,18 @@ object AISAnnotator extends LazyLogging {
       aisMessageInputs: Seq[SCollection[JValue]],
       annotationInputs: Seq[SCollection[MessageAnnotation]]): SCollection[JValue] = {
 
+    val delta = 10
     val aisMessages = SCollection.unionAll(aisMessageInputs)
-    val annotationsByMmsi = SCollection.unionAll(annotationInputs).groupBy(_.mmsi)
+    val allAnnotations = SCollection.unionAll(annotationInputs)
+    val annotationsByMmsi = allAnnotations.groupBy(x => 
+      (x.mmsi, x.startTime.toDateTime().getYear(), x.startTime.toDateTime().getDayOfYear() / delta))
 
     // Do not process messages for MMSIs for which we have no annotations.
     val filteredAISMessages = aisMessages.map { json =>
-      (json.getLong("mmsi").toInt, json)
+      val dateTime = Instant.parse(json.getString("timestamp")).toDateTime()
+      ((json.getLong("mmsi").toInt, dateTime.getYear(), dateTime.getDayOfYear() / delta), json)
     }
-    .filter { case (mmsi, _) =>
+    .filter { case ((mmsi, _, _), _) =>
       !AISDataProcessing.blacklistedMmsis.contains(mmsi) && (
         allowedMMSIs.isEmpty || allowedMMSIs.contains(mmsi))
     }
@@ -151,10 +155,10 @@ object AISAnnotator extends LazyLogging {
     // Remove all but location messages and key by mmsi.
     val filteredGroupedByMmsi = filteredAISMessages
     // Keep only records with a location.
-    .filter { case (_, json) => json.has("lat") && json.has("lon") }.groupByKey
+    .filter { case (_, json) => json.has("lat") && json.has("lon") && json.has("timestamp")}.groupByKey
 
     filteredGroupedByMmsi.join(annotationsByMmsi).flatMap {
-      case (mmsi, (messagesIt, annotationsIt)) =>
+      case (_, (messagesIt, annotationsIt)) =>
         val messages = messagesIt.toSeq
         val annotations = annotationsIt.toSeq
         annotateVesselMessages(messages, annotations)
