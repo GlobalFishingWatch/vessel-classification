@@ -453,8 +453,8 @@ def ydump_metrics(doc, results):
         row_vals = precision_recall_f1(consolidated.label_list,
                                        consolidated.true_labels,
                                        consolidated.inferred_labels)
-        ydump_table(doc, ['Label', 'Precision', 'Recall', 'F1-Score'], [
-            (a, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
+        ydump_table(doc, ['Label (true/total)', 'Precision', 'Recall', 'F1-Score'], [
+            ('{} ({}/{}'.fomat(a, sum(consolidated.true_labels), len(consodated.true_labels)), '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
             for (a, b, c, d) in row_vals
         ])
         wts = weights(consolidated.label_list, consolidated.true_labels,
@@ -472,7 +472,7 @@ def ydump_fishing_localisation(doc, results):
     y_true = np.concatenate(results.true_fishing_by_mmsi.values())
     y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
 
-    header = ['Gear Type', 'Precision', 'Recall', 'Accuracy', 'F1-Score']
+    header = ['Gear Type (true/total)', 'Precision', 'Recall', 'Accuracy', 'F1-Score']
     rows = []
     logging.info('Overall localisation accuracy %s',
                  accuracy_score(y_true, y_pred))
@@ -494,7 +494,7 @@ def ydump_fishing_localisation(doc, results):
         if len(true_chunks):
             y_true = np.concatenate(true_chunks)
             y_pred = np.concatenate(pred_chunks)
-            rows.append([cls,
+            rows.append(['{} ({}:{}/{})'.format(cls, len(true_chunks), sum(y_true), len(y_true)),
                          precision_score(y_true, y_pred),
                          recall_score(y_true, y_pred),
                          accuracy_score(y_true, y_pred),
@@ -673,13 +673,15 @@ def confusion_matrix(results):
     return ConfusionMatrix(cm_raw, cm_normalized)
 
 
-def load_inferred(inference_path, extractors):
+def load_inferred(inference_path, extractors, whitelist):
     """Load inferred data and generate comparison data
 
     """
     with gzip.GzipFile(inference_path) as f:
         with nlj.open(f, json_lib='ujson') as src:
             for row in src:
+                if whitelist is not None and row['mmsi'] not in whitelist:
+                    continue
                 # Parsing dates is expensive and all extractors use dates, so parse them
                 # once up front
                 row['start_time'] = _parse(row['start_time'])
@@ -1114,7 +1116,11 @@ def compute_results(args):
         results['engine_power'] = ext
 
     logging.info('Loading inference data')
-    load_inferred(inference_path, results.values())
+    if args.test_only:
+        whitelist = set([x for x in maps['split'] if maps['split'][x] == TEST_SPLIT]) 
+    else:
+        whitelist = None
+    load_inferred(inference_path, results.values(), whitelist)
 
     if not args.skip_class_metrics:
         # Sanity check attribute values after loading
@@ -1220,6 +1226,8 @@ if __name__ == '__main__':
         '--dump-attributes-to',
         help='dump csv file mapping mmmsi to inferred attributes')
     parser.add_argument('--agreement-ranges-path')
+    parser.add_argument('--test-only', action='store_true')
+
     args = parser.parse_args()
 
     results = compute_results(args)
