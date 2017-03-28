@@ -136,16 +136,15 @@ object AISAnnotator extends LazyLogging {
       aisMessageInputs: Seq[SCollection[JValue]],
       annotationInputs: Seq[SCollection[MessageAnnotation]]): SCollection[JValue] = {
 
-    val delta = 10
     val aisMessages = SCollection.unionAll(aisMessageInputs)
     val allAnnotations = SCollection.unionAll(annotationInputs)
     val annotationsByMmsi = allAnnotations.groupBy(x => 
-      (x.mmsi, x.startTime.toDateTime().getYear(), x.startTime.toDateTime().getDayOfYear() / delta))
+      (x.mmsi, x.startTime.toDateTime().getYear(), x.startTime.toDateTime().getDayOfYear()))
 
     // Do not process messages for MMSIs for which we have no annotations.
     val filteredAISMessages = aisMessages.map { json =>
       val dateTime = Instant.parse(json.getString("timestamp")).toDateTime()
-      ((json.getLong("mmsi").toInt, dateTime.getYear(), dateTime.getDayOfYear() / delta), json)
+      ((json.getLong("mmsi").toInt, dateTime.getYear(), dateTime.getDayOfYear()), json)
     }
     .filter { case ((mmsi, _, _), _) =>
       !AISDataProcessing.blacklistedMmsis.contains(mmsi) && (
