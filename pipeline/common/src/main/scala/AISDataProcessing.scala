@@ -84,7 +84,7 @@ object AISDataProcessing extends LazyLogging {
         val metadata = VesselMetadata(mmsi, knownFishingMMSIs.contains(mmsi))
         val record =
           // TODO(alexwilson): Double-check all these units are correct.
-          VesselLocationRecord(Instant.parse(json.getString("timestamp")),
+          VesselLocationRecord(Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")),
                                LatLon(angleNormalize(json.getDouble("lat").of[degrees]),
                                       angleNormalize(json.getDouble("lon").of[degrees])),
                                (json.getDouble("distance_from_shore") / 1000.0).of[kilometer],
