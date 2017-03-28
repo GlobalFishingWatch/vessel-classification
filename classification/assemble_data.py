@@ -45,14 +45,16 @@ def augment_training_list(input_path, output_path, fishing_range_path, false_pos
     used_mmsi = set()
     for name in dict(VESSEL_CATEGORIES)['unknown_fishing']:
         candidates = [x for x in range_mmsi if class_name_of(x) == name and x not in fp_mmsi]
+        if not candidates:
+            continue
         np.random.shuffle(candidates)
         n = len(candidates) // 2
-        print name, n, len(candidates)
+        print name, "TEST", n, "TOTAL", len(candidates)
         for i, mmsi in enumerate(candidates):
             assert mmsi not in used_mmsi
             new = template.copy()
             new.mmsi = mmsi
-            new.split = TRAINING_SPLIT if (i < n) else TEST_SPLIT
+            new.split = TEST_SPLIT if (i < n) else TRAINING_SPLIT
             new_list.append(new)
         used_mmsi |= set(candidates)
 
