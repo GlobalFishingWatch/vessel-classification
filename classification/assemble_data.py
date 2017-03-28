@@ -5,6 +5,7 @@ from glob import glob
 import pandas as pd
 import logging
 import argparse
+from classification.utility import VESSEL_CATEGORIES, TRAINING_SPLIT, TEST_SPLIT
 
 
 def assemble_fishing_data(src_dir, output_path):
@@ -22,11 +23,15 @@ def assemble_fishing_data(src_dir, output_path):
             output.writelines(lines[1:])
 
 
-def augment_training_list(input_path, output_path, fishing_range_path):
+def augment_training_list(input_path, output_path, fishing_range_path, false_positive_path, seed=0):
+    np.random.seed(seed)
     logging.basicConfig(level=logging.INFO)
     vessel_list = pd.read_csv(input_path)
-    range_mmsi = pd.read_csv(fishing_range_path)
-    missing_fishing = (set(range_mmsi['mmsi']) - set(vessel_list['mmsi']))
+    range_mmsi = sorted(set(pd.read_csv(fishing_range_path).mmsi))
+    fp_mmsi = set(pd.read_csv(false_positive_path)['mmsi'])
+
+    class_name_of = {x.mmsi : x.label for x in vessel_list.itertuples()}.get
+
 
     template = vessel_list.iloc[-1].copy()
     template.label = "unknown"
@@ -36,17 +41,31 @@ def augment_training_list(input_path, output_path, fishing_range_path):
     template.split = 'Training'
     template.source = "fishing-ranges"
 
-    extra = []
-    for mmsi in sorted(missing_fishing):
-        new = template.copy()
-        new['mmsi'] = mmsi
-        extra.append(new)
+    new_list = []
+    used_mmsi = set()
+    for name in dict(VESSEL_CATEGORIES)['unknown_fishing']:
+        candidates = [x for x in range_mmsi if class_name_of(x) == name and x not in fp_mmsi]
+        np.random.shuffle(candidates)
+        n = len(candidates) // 2
+        print name, n, len(candidates)
+        for i, mmsi in enumerate(candidates):
+            assert mmsi not in used_mmsi
+            new = template.copy()
+            new.mmsi = mmsi
+            new.split = TRAINING_SPLIT if (i < n) else TEST_SPLIT
+            new_list.append(new)
+        used_mmsi |= set(candidates)
 
-    if extra:
-        logging.info('adding %s new vessels', len(extra))
-        extended_vessel_list = vessel_list.append(extra)
+    for mmsi in range_mmsi:
+        if mmsi not in used_mmsi:        
+            new = template.copy()
+            new.mmsi = mmsi
+            new.split = TRAINING_SPLIT
+            new_list.append(new)
 
-    extended_vessel_list.to_csv(output_path, index=False)
+    new_vessel_list = vessel_list.iloc[:0].append(new_list)
+
+    new_vessel_list.to_csv(output_path, index=False)
 
 
 if __name__ == '__main__':
@@ -90,17 +109,20 @@ if __name__ == '__main__':
             print(
                 'classes already exist, exiting (use `--force` to overwrite)')
             raise SystemExit()
+        [false_positive_path] = [x for x in glob(os.path.join(args.fishing_range_dir, '*.csv')) if os.path.basename(x).startswith('false_')]
+ 
         augment_training_list(args.training_class_input_path,
                               args.training_class_output_path,
-                              args.fishing_range_output_path)
+                              args.fishing_range_output_path,
+                              false_positive_path)
 
     # vessel_list = pd.read_csv("classification/data/training_classes.csv")
 """
 python assemble_data.py \
         --fishing-range-dir ../../training-data-source/data/time-ranges \
         --fishing-range-output-path classification/data/combined_fishing_ranges.csv \
-        --training-class-input-path classification/data/training_classes_base.csv \
-        --training-class-output-path classification/data/training_classes.csv \
+        --training-class-input-path classification/data/training_classes.csv \
+        --training-class-output-path classification/data/fishing_classes.csv \
         --force 
 """
 
