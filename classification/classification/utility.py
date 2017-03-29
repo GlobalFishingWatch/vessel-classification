@@ -759,8 +759,6 @@ class VesselMetadata(object):
         logging.info("Training mmsis: %d", len(self.mmsis_for_split(split)))
         fishing_ranges_mmsis = []
         for mmsi, (row, weight) in self.metadata_by_split[split].iteritems():
-            if row['label'] == 'unknown':
-                continue
             if row_filter(row):
                 if mmsi in self.fishing_ranges_map:
                     fishing_ranges_mmsis.append(mmsi)
