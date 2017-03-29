@@ -55,6 +55,7 @@ object Pipeline extends LazyLogging {
     val extraFeaturesGlob = remaining_args.getOrElse("extra-features-glob", null)
     val dataFileGlob =
       remaining_args.getOrElse("data-file-glob", InputDataParameters.defaultDataFileGlob)
+    val minRequiredPositions = remaining_args.int("min-required-positions", InputDataParameters.minRequiredPositions)
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -84,13 +85,13 @@ object Pipeline extends LazyLogging {
       val locationRecordsBase: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
         AISDataProcessing.readJsonRecords(aisInputData,
                                           knownFishingMMSIs,
-                                          InputDataParameters.minRequiredPositions)
+                                          minRequiredPositions)
 
       val locationRecords : SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
         if (auxInputData == null) locationRecordsBase else (locationRecordsBase ++
             AISDataProcessing.readJsonRecords(auxInputData,
                                           knownFishingMMSIs, // TODO: Broken for VMS
-                                          InputDataParameters.minRequiredPositions))
+                                          minRequiredPositions))
 
       val processed =
         AISDataProcessing.filterAndProcessVesselRecords(

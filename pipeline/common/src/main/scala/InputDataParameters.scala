@@ -21,7 +21,7 @@ import org.joda.time.{Duration, Instant}
 
 object InputDataParameters {
   // TODO(alexwilson): This should be per year.
-  val minRequiredPositions = 1000
+  val minRequiredPositions = 100
   val minTimeBetweenPoints = Duration.standardMinutes(5)
 
   val stationaryPeriodMaxDistance = 0.8.of[kilometer]
@@ -35,7 +35,7 @@ object InputDataParameters {
   val minValidTime = Instant.parse("2012-01-01T00:00:00Z")
   lazy val maxValidTime = Instant.now()
 
-  val defaultYearsToRun = Seq("2012", "2013", "2014", "2015", "2016")
+  val defaultYearsToRun = Seq("2012", "2013", "2014", "2015", "2016", "2017")
   val defaultDataFileGlob = "-*-*/*-of-*"
 
   def dataFileGlobPerYear(dataYearsArg: Seq[String], dataFileGlob: String, 
