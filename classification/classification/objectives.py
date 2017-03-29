@@ -632,9 +632,9 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                             if ts.date() > last[0].date():
                                 # We are crossing a day boundary here, so break into two ranges
                                 end_of_day = datetime.datetime.combine(last[0].date(), 
-                                    datetime.time(hour=23, minute=59, second=59, microsecond=999999, tzinfo=pytz.UTC))
+                                    datetime.time(hour=23, minute=59, second=59, microsecond=999999))
                                 start_of_day = datetime.datetime.combine(ts.date(), 
-                                    datetime.time(hour=0, minute=0, second=0, microsecond=0, tzinfo=pytz.UTC))
+                                    datetime.time(hour=0, minute=0, second=0, microsecond=0))
                                 fishing_ranges[-1][1] = end_of_day.isoformat()
                                 fishing_ranges.append([start_of_day.isoformat(), None])
                             fishing_ranges[-1][1] = ts.isoformat()
@@ -644,8 +644,8 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                                 [ts.isoformat(), ts.isoformat()])
                     last = (ts, is_fishing)
 
-                return [{'start_time': start_time,
-                         'end_time': end_time}
+                return [{'start_time': start_time + 'Z',
+                         'end_time': end_time + 'Z'}
                         for (start_time, end_time) in fishing_ranges]
 
         return Evaluation(self.metadata_label, self.name, self.prediction,
