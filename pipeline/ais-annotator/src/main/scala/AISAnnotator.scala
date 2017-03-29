@@ -89,7 +89,7 @@ object AISAnnotator extends LazyLogging {
                              annotations: Iterable[MessageAnnotation]): Seq[JValue] = {
     // Sort messages and annotations by (start) time.
     val sortedMessages = messages.map { msg =>
-      (Instant.parse(msg.getString("timestamp")), msg)
+      (Instant.parse(msg.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")), msg)
     }
     // Ensure only a single message per timestamp.
       .groupBy(_._1)
@@ -143,7 +143,7 @@ object AISAnnotator extends LazyLogging {
 
     // Do not process messages for MMSIs for which we have no annotations.
     val filteredAISMessages = aisMessages.map { json =>
-      val dateTime = Instant.parse(json.getString("timestamp")).toDateTime()
+      val dateTime = Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")).toDateTime()
       ((json.getLong("mmsi").toInt, dateTime.getYear(), dateTime.getDayOfYear()), json)
     }
     .filter { case ((mmsi, _, _), _) =>
