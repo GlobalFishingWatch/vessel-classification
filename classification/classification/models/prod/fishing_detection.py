@@ -38,7 +38,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     strides = [2] * 9
     assert len(strides) == len(feature_depths)
 
-    learning_rate = 1e-3
+    learning_rate = 0.2e-3 # was 1 till about 238,000
 
     window = (256, 768)
 
