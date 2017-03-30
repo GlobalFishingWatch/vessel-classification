@@ -55,6 +55,7 @@ def augment_training_list(input_path, output_path, fishing_range_path, false_pos
             new = template.copy()
             new.mmsi = mmsi
             new.split = TEST_SPLIT if (i < n) else TRAINING_SPLIT
+            new.label = name
             new_list.append(new)
         used_mmsi |= set(candidates)
 
