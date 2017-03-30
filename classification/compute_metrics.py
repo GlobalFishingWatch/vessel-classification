@@ -75,6 +75,8 @@ def _parse(x):
     # TODO: fix generation to generate consistent datetimes
     if x[-6:] == '+00:00':
         x = x[:-6]
+    if x.endswith('.999999'):
+        x = x[:-7]
     try:
         dt = datetime.datetime.strptime(x, '%Y-%m-%dT%H:%M:%S')
     except:
@@ -453,7 +455,7 @@ def ydump_metrics(doc, results):
         row_vals = precision_recall_f1(consolidated.label_list,
                                        consolidated.true_labels,
                                        consolidated.inferred_labels)
-        ydump_table(doc, ['Label (true/total)', 'Precision', 'Recall', 'F1-Score'], [
+        ydump_table(doc, ['Label (mmsi:true/total)', 'Precision', 'Recall', 'F1-Score'], [
             ('{} ({}/{}'.fomat(a, sum(consolidated.true_labels), len(consodated.true_labels)), '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
             for (a, b, c, d) in row_vals
         ])
@@ -465,6 +467,15 @@ def ydump_metrics(doc, results):
                 accuracy_score(consolidated.true_labels,
                                consolidated.inferred_labels, wts)))
 
+fishing_category_map = {
+    'drifting_longlines' : 'drifting_longlines',
+    'trawlers' : 'trawlers',
+    'purse_seines' : 'purse_seines',
+    'pots_and_traps' : 'stationary_gear',
+    'set_gillnets' : 'stationary_gear',
+    'set_longlines' : 'stationary_gear'
+}
+
 
 def ydump_fishing_localisation(doc, results):
     doc, tag, text, line = doc.ttl()
@@ -472,7 +483,7 @@ def ydump_fishing_localisation(doc, results):
     y_true = np.concatenate(results.true_fishing_by_mmsi.values())
     y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
 
-    header = ['Gear Type (true/total)', 'Precision', 'Recall', 'Accuracy', 'F1-Score']
+    header = ['Gear Type (mmsi:true/total)', 'Precision', 'Recall', 'Accuracy', 'F1-Score']
     rows = []
     logging.info('Overall localisation accuracy %s',
                  accuracy_score(y_true, y_pred))
@@ -481,17 +492,20 @@ def ydump_fishing_localisation(doc, results):
     logging.info('Overall localisation recall %s',
                  recall_score(y_true, y_pred))
 
-    for cls in sorted(set(results.label_map.values())):
+    for cls in sorted(set(fishing_category_map.values())) + ['other'] :
         true_chunks = []
         pred_chunks = []
+        mmsi_list = []
         for mmsi in results.label_map:
             if mmsi not in results.true_fishing_by_mmsi:
                 continue
-            if results.label_map[mmsi] != cls:
+            if fishing_category_map.get(results.label_map[mmsi], 'other') != cls:
                 continue
+            mmsi_list.append(mmsi)
             true_chunks.append(results.true_fishing_by_mmsi[mmsi])
             pred_chunks.append(results.pred_fishing_by_mmsi[mmsi])
         if len(true_chunks):
+            logging.info('MMSI for {}: {}'.format(cls, mmsi_list))
             y_true = np.concatenate(true_chunks)
             y_pred = np.concatenate(pred_chunks)
             rows.append(['{} ({}:{}/{})'.format(cls, len(true_chunks), sum(y_true), len(y_true)),
