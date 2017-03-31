@@ -7,7 +7,7 @@ inputFilePatterns:
   - "gs://benthos-pipeline/data-production-740/classify-pipeline/classify-logistic/2017-*-*/*-of-*"
 knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_AND_LIKELY/ANY_YEAR.txt"
 jsonAnnotations:
-  - inputFilePattern: "gs://world-fishing-827/data-production/classification/paper_03_22/fishing_paper_unbroken.json.gz"
+  - inputFilePattern: "gs://world-fishing-827/data-production/classification/paper_03_29/fishing_paper_new_list.json.gz"
     timeRangeFieldName: "fishing_localisation"
     outputFieldName: "nnet_score"
     defaultValue: 1.0
