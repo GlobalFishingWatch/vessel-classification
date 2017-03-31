@@ -456,7 +456,7 @@ def ydump_metrics(doc, results):
                                        consolidated.true_labels,
                                        consolidated.inferred_labels)
         ydump_table(doc, ['Label (mmsi:true/total)', 'Precision', 'Recall', 'F1-Score'], [
-            ('{} ({}/{}'.fomat(a, sum(consolidated.true_labels), len(consodated.true_labels)), '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
+            (a, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
             for (a, b, c, d) in row_vals
         ])
         wts = weights(consolidated.label_list, consolidated.true_labels,

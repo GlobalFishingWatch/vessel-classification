@@ -44,7 +44,7 @@ class Model(abstract_models.MisconceptionModel):
 
     @property
     def number_of_steps(self):
-        return 500000
+        return 600000
 
     @property
     def max_window_duration_seconds(self):
