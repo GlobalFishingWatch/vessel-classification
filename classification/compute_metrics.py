@@ -77,6 +77,8 @@ def _parse(x):
         x = x[:-6]
     if x.endswith('.999999'):
         x = x[:-7]
+    if x.endswith('Z'):
+        x = x[:-1]
     try:
         dt = datetime.datetime.strptime(x, '%Y-%m-%dT%H:%M:%S')
     except:
