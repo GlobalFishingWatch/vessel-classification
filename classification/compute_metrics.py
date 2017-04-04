@@ -77,6 +77,8 @@ def _parse(x):
         x = x[:-6]
     if x.endswith('.999999'):
         x = x[:-7]
+    if x.endswith('Z'):
+        x = x[:-1]
     try:
         dt = datetime.datetime.strptime(x, '%Y-%m-%dT%H:%M:%S')
     except:
@@ -606,7 +608,7 @@ def consolidate_across_dates(results, date_range=None):
         np.array(true_labels), None, scores, results.label_list)
 
 
-def consolidate_attribute_across_dates(results):
+def consolidate_attribute_across_dates(results, date_range=None):
     """Consolidate scores for each MMSI across available dates.
 
     For each mmsi, we average the attribute across all available dates
@@ -622,8 +624,20 @@ def consolidate_attribute_across_dates(results):
         start = np.searchsorted(results.mmsi, m, side='left', sorter=indices)
         stop = np.searchsorted(results.mmsi, m, side='right', sorter=indices)
 
-        attrs = results.inferred_attrs[indices[start:stop]]
-        inferred_attributes.append(attrs.mean())
+        attrs_for_mmsi = results.inferred_attrs[indices[start:stop]]
+
+        if date_range:
+            start_dates = results.start_dates[indices[start:stop]]
+            # TODO: This is kind of messy need to verify that date ranges and output ranges line up
+            valid_date_mask = (start_dates >= date_range[0]) & (start_dates < date_range[1])
+            attrs = attrs_for_mmsi[valid_date_mask]
+        else:
+            attrs = attrs_for_mmsi
+
+        if len(attrs):
+            inferred_attributes.append(attrs.mean())
+        else:
+            inferred_attributes.append(np.nan)
 
         trues = results.true_attrs[indices[start:stop]]
         has_true = ~np.isnan(trues)
@@ -1262,11 +1276,11 @@ if __name__ == '__main__':
                 year=year + 1, month=1, day=1, tzinfo=pytz.utc)
             if start_date >= datetime.datetime.now(pytz.utc):
                 break
-            year += 1
             logging.info('Processing label dump for {}'.format(year))
             label_source['{}'.format(
                 start_date.year)] = consolidate_across_dates(
                     results['coarse'].all_results(), (start_date, stop_date))
+            year += 1
 
         for name, src in label_source.items():
             if not len(src.mmsi):
@@ -1293,16 +1307,16 @@ if __name__ == '__main__':
                         {x: consolidate_attribute_across_dates(results[x])
                          for x in ['length', 'tonnage', 'engine_power']}}
 
-        # year = 2012
-        # while True:
-        #     start_date = datetime.datetime(year=year, month=1, day=1, tzinfo=pytz.utc)
-        #     stop_date = datetime.datetime(year=year+1, month=1, day=1, tzinfo=pytz.utc)
-        #     if start_date >= datetime.datetime.now(pytz.utc):
-        #         break
-        #     year += 1
-        #     logging.info('Processing label dump for {}'.format(year))
-        #     label_source['{}'.format(start_date.year)] = consolidate_across_dates(results['coarse'].all_results(), 
-        #                                                     (start_date, stop_date))
+        year = 2012
+        while True:
+            start_date = datetime.datetime(year=year, month=1, day=1, tzinfo=pytz.utc)
+            stop_date = datetime.datetime(year=year+1, month=1, day=1, tzinfo=pytz.utc)
+            if start_date >= datetime.datetime.now(pytz.utc):
+                break
+            logging.info('Processing attribute dump for {}'.format(year))
+            label_source['{}'.format(start_date.year)] = {x: consolidate_attribute_across_dates(results[x], 
+                                                            (start_date, stop_date)) for x in ['length', 'tonnage', 'engine_power']}
+            year += 1
 
         for name, src in label_source.items():
             by_mmsi = defaultdict(dict)

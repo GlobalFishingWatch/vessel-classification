@@ -5,7 +5,7 @@ tensor_flow_config_template: | # This gets interpolated and then passed onto TF
     args: [
       "{model_name}",
       "--feature_dimensions", "12",
-      "--root_feature_path", "gs://world-fishing-827-dev-ttl30d/data-production/classification/timothyhochberg/features_1.1b/pipeline/output/features",
+      "--root_feature_path", "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features",
       "--training_output_path", "{output_path}/{model_name}",
       "--fishing_range_training_upweight", "1",
       "--metadata_file", "fishing_classes.csv",
