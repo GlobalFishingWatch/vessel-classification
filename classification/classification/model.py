@@ -26,6 +26,11 @@ class ModelBase(object):
     __metaclass__ = abc.ABCMeta
 
     @property
+    def number_of_steps(self):
+        """Number of training examples to use"""
+        return 500000
+
+    @property
     def use_ranges_for_training(self):
         """Choose features overlapping with provided ranges during training"""
         return False
@@ -49,7 +54,7 @@ class ModelBase(object):
 
     @property
     def min_viable_timeslice_length(self):
-        return self.window_max_points / 4
+        return 500
 
     @property
     def max_replication_factor(self):
@@ -69,7 +74,10 @@ class ModelBase(object):
         boundary = 1 if (split == utility.TRAINING_SPLIT) else self.batch_size
         random_state = np.random.RandomState()
         training_mmsis = self.vessel_metadata.weighted_training_list(
-            random_state, split, self.max_replication_factor, boundary=boundary)
+            random_state,
+            split,
+            self.max_replication_factor,
+            boundary=boundary)
         return [
             '%s/%d.tfrecord' % (base_feature_path, mmsi)
             for mmsi in training_mmsis

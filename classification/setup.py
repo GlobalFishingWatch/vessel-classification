@@ -28,8 +28,11 @@ setuptools.setup(
         'classification.data': data_files
     },
     packages=[
-        'common', 'classification', 'classification.data',
-        'classification.models', 'classification.models.prod',
+        'common',
+        'classification',
+        'classification.data',
+        'classification.models',
+        'classification.models.prod',
         'classification.models.dev',
     ],
     install_requires=[

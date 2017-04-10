@@ -6,3 +6,4 @@ target
 dist/
 *.egg-info
 *.json.gz
+classification/classification/models/prod/TEMP

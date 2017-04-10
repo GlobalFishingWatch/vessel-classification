@@ -61,10 +61,7 @@ class Model(ModelBase):
             return np.float32(length)
 
         self.classification_objective = MultiClassificationObjective(
-            "Multiclass",
-            "Vessel-class",
-            vessel_metadata,
-            metrics=metrics)
+            "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics)
 
         self.length_objective = RegressionObjective(
             'length',

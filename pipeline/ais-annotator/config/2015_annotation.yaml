@@ -1,8 +1,8 @@
 inputFilePatterns:
   - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2015-*-*/*-of-*"
-outputFilePath: "gs://world-fishing-827/data-production/classification/paper_prep/likely_fishing_annotation_2015"
+knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_AND_LIKELY/2015.txt"
 jsonAnnotations:
-  - inputFilePattern: "gs://world-fishing-827/data-production/classification/paper_prep/models/prod.fishing_range_classification/fishing-ranges-likely-fishing.json.gz"
+  - inputFilePattern: "gs://world-fishing-827/data-production/classification/paper_prep/models/prod.fishing_range_classification/fishing_det_all.json.gz"
     timeRangeFieldName: "fishing_localisation"
     outputFieldName: "measure_new_score"
-    defaultValue: 0.0
+    defaultValue: 1.0

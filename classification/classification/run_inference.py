@@ -51,7 +51,8 @@ class Inferer(object):
     def _build_starts(self, interval_months):
         # TODO: should use min_window_duration here
         window_dur_seconds = self.model.max_window_duration_seconds
-        last_viable_date = datetime.datetime.now(pytz.utc) - datetime.timedelta(seconds=window_dur_seconds)
+        last_viable_date = datetime.datetime.now(
+            pytz.utc) - datetime.timedelta(seconds=window_dur_seconds)
         time_starts = []
         start_year = 2012
         month_count = 0
@@ -66,7 +67,8 @@ class Inferer(object):
                 time_starts.append(dt)
         return time_starts
 
-    def run_inference(self, inference_parallelism, inference_results_path, interval_months):
+    def run_inference(self, inference_parallelism, inference_results_path,
+                      interval_months, year):
         matching_files = self._feature_files(self.mmsis)
         filename_queue = tf.train.input_producer(
             matching_files, shuffle=False, num_epochs=1)
@@ -74,22 +76,30 @@ class Inferer(object):
         readers = []
         if self.model.max_window_duration_seconds != 0:
 
-
             time_starts = self._build_starts(interval_months)
 
-            delta = datetime.timedelta(seconds=self.model.max_window_duration_seconds)
-            self.time_ranges = [(int(time.mktime(dt.timetuple())), int(time.mktime((dt + delta).timetuple()))) for dt in time_starts]
+            delta = datetime.timedelta(
+                seconds=self.model.max_window_duration_seconds)
+            self.time_ranges = [(int(time.mktime(dt.timetuple())),
+                                 int(time.mktime((dt + delta).timetuple())))
+                                for dt in time_starts]
             for _ in range(inference_parallelism * 2):
                 reader = utility.cropping_all_slice_feature_file_reader(
                     filename_queue, self.model.num_feature_dimensions + 1,
                     self.time_ranges, self.model.window_max_points,
-                    self.min_points_for_classification)
+                    self.min_points_for_classification)  # TODO: add year
                 readers.append(reader)
         else:
+            if self.model.window is None:
+                shift = self.model.window_max_points
+            else:
+                b, e = self.model.window
+                shift = e - b
+
             for _ in range(inference_parallelism * 2):
                 reader = utility.all_fixed_window_feature_file_reader(
                     filename_queue, self.model.num_feature_dimensions + 1,
-                    self.model.window_max_points)
+                    self.model.window_max_points, shift, year)
                 readers.append(reader)
 
         features, timestamps, time_ranges, mmsis = tf.train.batch_join(
@@ -135,8 +145,8 @@ class Inferer(object):
                     logging.info("Inference step: %d", i)
                     i += 1
                     try:
-                        batch_results = sess.run([mmsis, time_ranges, timestamps] +
-                                                 all_predictions)
+                        batch_results = sess.run(
+                            [mmsis, time_ranges, timestamps] + all_predictions)
                     except tf.errors.OutOfRangeError:
                         break
                     for result in zip(*batch_results):
@@ -226,7 +236,8 @@ def main(args):
         assert chosen_model.max_window_duration_seconds != 0, "can't set interval for point inferring model"
         interval_months = args.interval_months
 
-    infererer.run_inference(inference_parallelism, inference_results_path, interval_months)
+    infererer.run_inference(inference_parallelism, inference_results_path,
+                            interval_months, args.year)
 
 
 def parse_args():
@@ -285,6 +296,12 @@ def parse_args():
         default=None,
         type=int,
         help="Interval between successive classifications")
+
+    argparser.add_argument(
+        '--year',
+        default=None,
+        type=int,
+        help='Year to run inference on (default run on all)')
 
     return argparser.parse_args()
 

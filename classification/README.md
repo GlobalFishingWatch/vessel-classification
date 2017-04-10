@@ -21,7 +21,15 @@
 - *running training locally* -- this is primarily for testing as it will be quite slow unless you
   have a heavy duty machine:
 
-        python -m classification.run_training prod.vessel_classification <...>
+        python -m classification.run_training \
+            prod.fishing_range_classification \
+            --feature_dimensions 12 \
+            --root_feature_path FEATURE_PATH \
+            --training_output_path OUTPUT_PATH \
+            --fishing_range_training_upweight 1 \
+            --metadata_file training_classes.csv \
+            --fishing_ranges_file combined_fishing_ranges.csv \
+            --metrics minimal
 
 
 - `compute_metrics.py` -- evaluate restults and dump vessel lists. Use `--help` to see options

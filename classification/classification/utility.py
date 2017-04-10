@@ -31,11 +31,8 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
 
-# There are a large number of vessels included in the
-# training because they were detected as false positives.
-# To keep them from overwhelming fishing / nonfishing
-# detection, we upweight other vessels.
-NON_FALSE_POSITIVE_UPWEIGHT = 10
+# Upweight false positives to strongly discourage transits
+FALSE_POSITIVE_UPWEIGHT = 10
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
@@ -48,51 +45,50 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
 #TODO: (bitsofbits) replace the lists of (name, list) with ordered dicts. And/or consider other ways
 # to express the treelike structure so that it is more clear.
-
 """ The finer vessel label set. """
 VESSEL_CLASS_DETAILED_NAMES = [
-'tanker',
-'cargo',
-'reefer',
-'motor_passenger',
-'sailing',
-'seismic_vessel',
-'tug',
-'other_not_fishing',
-'drifting_longlines',
-'pole_and_line',
-'purse_seines',
-'pots_and_traps',
-'set_gillnets',
-'set_longlines',
-'squid_jigger',
-'trawlers',
-'trollers',
-'other_fishing',
+    'tanker',
+    'cargo',
+    'reefer',
+    'motor_passenger',
+    'sailing',
+    'seismic_vessel',
+    'tug',
+    'other_not_fishing',
+    'drifting_longlines',
+    'pole_and_line',
+    'purse_seines',
+    'pots_and_traps',
+    'set_gillnets',
+    'set_longlines',
+    'squid_jigger',
+    'trawlers',
+    'trollers',
+    'other_fishing',
 ]
 
 VESSEL_CATEGORIES = [[x, [x]] for x in VESSEL_CLASS_DETAILED_NAMES]
 
 VESSEL_CATEGORIES += [
     ['unknown_fishing',
-        ['drifting_longlines', 'set_longlines', 'trawlers', 'pots_and_traps', 'trollers',
-            'set_gillnets', 'purse_seines', 'squid_jigger', 'pole_and_line', 'other_fishing']],
-    ['unknown_not_fishing', ['cargo', 'tanker', 'reefer', 'sailing', 'motor_passenger',
-            'seismic_vessel', 'tug', 'other_not_fishing']],
-
-    ['unknown_longline', ['drifting_longlines', 'set_longlines']],
+     ['drifting_longlines', 'set_longlines', 'trawlers', 'pots_and_traps',
+      'trollers', 'set_gillnets', 'purse_seines', 'squid_jigger',
+      'pole_and_line', 'other_fishing']], ['unknown_not_fishing', [
+          'cargo', 'tanker', 'reefer', 'sailing', 'motor_passenger',
+          'seismic_vessel', 'tug', 'other_not_fishing'
+      ]], ['unknown_longline', ['drifting_longlines', 'set_longlines']],
     ['passenger', ['motor_passenger', 'sailing']],
+    ['unknown', VESSEL_CLASS_DETAILED_NAMES]
 ]
-
 
 TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
 
+
 def repeat_tensor(input, n):
     batch_size, _, width, depth = input.get_shape()
     repeated = tf.concat(3, [input] * n)
-    return tf.reshape(repeated,
-                      [-1, 1, int(width) * n, int(depth)])
+    return tf.reshape(repeated, [-1, 1, int(width) * n, int(depth)])
 
 
 FishingRange = namedtuple('FishingRange',
@@ -242,7 +238,7 @@ def np_array_random_fixed_length_extract(random_state, input_series,
 
 def np_array_random_fixed_points_extract(random_state, input_series,
                                          output_length, min_timeslice_size,
-                                         selection_ranges):
+                                         selection_ranges, mmsi):
     """ Extracts a random fixed-points slice from a 2d numpy array.
     
     The input array must be 2d, representing a time series, with the first    
@@ -278,31 +274,34 @@ def np_array_random_fixed_points_extract(random_state, input_series,
     if selection_ranges:
 
         # Copy and shuffle the ranges so we see them in a random order
-        selection_ranges = list(selection_ranges)
+        selections_ranges = list(selection_ranges)
         random_state.shuffle(selections_ranges)
 
         for sel_range in selections_ranges:
             # For each range figure out the min and max acceptable point in input_series
             # if these points are at least min_timeslice_size long then we grab that
             # series
-            rng_start_stamp = (sel_range.start_time - datetime(
+            rng_start_stamp = (sel_range.start_time - datetime.datetime(
                 1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
             rng_start_ndx = np.searchsorted(input_series[:, 0],
                                             rng_start_stamp)
-            min_ndx = max(rng_start_ndx - input_length + 1, 0)
+            min_ndx = max(rng_start_ndx - min_timeslice_size + 1,
+                          0)  # TODO: bitsofbits: CHECK
 
-            rng_end_stamp = (sel_range.end_time - datetime(
+            rng_end_stamp = (sel_range.end_time - datetime.datetime(
                 1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
             rng_end_ndx = np.searchsorted(input_series[:, 0], rng_end_stamp)
-            max_ndx = max(rng_end_ndx + input_length - 1, input_length - 1)
+            max_ndx = min(rng_end_ndx + min_timeslice_size - 1 + 1,
+                          input_length - 1)  # TODO: bitsofbits: CHECK
 
-            if end_index > start_index:
-                start_index, end_index = extract_start_end(start_index,
-                                                           end_index)
+            if max_ndx - min_ndx >= min_timeslice_size - 1:
+                start_index, end_index = extract_start_end(min_ndx, max_ndx)
                 break
         else:
+            logging.warning('Pulling data for %s from full range', mmsi)
             start_index, end_index = extract_start_end(0, input_length - 1)
     else:
+        logging.warning('No ranges')
         start_index, end_index = extract_start_end(0, input_length - 1)
 
     cropped = input_series[start_index:end_index]
@@ -336,34 +335,45 @@ def np_array_random_fixed_time_extract(random_state, input_series,
     """
     assert max_time_delta != 0, 'max_time_delta must be non zero for time based windows'
 
-    input_length = len(input_series)
+    # We want to include min_timeslice_size points in our data if we can, so we try picking
+    # slices `TRIALS` time.
+    TRIALS = 128
 
-    start_time = input_series[0][0]
-    end_time = input_series[-1][0]
-    max_time_offset = max((end_time - start_time) - max_time_delta, 0)
-    time_offset = random_state.randint(0, max_time_offset + 1)
+    for _ in range(TRIALS):
+        input_length = len(input_series)
 
-    start_index = np.searchsorted(
-        input_series[:, 0], start_time + time_offset, side='left')
+        start_time = input_series[0][0]
+        end_time = input_series[-1][0]
+        max_time_offset = max((end_time - start_time) - max_time_delta, 0)
+        time_offset = random_state.randint(0, max_time_offset + 1)
 
-    # Should not start closer than min_timeslice_size points from the end lest the 
-    # series have too few points to be meaningful.
-    start_index = min(start_index, max(0, input_length - min_timeslice_size))
-    crop_end_time = min(input_series[start_index][0] + max_time_delta,
-                        end_time)
+        start_index = np.searchsorted(
+            input_series[:, 0], start_time + time_offset, side='left')
 
-    end_index = min(start_index + output_length,
-                    np.searchsorted(
-                        input_series[:, 0], crop_end_time, side='right'))
+        # Should not start closer than min_timeslice_size points from the end lest the 
+        # series have too few points to be meaningful.
+        start_index = min(start_index, max(0,
+                                           input_length - min_timeslice_size))
+        crop_end_time = min(input_series[start_index][0] + max_time_delta,
+                            end_time)
 
-    cropped = input_series[start_index:end_index]
-    output_series = np_pad_repeat_slice(cropped, output_length)
+        end_index = min(start_index + output_length,
+                        np.searchsorted(
+                            input_series[:, 0], crop_end_time, side='right'))
 
-    return output_series
+        cropped = input_series[start_index:end_index]
+
+        if len(cropped) >= min_timeslice_size:
+            # Use this try
+            break
+
+        # Otherwise try again unless we are out of trials.
+
+    return np_pad_repeat_slice(cropped, output_length)
 
 
 def np_array_extract_features(random_state, input, max_time_delta, window_size,
-                              min_timeslice_size, selection_ranges):
+                              min_timeslice_size, selection_ranges, mmsi):
     """ Extract and process a random timeslice from vessel movement features.
 
   Removes the timestamp column from the features, and applies a random roll to
@@ -393,9 +403,8 @@ def np_array_extract_features(random_state, input, max_time_delta, window_size,
     if max_time_delta == 0:
         features = np_array_random_fixed_points_extract(
             random_state, input, window_size, min_timeslice_size,
-            selection_ranges)
+            selection_ranges, mmsi)
     else:
-        assert not selection_ranges, "Using selection ranges not supported for time based windows"
         features = np_array_random_fixed_time_extract(
             random_state, input, max_time_delta, window_size,
             min_timeslice_size)
@@ -438,7 +447,7 @@ def np_array_extract_n_random_features(random_state, input, n, max_time_delta,
     for _ in range(n):
         features, timestamps, time_bounds = np_array_extract_features(
             random_state, input, max_time_delta, window_size,
-            min_timeslice_size, selection_ranges)
+            min_timeslice_size, selection_ranges, mmsi)
 
         samples.append((np.stack([features]), timestamps, time_bounds, mmsi))
 
@@ -483,11 +492,13 @@ def random_feature_cropping_file_reader(vessel_metadata,
 
     num_slices_per_mmsi = 8
 
-    ranges = vessel_metadata.fishing_ranges_map.get(
-        mmsi) if select_ranges else None
-
     def replicate_extract(input, mmsi):
         # Extract several random windows from each vessel track
+        if mmsi in vessel_metadata.fishing_ranges_map:
+            ranges = vessel_metadata.fishing_ranges_map[mmsi]
+        else:
+            ranges = {}
+
         return np_array_extract_n_random_features(
             random_state, input, num_slices_per_mmsi, max_time_delta,
             window_size, min_timeslice_size, mmsi, ranges)
@@ -607,10 +618,10 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
 
 
 def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
-                                      window_size):
+                                      window_size, shift):
     slices = []
     input_length = len(input_series)
-    for end_index in range(input_length, 0, -window_size):
+    for end_index in range(input_length, 0, -shift):
         start_index = max(0, end_index - window_size)
         cropped = input_series[start_index:end_index]
         start_time = int(cropped[0][0])
@@ -623,11 +634,20 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
         slices.append(
             (np.stack([without_timestamp]), timeseries, time_bounds, mmsi))
 
+    if slices == []:
+        # Return an appropriately shaped empty numpy array.
+        return (np.empty(
+            [0, 1, window_size, input_series.shape[1] - 1], dtype=np.float32),
+                np.empty(
+                    shape=[0, window_size], dtype=np.int32), np.empty(
+                        shape=[0, 2], dtype=np.int32), np.empty(
+                            shape=[0], dtype=np.int32))
+
     return zip(*slices)
 
 
 def all_fixed_window_feature_file_reader(filename_queue, num_features,
-                                         window_size):
+                                         window_size, shift, year):
     """ Set up a file reader and inference feature extractor for the files in a
         queue.
 
@@ -654,9 +674,34 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
     movement_features = sequence_features['movement_features']
     mmsi = tf.cast(context_features['mmsi'], tf.int32)
 
+    if year is not None:
+        start_date = datetime.datetime(
+            year=year,
+            month=1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            tzinfo=pytz.utc)
+        end_date = datetime.datetime(
+            year=year + 1,
+            month=1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            tzinfo=pytz.utc)
+        start_stamp = time.mktime(start_date.timetuple())
+        end_stamp = time.mktime(end_date.timetuple())
+
     def replicate_extract(input_series, mmsi):
+        if year is not None:
+            start_i = np.searchsorted(
+                input_series[:, 0], start_stamp, side='left')
+            end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
+            input_series = input_series[start_i:end_i]
         return np_array_extract_all_fixed_slices(input_series, num_features,
-                                                 mmsi, window_size)
+                                                 mmsi, window_size, shift)
 
     features_list, timeseries, time_bounds_list, mmsis = tf.py_func(
         replicate_extract, [movement_features, mmsi],
@@ -680,8 +725,8 @@ class VesselMetadata(object):
 
         intersection_mmsis = set(self.metadata_by_mmsi.keys()).intersection(
             set(fishing_ranges_map.keys()))
-        logging.info("Metadata for %d mmsis." % len(self.metadata_by_mmsi))
-        logging.info("Fishing ranges for %d mmsis." % len(fishing_ranges_map))
+        logging.info("Metadata for %d mmsis.", len(self.metadata_by_mmsi))
+        logging.info("Fishing ranges for %d mmsis.", len(fishing_ranges_map))
         logging.info("Vessels with both types of data: %d",
                      len(intersection_mmsis))
 
@@ -697,6 +742,11 @@ class VesselMetadata(object):
         return self.metadata_by_mmsi[mmsi][0][label_name]
 
     def mmsis_for_split(self, split):
+        assert split in [TRAINING_SPLIT, TEST_SPLIT]
+        # Check to make sure we don't have leakage
+        assert not (set(self.metadata_by_split[TRAINING_SPLIT].keys()) &
+                    set(self.metadata_by_split[TEST_SPLIT].keys())
+                    ), 'mmsi in both training and test split'
         return self.metadata_by_split[split].keys()
 
     def weighted_training_list(self,
@@ -712,7 +762,7 @@ class VesselMetadata(object):
             if row_filter(row):
                 if mmsi in self.fishing_ranges_map:
                     fishing_ranges_mmsis.append(mmsi)
-                    weight = weight * self.fishing_range_training_upweight
+                    weight = weight * self.fishing_range_training_upweight  # TODO: rip this out.
 
                 weight = min(weight, max_replication_factor)
 
@@ -723,8 +773,9 @@ class VesselMetadata(object):
                     replicated_mmsis.append(mmsi)
         missing = (-len(replicated_mmsis)) % boundary
         if missing:
-            replicated_mmsis = np.concatenate([replicated_mmsis, 
-                np.random.choice(replicated_mmsis, missing)])
+            replicated_mmsis = np.concatenate(
+                [replicated_mmsis,
+                 np.random.choice(replicated_mmsis, missing)])
         random_state.shuffle(replicated_mmsis)
         logging.info("Replicated training mmsis: %d", len(replicated_mmsis))
         logging.info("Fishing range mmsis: %d", len(fishing_ranges_mmsis))
@@ -734,16 +785,24 @@ class VesselMetadata(object):
     def fishing_range_only_list(self, random_state, split,
                                 max_replication_factor):
         replicated_mmsis = []
-        fishing_mmsi_set = set(self.fishing_ranges_map.keys())
+        fishing_mmsi_set = set(
+            [k for (k, v) in self.fishing_ranges_map.items() if v])
         fishing_range_only_mmsis = [mmsi
                                     for mmsi in self.mmsis_for_split(split)
                                     if mmsi in fishing_mmsi_set]
-        logging.info("Fishing range training mmsis: %d",
-                     len(fishing_range_only_mmsis))
+        logging.info("Fishing range training mmsis: %d / %d",
+                     len(fishing_range_only_mmsis),
+                     len(self.mmsis_for_split(split)))
         for mmsi in fishing_range_only_mmsis:
             weight = min(self.vessel_weight(mmsi), max_replication_factor)
-
+            assert mmsi in self.fishing_ranges_map
+            if weight == 0:
+                logging.info('skipping %s due to zero weight', mmsi)
+                continue
             int_n = int(weight)
+            logging.info(
+                "mmis: %s, max_repl_factor: %s, weight: %s, int_n: %s", mmsi,
+                max_replication_factor, self.vessel_weight(mmsi), int_n)
             replicated_mmsis += ([mmsi] * int_n)
             frac_n = weight - float(int_n)
             if (random_state.uniform(0.0, 1.0) <= frac_n):
@@ -780,21 +839,27 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
     for row in lines:
         mmsi = int(row['mmsi'])
         if mmsi in available_mmsis:
+            if mmsi not in fishing_range_dict:
+                continue
             # Is this mmsi included only to supress false positives
             # Symptoms; fishing score for this MMSI never different from 0
-            is_false_positive = False
+            is_false_positive = True
             split = row['split']
-            assert split in ('Training', 'Test')
+            if split not in ('Training', 'Test'):
+                logging.warning(
+                    'MMSI %s has no valid split assigned (%s); using for Training',
+                    mmsi, split)
+                split = 'Training'
             time_for_this_mmsi = 0
             for rng in fishing_range_dict[mmsi]:
                 time_for_this_mmsi += (
                     rng.end_time - rng.start_time).total_seconds()
                 if rng.is_fishing > 0:
                     is_false_positive = False
-            if not is_false_positive:
-                # If this MMSI is not a false positive it, upweight it to prevent
-                # domination by false positive vessels.
-                time_for_this_mmsi *= NON_FALSE_POSITIVE_UPWEIGHT
+            if time_for_this_mmsi and is_false_positive:
+                logging.info('upweighting MMSI %s by %s as a false positive',
+                             mmsi, FALSE_POSITIVE_UPWEIGHT)
+                time_for_this_mmsi *= FALSE_POSITIVE_UPWEIGHT
             metadata_dict[split][mmsi] = (row, time_for_this_mmsi)
             if time_for_this_mmsi:
                 min_time_per_mmsi = min(min_time_per_mmsi, time_for_this_mmsi)
@@ -804,7 +869,7 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
             row, time = split_dict[mmsi]
             split_dict[mmsi] = (row, time / min_time_per_mmsi)
 
-    return VesselMetadata(metadata_dict, fishing_range_dict, 1.0)
+    return VesselMetadata(dict(metadata_dict), fishing_range_dict, 1.0)
 
 
 def read_vessel_time_weighted_metadata(available_mmsis,
@@ -871,8 +936,9 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
 
     logging.info("Vessel types: %s", list(vessel_type_set))
 
-    return VesselMetadata(metadata_dict, fishing_range_dict,
-                          fishing_range_training_upweight)
+    return VesselMetadata(
+        dict(metadata_dict), fishing_range_dict,
+        fishing_range_training_upweight)
 
 
 def metadata_file_reader(metadata_file):
@@ -884,7 +950,6 @@ def metadata_file_reader(metadata_file):
         reader = csv.DictReader(f)
         logging.info("Metadata columns: %s", reader.fieldnames)
         for row in reader:
-            label = row['label'].strip()
             yield row
 
 
@@ -943,7 +1008,7 @@ def read_fishing_ranges(fishing_range_file):
             fishing_range_dict[mmsi].append(
                 FishingRange(start_time, end_time, is_fishing))
 
-    return fishing_range_dict
+    return dict(fishing_range_dict)
 
 
 def build_multihot_lookup_table():
@@ -956,6 +1021,7 @@ def build_multihot_lookup_table():
             j = VESSEL_CLASS_DETAILED_NAMES.index(lbl)
             table[i, j] = 1
     return table
+
 
 multihot_lookup_table = build_multihot_lookup_table()
 

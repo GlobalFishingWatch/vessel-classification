@@ -201,7 +201,7 @@ class MetadataConsistencyTest(tf.test.TestCase):
             labels.remove('')
 
             expected = set([lbl for (lbl, _) in utility.VESSEL_CATEGORIES])
-            self.assertEquals(labels, expected)
+            self.assertTrue(expected >= labels)
 
 
 class MultihotLabelConsistencyTest(tf.test.TestCase):
@@ -213,7 +213,6 @@ class MultihotLabelConsistencyTest(tf.test.TestCase):
                     names.append(fine)
         self.assertEquals(
             sorted(names), sorted(utility.VESSEL_CLASS_DETAILED_NAMES))
-
 
 
 if __name__ == '__main__':
