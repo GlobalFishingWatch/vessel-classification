@@ -1,12 +1,13 @@
 inputFilePatterns:
-  - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2012-*-*/*-of-*"
-  - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2013-*-*/*-of-*"
-  - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2014-*-*/*-of-*"
-  - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2015-*-*/*-of-*"
-  - "gs://benthos-pipeline/data-production-740/measures-pipeline/st-segment/2016-*-*/*-of-*"
-outputFilePath: "gs://world-fishing-827/data-production/classification/paper_prep/likely_fishing_annotation_full"
+  - "gs://benthos-pipeline/data-production-740/classify-pipeline/classify-logistic/2012-*-*/*-of-*"
+  - "gs://benthos-pipeline/data-production-740/classify-pipeline/classify-logistic/2013-*-*/*-of-*"
+  - "gs://benthos-pipeline/data-production-740/classify-pipeline/classify-logistic/2014-*-*/*-of-*"
+  - "gs://benthos-pipeline/data-production-740/classify-pipeline/classify-logistic/2015-*-*/*-of-*"
+  - "gs://benthos-pipeline/data-production-740/classify-pipeline/classify-logistic/2016-*-*/*-of-*"
+  - "gs://benthos-pipeline/data-production-740/classify-pipeline/classify-logistic/2017-*-*/*-of-*"
+knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_AND_LIKELY/ANY_YEAR.txt"
 jsonAnnotations:
-  - inputFilePattern: "gs://world-fishing-827/data-production/classification/paper_prep/models/prod.fishing_range_classification/fishing-ranges-likely-fishing.json.gz"
+  - inputFilePattern: "gs://world-fishing-827/data-production/classification/paper_04_02/fishing_04_02.json.gz"
     timeRangeFieldName: "fishing_localisation"
-    outputFieldName: "measure_new_score"
+    outputFieldName: "nnet_score"
     defaultValue: 1.0

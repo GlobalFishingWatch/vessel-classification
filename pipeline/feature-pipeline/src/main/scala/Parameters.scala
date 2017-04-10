@@ -21,7 +21,7 @@ import org.joda.time.{Duration, Instant}
 
 object Parameters {
   val adjacencyResamplePeriod = Duration.standardMinutes(10)
-  val maxInterpolateGap = Duration.standardMinutes(60)
+  val maxInterpolateGap = Duration.standardMinutes(70) // max gap for VMS should be 60 minutes, but leave 10 minutes of leeway
 
   val maxClosestNeighbours = 10
   val maxEncounterRadius = 1.0.of[kilometer]

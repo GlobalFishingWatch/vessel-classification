@@ -41,7 +41,7 @@ case class JSONFileAnnotatorConfig(inputFilePattern: String,
 
 case class AnnotatorConfig(
     inputFilePatterns: Seq[String],
-    outputFilePath: String,
+    knownFishingMMSIs: String,
     jsonAnnotations: Seq[JSONFileAnnotatorConfig]
 )
 
@@ -89,7 +89,7 @@ object AISAnnotator extends LazyLogging {
                              annotations: Iterable[MessageAnnotation]): Seq[JValue] = {
     // Sort messages and annotations by (start) time.
     val sortedMessages = messages.map { msg =>
-      (Instant.parse(msg.getString("timestamp")), msg)
+      (Instant.parse(msg.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")), msg)
     }
     // Ensure only a single message per timestamp.
       .groupBy(_._1)
@@ -137,13 +137,16 @@ object AISAnnotator extends LazyLogging {
       annotationInputs: Seq[SCollection[MessageAnnotation]]): SCollection[JValue] = {
 
     val aisMessages = SCollection.unionAll(aisMessageInputs)
-    val annotationsByMmsi = SCollection.unionAll(annotationInputs).groupBy(_.mmsi)
+    val allAnnotations = SCollection.unionAll(annotationInputs)
+    val annotationsByMmsi = allAnnotations.groupBy(x => 
+      (x.mmsi, x.startTime.toDateTime().getYear(), x.startTime.toDateTime().getDayOfYear()))
 
     // Do not process messages for MMSIs for which we have no annotations.
     val filteredAISMessages = aisMessages.map { json =>
-      (json.getLong("mmsi").toInt, json)
+      val dateTime = Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")).toDateTime()
+      ((json.getLong("mmsi").toInt, dateTime.getYear(), dateTime.getDayOfYear()), json)
     }
-    .filter { case (mmsi, _) =>
+    .filter { case ((mmsi, _, _), _) =>
       !AISDataProcessing.blacklistedMmsis.contains(mmsi) && (
         allowedMMSIs.isEmpty || allowedMMSIs.contains(mmsi))
     }
@@ -151,10 +154,10 @@ object AISAnnotator extends LazyLogging {
     // Remove all but location messages and key by mmsi.
     val filteredGroupedByMmsi = filteredAISMessages
     // Keep only records with a location.
-    .filter { case (_, json) => json.has("lat") && json.has("lon") }.groupByKey
+    .filter { case (_, json) => json.has("lat") && json.has("lon") && json.has("timestamp")}.groupByKey
 
     filteredGroupedByMmsi.join(annotationsByMmsi).flatMap {
-      case (mmsi, (messagesIt, annotationsIt)) =>
+      case (_, (messagesIt, annotationsIt)) =>
         val messages = messagesIt.toSeq
         val annotations = annotationsIt.toSeq
         annotateVesselMessages(messages, annotations)
@@ -168,7 +171,7 @@ object AISAnnotator extends LazyLogging {
     val environment = remaining_args.required("env")
     val jobName = remaining_args.required("job-name")
     val jobConfigurationFile = remaining_args.required("job-config")
-    val onlyFishingMMSIs = remaining_args.boolean("only-fishing", false)
+    val outputFilePath = remaining_args.required("output-path")
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -176,15 +179,17 @@ object AISAnnotator extends LazyLogging {
     options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
 
-    val includedMMSIs = if (onlyFishingMMSIs) {
-      AISDataProcessing.loadFishingMMSIs()
-    } else {
-      Set[Int]()
-    }
+
 
     val annotatorConfig = managed(scala.io.Source.fromFile(jobConfigurationFile)).acquireAndGet {
       s =>
         readYamlConfig(s.mkString)
+    }
+
+    val includedMMSIs = if (annotatorConfig.knownFishingMMSIs != "") {
+      AISDataProcessing.loadFishingMMSIs(annotatorConfig.knownFishingMMSIs)
+    } else {
+      Set[Int]()
     }
 
     managed(ScioContext(options)).acquireAndGet { sc =>
@@ -204,7 +209,7 @@ object AISAnnotator extends LazyLogging {
       val annotated = annotateAllMessages(includedMMSIs, inputData, annotations)
       val annotatedToString = annotated.map(json => compact(render(json)))
 
-      annotatedToString.saveAsTextFile(annotatorConfig.outputFilePath)
+      annotatedToString.saveAsTextFile(outputFilePath)
     }
   }
 }

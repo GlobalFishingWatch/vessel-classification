@@ -129,7 +129,7 @@ class AnnotatorTests extends PipelineSpec with Matchers {
     |inputFilePatterns:
     |  - foo
     |  - bar
-    |outputFilePath: baz
+    |knownFishingMMSIs: baz
     |jsonAnnotations:
     |  - inputFilePattern: one
     |    outputFieldName: foo
@@ -140,7 +140,7 @@ class AnnotatorTests extends PipelineSpec with Matchers {
     val res = AISAnnotator.readYamlConfig(input)
 
     res.inputFilePatterns should contain theSameElementsAs Seq("foo", "bar")
-    res.outputFilePath should equal("baz")
+    res.knownFishingMMSIs should equal("baz")
     res.jsonAnnotations should have size (1)
     res.jsonAnnotations.head.inputFilePattern should equal("one")
     res.jsonAnnotations.head.outputFieldName should equal("foo")

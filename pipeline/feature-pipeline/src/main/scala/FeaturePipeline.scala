@@ -49,10 +49,13 @@ object Pipeline extends LazyLogging {
     val jobName = remaining_args.required("job-name")
     val generateModelFeatures = remaining_args.boolean("generate-model-features", true)
     val anchoragesRootPath = remaining_args("anchorages-root-path")
+    val inputMeasuresPath = remaining_args.getOrElse("input-measures-path", InputDataParameters.inputMeasuresPath)
     val generateEncounters = remaining_args.boolean("generate-encounters", true)
     val dataYearsArg = remaining_args.list("data-years")
+    val extraFeaturesGlob = remaining_args.getOrElse("extra-features-glob", null)
     val dataFileGlob =
       remaining_args.getOrElse("data-file-glob", InputDataParameters.defaultDataFileGlob)
+    val minRequiredPositions = remaining_args.int("min-required-positions", InputDataParameters.minRequiredPositions)
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -67,18 +70,28 @@ object Pipeline extends LazyLogging {
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
-      val aisInputData = InputDataParameters
-        .dataFileGlobPerYear(dataYearsArg, dataFileGlob)
-        .map(glob => sc.textFile(glob))
+      val baseGlobList = InputDataParameters.dataFileGlobPerYear(dataYearsArg, dataFileGlob, inputMeasuresPath)
+      val globList = if (extraFeaturesGlob == null) baseGlobList else (baseGlobList :+ extraFeaturesGlob)
+      logger.info(s"Using globList: $globList.")
+
+      val aisInputData = baseGlobList.map(glob => sc.textFile(glob))
+
+      val auxInputData = if (extraFeaturesGlob == null) null else List(sc.textFile(extraFeaturesGlob))
 
       logger.info("Building pipeline.")
       val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
 
       val minValidLocations = 200
-      val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
+      val locationRecordsBase: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
         AISDataProcessing.readJsonRecords(aisInputData,
                                           knownFishingMMSIs,
-                                          InputDataParameters.minRequiredPositions)
+                                          minRequiredPositions)
+
+      val locationRecords : SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
+        if (auxInputData == null) locationRecordsBase else (locationRecordsBase ++
+            AISDataProcessing.readJsonRecords(auxInputData,
+                                          knownFishingMMSIs, // TODO: Broken for VMS
+                                          minRequiredPositions))
 
       val processed =
         AISDataProcessing.filterAndProcessVesselRecords(
