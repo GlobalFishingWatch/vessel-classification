@@ -87,7 +87,8 @@ object Encounters extends LazyLogging {
 
   def calculateEncounters(
       minDurationForEncounter: Duration,
-      input: SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])])
+      input: SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])],
+      maxDistanceForEncounter : DoubleU[kilometer])
     : SCollection[VesselEncounters] = {
 
     input.flatMap {
@@ -151,7 +152,7 @@ object Encounters extends LazyLogging {
           val possibleEncounterPoint =
             l.locationRecord.distanceToShore > Parameters.minDistanceToShoreForEncounter &&
               l.adjacency.closestNeighbour.isDefined &&
-              l.adjacency.closestNeighbour.get._2 < Parameters.maxDistanceForEncounter
+              l.adjacency.closestNeighbour.get._2 < maxDistanceForEncounter
 
           if (possibleEncounterPoint) {
             val closestNeighbour = l.adjacency.closestNeighbour.get._1

@@ -14,9 +14,14 @@
 
 package org.skytruth.feature_pipeline
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+
 import io.github.karols.units._
 import io.github.karols.units.SI._
 import io.github.karols.units.defining._
+import org.joda.time.{Duration, Instant}
 
 import com.spotify.scio._
 import com.spotify.scio.values.SCollection
@@ -40,7 +45,25 @@ import scala.collection.{mutable, immutable}
 
 import resource._
 
+
+case class PipelineConfig(
+    inputFilePatterns: Seq[String],
+    knownFishingMMSIs: String,
+    anchoragesRootPath: String,
+    minRequiredPositions: Long,
+    encounterMinHours: Long,
+    encounterMaxKilometers: Double
+)
+
+
 object Pipeline extends LazyLogging {
+
+  def readYamlConfig(config: String): PipelineConfig = {
+    val mapper: ObjectMapper = new ObjectMapper(new YAMLFactory())
+    mapper.registerModule(DefaultScalaModule)
+
+    mapper.readValue(config, classOf[PipelineConfig])
+  }
 
   def main(argArray: Array[String]) {
     val (options, remaining_args) = ScioContext.parseArguments[DataflowPipelineOptions](argArray)
@@ -48,14 +71,8 @@ object Pipeline extends LazyLogging {
     val environment = remaining_args.required("env")
     val jobName = remaining_args.required("job-name")
     val generateModelFeatures = remaining_args.boolean("generate-model-features", true)
-    val anchoragesRootPath = remaining_args("anchorages-root-path")
-    val inputMeasuresPath = remaining_args.getOrElse("input-measures-path", InputDataParameters.inputMeasuresPath)
     val generateEncounters = remaining_args.boolean("generate-encounters", true)
-    val dataYearsArg = remaining_args.list("data-years")
-    val extraFeaturesGlob = remaining_args.getOrElse("extra-features-glob", null)
-    val dataFileGlob =
-      remaining_args.getOrElse("data-file-glob", InputDataParameters.defaultDataFileGlob)
-    val minRequiredPositions = remaining_args.int("min-required-positions", InputDataParameters.minRequiredPositions)
+    val jobConfigurationFile = remaining_args.required("job-config")
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -65,33 +82,25 @@ object Pipeline extends LazyLogging {
     options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
 
+    val pipelineConfig = managed(scala.io.Source.fromFile(jobConfigurationFile)).acquireAndGet {
+      s => readYamlConfig(s.mkString)
+    }
+
     managed(ScioContext(options)).acquireAndGet((sc) => {
       logger.info("Finding matching files.")
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
-      val baseGlobList = InputDataParameters.dataFileGlobPerYear(dataYearsArg, dataFileGlob, inputMeasuresPath)
-      val globList = if (extraFeaturesGlob == null) baseGlobList else (baseGlobList :+ extraFeaturesGlob)
-      logger.info(s"Using globList: $globList.")
-
-      val aisInputData = baseGlobList.map(glob => sc.textFile(glob))
-
-      val auxInputData = if (extraFeaturesGlob == null) null else List(sc.textFile(extraFeaturesGlob))
+      val aisInputData = pipelineConfig.inputFilePatterns.map(glob => sc.textFile(glob))
 
       logger.info("Building pipeline.")
-      val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
+      val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs(pipelineConfig.knownFishingMMSIs)
 
-      val minValidLocations = 200
-      val locationRecordsBase: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
+      val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
         AISDataProcessing.readJsonRecords(aisInputData,
                                           knownFishingMMSIs,
-                                          minRequiredPositions)
+                                          pipelineConfig.minRequiredPositions)
 
-      val locationRecords : SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
-        if (auxInputData == null) locationRecordsBase else (locationRecordsBase ++
-            AISDataProcessing.readJsonRecords(auxInputData,
-                                          knownFishingMMSIs, // TODO: Broken for VMS
-                                          minRequiredPositions))
 
       val processed =
         AISDataProcessing.filterAndProcessVesselRecords(
@@ -105,7 +114,8 @@ object Pipeline extends LazyLogging {
         // Build and output suspected encounters.
         val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"
         val encounters =
-          Encounters.calculateEncounters(Parameters.minDurationForEncounter, adjacencies)
+          Encounters.calculateEncounters(Duration.standardHours(pipelineConfig.encounterMinHours), adjacencies, 
+              pipelineConfig.encounterMaxKilometers.of[kilometer])
         encounters.map(ec => compact(render(ec.toJson))).saveAsTextFile(suspectedEncountersPath)
 
         Encounters.annotateAdjacency(processed, adjacencies)
@@ -121,7 +131,7 @@ object Pipeline extends LazyLogging {
 
       if (generateModelFeatures) {
         val features =
-          ModelFeatures.buildVesselFeatures(locationsWithAdjacency, anchoragesRootPath).map {
+          ModelFeatures.buildVesselFeatures(locationsWithAdjacency, pipelineConfig.anchoragesRootPath).map {
             case (md, feature) =>
               (s"${md.mmsi}", feature)
           }
