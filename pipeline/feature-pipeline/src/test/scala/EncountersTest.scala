@@ -260,7 +260,7 @@ class EncountersTest extends PipelineSpec with Matchers {
   "The pipeline" should "find encounters" in {
     runWithContext { sc =>
       val annotated = Encounters.calculateAdjacency(Duration.standardMinutes(10), sc.parallelize(pathData))
-      val encounters = Encounters.calculateEncounters(Duration.standardMinutes(30), annotated)
+      val encounters = Encounters.calculateEncounters(Duration.standardMinutes(30), annotated, 0.5.of[kilometer])
 
       val expected = Seq(
         VesselEncounters(VesselMetadata(1),
@@ -288,7 +288,7 @@ class RealEncounterTest extends PipelineSpec with Matchers {
     runWithContext { sc =>
       val pathData = Seq((VesselMetadata(441910000), seriesToLRs(series1)), (VesselMetadata(563418000), seriesToLRs(series2)))
       val annotated = Encounters.calculateAdjacency(Duration.standardMinutes(10), sc.parallelize(pathData))
-      val encounters = Encounters.calculateEncounters(Duration.standardHours(2), annotated)
+      val encounters = Encounters.calculateEncounters(Duration.standardHours(2), annotated, 0.5.of[kilometer])
 
         val expected = Seq(
           VesselEncounters(VesselMetadata(441910000),
