@@ -88,42 +88,6 @@ encounterMaxKilometers: 0.5
 
     return parse_id_from_sbt_output(output)
 
-
-def annotate_results(n):
-
-    config = """
-        inputFilePatterns:
-          - "gs://david-scratch/reduced_points_2016/{n}/*.json"
-        knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_AND_LIKELY/2016.txt"
-        jsonAnnotations:
-          - inputFilePattern: "gs://world-fishing-827/data-production/paper_sensitivity/reduced_points_{n}-10_04-06b.json.gz"
-            timeRangeFieldName: "fishing_localisation"
-            outputFieldName: "nnet_score"
-            defaultValue: 1.0
-    """.format(n=n)
-
-    template = '''
-        sbt aisAnnotator/"run \
-            --job-config={config} \
-            --env=prod \
-            --job-name=half_features \
-            --maxNumWorkers=300 \
-            --diskSizeGb=100 \
-            --output-path=gs://world-fishing-827/data-production/classification/paper_prep/reduced_points_{n}-10_04-06b"
-              '''
-
-    with tempfile.NamedTemporaryFile() as fp:
-        fp.write(config)
-        fp.flush()
-
-        command = template.format(config=fp.name, n=n)
-
-        output = subprocess.check_output([command], shell=True, cwd=pipeline_dir)
-
-    return parse_id_from_sbt_output(output)
-
-
-
 def run_generate_features():
     print("Starting Feature Generation")
     feature_id = generate_features()
@@ -134,7 +98,7 @@ def run_generate_features():
         raise RuntimeError("feature generation did not complete ({})".format(status))
     print("Feature Generation Complete")
 
-def run_inference(n):
+def run_inference():
     command = """
         python -m classification.run_inference prod.vessel_characterization \\
             --root_feature_path gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features \\
@@ -145,14 +109,14 @@ def run_inference(n):
             --metadata_file training_classes.csv \\
             --fishing_ranges_file combined_fishing_ranges.csv
 
-    """.format(n=n)
+    """
     print("Running command:")
     print(command)
     print()
     subprocess.check_output([command], shell=True, cwd=classification_dir)
 
 
-def create_lists(n):
+def create_lists():
     command = """
         python compute_metrics.py     \\
             --inference-path update_vessel_lists.json.gz  \\
