@@ -156,11 +156,14 @@ object AISAnnotator extends LazyLogging {
     // Keep only records with a location.
     .filter { case (_, json) => json.has("lat") && json.has("lon") && json.has("timestamp")}.groupByKey
 
-    filteredGroupedByMmsi.join(annotationsByMmsi).flatMap {
-      case (_, (messagesIt, annotationsIt)) =>
+    filteredGroupedByMmsi.leftOuterJoin(annotationsByMmsi).flatMap {
+      case (_, (messagesIt, Some(annotationsIt))) =>
         val messages = messagesIt.toSeq
         val annotations = annotationsIt.toSeq
         annotateVesselMessages(messages, annotations)
+      case (_, (messagesIt, None)) =>
+        val messages = messagesIt.toSeq
+        annotateVesselMessages(messages, Nil)
     }
   }
 
