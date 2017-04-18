@@ -109,7 +109,7 @@ def run_inference():
             --metadata_file training_classes.csv \\
             --fishing_ranges_file combined_fishing_ranges.csv
 
-    """.format(os.getusername())
+    """.format(os.environ.get('USER'))
     print("Running command:")
     print(command)
     print()
