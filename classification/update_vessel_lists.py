@@ -13,6 +13,7 @@ import datetime
 this_dir = os.path.abspath(os.path.dirname(__file__))
 classification_dir = this_dir
 pipeline_dir = os.path.abspath(os.path.join(this_dir, '../pipeline'))
+treniformis_dir = os.path.abspath(os.path.join(this_dir, '../../treniforms'))
 
 
 def job_status(job_id):
@@ -33,9 +34,7 @@ def parse_id_from_sbt_output(output):
             _, job_id = line.rsplit(None, 1)
             return job_id    
 
-def generate_features():
-
-    range_end = datetime.date.today()
+def generate_features(range_end):
     # We need 180 days, but do more, just to be safe, we usually don't have 
     # data right up to today anyway.
     range_start = range_end - datetime.timedelta(days=220)
@@ -76,7 +75,8 @@ encounterMaxKilometers: 0.5
                                        --experiments=use_mem_shuffle \
                                        --workerHarnessContainerImage=dataflow.gcr.io/v1beta3/java-batch:1.9.0-mm  \
                                        --maxNumWorkers=100 \
-                                       --job-name=update_vessel_lists --generate-model-features=true \
+                                       --job-name=update_vessel_lists \\
+                                       --generate-model-features=true \
                                        --generate-encounters=false \
                                        --job-config={config_path}"'''.format(config_path=fp.name)
 
@@ -88,9 +88,9 @@ encounterMaxKilometers: 0.5
 
     return parse_id_from_sbt_output(output)
 
-def run_generate_features():
+def run_generate_features(range_end):
     print("Starting Feature Generation")
-    feature_id = generate_features()
+    feature_id = generate_features(range_end)
 
     print("Waiting for Feature Generation Complete, ID:", feature_id)
     status = status_at_completion(feature_id)
@@ -101,7 +101,7 @@ def run_generate_features():
 def run_inference():
     command = """
         python -m classification.run_inference prod.vessel_characterization \\
-            --root_feature_path gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features \\
+            --root_feature_path gs://world-fishing-827-dev-ttl30d/data-production/classification/{}/update_vessel_lists/pipeline/output/features \\
             --inference_parallelism 128 \\
             --feature_dimensions 12 \\
             --inference_results_path ./update_vessel_lists.json.gz \\
@@ -109,7 +109,7 @@ def run_inference():
             --metadata_file training_classes.csv \\
             --fishing_ranges_file combined_fishing_ranges.csv
 
-    """
+    """.format(os.getusername())
     print("Running command:")
     print(command)
     print()
@@ -133,6 +133,18 @@ def create_lists():
     subprocess.check_output([command], shell=True, cwd=classification_dir)
 
 
+def update_treniformis(date):
+    # Assumes treniformis is installed alongside 
+    if not os.path.exists(treniformis_dir):
+        raise RuntimeError("Treniformis not installed in the correct place")
+    dest_dir = os.path.join(treniformis_dir, 'treniformis', '_assets', 'GFW', 
+                                'VESSEL_INFO', 'VESSEL_LISTS')
+    print(os.listdir(dest_dir))
+
+
+
+# TODO: allow date to be passed in.
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Update Vessel Lists.')
@@ -141,9 +153,11 @@ if __name__ == "__main__":
     parser.add_argument('--skip-list-generation', help='skip running inference', action='store_true')
     args = parser.parse_args()
 
+    date = datetime.date.today()
+
     if not args.skip_feature_generation:
         # Generate features for last six months
-        run_generate_features()
+        run_generate_features(range_end)
 
     if not args.skip_inference:
         run_inference()
@@ -151,5 +165,7 @@ if __name__ == "__main__":
     if not args.skip_list_generation:
         create_lists()
 
+    if not args.skip_update_treniformis:
+        update_treniformis(date)
 
 
