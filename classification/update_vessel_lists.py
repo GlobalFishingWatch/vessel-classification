@@ -8,6 +8,7 @@ import time
 import os
 import tempfile
 import datetime
+import shutil
 
 
 this_dir = os.path.abspath(os.path.dirname(__file__))
@@ -126,6 +127,7 @@ def create_lists():
             --skip-localisation-metrics \\
             --dump-labels-to updated-labels \
             --dump-attributes-to updated-attributes
+            --dump-years ""
         """
     print("Running command:")
     print(command)
@@ -140,6 +142,10 @@ def update_treniformis(date):
     dest_dir = os.path.join(treniformis_dir, 'treniformis', '_assets', 'GFW', 
                                 'VESSEL_INFO', 'VESSEL_LISTS')
     print(os.listdir(dest_dir))
+    dest_path = os.path.join(dest_dir, 'ATT')
+    return
+    shutil.move('updated-labels/ALL.csv',
+        os.path.join(dest_dir, 'LABELS_{}_{}.csv'.format(data.year, date.month, date.day)))
 
 
 
@@ -151,6 +157,7 @@ if __name__ == "__main__":
     parser.add_argument('--skip-feature-generation', help='skip generating new features', action='store_true')
     parser.add_argument('--skip-inference', help='skip running inference', action='store_true')
     parser.add_argument('--skip-list-generation', help='skip running inference', action='store_true')
+    parser.add_argument('--skip-update-trenfiformis', help='skip updating treniformis', action='store_true')
     args = parser.parse_args()
 
     date = datetime.date.today()
