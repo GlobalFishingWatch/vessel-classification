@@ -1246,7 +1246,7 @@ if __name__ == '__main__':
     parser.add_argument('--skip-localisation-metrics', action='store_true')
     parser.add_argument('--skip-attribute-metrics', action='store_true')
     # It's convenient to be able to dump the consolidated gear types
-    parser.add_argument('--dump-years,'
+    parser.add_argument('--dump-years',
         default="2012,2013,2014,2015,2016,2107")
     parser.add_argument(
         '--dump-labels-to',
@@ -1264,7 +1264,7 @@ if __name__ == '__main__':
 
     dump_html(args, results)
 
-    dump_years = [int(x) for x in args.dump_years]
+    dump_years = [int(x) for x in args.dump_years.split(',')] if (args.dump_years != "ALL_ONLY") else []
 
     if args.dump_labels_to:
 
@@ -1307,7 +1307,7 @@ if __name__ == '__main__':
                         {x: consolidate_attribute_across_dates(results[x])
                          for x in ['length', 'tonnage', 'engine_power']}}
 
-        for year in dump_years
+        for year in dump_years:
             start_date = datetime.datetime(year=year, month=1, day=1, tzinfo=pytz.utc)
             stop_date = datetime.datetime(year=year+1, month=1, day=1, tzinfo=pytz.utc)
             logging.info('Processing attribute dump for {}'.format(year))
