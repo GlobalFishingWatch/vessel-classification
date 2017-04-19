@@ -14,7 +14,7 @@ import shutil
 this_dir = os.path.abspath(os.path.dirname(__file__))
 classification_dir = this_dir
 pipeline_dir = os.path.abspath(os.path.join(this_dir, '../pipeline'))
-treniformis_dir = os.path.abspath(os.path.join(this_dir, '../../treniforms'))
+treniformis_dir = os.path.abspath(os.path.join(this_dir, '../../treniformis'))
 
 
 def job_status(job_id):
@@ -126,8 +126,8 @@ def create_lists():
             --fishing-ranges classification/data/combined_fishing_ranges.csv \\
             --skip-localisation-metrics \\
             --dump-labels-to updated-labels \
-            --dump-attributes-to updated-attributes
-            --dump-years ""
+            --dump-attributes-to updated-attributes \
+            --dump-years ALL_ONLY
         """
     print("Running command:")
     print(command)
@@ -141,11 +141,12 @@ def update_treniformis(date):
         raise RuntimeError("Treniformis not installed in the correct place")
     dest_dir = os.path.join(treniformis_dir, 'treniformis', '_assets', 'GFW', 
                                 'VESSEL_INFO', 'VESSEL_LISTS')
-    print(os.listdir(dest_dir))
-    dest_path = os.path.join(dest_dir, 'ATT')
-    return
-    shutil.move('updated-labels/ALL.csv',
-        os.path.join(dest_dir, 'LABELS_{}_{}.csv'.format(data.year, date.month, date.day)))
+    if not os.path.exists(dest_dir):
+        os.mkdir(dest_dir)
+    shutil.copy('updated-labels/ALL_YEARS.csv',
+        os.path.join(dest_dir, 'LABELS_{}_{}_{}.csv'.format(date.year, date.month, date.day)))
+    shutil.copy('updated-attributes/ALL_YEARS.csv',
+        os.path.join(dest_dir, 'ATTRIBUTES_{}_{}_{}.csv'.format(date.year, date.month, date.day)))
 
 
 
@@ -157,14 +158,14 @@ if __name__ == "__main__":
     parser.add_argument('--skip-feature-generation', help='skip generating new features', action='store_true')
     parser.add_argument('--skip-inference', help='skip running inference', action='store_true')
     parser.add_argument('--skip-list-generation', help='skip running inference', action='store_true')
-    parser.add_argument('--skip-update-trenfiformis', help='skip updating treniformis', action='store_true')
+    parser.add_argument('--skip-update-treniformis', help='skip updating treniformis', action='store_true')
     args = parser.parse_args()
 
     date = datetime.date.today()
 
     if not args.skip_feature_generation:
         # Generate features for last six months
-        run_generate_features(range_end)
+        run_generate_features(date)
 
     if not args.skip_inference:
         run_inference()
