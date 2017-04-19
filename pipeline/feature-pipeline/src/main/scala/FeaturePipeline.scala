@@ -109,7 +109,8 @@ object Pipeline extends LazyLogging {
 
       val locationsWithAdjacency = if (generateEncounters) {
         val adjacencies =
-          Encounters.calculateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords)
+          Encounters.calculateAdjacency(Parameters.adjacencyResamplePeriod, locationRecords, 
+                      pipelineConfig.encounterMaxKilometers.of[kilometer])
 
         // Build and output suspected encounters.
         val suspectedEncountersPath = config.pipelineOutputPath + "/encounters"

@@ -207,7 +207,8 @@ object Encounters extends LazyLogging {
   }
 
   def calculateAdjacency(interpolateIncrementSeconds: Duration,
-                         vesselSeries: SCollection[(VesselMetadata, Seq[VesselLocationRecord])])
+                         vesselSeries: SCollection[(VesselMetadata, Seq[VesselLocationRecord])],
+                         maxDistanceForEncounter : DoubleU[kilometer])
     : SCollection[(VesselMetadata, Seq[ResampledVesselLocationWithAdjacency])] = {
     val s2Level = 12
 
@@ -256,7 +257,7 @@ object Encounters extends LazyLogging {
                   case (md2, vl2) =>
                     val distance = vl1.location.getDistance(vl2.location)
 
-                    if (distance < Parameters.maxEncounterRadius) {
+                    if (distance < maxDistanceForEncounter) {
                       if (!vesselDistances.contains(md1)) {
                         vesselDistances(md1) =
                           mutable.ListBuffer.empty[(VesselMetadata, DoubleU[kilometer])]

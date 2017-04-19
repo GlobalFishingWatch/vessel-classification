@@ -24,7 +24,6 @@ object Parameters {
   val maxInterpolateGap = Duration.standardMinutes(70) // max gap for VMS should be 60 minutes, but leave 10 minutes of leeway
 
   val maxClosestNeighbours = 10
-  val maxEncounterRadius = 1.0.of[kilometer]
 
   val minDistanceToShoreForEncounter = 20.0.of[kilometer]
 }
