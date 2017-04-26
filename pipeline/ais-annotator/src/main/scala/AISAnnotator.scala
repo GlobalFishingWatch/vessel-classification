@@ -24,6 +24,7 @@ import com.spotify.scio.values.SCollection
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import java.util.LinkedHashMap
 import org.joda.time.{Instant}
+import org.joda.time.DateTimeZone.UTC
 import org.json4s._
 import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL.WithDouble._
@@ -139,11 +140,11 @@ object AISAnnotator extends LazyLogging {
     val aisMessages = SCollection.unionAll(aisMessageInputs)
     val allAnnotations = SCollection.unionAll(annotationInputs)
     val annotationsByMmsi = allAnnotations.groupBy(x => 
-      (x.mmsi, x.startTime.toDateTime().getYear(), x.startTime.toDateTime().getDayOfYear()))
+      (x.mmsi, x.startTime.toDateTime(UTC).getYear(), x.startTime.toDateTime(UTC).getDayOfYear()))
 
     // Do not process messages for MMSIs for which we have no annotations.
     val filteredAISMessages = aisMessages.map { json =>
-      val dateTime = Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")).toDateTime()
+      val dateTime = Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")).toDateTime(UTC)
       ((json.getLong("mmsi").toInt, dateTime.getYear(), dateTime.getDayOfYear()), json)
     }
     .filter { case ((mmsi, _, _), _) =>
@@ -156,11 +157,14 @@ object AISAnnotator extends LazyLogging {
     // Keep only records with a location.
     .filter { case (_, json) => json.has("lat") && json.has("lon") && json.has("timestamp")}.groupByKey
 
-    filteredGroupedByMmsi.join(annotationsByMmsi).flatMap {
-      case (_, (messagesIt, annotationsIt)) =>
+    filteredGroupedByMmsi.leftOuterJoin(annotationsByMmsi).flatMap {
+      case (_, (messagesIt, Some(annotationsIt))) =>
         val messages = messagesIt.toSeq
         val annotations = annotationsIt.toSeq
         annotateVesselMessages(messages, annotations)
+      case (_, (messagesIt, None)) =>
+        val messages = messagesIt.toSeq
+        annotateVesselMessages(messages, Nil)
     }
   }
 
