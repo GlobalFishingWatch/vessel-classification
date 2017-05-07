@@ -14,6 +14,7 @@ import shutil
 this_dir = os.path.abspath(os.path.dirname(__file__))
 classification_dir = this_dir
 pipeline_dir = os.path.abspath(os.path.join(this_dir, '../pipeline'))
+top_dir = os.path.abspath(os.path.join(this_dir, '../..'))
 treniformis_dir = os.path.abspath(os.path.join(this_dir, '../../treniformis'))
 
 
@@ -34,6 +35,12 @@ def parse_id_from_sbt_output(output):
         if line.startswith('Submitted job:'):
             _, job_id = line.rsplit(None, 1)
             return job_id    
+
+def clone_treniformis_if_needed():
+    if not os.path.exists('../../treniformis'):
+        subprocess.check_call(['git', 'clone', 'https://github.com/GlobalFishingWatch/treniformis.git'], cwd=top_dir)
+    else:
+        print("Using existing treniformis without updating")
 
 def generate_features(range_end):
     # We need 180 days, but do more, just to be safe, we usually don't have 
@@ -76,7 +83,7 @@ encounterMaxKilometers: 0.5
                                        --experiments=use_mem_shuffle \
                                        --workerHarnessContainerImage=dataflow.gcr.io/v1beta3/java-batch:1.9.0-mm  \
                                        --maxNumWorkers=100 \
-                                       --job-name=update_vessel_lists \\
+                                       --job-name=update_vessel_lists \
                                        --generate-model-features=true \
                                        --generate-encounters=false \
                                        --job-config={config_path}"'''.format(config_path=fp.name)
@@ -85,7 +92,11 @@ encounterMaxKilometers: 0.5
         print(command)
         print()
 
-        output = subprocess.check_output([command], shell=True, cwd=pipeline_dir)
+        try:
+            output = subprocess.check_output([command], shell=True, cwd=pipeline_dir, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as err:
+            print("Call failed with this output:", err.output)
+            raise
 
     return parse_id_from_sbt_output(output)
 
@@ -114,7 +125,11 @@ def run_inference():
     print("Running command:")
     print(command)
     print()
-    subprocess.check_output([command], shell=True, cwd=classification_dir)
+    try:
+        subprocess.check_output([command], shell=True, cwd=classification_dir, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as err:
+        print("Call failed with this output:", err.output)
+        raise
 
 
 def create_lists():
@@ -132,8 +147,11 @@ def create_lists():
     print("Running command:")
     print(command)
     print()
-    subprocess.check_output([command], shell=True, cwd=classification_dir)
-
+    try:
+        subprocess.check_output([command], shell=True, cwd=classification_dir, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as err:
+        print("Call failed with this output:", err.output)
+        raise
 
 def update_treniformis(date):
     # Assumes treniformis is installed alongside 
@@ -162,6 +180,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     date = datetime.date.today()
+
+    clone_treniformis_if_needed()
 
     if not args.skip_feature_generation:
         # Generate features for last six months
