@@ -42,6 +42,13 @@ def clone_treniformis_if_needed():
     else:
         print("Using existing treniformis without updating")
 
+def download_weights_if_needed():
+    if not os.path.exists('vessel_characterization.model.ckpt'):
+        subprocess.check_call(['gsutil', 'cp', 
+            'gs://world-fishing-827/data-production/classification/vessel_characterization.model.ckpt', '.'])
+    else:
+        print("Using existing weights without updating")
+
 def generate_features(range_end):
     # We need 180 days, but do more, just to be safe, we usually don't have 
     # data right up to today anyway.
