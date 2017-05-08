@@ -190,6 +190,8 @@ if __name__ == "__main__":
 
     clone_treniformis_if_needed()
 
+    download_weights_if_needed()
+
     if not args.skip_feature_generation:
         # Generate features for last six months
         run_generate_features(date)
