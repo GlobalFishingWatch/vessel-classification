@@ -16,7 +16,7 @@ classification_dir = os.path.abspath(os.path.join(this_dir, '../classification')
 pipeline_dir = os.path.abspath(os.path.join(this_dir, '../pipeline'))
 top_dir = os.path.abspath(os.path.join(this_dir, '../..'))
 treniformis_dir = os.path.abspath(os.path.join(top_dir, 'treniformis'))
-logdir = os.path.abspath(os.path.join(top_dir, 'logs'))
+logdir = os.path.abspath(os.path.join(this_dir, '../logs'))
 
 
 logpath = os.path.join(logdir, "log-{}".format(str(datetime.datetime.utcnow()).replace(' ', '_')))
