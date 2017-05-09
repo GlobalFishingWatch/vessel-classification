@@ -12,10 +12,33 @@ import shutil
 
 
 this_dir = os.path.abspath(os.path.dirname(__file__))
-classification_dir = this_dir
+classification_dir = os.path.abspath(os.path.join(this_dir, '../classification'))
 pipeline_dir = os.path.abspath(os.path.join(this_dir, '../pipeline'))
 top_dir = os.path.abspath(os.path.join(this_dir, '../..'))
-treniformis_dir = os.path.abspath(os.path.join(this_dir, '../../treniformis'))
+treniformis_dir = os.path.abspath(os.path.join(top_dir, 'treniformis'))
+logdir = os.path.abspath(os.path.join(top_dir, 'logs'))
+
+
+logpath = os.path.join(logdir, "log-{}".format(str(datetime.datetime.utcnow()).replace(' ', '_')))
+
+
+def checked_call(commands, **kwargs):
+    kwargs['stderr'] = subprocess.STDOUT
+    try:
+        return subprocess.check_output(commands, **kwargs)
+    except subprocess.CalledProcessError as err:
+        log("Call failed with this output:", err.output)
+        raise
+
+
+def log(*args, **kwargs):
+    """Just like 'print(), except that also outputs
+       to the file located at `logpath'
+    """
+    print(*args, **kwargs)
+    with open(logpath, 'a') as f:
+        kwargs['file'] = f
+        print(*args, **kwargs)
 
 
 def job_status(job_id):
@@ -38,22 +61,21 @@ def parse_id_from_sbt_output(output):
 
 def add_bot_key_if_present():
     if os.path.exists("~/.ssh/gfw-bot-key"):
-        subprocess.check_output(["eval $(ssh-agent -s) && ssh-add ~/.ssh/gfw-bot-key"],
-            shell=True, stderr=subprocess.STDOUT)
+        checked_call(["eval $(ssh-agent -s) && ssh-add ~/.ssh/gfw-bot-key"], shell=True)
 
 def clone_treniformis_if_needed():
-    if not os.path.exists('../../treniformis'):
-        subprocess.check_call(['git', 'clone', 'https://github.com/GlobalFishingWatch/treniformis.git'], cwd=top_dir)
+    if not os.path.exists(treniformis_dir):
+        checked_call(['git', 'clone', 'https://github.com/GlobalFishingWatch/treniformis.git'], cwd=top_dir)
     else:
-        print("Using existing treniformis without updating")
+        log("Using existing treniformis without updating")
 
 def download_weights_if_needed():
     if not os.path.exists('vessel_characterization.model.ckpt'):
-        subprocess.check_call(['gsutil', 'cp', 
+        checked_call(['gsutil', 'cp', 
             'gs://world-fishing-827/data-production/classification/vessel_characterization.model.ckpt', '.'],
             cwd=classification_dir)
     else:
-        print("Using existing weights without updating")
+        log("Using existing weights without updating")
 
 def generate_features(range_end):
     # We need 180 days, but do more, just to be safe, we usually don't have 
@@ -87,9 +109,9 @@ encounterMaxKilometers: 0.5
     with tempfile.NamedTemporaryFile() as fp:
         fp.write(config)
         fp.flush()
-        print("Using Config:")
-        print(config)
-        print()
+        log("Using Config:")
+        log(config)
+        log()
 
         command = '''sbt features/"run --env=dev \
                                        --zone=us-central1-f \
@@ -101,27 +123,23 @@ encounterMaxKilometers: 0.5
                                        --generate-encounters=false \
                                        --job-config={config_path}"'''.format(config_path=fp.name)
 
-        print("Executing command:")
-        print(command)
-        print()
+        log("Executing command:")
+        log(command)
+        log()
 
-        try:
-            output = subprocess.check_output([command], shell=True, cwd=pipeline_dir, stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as err:
-            print("Call failed with this output:", err.output)
-            raise
+        output = checked_call([command], shell=True, cwd=pipeline_dir)
 
     return parse_id_from_sbt_output(output)
 
 def run_generate_features(range_end):
-    print("Starting Feature Generation")
+    log("Starting Feature Generation")
     feature_id = generate_features(range_end)
 
-    print("Waiting for Feature Generation Complete, ID:", feature_id)
+    log("Waiting for Feature Generation Complete, ID:", feature_id)
     status = status_at_completion(feature_id)
     if status != 'DONE':
         raise RuntimeError("feature generation did not complete ({})".format(status))
-    print("Feature Generation Complete")
+    log("Feature Generation Complete")
 
 def run_inference():
     command = """
@@ -135,14 +153,10 @@ def run_inference():
             --fishing_ranges_file combined_fishing_ranges.csv
 
     """.format(os.environ.get('USER'))
-    print("Running command:")
-    print(command)
-    print()
-    try:
-        subprocess.check_output([command], shell=True, cwd=classification_dir, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as err:
-        print("Call failed with this output:", err.output)
-        raise
+    log("Running command:")
+    log(command)
+
+    checked_call([command], shell=True, cwd=classification_dir)
 
 
 def create_lists():
@@ -157,14 +171,11 @@ def create_lists():
             --dump-attributes-to updated-attributes \
             --dump-years ALL_ONLY
         """
-    print("Running command:")
-    print(command)
-    print()
-    try:
-        subprocess.check_output([command], shell=True, cwd=classification_dir, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as err:
-        print("Call failed with this output:", err.output)
-        raise
+    log("Running command:")
+    log(command)
+    log()
+    checked_call([command], shell=True, cwd=classification_dir)
+
 
 def update_treniformis(date):
     # Assumes treniformis is installed alongside 
