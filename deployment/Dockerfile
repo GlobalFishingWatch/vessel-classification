@@ -46,7 +46,7 @@ RUN pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0
 ADD ./classification /app/classification
 ADD ./pipeline /app/pipeline
 
-WORKDIR /app/classification
+WORKDIR /app
 
 ENV USER="VESSEL_LIST_UPDATER"
 
