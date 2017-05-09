@@ -36,6 +36,11 @@ def parse_id_from_sbt_output(output):
             _, job_id = line.rsplit(None, 1)
             return job_id    
 
+def add_bot_key_if_present():
+    if os.path.exists("~/.ssh/gfw-bot-key"):
+        subprocess.check_output(["eval $(ssh-agent -s) && ssh-add ~/.ssh/gfw-bot-key"],
+            shell=True, stderr=subprocess.STDOUT)
+
 def clone_treniformis_if_needed():
     if not os.path.exists('../../treniformis'):
         subprocess.check_call(['git', 'clone', 'https://github.com/GlobalFishingWatch/treniformis.git'], cwd=top_dir)
@@ -45,7 +50,8 @@ def clone_treniformis_if_needed():
 def download_weights_if_needed():
     if not os.path.exists('vessel_characterization.model.ckpt'):
         subprocess.check_call(['gsutil', 'cp', 
-            'gs://world-fishing-827/data-production/classification/vessel_characterization.model.ckpt', '.'])
+            'gs://world-fishing-827/data-production/classification/vessel_characterization.model.ckpt', '.'],
+            cwd=classification_dir)
     else:
         print("Using existing weights without updating")
 
@@ -187,6 +193,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     date = datetime.date.today()
+
+    add_bot_key_if_present()
 
     clone_treniformis_if_needed()
 
