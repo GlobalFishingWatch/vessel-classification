@@ -45,6 +45,7 @@ RUN pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0
 
 ADD ./classification /app/classification
 ADD ./pipeline /app/pipeline
+ADD ./deployment /app/deployment
 
 WORKDIR /app
 
