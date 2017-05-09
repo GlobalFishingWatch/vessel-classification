@@ -77,6 +77,14 @@ def download_weights_if_needed():
     else:
         log("Using existing weights without updating")
 
+def create_dirs_if_needed():
+    label_path = os.path.join(classification_dir, 'updated-labels')
+    if not os.path.exists(label_path):
+        os.mkdir(label_path)
+    regression_path = os.path.join(classification_dir, 'updated-attributes')
+    if not os.path.exists(regression_path):
+        os.mkdir(regression_path)
+
 def generate_features(range_end):
     # We need 180 days, but do more, just to be safe, we usually don't have 
     # data right up to today anyway.
