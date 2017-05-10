@@ -195,9 +195,9 @@ def update_treniformis(date):
                                 'VESSEL_INFO', 'VESSEL_LISTS')
     if not os.path.exists(dest_dir):
         os.mkdir(dest_dir)
-    shutil.copy('updated-labels/ALL_YEARS.csv',
+    shutil.copy('classification/updated-labels/ALL_YEARS.csv',
         os.path.join(dest_dir, 'LABELS_{}_{}_{}.csv'.format(date.year, date.month, date.day)))
-    shutil.copy('updated-attributes/ALL_YEARS.csv',
+    shutil.copy('classification/updated-attributes/ALL_YEARS.csv',
         os.path.join(dest_dir, 'ATTRIBUTES_{}_{}_{}.csv'.format(date.year, date.month, date.day)))
 
 
