@@ -80,9 +80,11 @@ def download_weights_if_needed():
 def create_dirs_if_needed():
     label_path = os.path.join(classification_dir, 'updated-labels')
     if not os.path.exists(label_path):
+        log("Adding path", label_path)
         os.mkdir(label_path)
     regression_path = os.path.join(classification_dir, 'updated-attributes')
     if not os.path.exists(regression_path):
+        log("Adding path", regression_path)
         os.mkdir(regression_path)
 
 def generate_features(range_end):
@@ -212,6 +214,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     date = datetime.date.today()
+
+    create_dirs_if_needed()
 
     add_bot_key_if_present()
 
