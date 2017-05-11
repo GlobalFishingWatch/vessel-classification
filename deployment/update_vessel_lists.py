@@ -66,7 +66,7 @@ def add_bot_key_if_present():
 def clone_treniformis_if_needed():
     if not os.path.exists(treniformis_dir):
         checked_call(['git', 'clone', 'https://github.com/GlobalFishingWatch/treniformis.git'], cwd=top_dir)
-        checked_call(['pip', 'install', '-e'], cwd=treniformis_dir)
+        checked_call(['pip', 'install', '-e .'], cwd=treniformis_dir)
     else:
         log("Using existing treniformis without updating")
 
