@@ -193,12 +193,16 @@ def update_treniformis(date):
         raise RuntimeError("Treniformis not installed in the correct place")
     dest_dir = os.path.join(treniformis_dir, 'treniformis', '_assets', 'GFW', 
                                 'VESSEL_INFO', 'VESSEL_LISTS')
+    log("Copying files to", dest_dir)
     if not os.path.exists(dest_dir):
         os.mkdir(dest_dir)
     shutil.copy('classification/updated-labels/ALL_YEARS.csv',
         os.path.join(dest_dir, 'LABELS_{}_{}_{}.csv'.format(date.year, date.month, date.day)))
     shutil.copy('classification/updated-attributes/ALL_YEARS.csv',
         os.path.join(dest_dir, 'ATTRIBUTES_{}_{}_{}.csv'.format(date.year, date.month, date.day)))
+    command = "python scripts/update_dates_bump_version_and_commit.py"
+    log("running command:", command)
+    checked_call(command.split(), wd=treniformis_dir)
 
 
 
@@ -215,25 +219,28 @@ if __name__ == "__main__":
 
     date = datetime.date.today()
 
-    create_dirs_if_needed()
+    try:
+        create_dirs_if_needed()
 
-    add_bot_key_if_present()
+        add_bot_key_if_present()
 
-    clone_treniformis_if_needed()
+        clone_treniformis_if_needed()
 
-    download_weights_if_needed()
+        download_weights_if_needed()
 
-    if not args.skip_feature_generation:
-        # Generate features for last six months
-        run_generate_features(date)
+        if not args.skip_feature_generation:
+            # Generate features for last six months
+            run_generate_features(date)
 
-    if not args.skip_inference:
-        run_inference()
+        if not args.skip_inference:
+            run_inference()
 
-    if not args.skip_list_generation:
-        create_lists()
+        if not args.skip_list_generation:
+            create_lists()
 
-    if not args.skip_update_treniformis:
-        update_treniformis(date)
+        if not args.skip_update_treniformis:
+            update_treniformis(date)
+    except Exception as err:
+        log("Execution failed with:", repr(err))
 
 
