@@ -65,8 +65,9 @@ def add_bot_key_if_present():
 
 def clone_treniformis_if_needed():
     if not os.path.exists(treniformis_dir):
-        checked_call(['git', 'clone', 'git@github.com:GlobalFishingWatch/treniformis.git'], cwd=top_dir)
-        checked_call(['pip install -e .'], shell=True, cwd=treniformis_dir)
+checked_call(['eval $(ssh-agent -s) && ssh-add ~/.ssh/gfw-bot-key && git clone git@github.com:GlobalFishingWatch/treniformis.git'], 
+              shell=True, cwd=top_dir)        
+checked_call(['pip install -e .'], shell=True, cwd=treniformis_dir)
     else:
         log("Using existing treniformis without updating")
 
