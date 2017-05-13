@@ -59,10 +59,6 @@ def parse_id_from_sbt_output(output):
             _, job_id = line.rsplit(None, 1)
             return job_id    
 
-def add_bot_key_if_present():
-    if os.path.exists("~/.ssh/gfw-bot-key"):
-        checked_call(["eval $(ssh-agent -s) && ssh-add ~/.ssh/gfw-bot-key"], shell=True)
-
 def clone_treniformis_if_needed():
     if not os.path.exists(treniformis_dir):
         checked_call(['eval $(ssh-agent -s) && ssh-add ~/.ssh/gfw-bot-key && git clone git@github.com:GlobalFishingWatch/treniformis.git'], 
@@ -202,9 +198,9 @@ def update_treniformis(date):
         os.path.join(dest_dir, 'LABELS_{}_{}_{}.csv'.format(date.year, date.month, date.day)))
     shutil.copy('classification/updated-attributes/ALL_YEARS.csv',
         os.path.join(dest_dir, 'ATTRIBUTES_{}_{}_{}.csv'.format(date.year, date.month, date.day)))
-    command = "python scripts/update_dates_bump_version_and_commit.py"
+    command = "eval $(ssh-agent -s) && ssh-add ~/.ssh/gfw-bot-key && python scripts/update_dates_bump_version_and_commit.py"
     log("running command:", command)
-    output = checked_call(command.split(), cwd=treniformis_dir)
+    output = checked_call([command], cwd=treniformis_dir, shell=True)
     log(output)
 
 
@@ -224,8 +220,6 @@ if __name__ == "__main__":
 
     try:
         create_dirs_if_needed()
-
-        add_bot_key_if_present()
 
         clone_treniformis_if_needed()
 
