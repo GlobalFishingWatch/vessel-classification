@@ -44,6 +44,9 @@ RUN pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0
     pip install google-api-python-client pyyaml pytz newlinejson python-dateutil yattag ujson && \
     pip install git+https://github.com/GlobalFishingWatch/bqtools.git
  
+# Config git
+RUN git config --global user.email gfw-bot@skytruth.com && git config --global user.name gfw-bot
+
 ADD ./classification /app/classification
 ADD ./pipeline /app/pipeline
 ADD ./deployment /app/deployment
@@ -52,5 +55,3 @@ WORKDIR /app
 
 ENV USER="VESSEL_LIST_UPDATER"
 
-# Run app.py when the container launches
-CMD ["python", "deployment/update_vessel_lists.py"]
