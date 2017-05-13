@@ -53,4 +53,4 @@ WORKDIR /app
 ENV USER="VESSEL_LIST_UPDATER"
 
 # Run app.py when the container launches
-# CMD ["python", "deployment/update_vessel_lists.py"]
+CMD ["python", "deployment/update_vessel_lists.py"]

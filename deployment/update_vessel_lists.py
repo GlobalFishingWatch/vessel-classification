@@ -204,7 +204,8 @@ def update_treniformis(date):
         os.path.join(dest_dir, 'ATTRIBUTES_{}_{}_{}.csv'.format(date.year, date.month, date.day)))
     command = "python scripts/update_dates_bump_version_and_commit.py"
     log("running command:", command)
-    checked_call(command.split(), cwd=treniformis_dir)
+    output = checked_call(command.split(), cwd=treniformis_dir)
+    log(output)
 
 
 
