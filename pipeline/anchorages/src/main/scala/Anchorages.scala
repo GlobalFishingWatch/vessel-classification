@@ -330,8 +330,10 @@ object Anchorages extends LazyLogging {
 
     val environment = remaining_args.required("env")
     val jobName = remaining_args.required("job-name")
-    val inputPatterns = remaining_args.list("input-patterns")
-    val knownFishingFile = remaining_args("known-fishing-mmsi")
+    val dataYearsArg = remaining_args.list("data-years")
+    val dataFileGlob =
+      remaining_args.getOrElse("data-file-glob", InputDataParameters.defaultDataFileGlob)
+
     val config = GcpConfig.makeConfig(environment, jobName)
 
     logger.info(s"Pipeline output path: ${config.pipelineOutputPath}")
@@ -344,10 +346,11 @@ object Anchorages extends LazyLogging {
       // Read, filter and build location records. We build a set of matches for all
       // relevant years, as a single Cloud Dataflow text reader currently can't yet
       // handle the sheer volume of matching files.
-      val aisInputData = inputPatterns
+      val aisInputData = InputDataParameters
+        .dataFileGlobPerYear(dataYearsArg, dataFileGlob)
         .map(glob => sc.textFile(glob))
 
-      val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs(knownFishingFile)
+      val knownFishingMMSIs = AISDataProcessing.loadFishingMMSIs()
 
       val minValidLocations = 200
       val locationRecords: SCollection[(VesselMetadata, Seq[VesselLocationRecord])] =
