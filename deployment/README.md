@@ -13,6 +13,6 @@
 
 # Running updates remotely.
 
-`gcloud compute --project "world-fishing-827" ssh --zone "europe-west1-d" "nnet-auto-test" --command 'sudo docker run --rm -v ~/.ssh:/root/.ssh -v ~/vessel-classification/logs:/app/logs update_vessel_lists python deployment/update_vessel_lists.py'`
+`gcloud compute --project "world-fishing-827" ssh --zone "europe-west1-d" "nnet-auto-test" --command 'bash ~/vessel-classification/deployment/update_vessel_lists.sh'`
 
 Logs are placed in `vessel-classification\logs`
