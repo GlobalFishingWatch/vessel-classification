@@ -193,7 +193,7 @@ object AISDataProcessing extends LazyLogging {
     }
   }
 
-  def loadFishingMMSIs(knownFishingMMSIs:String): Set[Int] = {
+  def loadFishingMMSIs(knownFishingMMSIs:String = InputDataParameters.knownFishingMMSIs): Set[Int] = {
     val fishingMMSIreader = new CSVReader(new FileReader(knownFishingMMSIs))
     val mmsis = fishingMMSIreader
       .readAll()
