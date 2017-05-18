@@ -1,4 +1,5 @@
 classification/temp
+pipeline/temp
 target
 *.swp
 *.pyc
@@ -7,3 +8,4 @@ dist/
 *.egg-info
 *.json.gz
 classification/classification/models/prod/TEMP
+.ipynb_checkpoints
