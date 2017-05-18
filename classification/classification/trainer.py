@@ -106,6 +106,19 @@ class Trainer:
             variables.get_variables_to_restore(),
             write_version=tf.train.SaverDef.V1)
 
+    def count_trainable_parameters(self):
+        total_parameters = 0
+        for variable in tf.trainable_variables():
+            # shape is an array of tf.Dimension
+            shape = variable.get_shape()
+            print(shape)
+            print(len(shape))
+            variable_parameters = 1
+            for dim in shape:
+                variable_parameters *= dim.value
+            total_parameters += variable_parameters
+        return total_parameters
+
     def run_training(self, master, is_chief, device):
         """ The function for running a training replica on a worker. """
 
@@ -123,6 +136,8 @@ class Trainer:
                         (optimizer,
                          objectives) = self.model.build_training_net(
                              features, timestamps, mmsis)
+
+                        logging.info("Total trainable parameters: {}".format(self.count_trainable_parameters()))
 
                         loss = tf.reduce_sum(
                             [o.loss for o in objectives],
