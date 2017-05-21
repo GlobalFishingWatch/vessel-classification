@@ -6,7 +6,7 @@ This repository contains code to process [AIS](https://en.wikipedia.org/wiki/Aut
 
 (This is not an official Google Product).
 
-[![Build Status](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline.svg?branch=master)](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline)
+[![Build Status](https://travis-ci.org/GlobalFishingWatch/vessel-classification.svg?branch=master)](https://travis-ci.org/GlobalFishingWatch/vessel-classification)
 
 ## Overview
 
