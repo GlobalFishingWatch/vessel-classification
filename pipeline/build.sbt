@@ -55,7 +55,8 @@ lazy val commonSettings = Seq(
     "org.jgrapht" % "jgrapht-core" % "1.0.0",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.8.3",
     "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % "2.8.3",
-    "com.google.cloud" % "google-cloud" % "0.6.0"
+    "com.google.cloud" % "google-cloud" % "0.6.0",
+    "com.google.protobuf" % "protobuf-java" % "3.3.1"
   ),
   // Test dependencies.
   libraryDependencies ++= Seq(
