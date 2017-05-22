@@ -151,7 +151,7 @@ class SummaryObjective(ObjectiveBase):
 
 class EmbeddingObjective(ObjectiveBase):
     def __init__(self, metadata_label, name):
-        super(EmbeddingObjective, self).__init__(metadata_label, name, 0.0)
+        super(EmbeddingObjective, self).__init__(metadata_label, name, 0.0, None)
 
     def build(self, embedding):
         self.prediction = embedding
