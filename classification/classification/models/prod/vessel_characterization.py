@@ -119,6 +119,8 @@ class Model(abstract_models.MisconceptionModel):
             trainers.append(self.training_objectives[i].build_trainer(
                 timestamps, mmsis))
 
+        trainers.append(self.embedding_objective.build_trainer(timestamps, mmsis))
+
         learning_rate = tf.train.exponential_decay(
             self.initial_learning_rate, slim.get_or_create_global_step(), 
             self.decay_examples, self.learning_decay_rate)
