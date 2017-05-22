@@ -98,7 +98,8 @@ def misconception_model(input,
                         is_training,
                         sub_count=128,
                         sub_layers=2,
-                        keep_prob=0.5):
+                        keep_prob=0.5,
+                        embedding_objective=None):
     """ A misconception tower.
 
   Args:
@@ -122,6 +123,11 @@ def misconception_model(input,
                 net = misconception_with_bypass(net, window_size, stride,
                                                 depth, is_training)
                 layers.append(net)
+            if embedding_objective is not None:
+                n = int(net.get_shape().dims[1])
+                embedding = slim.avg_pool2d(net, [1, n], stride=[1, n])
+                embedding = slim.flatten(embedding)
+                embedding_objective.build(embedding)
             outputs = []
             for ofunc in objective_functions:
                 onet = net

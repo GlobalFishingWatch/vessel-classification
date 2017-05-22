@@ -19,7 +19,7 @@ from . import abstract_models
 from . import layers
 from classification import utility
 from classification.objectives import (
-    TrainNetInfo, MultiClassificationObjective, LogRegressionObjective)
+    TrainNetInfo, MultiClassificationObjective, LogRegressionObjective, EmbeddingObjective)
 import logging
 import math
 import numpy as np
@@ -96,6 +96,8 @@ class Model(abstract_models.MisconceptionModel):
                 "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics)
         ]
 
+        self.embedding_objective = EmbeddingObjective('embedding', "Embedding")
+
     def _build_model(self, features, timestamps, mmsis, is_training):
         outputs, _ = layers.misconception_model(
             features,
@@ -105,7 +107,8 @@ class Model(abstract_models.MisconceptionModel):
             self.training_objectives,
             is_training,
             sub_count=self.feature_sub_depths,
-            sub_layers=2)
+            sub_layers=2,
+            embedding_objective=self.embedding_objective)
         return outputs
 
     def build_training_net(self, features, timestamps, mmsis):
@@ -131,5 +134,6 @@ class Model(abstract_models.MisconceptionModel):
         for i in range(len(self.training_objectives)):
             to = self.training_objectives[i]
             evaluations.append(to.build_evaluation(timestamps, mmsis))
+        evaluations.append(self.embedding_objective.build_evaluation(timestamps, mmsis))
 
         return evaluations

@@ -149,6 +149,41 @@ class SummaryObjective(ObjectiveBase):
                           self.metrics)
 
 
+class EmbeddingObjective(ObjectiveBase):
+    def __init__(self, metadata_label, name):
+        super(EmbeddingObjective, self).__init__(metadata_label, name, 0.0)
+
+    def build(self, embedding):
+        self.prediction = embedding
+
+    def _build_summary(self):
+        # Don't do summaries, only want to dump results
+        return {}
+
+    def build_trainer(self, timestamps, mmsis):
+        ops = self._build_summary()
+        # We return a constant loss of zero here, so this doesn't effect the training,
+        # only adds summaries to the output.
+        return Trainer(0, ops.values())
+
+    def build_evaluation(self, timestamps, mmsis):
+
+        build_summary = self._build_summary
+
+        class Evaluation(EvaluationBase):
+            def build_test_metrics(self):
+                ops = build_summary()
+
+                return {}, ops
+
+            def build_json_results(self, prediction, timestamps):
+                return {'embedding' : predictions}
+
+        return Evaluation(self.metadata_label, self.name, None, None, None,
+                          self.metrics)
+
+
+
 class RegressionObjective(ObjectiveBase):
     def __init__(self,
                  metadata_label,
