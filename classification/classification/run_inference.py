@@ -117,6 +117,7 @@ class Inferer(object):
                                                     mmsis)
 
         all_predictions = [o.prediction for o in objectives]
+	assert all([(p is not None) for p in all_predictions]), [(p is not None) for p in all_predictions]
 
         # Open output file, on cloud storage - so what file api?
         config = tf.ConfigProto(

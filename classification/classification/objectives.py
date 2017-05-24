@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import abc
+import base64
 import calendar
 from collections import namedtuple, OrderedDict
 import datetime
@@ -164,10 +165,10 @@ class EmbeddingObjective(ObjectiveBase):
         ops = self._build_summary()
         # We return a constant loss of zero here, so this doesn't effect the training,
         # only adds summaries to the output.
-        return Trainer(0, ops.values())
+        return Trainer(0, self.prediction) 
 
     def build_evaluation(self, timestamps, mmsis):
-
+	assert self.prediction is not None
         build_summary = self._build_summary
 
         class Evaluation(EvaluationBase):
@@ -177,9 +178,9 @@ class EmbeddingObjective(ObjectiveBase):
                 return {}, ops
 
             def build_json_results(self, prediction, timestamps):
-                return {'embedding' : predictions}
+                return {'embedding' : [float(x) for x in prediction]}
 
-        return Evaluation(self.metadata_label, self.name, None, None, None,
+        return Evaluation(self.metadata_label, self.name, self.prediction, None, None,
                           self.metrics)
 
 

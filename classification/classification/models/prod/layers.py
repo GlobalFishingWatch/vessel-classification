@@ -124,7 +124,7 @@ def misconception_model(input,
                                                 depth, is_training)
                 layers.append(net)
             if embedding_objective is not None:
-                n = int(net.get_shape().dims[1])
+                n = int(net.get_shape().dims[2])
                 embedding = slim.avg_pool2d(net, [1, n], stride=[1, n])
                 embedding = slim.flatten(embedding)
                 embedding_objective.build(embedding)

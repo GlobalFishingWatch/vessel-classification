@@ -137,5 +137,6 @@ class Model(abstract_models.MisconceptionModel):
             to = self.training_objectives[i]
             evaluations.append(to.build_evaluation(timestamps, mmsis))
         evaluations.append(self.embedding_objective.build_evaluation(timestamps, mmsis))
+	assert self.embedding_objective.prediction is not None
 
         return evaluations
