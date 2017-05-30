@@ -1246,6 +1246,8 @@ if __name__ == '__main__':
     parser.add_argument('--skip-localisation-metrics', action='store_true')
     parser.add_argument('--skip-attribute-metrics', action='store_true')
     # It's convenient to be able to dump the consolidated gear types
+    parser.add_argument('--dump-years',
+        default="2012,2013,2014,2015,2016,2107")
     parser.add_argument(
         '--dump-labels-to',
         help='dump csv file mapping mmsi to consolidated gear-type labels')
@@ -1262,25 +1264,23 @@ if __name__ == '__main__':
 
     dump_html(args, results)
 
+    dump_years = [int(x) for x in args.dump_years.split(',')] if (args.dump_years != "ALL_ONLY") else []
+
     if args.dump_labels_to:
 
         logging.info('Processing label dump for ALL')
         label_source = {'ALL_YEARS': consolidate_across_dates(results['coarse']
                                                               .all_results())}
 
-        year = 2012
-        while True:
+        for year in dump_years:
             start_date = datetime.datetime(
                 year=year, month=1, day=1, tzinfo=pytz.utc)
             stop_date = datetime.datetime(
                 year=year + 1, month=1, day=1, tzinfo=pytz.utc)
-            if start_date >= datetime.datetime.now(pytz.utc):
-                break
             logging.info('Processing label dump for {}'.format(year))
             label_source['{}'.format(
                 start_date.year)] = consolidate_across_dates(
                     results['coarse'].all_results(), (start_date, stop_date))
-            year += 1
 
         for name, src in label_source.items():
             if not len(src.mmsi):
@@ -1307,16 +1307,12 @@ if __name__ == '__main__':
                         {x: consolidate_attribute_across_dates(results[x])
                          for x in ['length', 'tonnage', 'engine_power']}}
 
-        year = 2012
-        while True:
+        for year in dump_years:
             start_date = datetime.datetime(year=year, month=1, day=1, tzinfo=pytz.utc)
             stop_date = datetime.datetime(year=year+1, month=1, day=1, tzinfo=pytz.utc)
-            if start_date >= datetime.datetime.now(pytz.utc):
-                break
             logging.info('Processing attribute dump for {}'.format(year))
             label_source['{}'.format(start_date.year)] = {x: consolidate_attribute_across_dates(results[x], 
                                                             (start_date, stop_date)) for x in ['length', 'tonnage', 'engine_power']}
-            year += 1
 
         for name, src in label_source.items():
             by_mmsi = defaultdict(dict)

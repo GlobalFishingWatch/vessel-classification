@@ -1,3 +1,5 @@
+scalaVersion in ThisBuild := "2.11.8"
+
 // Enable protocol buffer builds.
 import sbtprotobuf.{ProtobufPlugin => PB}
 PB.protobufSettings
