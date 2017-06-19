@@ -54,6 +54,7 @@ coarse_mapping = [
     ['purse_seines', {'purse_seines'}],
     ['fixed_gear', {'pots_and_traps', 'set_gillnets', 'set_longlines'}],
     ['squid_jigger', ['squid_jigger']],
+    ['gear', ['gear']],
     ['trawlers', {'trawlers'}],
     ['other_fishing', {'pole_and_line', 'trollers', 'other_fishing'}]
 ]
@@ -63,7 +64,7 @@ fishing_mapping = [
                  'pots_and_traps', 'purse_seines', 'set_gillnets',
                  'set_longlines', 'squid_jigger', 'trawlers', 'trollers'}],
     ['non_fishing', {'cargo', 'motor_passenger', 'other_not_fishing', 'reefer',
-                     'sailing', 'seismic_vessel', 'tanker', 'tug'}]
+                     'sailing', 'seismic_vessel', 'tanker', 'tug', 'gear'}]
 ]
 
 
