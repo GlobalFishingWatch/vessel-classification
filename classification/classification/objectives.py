@@ -695,6 +695,63 @@ class FishingLocalizationObjectiveCrossEntropy(
                                  pos_weight=self.pos_weight))
 
 
+class FishingLocalizationObjectiveFishingTime(
+        AbstractFishingLocalizationObjective):
+    def __init__(self,
+                 metadata_label,
+                 name,
+                 vessel_metadata,
+                 loss_weight=1.0,
+                 metrics='all',
+                 window=None):
+        """
+
+        args:
+            metadata_label: label that we are classifying by.
+            name: name of this objective (for metrics)
+            vessel_metadata: info on classes for each mmsi loaded
+            loss_weight: weight of this objective (so that can increase decrease relative to other objectives)
+            metrics: which metrics to include. Options are currently ['all', 'minimal']
+            pos_weight: increases the weight of getting positive values right, so an increased `pos_weight`
+                        should increase recall at the expense of precision.
+
+        """
+        super(FishingLocalizationObjectiveFishingTime, self).__init__(
+            metadata_label, name, vessel_metadata, loss_weight, metrics,
+            window)
+
+    def build(self, net, dt):
+        self.logits = net
+        self.prediction = tf.sigmoid(net)
+        self.dt = dt
+
+    def loss_function(self, dense_labels):
+
+
+        # When awake: want this to be dt * self.prediction, but do something with missing values?
+        # Then compare etih dt * fishing_targets
+
+        fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
+        fishing_targets = tf.to_float(dense_labels > 0.5)
+        preds = self.prediction
+        dt = self.dt
+        if self.window:
+            b, e = self.window
+            fishing_mask = fishing_mask[:, b:e]
+            fishing_targets = fishing_targets[:, b:e]
+            preds = preds[:, b:e]
+            # dt[0] => preds[1]
+            dt = dt[:, b+1:e+1]
+
+        return tf.reduce_mean(fishing_mask *  (dt * (fishing_targets - preds)) ** 2)
+            
+        # return tf.reduce_sum(fishing_mask *
+        #                      tf.nn.weighted_cross_entropy_with_logits(
+        #                          targets=fishing_targets,
+        #                          logits=logits,
+        #                          pos_weight=self.pos_weight))
+
+
 class FishingLocalizationObjectiveSquaredError(
         AbstractFishingLocalizationObjective):
     def __init__(self,
