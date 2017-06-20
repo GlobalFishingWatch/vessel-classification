@@ -375,7 +375,7 @@ class MultiClassificationObjective(ObjectiveBase):
                             [tf.int32])
 
         labels = tf.reshape(
-            labels, shape=tf.concat(0, [tf.shape(mmsis), [class_count]]))
+            labels, shape=tf.concat([tf.shape(mmsis), [class_count]], 0))
 
         return labels
 

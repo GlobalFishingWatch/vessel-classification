@@ -142,9 +142,9 @@ def fishing_localisation_loss(logits, targets):
        happening. Thus targets can be in the range 0 (not fishing) - 1 (fishing)
        or it can take the value -1 to indicate don't know.
     """
-    cross_entropies = tf.nn.sigmoid_cross_entropy_with_logits(logits, targets)
+    cross_entropies = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=targets)
 
-    mask = tf.select(
+    mask = tf.where(
         tf.equal(targets, -1),
         tf.zeros_like(
             targets, dtype=tf.float32),
