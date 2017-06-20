@@ -733,21 +733,21 @@ class FishingLocalizationObjectiveFishingTime(
 
         fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
         fishing_targets = dense_labels
-        preds = self.prediction
+        # tf.to_float(dense_labels > 0.5)
+        logits = self.logits
         dt = self.dt
         if self.window:
             b, e = self.window
             fishing_mask = fishing_mask[:, b:e]
             fishing_targets = fishing_targets[:, b:e]
-            preds = preds[:, b:e]
+            logits = logits[:, b:e]
             # dt[0] => preds[1]
             dt = dt[:, b+1:e+1]
             
         return tf.reduce_sum(dt * fishing_mask *
-                             tf.nn.weighted_cross_entropy_with_logits(
-                                 targets=fishing_targets,
-                                 logits=logits,
-                                 pos_weight=self.pos_weight))
+                             tf.nn.sigmoid_cross_entropy_with_logits(
+                                 labels=fishing_targets,
+                                 logits=logits))
 
 
 class FishingLocalizationObjectiveSquaredError(

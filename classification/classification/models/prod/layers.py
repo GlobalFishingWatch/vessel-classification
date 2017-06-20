@@ -27,7 +27,7 @@ def zero_pad_features(features, depth):
     if n > 0:
         padding = tf.tile(features[:, :, :, :1] * 0,
                           [1, 1, 1, extra_feature_count])
-        features = tf.concat(3, [features, padding])
+        features = tf.concat([features, padding], 3)
     return features
 
 
@@ -60,7 +60,7 @@ def misconception_layer(input,
             stage_max_pool_reduce = slim.max_pool2d(
                 input, [1, window_size], stride=[1, stride], padding='SAME')
 
-            concat = tf.concat(3, [stage_conv, stage_max_pool_reduce])
+            concat = tf.concat([stage_conv, stage_max_pool_reduce], 3)
 
             return slim.conv2d(concat, depth, [1, 1])
 

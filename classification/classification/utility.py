@@ -87,7 +87,7 @@ TRAINING_SPLIT = 'Training'
 
 def repeat_tensor(input, n):
     batch_size, _, width, depth = input.get_shape()
-    repeated = tf.concat(3, [input] * n)
+    repeated = tf.concat([input] * n, 3)
     return tf.reshape(repeated, [-1, 1, int(width) * n, int(depth)])
 
 
