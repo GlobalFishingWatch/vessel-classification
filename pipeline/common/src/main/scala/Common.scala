@@ -141,7 +141,9 @@ case class VesselLocationRecord(timestamp: Instant,
                                 distanceToShore: DoubleU[kilometer],
                                 speed: DoubleU[knots],
                                 course: DoubleU[degrees],
-                                heading: DoubleU[degrees])
+                                heading: DoubleU[degrees],
+                                seg_id: String,
+                                is_terrestrial: Boolean)
 
 case class StationaryPeriod(location: LatLon,
                             duration: Duration,
