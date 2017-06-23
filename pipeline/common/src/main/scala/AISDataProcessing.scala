@@ -90,15 +90,7 @@ object AISDataProcessing extends LazyLogging {
                                (json.getDouble("distance_from_shore") / 1000.0).of[kilometer],
                                json.getDouble("speed").of[knots],
                                angleNormalize(json.getDouble("course").of[degrees]),
-                               angleNormalize(json.getDouble("heading").of[degrees]),
-                               json.getString("seg_id"),
-                               List("rORBCOMM01",
-                                    "rORBCOMM008",
-                                    "rORBCOMM009",
-                                    "rORBCOMM000",
-                                    "rORBCOMM001",
-                                    "rORBCOMM010")
-                                        .contains(json.getString("tagblock_station").replace("u", "")))
+                               angleNormalize(json.getDouble("heading").of[degrees]))
         (metadata, record)
       })
       .filter { case (metadata, _) => !blacklistedMmsis.contains(metadata.mmsi) }
@@ -119,28 +111,11 @@ object AISDataProcessing extends LazyLogging {
 
     validRecords.groupByKey.flatMap {
       case (metadata, records) =>
-
-        val dedupedSorted = records.toIndexedSeq
+        if (records.size >= minRequiredPositions) {
+          val dedupedSorted = records.toIndexedSeq
           // On occasion the same message seems to appear twice in the record. Remove.
           .distinct.sortBy(_.timestamp.getMillis)
-
-        val cleaned = dedupedSorted.groupBy(_.seg_id).filter {
-          case (_, seg_items) =>
-            // We remove segments unless:
-            // They are at least 5 points OR have at least one satelite point
-            // (terrestrial positions are much more noisy)
-            ((seg_items.count(x => true) > 5) | seg_items.exists(x => !x.is_terrestrial)) &
-            // AND they move at least 0.001 degrees. 
-            // (These tend to be displaced port visits. Note this also removes
-            //  segments that start and end in port)
-            ((seg_items.map(_.location.lat).max - seg_items.map(_.location.lat).min) > 0.001.of[degrees]) &
-            ((seg_items.map(_.location.lon).max - seg_items.map(_.location.lon).min) > 0.001.of[degrees])
-            }
-            .flatMap(x => x._2)
-
-        if (cleaned.size >= minRequiredPositions) {
-          // If the deduped and cleaned size is less than minRequiredPositions skip it.
-          Some((metadata, cleaned.toSeq))
+          Some((metadata, dedupedSorted))
         } else {
           None
         }

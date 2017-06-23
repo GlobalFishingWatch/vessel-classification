@@ -139,8 +139,10 @@ object ModelFeatures extends LazyLogging {
             } else {
               // TODO(alexwilson): These are probably not good values for when we don't have a bounding
               // anchorage. Tim: any suggestions?
+              (0.0, 0.0)
               // TAH: for the time being we use 100 km / 1 day. However, should probably use mean value
-              (100.0, 24.0 * 60.0 * 60.0)
+              // TODO: Try this
+              // (100.0, 24.0 * 60.0 * 60.0)
             }
 
           // TODO(alexwilson): #neighbours, distance to closest neighbour, is_dark.
