@@ -69,8 +69,8 @@ class FishingLocalisationLossTest(tf.test.TestCase):
             filtered_targets = targets[targets != -1]
 
             filtered_loss = tf.reduce_mean(
-                tf.nn.sigmoid_cross_entropy_with_logits(filtered_logits,
-                                                        filtered_targets))
+                tf.nn.sigmoid_cross_entropy_with_logits(logits=filtered_logits,
+                                                        labels=filtered_targets))
 
             self.assertAlmostEqual(filtered_loss.eval(), loss.eval(), places=5)
 
