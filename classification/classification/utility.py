@@ -65,6 +65,7 @@ VESSEL_CLASS_DETAILED_NAMES = [
     'trawlers',
     'trollers',
     'other_fishing',
+    'gear'
 ]
 
 VESSEL_CATEGORIES = [[x, [x]] for x in VESSEL_CLASS_DETAILED_NAMES]
