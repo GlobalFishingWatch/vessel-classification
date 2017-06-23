@@ -1223,6 +1223,41 @@ def dump_html(args, results):
         logging.info('Writing output')
         f.write(yattag.indent(doc.getvalue(), indent_text=True))
 
+
+def dump_labels_to(base_path, tag):
+    logging.info('Processing label dump for ALL')
+    label_source = {'ALL_YEARS': consolidate_across_dates(results[tag]
+                                                          .all_results())}
+
+    for year in dump_years:
+        start_date = datetime.datetime(
+            year=year, month=1, day=1, tzinfo=pytz.utc)
+        stop_date = datetime.datetime(
+            year=year + 1, month=1, day=1, tzinfo=pytz.utc)
+        logging.info('Processing label dump for {}'.format(year))
+        label_source['{}'.format(
+            start_date.year)] = consolidate_across_dates(
+                results[tag].all_results(), (start_date, stop_date))
+
+    for name, src in label_source.items():
+        if not len(src.mmsi):
+            continue
+        path = os.path.join(base_path, '{}.csv'.format(name))
+        logging.info('dumping labels to {}'.format(path))
+        with open(path, 'w') as f:
+            f.write('mmsi,inferred,score,known\n')
+            lexical_indices = np.argsort([str(x) for x in src.mmsi])
+            for i in lexical_indices:
+                max_score = max(src.scores[i])
+                # Sanity check
+                if max_score:
+                    assert src.label_list[np.argmax(src.scores[
+                        i])] == src.inferred_labels[i]
+                f.write('{},{},{},{}\n'.format(src.mmsi[
+                    i], src.inferred_labels[i], max_score, src.true_labels[
+                        i] or ''))
+
+
 # TODO:
 #    * Thresholds
 #    * Use real temp directory (current approach good for development); remove `temp` from gitignore
@@ -1248,11 +1283,13 @@ if __name__ == '__main__':
     parser.add_argument('--skip-attribute-metrics', action='store_true')
     # It's convenient to be able to dump the consolidated gear types
     parser.add_argument('--dump-years',
-        default="2012,2013,2014,2015,2016,2107")
+        default="2012,2013,2014,2015,2016,2017")
     parser.add_argument(
         '--dump-labels-to',
         help='dump csv file mapping mmsi to consolidated gear-type labels')
-
+    parser.add_argument(
+        '--dump-fine-labels-to',
+        help='dump csv file mapping mmsi to consolidated gear-type labels')
     parser.add_argument(
         '--dump-attributes-to',
         help='dump csv file mapping mmmsi to inferred attributes')
@@ -1268,38 +1305,10 @@ if __name__ == '__main__':
     dump_years = [int(x) for x in args.dump_years.split(',')] if (args.dump_years != "ALL_ONLY") else []
 
     if args.dump_labels_to:
+        dump_labels_to(args.dump_labels_to, 'coarse')
 
-        logging.info('Processing label dump for ALL')
-        label_source = {'ALL_YEARS': consolidate_across_dates(results['coarse']
-                                                              .all_results())}
-
-        for year in dump_years:
-            start_date = datetime.datetime(
-                year=year, month=1, day=1, tzinfo=pytz.utc)
-            stop_date = datetime.datetime(
-                year=year + 1, month=1, day=1, tzinfo=pytz.utc)
-            logging.info('Processing label dump for {}'.format(year))
-            label_source['{}'.format(
-                start_date.year)] = consolidate_across_dates(
-                    results['coarse'].all_results(), (start_date, stop_date))
-
-        for name, src in label_source.items():
-            if not len(src.mmsi):
-                continue
-            path = os.path.join(args.dump_labels_to, '{}.csv'.format(name))
-            logging.info('dumping labels to {}'.format(path))
-            with open(path, 'w') as f:
-                f.write('mmsi,inferred,score,known\n')
-                lexical_indices = np.argsort([str(x) for x in src.mmsi])
-                for i in lexical_indices:
-                    max_score = max(src.scores[i])
-                    # Sanity check
-                    if max_score:
-                        assert src.label_list[np.argmax(src.scores[
-                            i])] == src.inferred_labels[i]
-                    f.write('{},{},{},{}\n'.format(src.mmsi[
-                        i], src.inferred_labels[i], max_score, src.true_labels[
-                            i] or ''))
+    if args.dump_fine_labels_to:
+        dump_labels_to(args.dump_fine_labels_to, 'fine')
 
     if args.dump_attributes_to:
 
