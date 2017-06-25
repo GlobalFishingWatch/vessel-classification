@@ -26,7 +26,9 @@ import newlinejson as nlj
 import numpy as np
 import os
 import struct
+import subprocess
 import sys
+import tempfile
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
@@ -966,18 +968,13 @@ def read_vessel_multiclass_metadata(available_mmsis,
 
 
 def find_available_mmsis(feature_path):
-    with tf.Session() as sess:
-        logging.info('Reading mmsi list file.')
-        root_output_path, _ = os.path.split(feature_path)
-        # The feature pipeline stage that outputs the MMSI list is sharded to only
-        # produce a single file, so no need to glob or loop here.
-        mmsi_list_tensor = tf.read_file(root_output_path +
-                                        '/mmsis/part-00000-of-00001.txt')
-        els = sess.run(mmsi_list_tensor).split('\n')
-        mmsi_list = [int(mmsi) for mmsi in els if mmsi != '']
-
-        logging.info('Found %d mmsis.', len(mmsi_list))
-        return set(mmsi_list)
+    local_path = os.path.join(tempfile.gettempdir(), 'available_mmsi.txt')
+    subprocess.check_call(['gsutil', 'cp', feature_path, local_path])
+    try:
+        with open(local_path) as f:
+            return {int(mmsi) for mmsi in (x.strip() for x in f.readlines()) if mmsi}
+    finally:
+        os.unlink(local_path)
 
 
 def parse_date(date):
