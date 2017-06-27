@@ -55,6 +55,7 @@ VESSEL_CLASS_DETAILED_NAMES = [
     'seismic_vessel',
     'tug',
     'other_not_fishing',
+    'drift_nets',
     'drifting_longlines',
     'pole_and_line',
     'purse_seines',
@@ -72,7 +73,7 @@ VESSEL_CATEGORIES = [[x, [x]] for x in VESSEL_CLASS_DETAILED_NAMES]
 
 VESSEL_CATEGORIES += [
     ['unknown_fishing',
-     ['drifting_longlines', 'set_longlines', 'trawlers', 'pots_and_traps',
+     ['drift_nets', 'drifting_longlines', 'set_longlines', 'trawlers', 'pots_and_traps',
       'trollers', 'set_gillnets', 'purse_seines', 'squid_jigger',
       'pole_and_line', 'other_fishing']], ['unknown_not_fishing', [
           'cargo', 'tanker', 'reefer', 'sailing', 'motor_passenger',
