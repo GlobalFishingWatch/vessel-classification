@@ -56,7 +56,8 @@ def launch(environment, model_name, job_name, config_file):
         # It seems that we currently need to pass args as both 'args' in the
         # config file and as args after the '--'?!
         args = [
-            'gcloud', 'beta', 'ml', 'jobs', 'submit', 'training', job_id,
+            'gcloud', 'ml-engine', 
+            'jobs', 'submit', 'training', job_id,
             '--config', temp.name, '--module-name',
             'classification.run_training', '--staging-bucket',
             config['staging_bucket'], '--package-path', 'classification',
