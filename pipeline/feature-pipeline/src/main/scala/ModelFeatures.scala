@@ -121,10 +121,13 @@ object ModelFeatures extends LazyLogging {
               .value / 180.0)
           val offsetTimezone = DateTimeZone.forOffsetMillis(longitudeTzOffsetSeconds.toInt * 1000)
           val localTime = new LocalDateTime(p1.timestamp.getMillis, offsetTimezone)
-          val localTodFeature = ((localTime
-              .getHourOfDay() + (localTime.getMinuteOfHour() / 60.0)) - 12.0) / 12.0
-          val localMonthOfYearFeature = (localTime.getMonthOfYear() - 6.0) / 6.0
-
+          val localTodCos = math.cos(math.Pi * ((localTime
+              .getHourOfDay() + (localTime.getMinuteOfHour() / 60.0)) - 12.0) / 12.0)
+          val localTodSin = math.sin(math.Pi * ((localTime
+              .getHourOfDay() + (localTime.getMinuteOfHour() / 60.0)) - 12.0) / 12.0)
+          val localMonthOfYearCos = math.cos(math.Pi * (localTime.getMonthOfYear() - 6.0) / 6.0)
+          val localMonthOfYearSin = math.sin(math.Pi * (localTime.getMonthOfYear() - 6.0) / 6.0)
+          val latSin = math.sin(p1.location.lat.convert[radians].value)
           val (distanceToBoundingAnchorageKm, timeToBoundingAnchorageS) =
             if (!currentBoundingAnchorage.isEmpty) {
               (currentBoundingAnchorage.get
@@ -137,6 +140,9 @@ object ModelFeatures extends LazyLogging {
               // TODO(alexwilson): These are probably not good values for when we don't have a bounding
               // anchorage. Tim: any suggestions?
               (0.0, 0.0)
+              // TAH: for the time being we use 100 km / 1 day. However, should probably use mean value
+              // TODO: Try this
+              // (100.0, 24.0 * 60.0 * 60.0)
             }
 
           // TODO(alexwilson): #neighbours, distance to closest neighbour, is_dark.
@@ -150,8 +156,11 @@ object ModelFeatures extends LazyLogging {
                                       math.log(1.0 + speedMps),
                                       math.log(1.0 + integratedSpeedMps),
                                       cogDeltaDegrees / 180.0,
-                                      localTodFeature,
-                                      localMonthOfYearFeature,
+                                      localTodCos,
+                                      localTodSin,
+                                      localMonthOfYearCos,
+                                      localMonthOfYearSin,
+                                      latSin,
                                       integratedCogDeltaDegrees / 180.0,
                                       math.log(1.0 + distanceToShoreKm),
                                       math.log(1.0 + distanceToBoundingAnchorageKm),
