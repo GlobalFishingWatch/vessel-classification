@@ -1145,7 +1145,8 @@ def compute_results(args):
                                  maps['label'])
         results['engine_power'] = ext
         ext = AttributeExtractor('crew_size', maps['crew_size'],
-                                 maps['label'])        
+                                 maps['label']) 
+        results['crew_size'] = ext       
 
     logging.info('Loading inference data')
     if args.test_only:
