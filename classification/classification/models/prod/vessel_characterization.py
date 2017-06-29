@@ -92,6 +92,11 @@ class Model(abstract_models.MisconceptionModel):
                 'Vessel-engine-Power',
                 XOrNone('engine_power'),
                 metrics=metrics),
+            LogRegressionObjective(
+                'crew_size',
+                'Vessel-Crew-Size',
+                XOrNone('crew_size'),
+                metrics=metrics),
             MultiClassificationObjective(
                 "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics)
         ]

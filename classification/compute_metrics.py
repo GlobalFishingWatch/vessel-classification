@@ -56,15 +56,16 @@ coarse_mapping = [
     ['squid_jigger', ['squid_jigger']],
     ['gear', ['gear']],
     ['trawlers', {'trawlers'}],
-    ['other_fishing', {'pole_and_line', 'trollers', 'other_fishing'}]
+    ['other_fishing', {'pole_and_line', 'trollers', 'other_fishing', 'drift_nets'}]
 ]
 
 fishing_mapping = [
-    ['fishing', {'drifting_longlines', 'other_fishing', 'pole_and_line',
+    ['fishing', {'drift_nets', 'drifting_longlines', 'other_fishing', 'pole_and_line',
                  'pots_and_traps', 'purse_seines', 'set_gillnets',
                  'set_longlines', 'squid_jigger', 'trawlers', 'trollers'}],
     ['non_fishing', {'cargo', 'motor_passenger', 'other_not_fishing', 'reefer',
-                     'sailing', 'seismic_vessel', 'tanker', 'tug', 'gear'}]
+                     'sailing', 'seismic_vessel', 'tanker', 'tug'}],
+    ['gear', {'gear'}]
 ]
 
 
@@ -1113,7 +1114,7 @@ def compute_results(args):
             mmsi = int(row['mmsi'].strip())
             if not row['split'] == TEST_SPLIT:
                 continue
-            for field in ['label', 'length', 'tonnage', 'engine_power', 'split'
+            for field in ['label', 'length', 'tonnage', 'engine_power', 'crew_size', 'split'
                           ]:
                 if row[field]:
                     if field == 'label':
@@ -1124,7 +1125,7 @@ def compute_results(args):
     results = {}
 
     # Sanity check the attribute mappings
-    for field in ['length', 'tonnage', 'engine_power']:
+    for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
         for mmsi, value in maps[field].items():
             assert float(value) > 0, (mmsi, value)
 
@@ -1143,6 +1144,9 @@ def compute_results(args):
         ext = AttributeExtractor('engine_power', maps['engine_power'],
                                  maps['label'])
         results['engine_power'] = ext
+        ext = AttributeExtractor('crew_size', maps['crew_size'],
+                                 maps['label']) 
+        results['crew_size'] = ext       
 
     logging.info('Loading inference data')
     if args.test_only:
@@ -1153,7 +1157,7 @@ def compute_results(args):
 
     if not args.skip_class_metrics:
         # Sanity check attribute values after loading
-        for field in ['length', 'tonnage', 'engine_power']:
+        for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
             if not all(results[field].inferred_attrs >= 0):
                 logging.warning(
                     'Inferred values less than zero for %s (%s, %s / %s)',
@@ -1209,6 +1213,10 @@ def dump_html(args, results):
         logging.info('Dumping Engine Power')
         doc.line('h2', 'Engine Power Inference')
         ydump_attrs(doc, results['engine_power'])
+        doc.stag('hr')
+        logging.info('Dumping Crew Size')
+        doc.line('h2', 'Crew Size Inference')
+        ydump_attrs(doc, results['crew_size'])
         doc.stag('hr')
 
     # TODO: make localization results a class with __nonzero__ method
@@ -1315,18 +1323,18 @@ if __name__ == '__main__':
         logging.info('Processing attribute dump for ALL')
         label_source = {'ALL_YEARS':
                         {x: consolidate_attribute_across_dates(results[x])
-                         for x in ['length', 'tonnage', 'engine_power']}}
+                         for x in ['length', 'tonnage', 'engine_power', 'crew_size']}}
 
         for year in dump_years:
             start_date = datetime.datetime(year=year, month=1, day=1, tzinfo=pytz.utc)
             stop_date = datetime.datetime(year=year+1, month=1, day=1, tzinfo=pytz.utc)
             logging.info('Processing attribute dump for {}'.format(year))
             label_source['{}'.format(start_date.year)] = {x: consolidate_attribute_across_dates(results[x], 
-                                                            (start_date, stop_date)) for x in ['length', 'tonnage', 'engine_power']}
+                                        (start_date, stop_date)) for x in ['length', 'tonnage', 'engine_power', 'crew_size']}
 
         for name, src in label_source.items():
             by_mmsi = defaultdict(dict)
-            for x in ['length', 'tonnage', 'engine_power']:
+            for x in ['length', 'tonnage', 'engine_power', 'crew_size']:
                 for i, mmsi in enumerate(src[x].mmsi):
                     true = src[x].true_attrs[i] if (
                         src[x].true_attrs[i] != 'Unknown') else ''
@@ -1342,12 +1350,12 @@ if __name__ == '__main__':
             with open(path, 'w') as f:
                 f.write(
                     'mmsi,inferred_length,known_length,inferred_tonnage,'
-                    'known_tonnage,inferred_engine_power,known_engine_power\n')
+                    'known_tonnage,inferred_engine_power,known_engine_power,inferred_crew_size,known_crew_size\n')
                 lexical_indices = np.argsort(
                     [str(x['mmsi']) for x in attr_list])
                 for i in lexical_indices:
                     chunks = []
-                    for x in ['length', 'tonnage', 'engine_power']:
+                    for x in ['length', 'tonnage', 'engine_power', 'crew_size']:
                         chunks.append(attr_list[i].get(x + '_inferred', ''))
                         chunks.append(attr_list[i].get(x + '_known', ''))
                     f.write('{},{}\n'.format(attr_list[i]['mmsi'], ','.join(
