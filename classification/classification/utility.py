@@ -648,6 +648,10 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
     return zip(*slices)
 
 
+
+# TODO: pull out replicate_extract as class and write tests for it.
+
+
 def all_fixed_window_feature_file_reader(filename_queue, num_features,
                                          window_size, shift, start_date, end_date):
     """ Set up a file reader and inference feature extractor for the files in a

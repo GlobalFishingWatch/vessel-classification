@@ -618,34 +618,44 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 combined = zip(timestamps, thresholded_prediction)
                 if eval_window:
                     b, e = eval_window
-                    combined = combined[b:e]
+                    win_combined = combined[b:e]
+                    post_combined = combined[e:]
+                else:
+                    win_combined = combined
+                    post_combined = combined[:0]
 
-                last = None
-                fishing_ranges = []
-                for ts_raw, is_fishing in combined:
-                    ts = datetime.datetime.utcfromtimestamp(int(ts_raw))
-                    if last and last[0] >= ts:
-                        break
-                    if is_fishing:
-                        if last and last[1]:
-                            if ts.date() > last[0].date():
-                                # We are crossing a day boundary here, so break into two ranges
-                                end_of_day = datetime.datetime.combine(last[0].date(), 
-                                    datetime.time(hour=23, minute=59, second=59))
-                                start_of_day = datetime.datetime.combine(ts.date(), 
-                                    datetime.time(hour=0, minute=0, second=0))
-                                fishing_ranges[-1][1] = end_of_day.isoformat()
-                                fishing_ranges.append([start_of_day.isoformat(), None])
-                            fishing_ranges[-1][1] = ts.isoformat()
-                        else:
-                            # TODO, append min(half the distance to previous / next point)
-                            fishing_ranges.append(
-                                [ts.isoformat(), ts.isoformat()])
-                    last = (ts, is_fishing)
 
-                return [{'start_time': start_time + 'Z',
-                         'end_time': end_time + 'Z'}
-                        for (start_time, end_time) in fishing_ranges]
+                def intervals_from_combined(combed)
+                    last = None
+                    fishing_ranges = []
+                    for ts_raw, is_fishing in combed:
+                        ts = datetime.datetime.utcfromtimestamp(int(ts_raw))
+                        if last and last[0] >= ts:
+                            break
+                        if is_fishing:
+                            if last and last[1]:
+                                if ts.date() > last[0].date():
+                                    # We are crossing a day boundary here, so break into two ranges
+                                    end_of_day = datetime.datetime.combine(last[0].date(), 
+                                        datetime.time(hour=23, minute=59, second=59))
+                                    start_of_day = datetime.datetime.combine(ts.date(), 
+                                        datetime.time(hour=0, minute=0, second=0))
+                                    fishing_ranges[-1][1] = end_of_day.isoformat()
+                                    fishing_ranges.append([start_of_day.isoformat(), None])
+                                fishing_ranges[-1][1] = ts.isoformat()
+                            else:
+                                # TODO, append min(half the distance to previous / next point)
+                                fishing_ranges.append(
+                                    [ts.isoformat(), ts.isoformat()])
+                        last = (ts, is_fishing)
+
+                    return [{'start_time': start_time + 'Z',
+                             'end_time': end_time + 'Z'}
+                            for (start_time, end_time) in fishing_ranges]
+
+                return {'in_window' : intervals_from_combined(win_combined),
+                        'post_window' : intervals_from_combined(post_combined)}
+
 
         return Evaluation(self.metadata_label, self.name, self.prediction,
                           timestamps, mmsis, self.metrics)
