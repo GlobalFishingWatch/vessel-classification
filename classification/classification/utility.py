@@ -648,7 +648,7 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
 
 
 def all_fixed_window_feature_file_reader(filename_queue, num_features,
-                                         window_size, shift, year):
+                                         window_size, shift, start_date, end_date):
     """ Set up a file reader and inference feature extractor for the files in a
         queue.
 
@@ -675,32 +675,25 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
     movement_features = sequence_features['movement_features']
     mmsi = tf.cast(context_features['mmsi'], tf.int32)
 
-    if year is not None:
-        start_date = datetime.datetime(
-            year=year,
-            month=1,
-            day=1,
-            hour=0,
-            minute=0,
-            second=0,
-            tzinfo=pytz.utc)
-        end_date = datetime.datetime(
-            year=year + 1,
-            month=1,
-            day=1,
-            hour=0,
-            minute=0,
-            second=0,
-            tzinfo=pytz.utc)
+    if start_date is not None:
         start_stamp = time.mktime(start_date.timetuple())
+    if end_date is not None:
         end_stamp = time.mktime(end_date.timetuple())
 
     def replicate_extract(input_series, mmsi):
-        if year is not None:
-            start_i = np.searchsorted(
-                input_series[:, 0], start_stamp, side='left')
-            end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
-            input_series = input_series[start_i:end_i]
+        if start_stamp is not None:
+            raw_start_i = np.searchsorted(input_series[:, 0], start_stamp, side='left')
+            # If possible go to shift past end so that we have good data all the way to end
+            start_i = max(raw_start_i - shift, 0)
+        else:
+            start_i = 0
+        if end_stamp is not None:
+            raw_end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
+            # If possible go to shift before end so that we have good data starting at end
+            end_i = min(raw_end_i + shift, len(input_series))
+        else:
+            end_i = len(input_series)
+        input_series = input_series[start_i:end_i]
         return np_array_extract_all_fixed_slices(input_series, num_features,
                                                  mmsi, window_size, shift)
 

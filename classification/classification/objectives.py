@@ -474,6 +474,9 @@ class MultiClassificationObjective(ObjectiveBase):
 
 
 class AbstractFishingLocalizationObjective(ObjectiveBase):
+
+    post_window_weights = 0.1
+
     def __init__(self,
                  metadata_label,
                  name,
@@ -534,11 +537,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
 
         if self.window:
             b, e = self.window
-            dense_labels = dense_labels[:, b:e]
-            thresholded_prediction = thresholded_prediction[:, b:e]
-            valid = valid[:, b:e]
-            ones = ones[:, b:e]
-            weights = weights[:, b:e]
+            weights = tf.concat([0 * weights[:, :b], weights[:, b:e], self.post_window_weights * weights[:, e:]], 1)
 
         update_ops.append(
             tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))

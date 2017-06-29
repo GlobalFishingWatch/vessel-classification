@@ -68,7 +68,7 @@ class Inferer(object):
         return time_starts
 
     def run_inference(self, inference_parallelism, inference_results_path,
-                      interval_months, year):
+                      interval_months, start_date, end_date):
         matching_files = self._feature_files(self.mmsis)
         filename_queue = tf.train.input_producer(
             matching_files, shuffle=False, num_epochs=1)
@@ -99,7 +99,7 @@ class Inferer(object):
             for _ in range(inference_parallelism * 2):
                 reader = utility.all_fixed_window_feature_file_reader(
                     filename_queue, self.model.num_feature_dimensions + 1,
-                    self.model.window_max_points, shift, year)
+                    self.model.window_max_points, shift, start_date, end_date)
                 readers.append(reader)
 
         features, timestamps, time_ranges, mmsis = tf.train.batch_join(
@@ -237,7 +237,15 @@ def main(args):
         interval_months = args.interval_months
 
     infererer.run_inference(inference_parallelism, inference_results_path,
-                            interval_months, args.year)
+                            interval_months, args.start_date, args.end_date)
+
+
+def valid_date(s):
+    try:
+        return datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=pytz.utc)
+    except ValueError:
+        msg = "Not a valid date: '{0}'.".format(s)
+        raise argparse.ArgumentTypeError(msg)
 
 
 def parse_args():
@@ -298,10 +306,16 @@ def parse_args():
         help="Interval between successive classifications")
 
     argparser.add_argument(
-        '--year',
+        '--start_date',
         default=None,
-        type=int,
-        help='Year to run inference on (default run on all)')
+        type=valid_date,
+        help='start of period to run inference on (defaults to earliest date with data)')
+
+    argparser.add_argument(
+        '--end_date',
+        default=None,
+        type=valid_date,
+        help='stop of period to run inference on (defaults to latest date with data)')
 
     return argparser.parse_args()
 
