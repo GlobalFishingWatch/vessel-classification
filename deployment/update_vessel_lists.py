@@ -212,8 +212,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Update Vessel Lists.')
     parser.add_argument('--skip-feature-generation', help='skip generating new features', action='store_true')
     parser.add_argument('--skip-inference', help='skip running inference', action='store_true')
-    parser.add_argument('--skip-list-generation', help='skip running inference', action='store_true')
-    parser.add_argument('--skip-update-treniformis', help='skip updating treniformis', action='store_true')
+    parser.add_argument('--skip-list-generation', help='skip generating new lists', action='store_true')
+    parser.add_argument('--skip-update-treniformis', help='skip updating treniformis with new lists', action='store_true')
     args = parser.parse_args()
 
     date = datetime.date.today()
