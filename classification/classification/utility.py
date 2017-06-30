@@ -686,13 +686,13 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
         end_stamp = time.mktime(end_date.timetuple())
 
     def replicate_extract(input_series, mmsi):
-        if start_stamp is not None:
+        if start_date is not None:
             raw_start_i = np.searchsorted(input_series[:, 0], start_stamp, side='left')
             # If possible go to shift past end so that we have good data all the way to end
             start_i = max(raw_start_i - shift, 0)
         else:
             start_i = 0
-        if end_stamp is not None:
+        if end_date is not None:
             raw_end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
             # If possible go to shift before end so that we have good data starting at end
             end_i = min(raw_end_i + shift, len(input_series))

@@ -615,11 +615,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                      for (k, v) in raw_metrics.items()})
 
 
-            # TODO: break into three range (make internal function AGAIN)
-            # TODO: add weights field to each range.
 
-            # TODO: also add negative ranges (or alternatively go all out and)
-            # add all values?
             def build_json_results(self, prediction, timestamps):
                 assert (len(prediction) == len(timestamps))
                 rounded_prediction = np.round(prediction, 1)
@@ -628,10 +624,10 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 def ranges_for_combined(combined, weight):
                     last = None
                     fishing_ranges = []
-                    for wt, (ts_raw, score) in zip(weights, combined):
+                    for ts_raw, score in combined:
+			score = float(score)
                         ts = datetime.datetime.utcfromtimestamp(int(ts_raw))
                         if last and last[0] >= ts:
-                            logging.warning("range has duplicate or out of order points in build_json_results")
                             break
                         if last and last[1] == score:
                             # Keep building the current range
@@ -660,11 +656,11 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
 
                 if eval_window:
                     b, e = eval_window
-                    return (ranges_for_combined(combined[:b], 0.01) +
-                            ranges_for_combined(combined[b:e], 1) + 
-                            ranges_for_combined(combined[e:], 0.01))
+                    return (ranges_for_combined(all_combined[:b], 0.01) +
+                            ranges_for_combined(all_combined[b:e], 1) + 
+                            ranges_for_combined(all_combined[e:], 0.01))
                 else:
-                    ranges_for_combined(combined, 1)
+                    ranges_for_combined(all_combined, 1)
 
         return Evaluation(self.metadata_label, self.name, self.prediction,
                           timestamps, mmsis, self.metrics)

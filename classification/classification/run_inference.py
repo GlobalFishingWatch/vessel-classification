@@ -242,7 +242,7 @@ def main(args):
 
 def valid_date(s):
     try:
-        return datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=pytz.utc)
+        return datetime.datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=pytz.utc)
     except ValueError:
         msg = "Not a valid date: '{0}'.".format(s)
         raise argparse.ArgumentTypeError(msg)
