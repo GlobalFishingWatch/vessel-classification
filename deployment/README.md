@@ -22,3 +22,25 @@
 `gcloud compute --project "world-fishing-827" ssh --zone "europe-west1-d" "nnet-auto-test" --command 'bash ~/vessel-classification/deployment/update_vessel_lists.sh'`
 
 Logs are placed in `vessel-classification\logs`
+
+# Debugging. 
+
+## To run full update from the instance
+
+`sudo docker run --rm -v ~/.ssh:/root/.ssh -v ~/vessel-classification/logs:/app/logs update_vessel_lists python deployment/update_vessel_lists.py`
+
+## To run manually
+
+`sudo docker run -it -v ~/.ssh:/root/.ssh -v ~/vessel-classification/logs:/app/logs update_vessel_lists bash`
+
+Then for options:
+
+`python deployment/update_vessel_lists.py --help` 
+
+Now can run just the failing part for sped up debugging. For instance to just run inference:
+
+`python deployment/update_vessel_lists.py --skip-feature-generation --skip-list-generation --skip-update-treniformis`
+
+
+
+

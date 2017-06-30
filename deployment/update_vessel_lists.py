@@ -154,7 +154,7 @@ def run_inference():
         python -m classification.run_inference prod.vessel_characterization \\
             --root_feature_path gs://world-fishing-827-dev-ttl30d/data-production/classification/{}/update_vessel_lists/pipeline/output/features \\
             --inference_parallelism 128 \\
-            --feature_dimensions 12 \\
+            --feature_dimensions 15 \\
             --inference_results_path ./update_vessel_lists.json.gz \\
             --model_checkpoint_path   ./vessel_characterization.model.ckpt  \\
             --metadata_file training_classes.csv \\
@@ -212,8 +212,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Update Vessel Lists.')
     parser.add_argument('--skip-feature-generation', help='skip generating new features', action='store_true')
     parser.add_argument('--skip-inference', help='skip running inference', action='store_true')
-    parser.add_argument('--skip-list-generation', help='skip running inference', action='store_true')
-    parser.add_argument('--skip-update-treniformis', help='skip updating treniformis', action='store_true')
+    parser.add_argument('--skip-list-generation', help='skip generating new lists', action='store_true')
+    parser.add_argument('--skip-update-treniformis', help='skip updating treniformis with new lists', action='store_true')
     args = parser.parse_args()
 
     date = datetime.date.today()
