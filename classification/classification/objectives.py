@@ -475,7 +475,7 @@ class MultiClassificationObjective(ObjectiveBase):
 
 class AbstractFishingLocalizationObjective(ObjectiveBase):
 
-    post_window_weights = 0.1
+    out_of_window_weights = 0.1
 
     def __init__(self,
                  metadata_label,
@@ -537,7 +537,9 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
 
         if self.window:
             b, e = self.window
-            weights = tf.concat([0 * weights[:, :b], weights[:, b:e], self.post_window_weights * weights[:, e:]], 1)
+            weights = tf.concat([self.out_of_window_weights * weights[:, :b], 
+                                 weights[:, b:e], 
+                                 self.out_of_window_weights * weights[:, e:]], 1)
 
         update_ops.append(
             tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
@@ -612,50 +614,57 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                     {"{}/{}".format(self.name, k): v
                      for (k, v) in raw_metrics.items()})
 
+
+            # TODO: break into three range (make internal function AGAIN)
+            # TODO: add weights field to each range.
+
+            # TODO: also add negative ranges (or alternatively go all out and)
+            # add all values?
             def build_json_results(self, prediction, timestamps):
                 assert (len(prediction) == len(timestamps))
-                thresholded_prediction = prediction > 0.5
-                combined = zip(timestamps, thresholded_prediction)
-                if eval_window:
-                    b, e = eval_window
-                    win_combined = combined[b:e]
-                    post_combined = combined[e:]
-                else:
-                    win_combined = combined
-                    post_combined = combined[:0]
+                rounded_prediction = np.round(prediction, 1)
+                all_combined = zip(timestamps, rounded_prediction)
 
-
-                def intervals_from_combined(combed)
+                def ranges_for_combined(combined, weight):
                     last = None
                     fishing_ranges = []
-                    for ts_raw, is_fishing in combed:
+                    for wt, (ts_raw, score) in zip(weights, combined):
                         ts = datetime.datetime.utcfromtimestamp(int(ts_raw))
                         if last and last[0] >= ts:
+                            logging.warning("range has duplicate or out of order points in build_json_results")
                             break
-                        if is_fishing:
-                            if last and last[1]:
-                                if ts.date() > last[0].date():
-                                    # We are crossing a day boundary here, so break into two ranges
-                                    end_of_day = datetime.datetime.combine(last[0].date(), 
-                                        datetime.time(hour=23, minute=59, second=59))
-                                    start_of_day = datetime.datetime.combine(ts.date(), 
-                                        datetime.time(hour=0, minute=0, second=0))
-                                    fishing_ranges[-1][1] = end_of_day.isoformat()
-                                    fishing_ranges.append([start_of_day.isoformat(), None])
-                                fishing_ranges[-1][1] = ts.isoformat()
-                            else:
-                                # TODO, append min(half the distance to previous / next point)
-                                fishing_ranges.append(
-                                    [ts.isoformat(), ts.isoformat()])
-                        last = (ts, is_fishing)
+                        if last and last[1] == score:
+                            # Keep building the current range
+                            if ts.date() > last[0].date():
+                                # Unless we are crossing a day boundary,
+                                # in which case break into two ranges
+                                end_of_day = datetime.datetime.combine(last[0].date(), 
+                                    datetime.time(hour=23, minute=59, second=59))
+                                start_of_day = datetime.datetime.combine(ts.date(), 
+                                    datetime.time(hour=0, minute=0, second=0))
+                                fishing_ranges[-1][1] = end_of_day.isoformat()
+                                fishing_ranges.append([start_of_day.isoformat(), None, score])
+                            fishing_ranges[-1][1] = ts.isoformat()
+                        else:
+                            # Start a new range
+                            # TODO, we could try to start / end halfway between points rather than on them.
+                            fishing_ranges.append(
+                                    [ts.isoformat(), ts.isoformat(), score])
+                        last = (ts, score)
 
                     return [{'start_time': start_time + 'Z',
-                             'end_time': end_time + 'Z'}
-                            for (start_time, end_time) in fishing_ranges]
+                             'end_time': end_time + 'Z',
+                             'value' : score,
+                             'weight': weight}
+                            for (start_time, end_time, score) in fishing_ranges]
 
-                return {'in_window' : intervals_from_combined(win_combined),
-                        'post_window' : intervals_from_combined(post_combined)}
-
+                if eval_window:
+                    b, e = eval_window
+                    return (ranges_for_combined(combined[:b], 0.01) +
+                            ranges_for_combined(combined[b:e], 1) + 
+                            ranges_for_combined(combined[e:], 0.01))
+                else:
+                    ranges_for_combined(combined, 1)
 
         return Evaluation(self.metadata_label, self.name, self.prediction,
                           timestamps, mmsis, self.metrics)

@@ -64,23 +64,36 @@ class AnnotatorTests extends PipelineSpec with Matchers {
                                          "height",
                                          Instant.parse("20150101T00:00:00Z"),
                                          Instant.parse("20150101T04:00:00Z"),
-                                         2.5),
+                                         2.5,
+                                         1),
                        MessageAnnotation(123,
                                          "height",
                                          Instant.parse("20150101T06:00:00Z"),
                                          Instant.parse("20150101T08:00:00Z"),
-                                         4.5))
+                                         4.5,
+                                         2.0))
 
-      val annot2 = Seq(MessageAnnotation(123,
+      val annot2 = Seq(
+                      // Test weights here by duplicating height range, with different value and weight
+                      MessageAnnotation(123,
+                                         "height",
+                                         Instant.parse("20150101T06:00:00Z"),
+                                         Instant.parse("20150101T08:00:00Z"),
+                                         0.0,
+                                         1.0),
+
+                      MessageAnnotation(123,
                                          "weight",
                                          Instant.parse("20150101T06:00:00Z"),
                                          Instant.parse("20150101T10:00:00Z"),
-                                         100.0),
+                                         100.0,
+                                         1),
                        MessageAnnotation(456,
                                          "weight",
                                          Instant.parse("20150101T07:00:00Z"),
                                          Instant.parse("20150101T10:00:00Z"),
-                                         32.0))
+                                         32.0,
+                                         1))
 
       val allowedMMSIs = Set(123, 456)
 
@@ -95,9 +108,9 @@ class AnnotatorTests extends PipelineSpec with Matchers {
         tr(123, "20150101T03:00:00Z", 0.0, 0.0, Seq("height" -> 2.5)),
         tr(123, "20150101T04:00:00Z", 0.0, 0.0, Seq("height" -> 2.5)),
         tr(123, "20150101T05:00:00Z", 0.0, 0.0, Seq()),
-        tr(123, "20150101T06:00:00Z", 0.0, 0.0, Seq("height" -> 4.5, "weight" -> 100.0)),
-        tr(123, "20150101T07:00:00Z", 0.0, 0.0, Seq("height" -> 4.5, "weight" -> 100.0)),
-        tr(123, "20150101T08:00:00Z", 0.0, 0.0, Seq("height" -> 4.5, "weight" -> 100.0)),
+        tr(123, "20150101T06:00:00Z", 0.0, 0.0, Seq("height" -> 3.0, "weight" -> 100.0)),
+        tr(123, "20150101T07:00:00Z", 0.0, 0.0, Seq("height" -> 3.0, "weight" -> 100.0)),
+        tr(123, "20150101T08:00:00Z", 0.0, 0.0, Seq("height" -> 3.0, "weight" -> 100.0)),
         tr(123, "20150101T09:00:00Z", 0.0, 0.0, Seq("weight" -> 100.0))
       )
 
@@ -120,7 +133,8 @@ class AnnotatorTests extends PipelineSpec with Matchers {
                             "heights_out",
                             Instant.parse("20150101T01:00:00Z"),
                             Instant.parse("20150101T07:00:00Z"),
-                            4.5)))
+                            4.5,
+                            1)))
     }
   }
 

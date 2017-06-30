@@ -50,7 +50,8 @@ case class MessageAnnotation(mmsi: Int,
                              name: String,
                              startTime: Instant,
                              endTime: Instant,
-                             value: Double)
+                             value: Double,
+                             weight: Double)
 
 object AISAnnotator extends LazyLogging {
   implicit val formats = DefaultFormats
@@ -80,8 +81,13 @@ object AISAnnotator extends LazyLogging {
         } else {
           defaultValue
         }
+        val weight = if (timeRangeField.has("weight")) {
+          timeRangeField.getDouble("weight")
+        } else {
+          1
+        }     
 
-        MessageAnnotation(mmsi, outputFieldName, startTime, endTime, value)
+        MessageAnnotation(mmsi, outputFieldName, startTime, endTime, value, weight)
       }
     }
   }
@@ -121,9 +127,12 @@ object AISAnnotator extends LazyLogging {
         }
 
         var annotatedMsg = msg
-        activeAnnotations.map { annotation =>
-          val json: JValue = (annotation.name -> annotation.value)
-          annotatedMsg = annotatedMsg merge json
+        activeAnnotations.groupBy(_.name).map {
+          case (name, annotation_list) => {
+            val json: JValue = (name -> 
+              annotation_list.map(x => x.value * x.weight).sum / annotation_list.map(_.weight).sum)
+            annotatedMsg = annotatedMsg merge json
+          }
         }
 
         annotatedRows.append(annotatedMsg)
