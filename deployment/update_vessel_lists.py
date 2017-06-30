@@ -9,14 +9,7 @@ import os
 import tempfile
 import datetime
 import shutil
-
-
-this_dir = os.path.abspath(os.path.dirname(__file__))
-classification_dir = os.path.abspath(os.path.join(this_dir, '../classification'))
-pipeline_dir = os.path.abspath(os.path.join(this_dir, '../pipeline'))
-top_dir = os.path.abspath(os.path.join(this_dir, '../..'))
-treniformis_dir = os.path.abspath(os.path.join(top_dir, 'treniformis'))
-logdir = os.path.abspath(os.path.join(this_dir, '../logs'))
+from common import this_dir, classification_dir, pipeline_dir, top_dir, treniformis_dir, logdir
 
 
 logpath = os.path.join(logdir, "log-{}".format(str(datetime.datetime.utcnow()).replace(' ', '_')))
