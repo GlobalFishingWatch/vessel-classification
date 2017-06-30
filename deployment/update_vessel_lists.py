@@ -154,7 +154,7 @@ def run_inference():
         python -m classification.run_inference prod.vessel_characterization \\
             --root_feature_path gs://world-fishing-827-dev-ttl30d/data-production/classification/{}/update_vessel_lists/pipeline/output/features \\
             --inference_parallelism 128 \\
-            --feature_dimensions 12 \\
+            --feature_dimensions 15 \\
             --inference_results_path ./update_vessel_lists.json.gz \\
             --model_checkpoint_path   ./vessel_characterization.model.ckpt  \\
             --metadata_file training_classes.csv \\
