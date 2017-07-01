@@ -34,5 +34,14 @@ def log(*args, **kwargs):
         print(*args, **kwargs)
 
 
+# TODO: how do we determine initial date
+# TODO: final date is just today?
+# TODO: how much padding on features (1 week?)
+
+# determine_dates (allow to be specified)
+# generate features for padded dates
+# run inference for dates
+# run annotation for dates
+
 
 
