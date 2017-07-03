@@ -16,6 +16,15 @@ logpath = os.path.join(logdir, "log-{}".format(str(datetime.datetime.utcnow()).r
 def exists_on_gcs(path):
     return not subprocess.call(["gsutil", "-q", "stat", path])
 
+
+def most_recent(path_template, limit=100):
+    today = datetime.date.today()
+    for offset in range(limit):
+        day = today - datetime.timedelta(days=offset)
+        if exists_on_gcs(path_template.format(day)):
+            return day
+
+            
 def checked_call(commands, **kwargs):
     kwargs['stderr'] = subprocess.STDOUT
     try:
