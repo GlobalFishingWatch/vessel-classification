@@ -178,8 +178,6 @@ if __name__ == "__main__":
     feature_start_date = start_date - datetime.timedelta(days=14)
 
     try:
-        create_dirs_if_needed()
-
         download_weights_if_needed()
 
         if not args.skip_feature_generation:
