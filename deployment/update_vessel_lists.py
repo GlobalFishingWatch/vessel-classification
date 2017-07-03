@@ -10,47 +10,9 @@ import tempfile
 import datetime
 import shutil
 from common import this_dir, classification_dir, pipeline_dir, top_dir, treniformis_dir, logdir
+from common import checked_call, log, job_status, status_at_completion, parse_id_from_sbt_output
 
-
-logpath = os.path.join(logdir, "log-{}".format(str(datetime.datetime.utcnow()).replace(' ', '_')))
-
-
-def checked_call(commands, **kwargs):
-    kwargs['stderr'] = subprocess.STDOUT
-    try:
-        return subprocess.check_output(commands, **kwargs)
-    except subprocess.CalledProcessError as err:
-        log("Call failed with this output:", err.output)
-        raise
-
-
-def log(*args, **kwargs):
-    """Just like 'print(), except that also outputs
-       to the file located at `logpath'
-    """
-    print(*args, **kwargs)
-    with open(logpath, 'a') as f:
-        kwargs['file'] = f
-        print(*args, **kwargs)
-
-
-def job_status(job_id):
-    return json.loads(subprocess.check_output(['gcloud', '--format=json', 'dataflow',
-                     'jobs', 'describe', job_id]))
-
-def status_at_completion(job_id, sleep_time=10): # TODO: add timeout
-    while True:
-        status = job_status(job_id)['currentState'].rsplit('_')[-1]
-        if status in ('DONE', 'FAILED', 'CANCELLED'):
-            return status
-        time.sleep(sleep_time)
-
-def parse_id_from_sbt_output(output):
-    for line in output.split('\n'):
-        line = line.strip()
-        if line.startswith('Submitted job:'):
-            _, job_id = line.rsplit(None, 1)
-            return job_id    
+  
 
 def clone_treniformis_if_needed():
     if not os.path.exists(treniformis_dir):
@@ -146,7 +108,7 @@ def run_inference():
     command = """
         python -m classification.run_inference prod.vessel_characterization \\
             --root_feature_path gs://world-fishing-827-dev-ttl30d/data-production/classification/{}/update_vessel_lists/pipeline/output/features \\
-            --inference_parallelism 128 \\
+            --inference_parallelism 64 \\
             --feature_dimensions 15 \\
             --inference_results_path ./update_vessel_lists.json.gz \\
             --model_checkpoint_path   ./vessel_characterization.model.ckpt  \\
