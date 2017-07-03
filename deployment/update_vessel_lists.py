@@ -10,6 +10,10 @@ import tempfile
 import datetime
 import shutil
 
+import common
+
+
+gcs_base = "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/"
 
 this_dir = os.path.abspath(os.path.dirname(__file__))
 classification_dir = os.path.abspath(os.path.join(this_dir, '../classification'))
@@ -104,8 +108,8 @@ encounterMaxKilometers: 0.5
     year = range_start.year
     while month < range_end.month or year < range_end.year:
         paths.append(
-            '  - "gs://benthos-pipeline/data-production-740/classify-pipeline/classify-logistic/{year:4d}-{month:02d}-*/*-of-*"'.format(
-            year=year, month=month))
+            '  - "{base}{year:4d}-{month:02d}-*/*-of-*"'.format(
+            base=gcs_base, year=year, month=month))
         month += 1
         if month > 12:
             month = 1
@@ -216,7 +220,7 @@ if __name__ == "__main__":
     parser.add_argument('--skip-update-treniformis', help='skip updating treniformis with new lists', action='store_true')
     args = parser.parse_args()
 
-    date = datetime.date.today()
+    date = common.most_recent(gcs_base + "{:%Y-%m-%d}/*")
 
     try:
         create_dirs_if_needed()
