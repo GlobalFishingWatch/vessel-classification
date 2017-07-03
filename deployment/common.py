@@ -1,6 +1,7 @@
 from __future__ import print_function
 import os
 import subprocess
+import datetime
 
 this_dir = os.path.abspath(os.path.dirname(__file__))
 classification_dir = os.path.abspath(os.path.join(this_dir, '../classification'))
@@ -11,6 +12,9 @@ logdir = os.path.abspath(os.path.join(this_dir, '../logs'))
 
 logpath = os.path.join(logdir, "log-{}".format(str(datetime.datetime.utcnow()).replace(' ', '_')))
 
+
+def exists_on_gcs(path):
+    return not subprocess.call(["gsutil", "-q", "stat", path])
 
 def checked_call(commands, **kwargs):
     kwargs['stderr'] = subprocess.STDOUT
