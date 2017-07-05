@@ -30,10 +30,10 @@ def sharded_paths(range_start, range_end):
     paths = []
     day = range_start
     while day <= range_end:
-        pth = '{base}{:%Y-%m-%d}/*-of-*'.format(base=gcs_base, day=day)
+        pth = '{base}{day:%Y-%m-%d}/*-of-*'.format(base=gcs_base, day=day)
         if common.exists_on_gcs(pth):
             paths.append(
-                '  - "{}"'format(path))
+                '  - "{}"'.format(pth))
         else:
             log("Skipping path missing from GCS:", pth)
         day += datetime.timedelta(days=1)
@@ -50,8 +50,10 @@ minRequiredPositions: 10
 encounterMinHours: 3
 encounterMaxKilometers: 0.5
 """
-
+    log("Generating paths for features")
     paths = sharded_paths(range_start, range_end)
+
+    log("Generating config text for features")
     config = template.format(paths='\n'.join(paths))
 
     with tempfile.NamedTemporaryFile() as fp:
@@ -110,16 +112,28 @@ def run_generate_features(range_start, range_end):
 
 
 def run_inference(start_date, end_date):
+    # command = """
+    #     python -m classification.run_inference prod.fishing_detection \
+    #             --root_feature_path gs://world-fishing-827-dev-ttl30d/data-production/classification/{user}/update_vessel_lists/pipeline/output/features \\
+    #             --inference_parallelism 64 \
+    #             --feature_dimensions 15  \
+    #             --model_checkpoint_path   ./updated-fishing-model.ckpt-21622  \
+    #             --metadata_file training_classes.csv \
+    #             --fishing_ranges_file combined_fishing_ranges.csv \
+    #             --inference_results_path=./update_fishing_detection.json.gz \
+    #             --start_date 2017-06-01 \
+    #             --end_date 2017-06-01
+
     command = """
         python -m classification.run_inference prod.fishing_detection \\
-            --root_feature_path gs://world-fishing-827-dev-ttl30d/data-production/classification/{user}/update_vessel_lists/pipeline/output/features \\
+            --root_feature_path gs://world-fishing-827-dev-ttl30d/data-production/classification/{user}/update_fishing_detection/pipeline/output/features \\
             --inference_parallelism 64 \\
             --feature_dimensions 15 \\
             --inference_results_path ./update_fishing_detection.json.gz \\
             --model_checkpoint_path   ./fishing_detection.model.ckpt  \\
             --metadata_file training_classes.csv \\
-            --fishing_ranges_file combined_fishing_ranges.csv
-            --start_date {start_date:%Y-%m-%d}
+            --fishing_ranges_file combined_fishing_ranges.csv \\
+            --start_date {start_date:%Y-%m-%d} \\
             --end_date {end_date:%Y-%m-%d}
             """.format(user=os.environ.get('USER'), start_date=start_date, end_date=end_date)
 
