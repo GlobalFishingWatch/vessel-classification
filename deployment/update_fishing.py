@@ -12,7 +12,7 @@ import shutil
 import common
 from common import this_dir, classification_dir, pipeline_dir, top_dir, treniformis_dir, logdir
 from common import checked_call, log, job_status, status_at_completion, parse_id_from_sbt_output
-from common import gcs_base
+from common import gcs_base, clone_treniformis_if_needed
 
 logpath = os.path.join(logdir, "log-{}".format(str(datetime.datetime.utcnow()).replace(' ', '_')))
 
@@ -112,18 +112,6 @@ def run_generate_features(range_start, range_end):
 
 
 def run_inference(start_date, end_date):
-    # command = """
-    #     python -m classification.run_inference prod.fishing_detection \
-    #             --root_feature_path gs://world-fishing-827-dev-ttl30d/data-production/classification/{user}/update_vessel_lists/pipeline/output/features \\
-    #             --inference_parallelism 64 \
-    #             --feature_dimensions 15  \
-    #             --model_checkpoint_path   ./updated-fishing-model.ckpt-21622  \
-    #             --metadata_file training_classes.csv \
-    #             --fishing_ranges_file combined_fishing_ranges.csv \
-    #             --inference_results_path=./update_fishing_detection.json.gz \
-    #             --start_date 2017-06-01 \
-    #             --end_date 2017-06-01
-
     command = """
         python -m classification.run_inference prod.fishing_detection \\
             --root_feature_path gs://world-fishing-827-dev-ttl30d/data-production/classification/{user}/update_fishing_detection/pipeline/output/features \\
@@ -198,6 +186,8 @@ if __name__ == "__main__":
 
     try:
         download_weights_if_needed()
+
+        clone_treniformis_if_needed()
 
         if not args.skip_feature_generation:
             # Generate features for last 30 datas

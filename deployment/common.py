@@ -36,6 +36,13 @@ def checked_call(commands, **kwargs):
         log("Call failed with this output:", err.output)
         raise
 
+def clone_treniformis_if_needed():
+    if not os.path.exists(treniformis_dir):
+        checked_call(['eval $(ssh-agent -s) && ssh-add ~/.ssh/gfw-bot-key && git clone git@github.com:GlobalFishingWatch/treniformis.git'], 
+              shell=True, cwd=top_dir)        
+        checked_call(['pip install -e .'], shell=True, cwd=treniformis_dir)
+    else:
+        log("Using existing treniformis without updating")
 
 def log(*args, **kwargs):
     """Just like 'print(), except that also outputs

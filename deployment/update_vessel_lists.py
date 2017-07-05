@@ -11,17 +11,11 @@ import datetime
 import shutil
 from common import this_dir, classification_dir, pipeline_dir, top_dir, treniformis_dir, logdir
 from common import checked_call, log, job_status, status_at_completion, parse_id_from_sbt_output
-from common import gcs_base
+from common import gcs_base, clone_treniformis_if_needed
 import common
 
 
-def clone_treniformis_if_needed():
-    if not os.path.exists(treniformis_dir):
-        checked_call(['eval $(ssh-agent -s) && ssh-add ~/.ssh/gfw-bot-key && git clone git@github.com:GlobalFishingWatch/treniformis.git'], 
-              shell=True, cwd=top_dir)        
-        checked_call(['pip install -e .'], shell=True, cwd=treniformis_dir)
-    else:
-        log("Using existing treniformis without updating")
+
 
 def download_weights_if_needed():
     if not os.path.exists('vessel_characterization.model.ckpt'):
