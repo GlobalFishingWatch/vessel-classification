@@ -12,6 +12,7 @@ logdir = os.path.abspath(os.path.join(this_dir, '../logs'))
 
 logpath = os.path.join(logdir, "log-{}".format(str(datetime.datetime.utcnow()).replace(' ', '_')))
 
+gcs_base = "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/"
 
 def exists_on_gcs(path):
     return not subprocess.call(["gsutil", "-q", "stat", path])

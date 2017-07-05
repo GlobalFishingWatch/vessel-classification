@@ -12,6 +12,7 @@ import shutil
 import common
 from common import this_dir, classification_dir, pipeline_dir, top_dir, treniformis_dir, logdir
 from common import checked_call, log, job_status, status_at_completion, parse_id_from_sbt_output
+from common import gcs_base
 
 logpath = os.path.join(logdir, "log-{}".format(str(datetime.datetime.utcnow()).replace(' ', '_')))
 
@@ -29,9 +30,12 @@ def sharded_paths(range_start, range_end):
     paths = []
     day = range_start
     while day <= range_end:
-        paths.append(
-            '  - "gs://benthos-pipeline/data-production-740/classify-pipeline/classify-logistic/{:%Y-%m-%d}/*-of-*"'
-                .format(day))
+        pth = '{base}{:%Y-%m-%d}/*-of-*'.format(base=gcs_base, day=day)
+        if common.exists_on_gcs(pth):
+            paths.append(
+                '  - "{}"'format(path))
+        else:
+            log("Skipping path missing from GCS:", pth)
         day += datetime.timedelta(days=1)
     return paths
 
@@ -173,7 +177,8 @@ if __name__ == "__main__":
     parser.add_argument('--skip-annotation', help='skip annotating pipeline data', action='store_true')
     args = parser.parse_args()
 
-    end_date = datetime.date.today()
+    end_date = common.most_recent(gcs_base + "{:%Y-%m-%d}/*")
+    log("Using", end_date, "for end date")
     start_date = end_date - datetime.timedelta(days=14)
     feature_start_date = start_date - datetime.timedelta(days=14)
 

@@ -11,6 +11,7 @@ import datetime
 import shutil
 from common import this_dir, classification_dir, pipeline_dir, top_dir, treniformis_dir, logdir
 from common import checked_call, log, job_status, status_at_completion, parse_id_from_sbt_output
+from common import gcs_base
 import common
 
 
