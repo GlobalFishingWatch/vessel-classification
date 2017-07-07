@@ -134,10 +134,10 @@ def run_inference(start_date, end_date):
 def run_annotation(start_date, end_date):
     template = """
 inputFilePatterns:
-  {paths}
+{paths}
 knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_LIKELY_AND_SUSPECTED/ANY_YEAR.txt"
 jsonAnnotations:
-  - inputFilePattern: "update_fishing_detection.json.gz"
+  - inputFilePattern: "gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/update_fishing_detection.json.gz"
     timeRangeFieldName: "fishing_localisation"
     outputFieldName: "nnet_score"
     defaultValue: 1.0
@@ -154,11 +154,11 @@ jsonAnnotations:
         log(config)
         log()
 
-        command = ''' sbt aisAnnotator/"run --job-config={config_path} 
-                                            --env=dev --job-name=annotate_all 
-                                            --maxNumWorkers=100 
-                                            --diskSizeGb=100 
-                                            --output-path=gs://world-fishing-827/data-production/classification/incremental"
+        command = ''' sbt aisAnnotator/"run --job-config={config_path} \
+                                            --env=dev --job-name=annotate_all \
+                                            --maxNumWorkers=100 \
+                                            --diskSizeGb=100 \
+                                            --output-path=gs://world-fishing-827/data-production/classification/incremental" \
                                             '''.format(config_path=fp.name)
 
         log("Executing command:")

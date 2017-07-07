@@ -140,11 +140,12 @@ object Pipeline extends LazyLogging {
         // Output vessel classifier features.
         val outputFeaturePath = config.pipelineOutputPath + "/features"
         val res = Utility.oneFilePerTFRecordSink(outputFeaturePath, features)
-      }
 
-      // Get a list of all MMSIs to save to disk to speed up TF training startup.
-      val mmsiListPath = config.pipelineOutputPath + "/mmsis"
-      processed.keys.groupAll.flatMap(_.map(md => s"${md.mmsi}")).saveAsTextFile(mmsiListPath)
+        // Get a list of all MMSIs to save to disk to speed up TF training startup.
+        val mmsiListPath = config.pipelineOutputPath + "/mmsis"
+        features.keys.groupAll.flatMap(_.map(md => md)).saveAsTextFile(mmsiListPath)
+
+      }
 
       logger.info("Launching pipeline.")
     })
