@@ -26,6 +26,12 @@ def download_weights_if_needed():
         log("Using existing weights without updating")
 
 
+def upload_inference_results():
+    destination = "gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/update_fishing_detection.json.gz"
+    log("Copying weights to", destination)
+    checked_call('gsutil', 'cp', 'update_fishing_detection.json.gz', destination,
+        cwd=classification_dir)
+
 def sharded_paths(range_start, range_end):
     paths = []
     day = range_start
@@ -195,6 +201,7 @@ if __name__ == "__main__":
 
         if not args.skip_inference:
             run_inference(start_date, end_date)
+            upload_inference_results()
 
         if not args.skip_annotation:
             run_annotation(start_date, end_date)
