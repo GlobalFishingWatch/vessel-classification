@@ -29,7 +29,7 @@ def download_weights_if_needed():
 def upload_inference_results():
     destination = "gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/update_fishing_detection.json.gz"
     log("Copying weights to", destination)
-    checked_call('gsutil', 'cp', 'update_fishing_detection.json.gz', destination,
+    checked_call(['gsutil', 'cp', 'update_fishing_detection.json.gz', destination],
         cwd=classification_dir)
 
 def sharded_paths(range_start, range_end):
