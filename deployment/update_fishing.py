@@ -161,7 +161,8 @@ jsonAnnotations:
         log()
 
         command = ''' sbt aisAnnotator/"run --job-config={config_path} \
-                                            --env=dev --job-name=annotate_all \
+                                            --env=dev \
+                                            --job-name=annotate_incremental \
                                             --maxNumWorkers=100 \
                                             --diskSizeGb=100 \
                                             --output-path=gs://world-fishing-827/data-production/classification/incremental" \
