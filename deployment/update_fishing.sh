@@ -1,0 +1,2 @@
+echo "Starting Update"
+nohup sudo docker run --rm -v ~/.ssh:/root/.ssh -v ~/vessel-classification/logs:/app/logs update_vessel_lists python deployment/update_fsihing.py > ~/vessel-classification/logs/last_fishing_run.txt 2>&1 &
