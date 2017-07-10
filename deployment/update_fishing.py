@@ -161,7 +161,7 @@ jsonAnnotations:
 
         log("Anotating", datestr)
 
-        config = template.format(p)
+        config = template.format(paths=p)
 
         output_path = "gs://world-fishing-827/data-production/classification/incremental/{date}".format(date=datestr)
 
