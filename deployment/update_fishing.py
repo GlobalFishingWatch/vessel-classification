@@ -163,6 +163,13 @@ jsonAnnotations:
 
         config = template.format(p)
 
+        output_path = "gs://world-fishing-827/data-production/classification/incremental/{date}".format(date=datestr)
+
+        clobber_path = os.path.join(output_path, '*-of-*')
+
+        log("Removing existing files from", clobber_path)
+        subprocess.call(['gsutil', '-m', 'rm', clobber_path])
+
         with tempfile.NamedTemporaryFile() as fp:
             fp.write(config)
             fp.flush()
@@ -175,8 +182,8 @@ jsonAnnotations:
                                                 --job-name=annotate_incremental \
                                                 --maxNumWorkers=100 \
                                                 --diskSizeGb=100 \
-                                                --output-path=gs://world-fishing-827/data-production/classification/incremental/{date}" \
-                                                '''.format(config_path=fp.name, date=datestr)
+                                                --output-path={output_path}" \
+                                                '''.format(config_path=fp.name, output_path=output_path)
 
             log("Executing command:")
             log(command)
