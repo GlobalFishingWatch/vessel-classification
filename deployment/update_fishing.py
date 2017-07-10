@@ -215,7 +215,8 @@ if __name__ == "__main__":
 
     end_date = common.most_recent(gcs_base + "{:%Y-%m-%d}/*")
     log("Using", end_date, "for end date")
-    start_date = end_date - datetime.timedelta(days=14)
+    # start_date = end_date - datetime.timedelta(days=14)
+    start_date = end_date - datetime.timedelta(days=1) # TODO: remove for debugging only
     feature_start_date = start_date - datetime.timedelta(days=14)
 
     try:
