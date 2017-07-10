@@ -137,6 +137,10 @@ def run_inference(start_date, end_date):
     checked_call([command], shell=True, cwd=classification_dir)
 
 
+
+# TODO: Annotate day-by-day
+# TODO: Check for and remove old days
+
 def run_annotation(start_date, end_date):
     template = """
 inputFilePatterns:
@@ -151,30 +155,46 @@ jsonAnnotations:
     # annotate most recent two weeks.
     paths = sharded_paths(start_date, end_date)
 
-    config = template.format(paths='\n'.join(paths))
+    for p in paths:
 
-    with tempfile.NamedTemporaryFile() as fp:
-        fp.write(config)
-        fp.flush()
-        log("Using Config:")
-        log(config)
-        log()
+        datestr = os.path.split(os.path.split(p)[0])[1]
 
-        command = ''' sbt aisAnnotator/"run --job-config={config_path} \
-                                            --env=dev \
-                                            --job-name=annotate_incremental \
-                                            --maxNumWorkers=100 \
-                                            --diskSizeGb=100 \
-                                            --output-path=gs://world-fishing-827/data-production/classification/incremental" \
-                                            '''.format(config_path=fp.name)
+        log("Anotating", datestr)
 
-        log("Executing command:")
-        log(command)
-        log()
+        config = template.format(p)
 
-        output = checked_call([command], shell=True, cwd=pipeline_dir)
+        with tempfile.NamedTemporaryFile() as fp:
+            fp.write(config)
+            fp.flush()
+            log("Using Config:")
+            log(config)
+            log()
 
-    return parse_id_from_sbt_output(output)
+            command = ''' sbt aisAnnotator/"run --job-config={config_path} \
+                                                --env=dev \
+                                                --job-name=annotate_incremental \
+                                                --maxNumWorkers=100 \
+                                                --diskSizeGb=100 \
+                                                --output-path=gs://world-fishing-827/data-production/classification/incremental/{date}" \
+                                                '''.format(config_path=fp.name, date=datestr)
+
+            log("Executing command:")
+            log(command)
+            log()
+
+            output = checked_call([command], shell=True, cwd=pipeline_dir)
+
+        annotation_id = parse_id_from_sbt_output(output)
+
+        log("Waiting for annotation to Complete, ID:", annotation_id)
+
+        status = status_at_completion(annotation_id)
+        if status != 'DONE':
+            raise RuntimeError("annotation did not complete ({})".format(status))
+
+        log("Annotation Complete for", datestr)
+
+    log("Annotation Fully Complete")
 
 
 
