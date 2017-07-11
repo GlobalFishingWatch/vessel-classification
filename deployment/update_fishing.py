@@ -155,41 +155,36 @@ jsonAnnotations:
     # annotate most recent two weeks.
     paths = sharded_paths(start_date, end_date)
 
+    output_path = "gs://world-fishing-827/data-production/classification/incremental"
+
     for p in paths:
-
         datestr = os.path.split(os.path.split(p)[0])[1]
-
-        log("Anotating", datestr)
-
-        config = template.format(paths=p)
-
-        output_path = "gs://world-fishing-827/data-production/classification/incremental/{date}".format(date=datestr)
-
-        clobber_path = os.path.join(output_path, '*-of-*')
-
+        clobber_path = os.path.join(output_path, "{date}/*-of-*".format(date=datestr))
         log("Removing existing files from", clobber_path)
         subprocess.call(['gsutil', '-m', 'rm', clobber_path])
 
-        with tempfile.NamedTemporaryFile() as fp:
-            fp.write(config)
-            fp.flush()
-            log("Using Config:")
-            log(config)
-            log()
+    config = template.format(paths='\n'.join(paths))
 
-            command = ''' sbt aisAnnotator/"run --job-config={config_path} \
-                                                --env=dev \
-                                                --job-name=annotate_incremental \
-                                                --maxNumWorkers=100 \
-                                                --diskSizeGb=100 \
-                                                --output-path={output_path}" \
-                                                '''.format(config_path=fp.name, output_path=output_path)
+    with tempfile.NamedTemporaryFile() as fp:
+        fp.write(config)
+        fp.flush()
+        log("Using Config:")
+        log(config)
+        log()
 
-            log("Executing command:")
-            log(command)
-            log()
+        command = ''' sbt aisAnnotator/"run --job-config={config_path} \
+                                            --env=dev \
+                                            --job-name=annotate_incremental \
+                                            --maxNumWorkers=100 \
+                                            --diskSizeGb=100 \
+                                            --output-path={output_path}" \
+                                            '''.format(config_path=fp.name, output_path=output_path)
 
-            output = checked_call([command], shell=True, cwd=pipeline_dir)
+        log("Executing command:")
+        log(command)
+        log()
+
+        output = checked_call([command], shell=True, cwd=pipeline_dir)
 
         annotation_id = parse_id_from_sbt_output(output)
 

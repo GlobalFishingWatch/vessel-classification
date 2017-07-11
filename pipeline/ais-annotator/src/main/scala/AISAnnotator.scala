@@ -151,22 +151,21 @@ object AISAnnotator extends LazyLogging {
     val annotationsByMmsi = allAnnotations.groupBy(x => 
       (x.mmsi, x.startTime.toDateTime(UTC).getYear(), x.startTime.toDateTime(UTC).getDayOfYear()))
 
-    // Do not process messages for MMSIs for which we have no annotations.
+    // Add date and day information to messages and filter to mmsi we are considering.
     val filteredAISMessages = aisMessages.map { json =>
       val dateTime = Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")).toDateTime(UTC)
       ((json.getLong("mmsi").toInt, dateTime.getYear(), dateTime.getDayOfYear()), json)
     }
     .filter { case ((mmsi, _, _), _) =>
-      !AISDataProcessing.blacklistedMmsis.contains(mmsi) && (
-        allowedMMSIs.isEmpty || allowedMMSIs.contains(mmsi))
+      (allowedMMSIs.isEmpty || allowedMMSIs.contains(mmsi))
     }
 
     // Remove all but location messages and key by mmsi.
-    val filteredGroupedByMmsi = filteredAISMessages
-    // Keep only records with a location.
-    .filter { case (_, json) => json.has("lat") && json.has("lon") && json.has("timestamp")}.groupByKey
+    val groupedByMmsi = filteredAISMessages.groupByKey
+    // // Keep only records with a location.
+    // .filter { case (_, json) => json.has("lat") && json.has("lon") && json.has("timestamp")}.groupByKey
 
-    filteredGroupedByMmsi.leftOuterJoin(annotationsByMmsi).flatMap {
+    groupedByMmsi.leftOuterJoin(annotationsByMmsi).flatMap {
       case (_, (messagesIt, Some(annotationsIt))) =>
         val messages = messagesIt.toSeq
         val annotations = annotationsIt.toSeq
@@ -220,9 +219,21 @@ object AISAnnotator extends LazyLogging {
       }
 
       val annotated = annotateAllMessages(includedMMSIs, inputData, annotations)
-      val annotatedToString = annotated.map(json => compact(render(json)))
 
-      annotatedToString.saveAsTextFile(outputFilePath)
+      val taggedByShard = annotated.groupBy { json =>
+        val dateTime = Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")).toDateTime(UTC)
+        (dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth())
+      }
+      .map {
+        case ((year, month, day), annotatedForDate) => {
+          val annotatedToString = annotatedForDate.map(json => compact(render(json)))
+          val shardName = "$year%04d-$month%02d-$day%02d"
+          (shardName, Seq(annotatedToString))
+        }
+      }
+      Utility.CustomShardedTFRecordSink(outputFilePath, taggedByShard)
+
+      logger.info("Launching annotation.")
     }
   }
 }
