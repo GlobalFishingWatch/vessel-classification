@@ -161,9 +161,9 @@ object AISAnnotator extends LazyLogging {
     }
 
     // Remove all but location messages and key by mmsi.
-    val groupedByMmsi = filteredAISMessages.groupByKey
+    // val groupedByMmsi = filteredAISMessages.groupByKey
     // // Keep only records with a location.
-    // .filter { case (_, json) => json.has("lat") && json.has("lon") && json.has("timestamp")}.groupByKey
+    val groupedByMmsi = filteredAISMessages.filter { case (_, json) => json.has("lat") && json.has("lon") && json.has("timestamp")}.groupByKey
 
     groupedByMmsi.leftOuterJoin(annotationsByMmsi).flatMap {
       case (_, (messagesIt, Some(annotationsIt))) =>
@@ -229,7 +229,7 @@ object AISAnnotator extends LazyLogging {
       .groupByKey
       .map {
         case ((year, month, day, shard_no), groupedByMinute) => {
-          val shardName = "$year%04d-$month%02d-$day%02d"
+          val shardName = s"$year%04d-$month%02d-$day%02d"
           (shardName, groupedByMinute)
         }
       }
