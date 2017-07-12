@@ -54,14 +54,12 @@ object Utility extends LazyLogging {
                                                tagged_values: SCollection[(String, Iterable[Iterable[String]])]) = {
     // Write data to temporary files, one per value.
     val tempFiles = tagged_values.flatMap {
-      case (shardname, values_iter) =>
-        val values = values_iter.toSeq
-        val count = values.length
+      case (shardname, values) =>
         values.zipWithIndex.map {
           case (value, i) => {
             val suffix = scala.util.Random.nextInt
-            val tempPath = s"$basePath/$shardname/tmp-$suffix-$i-of-$count"
-            val finalPath = s"$basePath/$shardname/$i-of-$count"
+            val tempPath = s"$basePath/$shardname/tmp-$suffix-$i"
+            val finalPath = s"$basePath/$shardname/$i"
             val pipelineOptions = PipelineOptionsFactory.create()
             val gcsUtil = new GcsUtil.GcsUtilFactory().create(pipelineOptions)
 
