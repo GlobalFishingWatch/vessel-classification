@@ -136,7 +136,7 @@ def misconception_model(input,
                 # Don't use batch norm on last layer, just use dropout.
                 onet = slim.conv2d(onet, sub_count, [1, 1], normalizer_fn=None)
                 # Global average pool
-                n = int(onet.get_shape().dims[1])
+                n = int(onet.get_shape().dims[2])
                 onet = slim.avg_pool2d(onet, [1, n], stride=[1, n])
                 onet = slim.flatten(onet)
                 #

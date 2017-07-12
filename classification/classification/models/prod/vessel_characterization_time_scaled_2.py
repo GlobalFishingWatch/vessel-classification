@@ -102,7 +102,25 @@ class Model(abstract_models.MisconceptionModel):
         ]
 
     def _build_model(self, features, timestamps, mmsis, is_training):
-        features = tf.concat([features[:, :, :, :9], tf.sign(features[:, :, :, 9:10]), features[:, :, :, 10:]], 3)
+        # Use season rather than day of year (sin(lat) * sin/cos(day or year))
+        features = tf.concat([features[:, :, :, :7], features[:, :, :, 9:10] * features[:, :, :, 7:9], features[:, :, :, 10:]], 3)
+        dt = tf.exp(features[:, :, :, :1]) - 1
+        features = features[:, :, :, 1:]
+        dt = slim.conv2d(
+                        dt,
+                        256, [1, 1],
+                        activation_fn=tf.nn.relu,
+                        normalizer_fn=slim.batch_norm,
+                        normalizer_params={'is_training': is_training})
+        dt = slim.conv2d(
+                        dt,
+                        2, [1, 1],
+                        activation_fn=tf.nn.relu,
+                        normalizer_fn=slim.batch_norm,
+                        normalizer_params={'is_training': is_training})        
+        features_0 = dt[:, :, :, :1] * features
+        features_1 = dt[:, :, :, 1:] * features
+        features = tf.concat([features, features_0, features_1], 3)
         outputs, _ = layers.misconception_model(
             features,
             self.window_size,

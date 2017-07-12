@@ -102,7 +102,7 @@ class Model(abstract_models.MisconceptionModel):
         ]
 
     def _build_model(self, features, timestamps, mmsis, is_training):
-        features = tf.concat([features[:, :, :, :9], tf.sign(features[:, :, :, 9:10]), features[:, :, :, 10:]], 3)
+        features = tf.concat([features[:, :, :, 2:5], features[:, :, :, 10:14], features[:, :, :, 15:]], 3)
         outputs, _ = layers.misconception_model(
             features,
             self.window_size,

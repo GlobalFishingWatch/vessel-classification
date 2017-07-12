@@ -102,7 +102,8 @@ class Model(abstract_models.MisconceptionModel):
         ]
 
     def _build_model(self, features, timestamps, mmsis, is_training):
-        features = tf.concat([features[:, :, :, :9], tf.sign(features[:, :, :, 9:10]), features[:, :, :, 10:]], 3)
+        # Use season rather than day of year (sin(lat) * sin/cos(day or year))
+        features = tf.concat([features[:, :, :, :7], features[:, :, :, 10:]], 3)
         outputs, _ = layers.misconception_model(
             features,
             self.window_size,
