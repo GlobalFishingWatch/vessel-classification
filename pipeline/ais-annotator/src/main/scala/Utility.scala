@@ -51,10 +51,11 @@ import resource._
 object Utility extends LazyLogging {
   // TODO(alexwilson): Rolling this ourselves isn't nice. Explore how to do this with existing cloud dataflow sinks.
   def CustomShardedTFRecordSink(basePath: String,
-                                               tagged_values: SCollection[(String, Seq[Iterable[String]])]) = {
+                                               tagged_values: SCollection[(String, Iterable[Iterable[String]])]) = {
     // Write data to temporary files, one per value.
     val tempFiles = tagged_values.flatMap {
-      case (shardname, values) =>
+      case (shardname, values_iter) =>
+        val values = values_iter.toSeq
         val count = values.length
         values.zipWithIndex.map {
           case (value, i) => {

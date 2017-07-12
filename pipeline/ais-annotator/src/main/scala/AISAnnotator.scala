@@ -220,17 +220,21 @@ object AISAnnotator extends LazyLogging {
 
       val annotated = annotateAllMessages(includedMMSIs, inputData, annotations)
 
-      val taggedByShard = annotated.groupBy { json =>
+      val taggedByShard = annotated.map { json => 
         val dateTime = Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")).toDateTime(UTC)
-        (dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth())
+        val text = compact(render(json))
+        val minuteKey = (dateTime.getMinuteOfDay():Int) / 10
+        ((dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth(), minuteKey), text)
       }
+      .groupByKey
       .map {
-        case ((year, month, day), annotatedForDate) => {
-          val annotatedToString = annotatedForDate.map(json => compact(render(json)))
+        case ((year, month, day, shard_no), groupedByMinute) => {
           val shardName = "$year%04d-$month%02d-$day%02d"
-          (shardName, Seq(annotatedToString))
+          (shardName, groupedByMinute)
         }
       }
+      .groupByKey
+  
       Utility.CustomShardedTFRecordSink(outputFilePath, taggedByShard)
 
       logger.info("Launching annotation.")
