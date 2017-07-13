@@ -167,7 +167,7 @@ jsonAnnotations:
 
     active_ids = set()
 
-    for p in paths:
+    for i, p in enumerate(paths):
 
         # start up to 10 workers and wait till one finishes to start another
 
@@ -193,11 +193,11 @@ jsonAnnotations:
 
             command = ''' sbt aisAnnotator/"run --job-config={config_path} \
                                                 --env=dev \
-                                                --job-name=annotate_incremental \
+                                                --job-name=annotate_incremental-{i} \
                                                 --maxNumWorkers=10 \
                                                 --diskSizeGb=100 \
                                                 --output-path={output_path}" \
-                                                '''.format(config_path=fp.name, output_path=output_path)
+                                                '''.format(config_path=fp.name, output_path=output_path, i=i)
 
             log("Executing command:")
             log(command)
