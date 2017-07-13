@@ -193,8 +193,7 @@ object AISAnnotator extends LazyLogging {
     options.setRunner(classOf[DataflowPipelineRunner])
     options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
-
-
+    options.setJobName(jobName)
 
     val annotatorConfig = managed(scala.io.Source.fromFile(jobConfigurationFile)).acquireAndGet {
       s => readYamlConfig(s.mkString)
