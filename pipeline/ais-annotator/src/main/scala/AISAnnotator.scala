@@ -33,6 +33,9 @@ import org.skytruth.common._
 import org.skytruth.common.ScioContextResource._
 import scala.collection.{mutable, immutable}
 
+import scala.concurrent.duration.Duration
+import scala.concurrent.{ Await, Future }
+
 import resource._
 
 case class JSONFileAnnotatorConfig(inputFilePattern: String,
@@ -203,8 +206,9 @@ object AISAnnotator extends LazyLogging {
       Set[Int]()
     }
 
+    var path = "PATH"
 
-    annotatorConfig.inputFilePatterns.map { path =>
+    for (path <- annotatorConfig.inputFilePatterns)  {
 
       // TODO: We are grabbing the second to the last path component as the 
       // the location prefix to write to. Somewhat ugly.
@@ -232,8 +236,11 @@ object AISAnnotator extends LazyLogging {
 
         val annotatedText = annotated.map(json =>  compact(render(json)))
 
-        annotatedText.saveAsTextFile(outputTemplate)
-  
+        val res = annotatedText.saveAsTextFile(outputTemplate)
+
+        Await.ready(res, Duration.Inf)
+        // res.waitUntilDone()
+    
       }
       logger.info("Launching annotation.")
     }
