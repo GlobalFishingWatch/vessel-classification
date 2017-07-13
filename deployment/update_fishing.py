@@ -31,7 +31,7 @@ def successfully_completed_one_of(job_ids, sleep_time=10): # TODO: add timeout
         for job_id in job_ids:
             status = job_status(job_id)['currentState'].rsplit('_')[-1]
             if status == 'DONE':
-                return status
+                return job_id
             elif status in ('FAILED', 'CANCELLED'):
                 raise RuntimeError("Annotation for {} did not complete ({})".format(job_id, status))
         time.sleep(sleep_time)
@@ -195,7 +195,7 @@ jsonAnnotations:
             command = ''' sbt aisAnnotator/"run --job-config={config_path} \
                                                 --env=dev \
                                                 --job-name=annotate{job_time:%Y%m%d%H%M%S}{i} \
-                                                --maxNumWorkers=10 \
+                                                --maxNumWorkers=5 \
                                                 --diskSizeGb=100 \
                                                 --output-path={output_path}" \
                                                 '''.format(config_path=fp.name, output_path=output_path, job_time=job_time, i=i)
@@ -211,7 +211,7 @@ jsonAnnotations:
 
         active_ids.add(annotation_id)
 
-        while len(active_ids) >= 10:
+        while len(active_ids) >= 20:
             pid = successfully_completed_one_of(active_ids) 
             active_ids.remove(pid)
             log("Annotation Completed", pid)
