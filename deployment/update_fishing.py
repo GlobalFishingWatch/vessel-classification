@@ -167,6 +167,8 @@ jsonAnnotations:
 
     active_ids = set()
 
+    job_time = datetime.datetime.utcnow()
+
     for i, p in enumerate(paths):
 
         # start up to 10 workers and wait till one finishes to start another
@@ -188,20 +190,18 @@ jsonAnnotations:
             fp.write(config)
             fp.flush()
             log("Using Config:")
-            log(config)
-            log()
+            log(config, '\n')
 
             command = ''' sbt aisAnnotator/"run --job-config={config_path} \
                                                 --env=dev \
-                                                --job-name=annotate-incremental-{i} \
+                                                --job-name=annotate{job_time:%Y%m%d%H%M%S}{i} \
                                                 --maxNumWorkers=10 \
                                                 --diskSizeGb=100 \
                                                 --output-path={output_path}" \
-                                                '''.format(config_path=fp.name, output_path=output_path, i=i)
+                                                '''.format(config_path=fp.name, output_path=output_path, job_time=job_time, i=i)
 
             log("Executing command:")
-            log(command)
-            log()
+            log(command, '\n')
 
             output = checked_call([command], shell=True, cwd=pipeline_dir)
 

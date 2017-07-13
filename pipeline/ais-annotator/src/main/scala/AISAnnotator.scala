@@ -33,9 +33,6 @@ import org.skytruth.common._
 import org.skytruth.common.ScioContextResource._
 import scala.collection.{mutable, immutable}
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{ Await, Future }
-
 import resource._
 
 case class JSONFileAnnotatorConfig(inputFilePattern: String,
@@ -154,21 +151,22 @@ object AISAnnotator extends LazyLogging {
     val annotationsByMmsi = allAnnotations.groupBy(x => 
       (x.mmsi, x.startTime.toDateTime(UTC).getYear(), x.startTime.toDateTime(UTC).getDayOfYear()))
 
-    // Add date and day information to messages and filter to mmsi we are considering.
+    // Do not process messages for MMSIs for which we have no annotations.
     val filteredAISMessages = aisMessages.map { json =>
       val dateTime = Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")).toDateTime(UTC)
       ((json.getLong("mmsi").toInt, dateTime.getYear(), dateTime.getDayOfYear()), json)
     }
     .filter { case ((mmsi, _, _), _) =>
-      (allowedMMSIs.isEmpty || allowedMMSIs.contains(mmsi))
+      !AISDataProcessing.blacklistedMmsis.contains(mmsi) && (
+        allowedMMSIs.isEmpty || allowedMMSIs.contains(mmsi))
     }
 
     // Remove all but location messages and key by mmsi.
-    // val groupedByMmsi = filteredAISMessages.groupByKey
-    // // Keep only records with a location.
-    val groupedByMmsi = filteredAISMessages.filter { case (_, json) => json.has("lat") && json.has("lon") && json.has("timestamp")}.groupByKey
+    val filteredGroupedByMmsi = filteredAISMessages
+    // Keep only records with a location.
+    .filter { case (_, json) => json.has("lat") && json.has("lon") && json.has("timestamp")}.groupByKey
 
-    groupedByMmsi.leftOuterJoin(annotationsByMmsi).flatMap {
+    filteredGroupedByMmsi.leftOuterJoin(annotationsByMmsi).flatMap {
       case (_, (messagesIt, Some(annotationsIt))) =>
         val messages = messagesIt.toSeq
         val annotations = annotationsIt.toSeq
@@ -193,10 +191,12 @@ object AISAnnotator extends LazyLogging {
     options.setRunner(classOf[DataflowPipelineRunner])
     options.setProject(config.projectId)
     options.setStagingLocation(config.dataflowStagingPath)
-    options.setJobName(jobName)
+
+
 
     val annotatorConfig = managed(scala.io.Source.fromFile(jobConfigurationFile)).acquireAndGet {
-      s => readYamlConfig(s.mkString)
+      s =>
+        readYamlConfig(s.mkString)
     }
 
     val includedMMSIs = if (annotatorConfig.knownFishingMMSIs != "") {
@@ -205,43 +205,24 @@ object AISAnnotator extends LazyLogging {
       Set[Int]()
     }
 
-    var path = "PATH"
-
-    for (path <- annotatorConfig.inputFilePatterns)  {
-
-      // TODO: We are grabbing the second to the last path component as the 
-      // the location prefix to write to. Somewhat ugly.
-      val pathComponents = path.split("/")
-      val dirStr = pathComponents(pathComponents.length - 2)
-      val outputTemplate = s"$outputFilePath/$dirStr/part"
-
-      logger.info(s"Starting annotation for $path")
-      logger.info(s"Output being written to $outputTemplate")
-
-      managed(ScioContext(options)).acquireAndGet { sc =>
-
-        val inputData = Seq(readJsonFile(sc, path))
-
-        val annotations = annotatorConfig.jsonAnnotations.map {
-          case annotation =>
-            val inputAnnotationFile = readJsonFile(sc, annotation.inputFilePattern)
-            jsonAnnotationReader(inputAnnotationFile,
-                                 annotation.outputFieldName,
-                                 annotation.timeRangeFieldName,
-                                 annotation.defaultValue)
-        }
-
-        val annotated = annotateAllMessages(includedMMSIs, inputData, annotations)
-
-        val annotatedText = annotated.map(json =>  compact(render(json)))
-
-        val res = annotatedText.saveAsTextFile(outputTemplate)
-
-        Await.ready(res, Duration.Inf)
-        // res.waitUntilDone()
-    
+    managed(ScioContext(options)).acquireAndGet { sc =>
+      val inputData = annotatorConfig.inputFilePatterns.map { path =>
+        readJsonFile(sc, path)
       }
-      logger.info("Launching annotation.")
+
+      val annotations = annotatorConfig.jsonAnnotations.map {
+        case annotation =>
+          val inputAnnotationFile = readJsonFile(sc, annotation.inputFilePattern)
+          jsonAnnotationReader(inputAnnotationFile,
+                               annotation.outputFieldName,
+                               annotation.timeRangeFieldName,
+                               annotation.defaultValue)
+      }
+
+      val annotated = annotateAllMessages(includedMMSIs, inputData, annotations)
+      val annotatedToString = annotated.map(json => compact(render(json)))
+
+      annotatedToString.saveAsTextFile(outputFilePath)
     }
   }
 }

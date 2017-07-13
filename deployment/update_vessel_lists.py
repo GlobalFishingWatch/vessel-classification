@@ -78,7 +78,7 @@ encounterMaxKilometers: 0.5
                                        --maxNumWorkers=100 \
                                        --job-name=update_vessel_lists \
                                        --generate-model-features=true \
-                                       --generate-encounters=false \
+                                       --generate-encounters=true \
                                        --job-config={config_path}"'''.format(config_path=fp.name)
 
         log("Executing command:")
