@@ -193,7 +193,7 @@ jsonAnnotations:
 
             command = ''' sbt aisAnnotator/"run --job-config={config_path} \
                                                 --env=dev \
-                                                --job-name=annotate_incremental_{i} \
+                                                --job-name=annotate-incremental-{i} \
                                                 --maxNumWorkers=10 \
                                                 --diskSizeGb=100 \
                                                 --output-path={output_path}" \
