@@ -194,8 +194,7 @@ object AISAnnotator extends LazyLogging {
 
 
     val annotatorConfig = managed(scala.io.Source.fromFile(jobConfigurationFile)).acquireAndGet {
-      s =>
-        readYamlConfig(s.mkString)
+      s => readYamlConfig(s.mkString)
     }
 
     val includedMMSIs = if (annotatorConfig.knownFishingMMSIs != "") {
@@ -205,38 +204,36 @@ object AISAnnotator extends LazyLogging {
     }
 
     managed(ScioContext(options)).acquireAndGet { sc =>
-      val inputData = annotatorConfig.inputFilePatterns.map { path =>
-        readJsonFile(sc, path)
-      }
 
-      val annotations = annotatorConfig.jsonAnnotations.map {
-        case annotation =>
-          val inputAnnotationFile = readJsonFile(sc, annotation.inputFilePattern)
-          jsonAnnotationReader(inputAnnotationFile,
-                               annotation.outputFieldName,
-                               annotation.timeRangeFieldName,
-                               annotation.defaultValue)
-      }
+      annotatorConfig.inputFilePatterns.map { path =>
 
-      val annotated = annotateAllMessages(includedMMSIs, inputData, annotations)
+        // TODO: We are grabbing the second to the last path component as the 
+        // the location prefix to write to. Somewhat ugly.
+        val pathComponents = path.split("/")
+        val dirStr = pathComponents(pathComponents.length - 2)
+        val outputTemplate = s"$outputFilePath/$dirStr/part"
 
-      val taggedByShard = annotated.map { json => 
-        val dateTime = Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")).toDateTime(UTC)
-        val text = compact(render(json))
-        val minuteKey = (dateTime.getMinuteOfDay():Int) / 10
-        ((dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth(), minuteKey), text)
-      }
-      .groupByKey
-      .map {
-        case ((year, month, day, shard_no), groupedByMinute) => {
-          val shardName = s"$year%04d-$month%02d-$day%02d"
-          (shardName, groupedByMinute)
+        logger.info(s"Starting annotation for $path")
+        logger.info(s"Output being written to $outputTemplate")
+
+        val inputData = Seq(readJsonFile(sc, path))
+
+        val annotations = annotatorConfig.jsonAnnotations.map {
+          case annotation =>
+            val inputAnnotationFile = readJsonFile(sc, annotation.inputFilePattern)
+            jsonAnnotationReader(inputAnnotationFile,
+                                 annotation.outputFieldName,
+                                 annotation.timeRangeFieldName,
+                                 annotation.defaultValue)
         }
-      }
-      .groupByKey
-  
-      Utility.CustomShardedTFRecordSink(outputFilePath, taggedByShard)
 
+        val annotated = annotateAllMessages(includedMMSIs, inputData, annotations)
+
+        val annotatedText = annotated.map(json =>  compact(render(json)))
+
+        annotatedText.saveAsTextFile(outputTemplate)
+  
+      }
       logger.info("Launching annotation.")
     }
   }

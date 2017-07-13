@@ -51,28 +51,24 @@ import resource._
 object Utility extends LazyLogging {
   // TODO(alexwilson): Rolling this ourselves isn't nice. Explore how to do this with existing cloud dataflow sinks.
   def CustomShardedTFRecordSink(basePath: String,
-                                               tagged_values: SCollection[(String, Iterable[Iterable[String]])]) = {
+                                               tagged_values: SCollection[(String, Int, Iterable[String])]) = {
     // Write data to temporary files, one per value.
-    val tempFiles = tagged_values.flatMap {
-      case (shardname, values) =>
-        values.zipWithIndex.map {
-          case (value, i) => {
-            val suffix = scala.util.Random.nextInt
-            val tempPath = s"$basePath/$shardname/tmp-$suffix-$i"
-            val finalPath = s"$basePath/$shardname/$i"
-            val pipelineOptions = PipelineOptionsFactory.create()
-            val gcsUtil = new GcsUtil.GcsUtilFactory().create(pipelineOptions)
+    val tempFiles = tagged_values.map {
+      case (datestring, shardnum, values) => 
+        val suffix = scala.util.Random.nextInt
+        val tempPath = s"$basePath/$datestring/tmp-$suffix-$shardnum"
+        val finalPath = s"$basePath/$datestring/part-$shardnum"
+        val pipelineOptions = PipelineOptionsFactory.create()
+        val gcsUtil = new GcsUtil.GcsUtilFactory().create(pipelineOptions)
 
-            val channel = gcsUtil.create(GcsPath.fromUri(tempPath), "application/octet-stream")
+        val channel = gcsUtil.create(GcsPath.fromUri(tempPath), "application/octet-stream")
 
-            val outFs = Channels.newOutputStream(channel)
+        val outFs = Channels.newOutputStream(channel)
 
-            outFs.write(value.mkString("\n").getBytes)
-            outFs.close()
+        outFs.write(values.mkString("\n").getBytes)
+        outFs.close()
 
-            (tempPath, finalPath)            
-          }
-        }
+        (tempPath, finalPath)            
     }
 
     // Copy the files to their final destinations, then delete.
