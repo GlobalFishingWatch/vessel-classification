@@ -203,18 +203,19 @@ object AISAnnotator extends LazyLogging {
       Set[Int]()
     }
 
-    managed(ScioContext(options)).acquireAndGet { sc =>
 
-      annotatorConfig.inputFilePatterns.map { path =>
+    annotatorConfig.inputFilePatterns.map { path =>
 
-        // TODO: We are grabbing the second to the last path component as the 
-        // the location prefix to write to. Somewhat ugly.
-        val pathComponents = path.split("/")
-        val dirStr = pathComponents(pathComponents.length - 2)
-        val outputTemplate = s"$outputFilePath/$dirStr/part"
+      // TODO: We are grabbing the second to the last path component as the 
+      // the location prefix to write to. Somewhat ugly.
+      val pathComponents = path.split("/")
+      val dirStr = pathComponents(pathComponents.length - 2)
+      val outputTemplate = s"$outputFilePath/$dirStr/part"
 
-        logger.info(s"Starting annotation for $path")
-        logger.info(s"Output being written to $outputTemplate")
+      logger.info(s"Starting annotation for $path")
+      logger.info(s"Output being written to $outputTemplate")
+
+      managed(ScioContext(options)).acquireAndGet { sc =>
 
         val inputData = Seq(readJsonFile(sc, path))
 
