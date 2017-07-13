@@ -26,6 +26,16 @@ def download_weights_if_needed():
         log("Using existing weights without updating")
 
 
+def successfully_completed_one_of(job_ids, sleep_time=10): # TODO: add timeout
+    while True:
+        for job_id in job_ids:
+            status = job_status(job_id)['currentState'].rsplit('_')[-1]
+            if status == 'DONE':
+                return status
+            elif status in ('FAILED', 'CANCELLED'):
+                raise RuntimeError("Annotation for {} did not complete ({})".format(job_id, status))
+        time.sleep(sleep_time)
+
 def upload_inference_results():
     destination = "gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/update_fishing_detection.json.gz"
     log("Copying weights to", destination)
@@ -155,46 +165,61 @@ jsonAnnotations:
     # annotate most recent two weeks.
     paths = sharded_paths(start_date, end_date)
 
-    output_path = "gs://world-fishing-827/data-production/classification/incremental"
+    active_ids = set()
 
     for p in paths:
+
+        # start up to 10 workers and wait till one finishes to start another
+
         datestr = os.path.split(os.path.split(p)[0])[1]
-        clobber_path = os.path.join(output_path, "{date}/*-of-*".format(date=datestr))
+
+        log("Anotating", datestr)
+
+        config = template.format(paths=p)
+
+        output_path = "gs://world-fishing-827/data-production/classification/incremental/{date}".format(date=datestr)
+
+        clobber_path = os.path.join(output_path, '*-of-*')
+
         log("Removing existing files from", clobber_path)
         subprocess.call(['gsutil', '-m', 'rm', clobber_path])
 
-    config = template.format(paths='\n'.join(paths))
+        with tempfile.NamedTemporaryFile() as fp:
+            fp.write(config)
+            fp.flush()
+            log("Using Config:")
+            log(config)
+            log()
 
-    with tempfile.NamedTemporaryFile() as fp:
-        fp.write(config)
-        fp.flush()
-        log("Using Config:")
-        log(config)
-        log()
+            command = ''' sbt aisAnnotator/"run --job-config={config_path} \
+                                                --env=dev \
+                                                --job-name=annotate_incremental \
+                                                --maxNumWorkers=10 \
+                                                --diskSizeGb=100 \
+                                                --output-path={output_path}" \
+                                                '''.format(config_path=fp.name, output_path=output_path)
 
-        command = ''' sbt aisAnnotator/"run --job-config={config_path} \
-                                            --env=dev \
-                                            --job-name=annotate_incremental \
-                                            --maxNumWorkers=100 \
-                                            --diskSizeGb=100 \
-                                            --output-path={output_path}" \
-                                            '''.format(config_path=fp.name, output_path=output_path)
+            log("Executing command:")
+            log(command)
+            log()
 
-        log("Executing command:")
-        log(command)
-        log()
-
-        output = checked_call([command], shell=True, cwd=pipeline_dir)
+            output = checked_call([command], shell=True, cwd=pipeline_dir)
 
         annotation_id = parse_id_from_sbt_output(output)
 
-        log("Waiting for annotation to Complete, ID:", annotation_id)
+        log("Started annotation with ID:", annotation_id)
 
-        status = status_at_completion(annotation_id)
-        if status != 'DONE':
-            raise RuntimeError("annotation did not complete ({})".format(status))
+        active_ids.add(annotation_id)
 
-        log("Annotation Complete for", datestr)
+        while len(active_ids) >= 10:
+            pid = successfully_completed_one_of(active_ids) 
+            active_ids.remove(pid)
+            log("Annotation Completed", pid)
+
+    while len(active_ids):
+        pid = successfully_completed_one_of(active_ids)
+        active_ids.remove(pid)
+        log("Annotation Complete for", pid)
 
     log("Annotation Fully Complete")
 
