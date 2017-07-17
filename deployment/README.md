@@ -19,7 +19,13 @@
 
 # Running updates remotely.
 
-`gcloud compute --project "world-fishing-827" ssh --zone "europe-west1-d" "nnet-auto-test" --command 'bash ~/vessel-classification/deployment/update_vessel_lists.sh'`
+* Vessel Lists
+
+    gcloud compute --project "world-fishing-827" ssh --zone "us-east1-d" "nnet-inference-2" --command 'bash ~/vessel-classification/deployment/update_vessel_lists.sh'
+
+* Fishing Detection
+
+    gcloud compute --project "world-fishing-827" ssh --zone "us-east1-d" "nnet-inference-2" --command 'bash ~/vessel-classification/deployment/update_fishing.sh'
 
 Logs are placed in `vessel-classification\logs`
 
