@@ -226,18 +226,14 @@ jsonAnnotations:
     log("Annotation Fully Complete")
 
 
-ALL = object()
-
-def int_or_all(x):
-    if x == "ALL":
-        return ALL
-    return int(x)
+def date(text):
+    return datetime.datetime.strptime(text, '%Y-%m-%d').date()
 
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Update Vessel Lists.')
-    parser.add_argument('--duration', type=int)
+    parser.add_argument('--start-date', type=date, help='starting date in "%YYYY-%mmm-%dd" format')
     parser.add_argument('--skip-feature-generation', help='skip generating new features', action='store_true')
     parser.add_argument('--skip-inference', help='skip running inference', action='store_true')
     parser.add_argument('--skip-annotation', help='skip annotating pipeline data', action='store_true')
@@ -245,14 +241,12 @@ if __name__ == "__main__":
 
     end_date = common.most_recent(gcs_base + "{day:%Y-%m-%d}/*")
     log("Using", end_date, "for end date")
-    if args.duration is None:
-        start_date = common.most_recent(clobber_template) - datetime.timedelta(days=7)
-    else: 
-        start_date = end_date - datetime.timedelta(days=args.duration)
+    if args.start_date is None:
+        start_date = end_date - datetime.timedelta(days=14)
+    else:
+        start_date = args.start_date
 
     log("Using", start_date, "for start date")
-
-    1/0
 
     feature_start_date = start_date - datetime.timedelta(days=14)
 
