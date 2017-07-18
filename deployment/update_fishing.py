@@ -176,7 +176,7 @@ def run_inference(start_date, end_date):
 # TODO: Annotate day-by-day
 # TODO: Check for and remove old days
 
-output_template = "gs://world-fishing-827/data-production/classification/incremental/{day:%Y-%m-%d}"
+output_template = "gs://world-fishing-827/data-production/classification/incremental/{}"
 
 def run_annotation(start_date, end_date):
     template = """
@@ -205,7 +205,7 @@ jsonAnnotations:
 
         config = template.format(paths=p)
 
-        output_path = output_template.format(day=d)
+        output_path = output_template.format(datestr)
         clobber_path = os.path.join(output_path, "*-of-*")
 
         log("Removing existing files from", clobber_path)
