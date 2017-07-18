@@ -42,17 +42,42 @@ def upload_inference_results():
     checked_call(['gsutil', 'cp', 'update_fishing_detection.json.gz', destination],
         cwd=classification_dir)
 
-def sharded_paths(range_start, range_end):
-    paths = []
-    day = range_start
-    while day <= range_end:
-        pth = '{base}{day:%Y-%m-%d}/*-of-*'.format(base=gcs_base, day=day)
-        if common.exists_on_gcs(pth):
-            paths.append(
-                ('  - "{}"'.format(pth), day))
-        else:
-            log("Skipping path missing from GCS:", pth)
-        day += datetime.timedelta(days=1)
+
+# TODO: perhaps just have two functions, 1 for daily sharding and one for monthly sharding and use
+# one for annotation and the other for features?
+def sharded_paths(range_start, range_end, force_daily=False):
+    """If the duration is longer than one month (30 days), shard by month, otherwise by day
+
+    Don't check monthly shards, except limit to 2012+
+    """
+    if range_end - range_start > datetime.timedelta(days=30) and not force_daily:
+        range_start = max(range_start, datetime.date(2012, 1, 1))
+        paths = []
+        year = range_start.year
+        month = range_start.month
+        while True:
+            date = datetime.date(year, month, 1)
+            if date > range_end:
+                break
+            pth = '{base}{date:%Y-%m}-*/*-of-*'.format(base=gcs_base, date=date)
+            paths.append(pth)
+            if month < 12:
+                month += 1
+            else:
+                month = 1
+                year += 1
+
+    else:
+        paths = []
+        day = range_start
+        while day <= range_end:
+            pth = '{base}{day:%Y-%m-%d}/*-of-*'.format(base=gcs_base, day=day)
+            if common.exists_on_gcs(pth):
+                paths.append(
+                    '  - "{}"'.format(pth))
+            else:
+                log("Skipping path missing from GCS:", pth)
+            day += datetime.timedelta(days=1)
     return paths
 
 
@@ -67,7 +92,7 @@ encounterMinHours: 3
 encounterMaxKilometers: 0.5
 """
     log("Generating paths for features")
-    paths = [p for (p, d) in sharded_paths(range_start, range_end)]
+    paths = sharded_paths(range_start, range_end)
 
     log("Generating config text for features")
     config = template.format(paths='\n'.join(paths))
@@ -152,7 +177,6 @@ def run_inference(start_date, end_date):
 # TODO: Check for and remove old days
 
 output_template = "gs://world-fishing-827/data-production/classification/incremental/{day:%Y-%m-%d}"
-clobber_template = os.path.join(output_template, "*-of-*")
 
 def run_annotation(start_date, end_date):
     template = """
@@ -165,14 +189,13 @@ jsonAnnotations:
     outputFieldName: "nnet_score"
     defaultValue: 1.0
 """
-    # annotate most recent two weeks.
-    paths = sharded_paths(start_date, end_date)
+    paths = sharded_paths(start_date, end_date, force_daily=True)
 
     active_ids = set()
 
     job_time = datetime.datetime.utcnow()
 
-    for i, (p, d) in enumerate(paths):
+    for i, p in enumerate(paths):
 
         # start up to 10 workers and wait till one finishes to start another
 
@@ -183,7 +206,7 @@ jsonAnnotations:
         config = template.format(paths=p)
 
         output_path = output_template.format(day=d)
-        clobber_path = clobber_template.format(day=d)
+        clobber_path = os.path.join(output_path, "*-of-*")
 
         log("Removing existing files from", clobber_path)
         subprocess.call(['gsutil', '-m', 'rm', clobber_path])
