@@ -24,7 +24,7 @@ def most_recent(path_template, limit=100):
     today = datetime.date.today()
     for offset in range(limit):
         day = today - datetime.timedelta(days=offset)
-        if exists_on_gcs(path_template.format(day)):
+        if exists_on_gcs(path_template.format(day=day)):
             return day
 
             

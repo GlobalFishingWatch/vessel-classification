@@ -243,7 +243,7 @@ if __name__ == "__main__":
     parser.add_argument('--skip-annotation', help='skip annotating pipeline data', action='store_true')
     args = parser.parse_args()
 
-    end_date = common.most_recent(gcs_base + "{:%Y-%m-%d}/*")
+    end_date = common.most_recent(gcs_base + "{day:%Y-%m-%d}/*")
     log("Using", end_date, "for end date")
     if args.duration is None:
         # Go back 10 to years looking for data. TODO: do this by date perhaps?
