@@ -49,7 +49,7 @@ def sharded_paths(range_start, range_end):
         pth = '{base}{day:%Y-%m-%d}/*-of-*'.format(base=gcs_base, day=day)
         if common.exists_on_gcs(pth):
             paths.append(
-                '  - "{}"'.format(pth))
+                ('  - "{}"'.format(pth)), day)
         else:
             log("Skipping path missing from GCS:", pth)
         day += datetime.timedelta(days=1)
@@ -67,7 +67,7 @@ encounterMinHours: 3
 encounterMaxKilometers: 0.5
 """
     log("Generating paths for features")
-    paths = sharded_paths(range_start, range_end)
+    paths = [p for (p, d) in sharded_paths(range_start, range_end)]
 
     log("Generating config text for features")
     config = template.format(paths='\n'.join(paths))
@@ -151,6 +151,9 @@ def run_inference(start_date, end_date):
 # TODO: Annotate day-by-day
 # TODO: Check for and remove old days
 
+output_template = "gs://world-fishing-827/data-production/classification/incremental/{day:%Y-%m-%d}"
+clobber_template = os.path.join(output_template, "*-of-*")
+
 def run_annotation(start_date, end_date):
     template = """
 inputFilePatterns:
@@ -169,7 +172,7 @@ jsonAnnotations:
 
     job_time = datetime.datetime.utcnow()
 
-    for i, p in enumerate(paths):
+    for i, (p, d) in enumerate(paths):
 
         # start up to 10 workers and wait till one finishes to start another
 
@@ -179,9 +182,8 @@ jsonAnnotations:
 
         config = template.format(paths=p)
 
-        output_path = "gs://world-fishing-827/data-production/classification/incremental/{date}".format(date=datestr)
-
-        clobber_path = os.path.join(output_path, '*-of-*')
+        output_path = output_template.format(day=d)
+        clobber_path = clobber_template.format(day=d)
 
         log("Removing existing files from", clobber_path)
         subprocess.call(['gsutil', '-m', 'rm', clobber_path])
@@ -224,10 +226,18 @@ jsonAnnotations:
     log("Annotation Fully Complete")
 
 
+ALL = object()
+
+def int_or_all(x):
+    if x == "ALL":
+        return ALL
+    return int(x)
+
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Update Vessel Lists.')
+    parser.add_argument('--duration', type=int)
     parser.add_argument('--skip-feature-generation', help='skip generating new features', action='store_true')
     parser.add_argument('--skip-inference', help='skip running inference', action='store_true')
     parser.add_argument('--skip-annotation', help='skip annotating pipeline data', action='store_true')
@@ -235,7 +245,16 @@ if __name__ == "__main__":
 
     end_date = common.most_recent(gcs_base + "{:%Y-%m-%d}/*")
     log("Using", end_date, "for end date")
-    start_date = end_date - datetime.timedelta(days=14)
+    if args.duration is None:
+        # Go back 10 to years looking for data. TODO: do this by date perhaps?
+        start_date = common.most_recent(clobber_template, limit=10*365) - datetime.timedelta(days=7)
+    else: 
+        start_date = end_date - datetime.timedelta(days=args.duration)
+
+    log("Using", start_date, "for start date")
+
+    1/0
+
     feature_start_date = start_date - datetime.timedelta(days=14)
 
     try:
