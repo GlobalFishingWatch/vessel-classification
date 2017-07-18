@@ -246,8 +246,7 @@ if __name__ == "__main__":
     end_date = common.most_recent(gcs_base + "{day:%Y-%m-%d}/*")
     log("Using", end_date, "for end date")
     if args.duration is None:
-        # Go back 10 to years looking for data. TODO: do this by date perhaps?
-        start_date = common.most_recent(clobber_template, limit=10*365) - datetime.timedelta(days=7)
+        start_date = common.most_recent(clobber_template) - datetime.timedelta(days=7)
     else: 
         start_date = end_date - datetime.timedelta(days=args.duration)
 

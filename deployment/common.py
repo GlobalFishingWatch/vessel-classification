@@ -4,6 +4,7 @@ import subprocess
 import datetime
 import json
 import time
+import itertools as it
 
 this_dir = os.path.abspath(os.path.dirname(__file__))
 classification_dir = os.path.abspath(os.path.join(this_dir, '../classification'))
@@ -20,10 +21,12 @@ def exists_on_gcs(path):
     return not subprocess.call(["gsutil", "-q", "stat", path])
 
 
-def most_recent(path_template, limit=100):
+def most_recent(path_template, earliest_date=datetime.date(year=2012, month=1, day=1)):
     today = datetime.date.today()
-    for offset in range(limit):
+    for offset in it.count():
         day = today - datetime.timedelta(days=offset)
+        if day < earliest_date:
+            return earliest_date
         if exists_on_gcs(path_template.format(day=day)):
             return day
 
