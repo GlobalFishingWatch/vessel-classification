@@ -60,7 +60,7 @@ def sharded_paths(range_start, range_end, force_daily=False):
             if date > range_end:
                 break
             pth = '{base}{date:%Y-%m}-*/*-of-*'.format(base=gcs_base, date=date)
-            paths.append(pth)
+            paths.append('  - "{}"'.format(pth))
             if month < 12:
                 month += 1
             else:
