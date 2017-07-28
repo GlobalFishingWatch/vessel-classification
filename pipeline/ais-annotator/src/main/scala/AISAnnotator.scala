@@ -23,8 +23,9 @@ import com.spotify.scio._
 import com.spotify.scio.values.SCollection
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import java.util.LinkedHashMap
-import org.joda.time.{Instant}
+import org.joda.time.{Instant, Duration}
 import org.joda.time.DateTimeZone.UTC
+import org.joda.time.format.ISODateTimeFormat
 import org.json4s._
 import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL.WithDouble._
@@ -67,13 +68,15 @@ object AISAnnotator extends LazyLogging {
   def jsonAnnotationReader(annotations: SCollection[JValue],
                            outputFieldName: String,
                            timeRangeFieldName: String,
-                           defaultValue: Double): SCollection[MessageAnnotation] = {
+                           defaultValue: Double,
+                           min_time: Option[Instant],
+                           max_time: Option[Instant]): SCollection[MessageAnnotation] = {
     annotations.flatMap { json =>
       val mmsi = (json \ "mmsi").extract[Int]
 
       val timeRangeFieldList = (json \ timeRangeFieldName).extract[List[JValue]]
 
-      timeRangeFieldList.map { timeRangeField =>
+      timeRangeFieldList.flatMap { timeRangeField =>
         val startTime = Instant.parse(timeRangeField.getString("start_time"))
         val endTime = Instant.parse(timeRangeField.getString("end_time"))
         val value = if (timeRangeField.has("value")) {
@@ -87,7 +90,10 @@ object AISAnnotator extends LazyLogging {
           1
         }     
 
-        MessageAnnotation(mmsi, outputFieldName, startTime, endTime, value, weight)
+
+        if ((startTime.getMillis > max_time.getOrElse(startTime).getMillis) || 
+                (endTime.getMillis < min_time.getOrElse(startTime).getMillis)) None
+          else Some(MessageAnnotation(mmsi, outputFieldName, startTime, endTime, value, weight))
       }
     }
   }
@@ -143,10 +149,9 @@ object AISAnnotator extends LazyLogging {
 
   def annotateAllMessages(
       allowedMMSIs: Set[Int],
-      aisMessageInputs: Seq[SCollection[JValue]],
+      aisMessages: SCollection[JValue],
       annotationInputs: Seq[SCollection[MessageAnnotation]]): SCollection[JValue] = {
 
-    val aisMessages = SCollection.unionAll(aisMessageInputs)
     val allAnnotations = SCollection.unionAll(annotationInputs)
     val annotationsByMmsi = allAnnotations.groupBy(x => 
       (x.mmsi, x.startTime.toDateTime(UTC).getYear(), x.startTime.toDateTime(UTC).getDayOfYear()))
@@ -185,6 +190,8 @@ object AISAnnotator extends LazyLogging {
     val jobName = remaining_args.required("job-name")
     val jobConfigurationFile = remaining_args.required("job-config")
     val outputFilePath = remaining_args.required("output-path")
+    val startDate = remaining_args.optional("annotation-start")
+    val endDate = remaining_args.optional("annotation-end")
 
     val config = GcpConfig.makeConfig(environment, jobName)
 
@@ -210,16 +217,31 @@ object AISAnnotator extends LazyLogging {
         readJsonFile(sc, path)
       }
 
+      val aisMessages = SCollection.unionAll(inputData)
+
+      val instants : SCollection[Instant] = aisMessages.map {json =>
+        Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T"))
+      } 
+
+      // TODO verify that min_time is start of day, till then pull back 24 hours
+      val min_time = startDate.map(Instant.parse(_, ISODateTimeFormat.date()).withDurationAdded(Duration.standardHours(24), -1))
+      // Push Max time forward 24 hours to include whole day.
+      val max_time = endDate.map(Instant.parse(_, ISODateTimeFormat.date()).withDurationAdded(Duration.standardHours(24), 1))
+
       val annotations = annotatorConfig.jsonAnnotations.map {
         case annotation =>
           val inputAnnotationFile = readJsonFile(sc, annotation.inputFilePattern)
           jsonAnnotationReader(inputAnnotationFile,
                                annotation.outputFieldName,
                                annotation.timeRangeFieldName,
-                               annotation.defaultValue)
+                               annotation.defaultValue,
+                               min_time,
+                               max_time)
       }
 
-      val annotated = annotateAllMessages(includedMMSIs, inputData, annotations)
+
+
+      val annotated = annotateAllMessages(includedMMSIs, aisMessages, annotations)
       val annotatedToString = annotated.map(json => compact(render(json)))
 
       annotatedToString.saveAsTextFile(outputFilePath)

@@ -60,24 +60,27 @@ def sharded_paths(range_start, range_end, force_daily=False):
             if date > range_end:
                 break
             pth = '{base}{date:%Y-%m}-*/*-of-*'.format(base=gcs_base, date=date)
-            paths.append('  - "{}"'.format(pth))
             if month < 12:
                 month += 1
             else:
                 month = 1
                 year += 1
+            next_date = datetime.date(year, month, 1)
+            paths.append((date, next_date, '  - "{}"'.format(pth)))
+
 
     else:
         paths = []
         day = range_start
         while day <= range_end:
             pth = '{base}{day:%Y-%m-%d}/*-of-*'.format(base=gcs_base, day=day)
+            start_day = day
+            day += datetime.timedelta(days=1)
             if common.exists_on_gcs(pth):
-                paths.append(
-                    '  - "{}"'.format(pth))
+                paths.append((day, start_day,
+                    '  - "{}"'.format(pth)))
             else:
                 log("Skipping path missing from GCS:", pth)
-            day += datetime.timedelta(days=1)
     return paths
 
 
@@ -95,7 +98,7 @@ encounterMaxKilometers: 0.5
     paths = sharded_paths(range_start, range_end)
 
     log("Generating config text for features")
-    config = template.format(paths='\n'.join(paths))
+    config = template.format(paths='\n'.join([p for (_, _, p) in paths]))
 
     with tempfile.NamedTemporaryFile() as fp:
         fp.write(config)
@@ -173,12 +176,8 @@ def run_inference(start_date, end_date):
 
 
 
-# TODO: Annotate day-by-day
-# TODO: Check for and remove old days
 
-output_template = "gs://world-fishing-827/data-production/classification/incremental/{}"
-
-def run_annotation(start_date, end_date):
+def run_annotation(start_date, end_date, output_template):
     template = """
 inputFilePatterns:
 {paths}
@@ -195,7 +194,7 @@ jsonAnnotations:
 
     job_time = datetime.datetime.utcnow()
 
-    for i, p in enumerate(paths):
+    for i, (start, end, p) in enumerate(paths):
 
         # start up to 10 workers and wait till one finishes to start another
 
@@ -221,9 +220,12 @@ jsonAnnotations:
                                                 --env=dev \
                                                 --job-name=annotate{job_time:%Y%m%d%H%M%S}{i} \
                                                 --maxNumWorkers=5 \
-                                                --diskSizeGb=100 \
+                                                --diskSizeGb=500 \
+                                                --annotation-start={start:%Y-%m-%d} \
+                                                --annotation-end={end:%Y-%m-%d} \
                                                 --output-path={output_path}" \
-                                                '''.format(config_path=fp.name, output_path=output_path, job_time=job_time, i=i)
+                                                '''.format(config_path=fp.name, output_path=output_path, 
+                                                    job_time=job_time, i=i, start=start, end=start)
 
             log("Executing command:")
             log(command, '\n')
@@ -253,6 +255,21 @@ def date(text):
     return datetime.datetime.strptime(text, '%Y-%m-%d').date()
 
 
+def write_command_txt(base_dir, args):
+    now = datetime.datetime.now()
+    command_str = ' '.join([x.replace('--', '\\\n    --') for x in sys.argv])
+    dest_path = os.path.join(base_dir, "command_{:%Y-%m-%dT%H-%M-%S}.txt".format(now))
+    with tempfile.NamedTemporaryFile() as fp:
+        fp.write(command_str)
+        fp.write('\n')
+        fp.flush()
+        log("Writing Command Txt:")
+        log(command_str)
+        log("Copying to:", dest_path)
+        output = checked_call(['gsutil', 'cp', fp.name, dest_path])
+
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Update Vessel Lists.')
@@ -260,7 +277,27 @@ if __name__ == "__main__":
     parser.add_argument('--skip-feature-generation', help='skip generating new features', action='store_true')
     parser.add_argument('--skip-inference', help='skip running inference', action='store_true')
     parser.add_argument('--skip-annotation', help='skip annotating pipeline data', action='store_true')
+    parser.add_argument('--prod', action='store_true', help='place results in production tree')
+    parser.add_argument('--prefix', default='annotated', help='prefix for directory results will be stored in')
+
     args = parser.parse_args()
+
+    command_str = ' '.join([x.replace('--', '\\\n    --') for x in sys.argv])
+
+    # TODO: do something about this; execute in subdirectory that get's mapped to original source.
+    short_hash = checked_call(['git', 'rev-parse', '--short', 'HEAD']).strip().decode('ascii')
+
+    if args.prod:
+        base_dir_template = 'gs://world-fishing-827/data-production/annotation-pipeline/{prefix}-{hash}'
+    else:
+        base_dir_template = 'gs://world-fishing-827-dev-ttl30d/data-production/annotation-pipeline/{prefix}-{hash}'
+
+    base_dir = base_dir_template.format(prefix=args.prefix, hash=short_hash)
+
+    output_template = os.path.join(base_dir, "{}")
+
+
+    write_command_txt(base_dir, sys.argv)
 
     end_date = common.most_recent(gcs_base + "{day:%Y-%m-%d}/*")
     log("Using", end_date, "for end date")
@@ -287,7 +324,7 @@ if __name__ == "__main__":
             upload_inference_results()
 
         if not args.skip_annotation:
-            run_annotation(start_date, end_date)
+            run_annotation(start_date, end_date, output_template)
 
     except Exception as err:
         log("Execution failed with:", repr(err))

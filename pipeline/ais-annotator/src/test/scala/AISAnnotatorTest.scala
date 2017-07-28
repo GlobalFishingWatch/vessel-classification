@@ -98,7 +98,7 @@ class AnnotatorTests extends PipelineSpec with Matchers {
       val allowedMMSIs = Set(123, 456)
 
       val annotations = Seq(sc.parallelize(annot1), sc.parallelize(annot2))
-      val res = AISAnnotator.annotateAllMessages(allowedMMSIs, Seq(sc.parallelize(msgs)), annotations)
+      val res = AISAnnotator.annotateAllMessages(allowedMMSIs, sc.parallelize(msgs), annotations)
 
       res should haveSize(9)
 
@@ -125,7 +125,7 @@ class AnnotatorTests extends PipelineSpec with Matchers {
     )
     runWithContext { sc =>
       val tableRows = jsonFromString(sc.parallelize(inputLines))
-      val res = AISAnnotator.jsonAnnotationReader(tableRows, "heights_out", "heights", 2.0)
+      val res = AISAnnotator.jsonAnnotationReader(tableRows, "heights_out", "heights", 2.0, None, None)
 
       res should containInAnyOrder(
         Seq(
