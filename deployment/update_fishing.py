@@ -77,8 +77,8 @@ def sharded_paths(range_start, range_end, force_daily=False):
             start_day = day
             day += datetime.timedelta(days=1)
             if common.exists_on_gcs(pth):
-                paths.append(
-                    '  - "{}"'.format((start_day, day, pth)))
+                paths.append((day, start_day,
+                    '  - "{}"'.format(pth)))
             else:
                 log("Skipping path missing from GCS:", pth)
     return paths
@@ -98,7 +98,7 @@ encounterMaxKilometers: 0.5
     paths = sharded_paths(range_start, range_end)
 
     log("Generating config text for features")
-    config = template.format(paths='\n'.join([p, for (_, _, p) in paths]))
+    config = template.format(paths='\n'.join([p for (_, _, p) in paths]))
 
     with tempfile.NamedTemporaryFile() as fp:
         fp.write(config)
@@ -221,8 +221,8 @@ jsonAnnotations:
                                                 --job-name=annotate{job_time:%Y%m%d%H%M%S}{i} \
                                                 --maxNumWorkers=5 \
                                                 --diskSizeGb=500 \
-                                                --annotation-start {start:%Y-%m-%d} \
-                                                --annotation-start {end:%Y-%m-%d} \
+                                                --annotation-start={start:%Y-%m-%d} \
+                                                --annotation-end={end:%Y-%m-%d} \
                                                 --output-path={output_path}" \
                                                 '''.format(config_path=fp.name, output_path=output_path, 
                                                     job_time=job_time, i=i, start=start, end=start)
@@ -284,6 +284,7 @@ if __name__ == "__main__":
 
     command_str = ' '.join([x.replace('--', '\\\n    --') for x in sys.argv])
 
+    # TODO: do something about this; execute in subdirectory that get's mapped to original source.
     short_hash = checked_call(['git', 'rev-parse', '--short', 'HEAD']).strip().decode('ascii')
 
     if args.prod:
