@@ -157,11 +157,11 @@ def run_generate_features(range_start, range_end):
 
 def run_inference(start_date, end_date):
     command = """
-        python -m classification.run_inference prod.fishing_detection \\
+        python -m classification.run_inference_sharded prod.fishing_detection \\
             --root_feature_path gs://world-fishing-827-dev-ttl30d/data-production/classification/{user}/update_fishing_detection/pipeline/output/features \\
             --inference_parallelism 64 \\
             --feature_dimensions 15 \\
-            --inference_results_path ./update_fishing_detection.json.gz \\
+            --inference_results_path ./update_fishing_detection \\
             --model_checkpoint_path   ./fishing_detection.model.ckpt  \\
             --metadata_file training_classes.csv \\
             --fishing_ranges_file combined_fishing_ranges.csv \\
