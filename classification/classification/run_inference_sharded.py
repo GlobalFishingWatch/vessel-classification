@@ -166,10 +166,15 @@ class Inferer(object):
                     output_data = {}
 
                     for (o, p) in zip(objectives, predictions_array):
-                        results = 0.build_json_results(p, timestamps_array)
+                        results = o.build_json_results(p, timestamps_array)
                         for x in results:
                             if 'start_time' in x:
-                                date, _ = start_time.split('T')
+                                date, _ = x['start_time'].split('T')
+                                dt_date = valid_date(date)
+                                if (start_date is not None) and (dt_date < start_date):
+                                    continue
+                                if (end_date is not None) and (dt_date > end_date):
+                                    continue
                             else:
                                 date = 'undated'
                             if date not in output_data:
@@ -182,7 +187,7 @@ class Inferer(object):
 
                     for k, v in output_data.items():
                         with nlj.open(os.path.join(inference_results_path,  k + '.json'), 'a') as out:
-                            outputs[k].write(output_data[k])
+                            out.write(output_data[k])
 
 
 

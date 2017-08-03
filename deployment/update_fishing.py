@@ -36,10 +36,11 @@ def successfully_completed_one_of(job_ids, sleep_time=10): # TODO: add timeout
                 raise RuntimeError("Annotation for {} did not complete ({})".format(job_id, status))
         time.sleep(sleep_time)
 
+# TODO: fix to use sharded
 def upload_inference_results():
-    destination = "gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/update_fishing_detection.json.gz"
+    destination = "gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/{name}".format(name)
     log("Copying weights to", destination)
-    checked_call(['gsutil', 'cp', 'update_fishing_detection.json.gz', destination],
+    checked_call(['gsutil', '-m', 'cp', 'update_fishing_detection/*.json', destination],
         cwd=classification_dir)
 
 
@@ -285,14 +286,16 @@ if __name__ == "__main__":
     command_str = ' '.join([x.replace('--', '\\\n    --') for x in sys.argv])
 
     # TODO: do something about this; execute in subdirectory that get's mapped to original source.
-    short_hash = checked_call(['git', 'rev-parse', '--short', 'HEAD']).strip().decode('ascii')
+    short_hash = "XXX" #checked_call(['git', 'rev-parse', '--short', 'HEAD']).strip().decode('ascii')
+
+    name = '{prefix}-{hash}'.format(prefix=args.prefix, hash=short_hash)
 
     if args.prod:
-        base_dir_template = 'gs://world-fishing-827/data-production/annotation-pipeline/{prefix}-{hash}'
+        base_dir_template = 'gs://world-fishing-827/data-production/annotation-pipeline/{name}'
     else:
-        base_dir_template = 'gs://world-fishing-827-dev-ttl30d/data-production/annotation-pipeline/{prefix}-{hash}'
+        base_dir_template = 'gs://world-fishing-827-dev-ttl30d/data-production/annotation-pipeline/{name}'
 
-    base_dir = base_dir_template.format(prefix=args.prefix, hash=short_hash)
+    base_dir = base_dir_template.format(name=name)
 
     output_template = os.path.join(base_dir, "{}")
 
@@ -320,10 +323,12 @@ if __name__ == "__main__":
             run_generate_features(feature_start_date, end_date)
 
         if not args.skip_inference:
+            # TODO: make directory if needed
             run_inference(start_date, end_date)
-            upload_inference_results()
+            upload_inference_results(name)
 
         if not args.skip_annotation:
+            # TODO: pull from sharded
             run_annotation(start_date, end_date, output_template)
 
     except Exception as err:

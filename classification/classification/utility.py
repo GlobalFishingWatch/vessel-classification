@@ -688,7 +688,7 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
     def replicate_extract(input_series, mmsi):
         if start_date is not None:
             raw_start_i = np.searchsorted(input_series[:, 0], start_stamp, side='left')
-            # If possible go to shift past end so that we have good data all the way to end
+            # If possible go to shift before start so we have good data for whole length
             start_i = max(raw_start_i - shift, 0)
         else:
             start_i = 0
