@@ -36,9 +36,8 @@ def successfully_completed_one_of(job_ids, sleep_time=10): # TODO: add timeout
                 raise RuntimeError("Annotation for {} did not complete ({})".format(job_id, status))
         time.sleep(sleep_time)
 
-# TODO: fix to use sharded
-def upload_inference_results():
-    destination = "gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/{name}".format(name)
+def upload_inference_results(name):
+    destination = "gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/{name}".format(name=name)
     log("Copying weights to", destination)
     checked_call(['gsutil', '-m', 'cp', 'update_fishing_detection/*.json', destination],
         cwd=classification_dir)
@@ -170,6 +169,11 @@ def run_inference(start_date, end_date):
             --end_date {end_date:%Y-%m-%d}
             """.format(user=os.environ.get('USER'), start_date=start_date, end_date=end_date)
 
+    dest_path = os.path.join(classification_dir, 'update_fishing_detection')
+    if not os.path.exists(dest_path):
+        log("Making", dest_path)
+        os.mkdir(dest_path)
+
     log("Running command:")
     log(command)
 
@@ -178,13 +182,13 @@ def run_inference(start_date, end_date):
 
 
 
-def run_annotation(start_date, end_date, output_template):
+def run_annotation(start_date, end_date, name, output_template):
     template = """
 inputFilePatterns:
 {paths}
 knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_LIKELY_AND_SUSPECTED/ANY_YEAR.txt"
 jsonAnnotations:
-  - inputFilePattern: "gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/update_fishing_detection.json.gz"
+  - inputFilePattern: "gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/{name}/{date:%Y-%m-%d}.json}"
     timeRangeFieldName: "fishing_localisation"
     outputFieldName: "nnet_score"
     defaultValue: 1.0
@@ -203,7 +207,7 @@ jsonAnnotations:
 
         log("Anotating", datestr)
 
-        config = template.format(paths=p)
+        config = template.format(paths=p, name=name, date=start)
 
         output_path = output_template.format(datestr)
         clobber_path = os.path.join(output_path, "*-of-*")
@@ -323,13 +327,11 @@ if __name__ == "__main__":
             run_generate_features(feature_start_date, end_date)
 
         if not args.skip_inference:
-            # TODO: make directory if needed
             run_inference(start_date, end_date)
             upload_inference_results(name)
 
         if not args.skip_annotation:
-            # TODO: pull from sharded
-            run_annotation(start_date, end_date, output_template)
+            run_annotation(start_date, end_date, name, name, output_template)
 
     except Exception as err:
         log("Execution failed with:", repr(err))
