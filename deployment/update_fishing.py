@@ -188,7 +188,7 @@ inputFilePatterns:
 {paths}
 knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_LIKELY_AND_SUSPECTED/ANY_YEAR.txt"
 jsonAnnotations:
-  - inputFilePattern: "gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/{name}/{date:%Y-%m-%d}.json}"
+  - inputFilePattern: "{input_pattern}"
     timeRangeFieldName: "fishing_localisation"
     outputFieldName: "nnet_score"
     defaultValue: 1.0
@@ -201,13 +201,22 @@ jsonAnnotations:
 
     for i, (start, end, p) in enumerate(paths):
 
+
+        input_pattern = 'gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/{name}/{date:%Y-%m-%d}.json'.format(
+            name=name, date=start)
+
+        if not common.exists_on_gcs(input_pattern):
+            log('Skipping', input_pattern, 'because it does not exist')
+            continue
+
         # start up to 10 workers and wait till one finishes to start another
 
         datestr = os.path.split(os.path.split(p)[0])[1]
 
         log("Anotating", datestr)
 
-        config = template.format(paths=p, name=name, date=start)
+        config = template.format(paths=p, input_pattern=input_pattern)
+
 
         output_path = output_template.format(datestr)
         clobber_path = os.path.join(output_path, "*-of-*")
@@ -289,8 +298,7 @@ if __name__ == "__main__":
 
     command_str = ' '.join([x.replace('--', '\\\n    --') for x in sys.argv])
 
-    # TODO: do something about this; execute in subdirectory that get's mapped to original source.
-    short_hash = "XXX" #checked_call(['git', 'rev-parse', '--short', 'HEAD']).strip().decode('ascii')
+    short_hash = os.environ.get('SOURCE_COMMIT', 'UNKNOWN_COMMIT')
 
     name = '{prefix}-{hash}'.format(prefix=args.prefix, hash=short_hash)
 
@@ -331,7 +339,7 @@ if __name__ == "__main__":
             upload_inference_results(name)
 
         if not args.skip_annotation:
-            run_annotation(start_date, end_date, name, name, output_template)
+            run_annotation(start_date, end_date, name, output_template)
 
     except Exception as err:
         log("Execution failed with:", repr(err))

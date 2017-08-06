@@ -15,7 +15,11 @@
 
     - `cd vessel-classification`
 
-    - Run `sudo docker build -f deployment/Dockerfile -t update_vessel_lists .` to create a docker instance.
+    - Run 
+
+            sudo docker build -f deployment/Dockerfile -t update_vessel_lists . --BUILD_ARG SOURCE_COMMIT=`git rev-parse --short HEAD`
+
+       to create a docker instance.
 
 # Running updates remotely.
 

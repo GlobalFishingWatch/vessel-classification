@@ -181,9 +181,10 @@ class Inferer(object):
                                 output_data[date] = {
                                     'mmsi': int(mmsi),
                                     'start_time': start_time.isoformat(),
-                                    'end_time': end_time.isoformat()
+                                    'end_time': end_time.isoformat(), 
+                                    o.metadata_label = []
                                 }
-                            output_data[date][o.metadata_label] = x
+                            output_data[date][o.metadata_label].append(x)
 
                     for k, v in output_data.items():
                         with nlj.open(os.path.join(inference_results_path,  k + '.json'), 'a') as out:
