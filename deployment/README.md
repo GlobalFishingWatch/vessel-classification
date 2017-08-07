@@ -17,7 +17,7 @@
 
     - Run 
 
-            sudo docker build -f deployment/Dockerfile -t update_vessel_lists . --BUILD_ARG SOURCE_COMMIT=`git rev-parse --short HEAD`
+            sudo docker build  -f deployment/Dockerfile -t update_vessel_lists . 
 
        to create a docker instance.
 
@@ -37,11 +37,11 @@ Logs are placed in `vessel-classification\logs`
 
 ## To run full update from the instance
 
-`sudo docker run --rm -v ~/.ssh:/root/.ssh -v ~/vessel-classification/logs:/app/logs update_vessel_lists python deployment/update_vessel_lists.py`
+    sudo docker run --rm -e SOURCE_COMMIT=`git rev-parse --short HEAD` -v ~/.ssh:/root/.ssh -v ~/vessel-classification/logs:/app/logs update_vessel_lists python deployment/update_vessel_lists.py
 
 ## To run manually
 
-`sudo docker run -it -v ~/.ssh:/root/.ssh -v ~/vessel-classification/logs:/app/logs update_vessel_lists bash`
+    sudo docker run -it -e SOURCE_COMMIT=`git rev-parse --short HEAD` -v ~/.ssh:/root/.ssh -v ~/vessel-classification/logs:/app/logs update_vessel_lists bash
 
 Then for options:
 

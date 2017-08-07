@@ -182,7 +182,7 @@ class Inferer(object):
                                     'mmsi': int(mmsi),
                                     'start_time': start_time.isoformat(),
                                     'end_time': end_time.isoformat(), 
-                                    o.metadata_label = []
+                                    o.metadata_label: []
                                 }
                             output_data[date][o.metadata_label].append(x)
 

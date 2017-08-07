@@ -77,7 +77,7 @@ def sharded_paths(range_start, range_end, force_daily=False):
             start_day = day
             day += datetime.timedelta(days=1)
             if common.exists_on_gcs(pth):
-                paths.append((day, start_day,
+                paths.append((start_day, day,
                     '  - "{}"'.format(pth)))
             else:
                 log("Skipping path missing from GCS:", pth)
