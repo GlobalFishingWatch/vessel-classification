@@ -1,6 +1,19 @@
 from __future__ import print_function
 from __future__ import division
+"""
 
+
+Note on billing: 
+
+    Launching lots of small dataflow jobs shouldn't impact billing. According to:
+
+        https://cloud.google.com/dataflow/pricing
+
+    Billing is dependant only resource used (cpus, memory, storage, shuffle), not the
+    number of jobs.
+
+
+"""
 import sys
 import subprocess
 import json
@@ -183,56 +196,10 @@ def run_inference(start_date, end_date):
 
 
 
-def run_annotation_core(i, start, end, path, job_time):
-    input_pattern = 'gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/{name}/{date:%Y-%m-%d}.json'.format(
-        name=name, date=start)
+def run_annotation_core(args):
+    try:
+        (i, start, end, p, job_time) = args
 
-    datestr = os.path.split(os.path.split(p)[0])[1]
-
-    log("Anotating", datestr)
-
-    config = template.format(paths=p, input_pattern=input_pattern)
-
-
-    output_path = output_template.format(datestr)
-    clobber_path = os.path.join(output_path, "*-of-*")
-
-    log("Removing existing files from", clobber_path)
-    subprocess.call(['gsutil', '-m', 'rm', clobber_path])
-
-    with tempfile.NamedTemporaryFile() as fp:
-        fp.write(config)
-        fp.flush()
-        log("Using Config:")
-        log(config, '\n')
-
-        command = ''' sbt aisAnnotator/"run --job-config={config_path} \
-                                            --env=dev \
-                                            --job-name=annotate{job_time:%Y%m%d%H%M%S}{i} \
-                                            --maxNumWorkers=5 \
-                                            --diskSizeGb=500 \
-                                            --annotation-start={start:%Y-%m-%d} \
-                                            --annotation-end={end:%Y-%m-%d} \
-                                            --output-path={output_path}" \
-                                            '''.format(config_path=fp.name, output_path=output_path, 
-                                                job_time=job_time, i=i, start=start, end=start)
-
-        log("Executing command:")
-        log(command, '\n')
-
-        output = checked_call([command], shell=True, cwd=pipeline_dir)
-
-    annotation_id = parse_id_from_sbt_output(output)
-
-    log("Started annotation with ID:", annotation_id)
-
-    active_ids.add(annotation_id)
-    # TODO: decomplexify
-    pid = successfully_completed_one_of([annotation_id]) 
-    return pid
-
-
-def run_annotation(start_date, end_date, name, output_template):
     template = """
 inputFilePatterns:
 {paths}
@@ -243,9 +210,60 @@ jsonAnnotations:
     outputFieldName: "nnet_score"
     defaultValue: 1.0
 """
-    paths = sharded_paths(start_date, end_date, force_daily=True)
 
-    active_ids = set()
+
+        input_pattern = 'gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/{name}/{date:%Y-%m-%d}.json'.format(
+            name=name, date=start)
+
+        datestr = os.path.split(os.path.split(p)[0])[1]
+
+        log("Anotating", datestr)
+
+        config = template.format(paths=p, input_pattern=input_pattern)
+
+
+        output_path = output_template.format(datestr)
+        clobber_path = os.path.join(output_path, "*-of-*")
+
+        if common.exists_on_gcs(clobber_path):
+            log("Removing existing files from", clobber_path)
+            subprocess.call(['gsutil', '-m', 'rm', clobber_path])
+
+        with tempfile.NamedTemporaryFile() as fp:
+            fp.write(config)
+            fp.flush()
+            log("Using Config:")
+            log(config, '\n')
+
+            command = ''' sbt aisAnnotator/"run --job-config={config_path} \
+                                                --env=dev \
+                                                --job-name=annotate{job_time:%Y%m%d%H%M%S}{i} \
+                                                --maxNumWorkers=5 \
+                                                --diskSizeGb=500 \
+                                                --annotation-start={start:%Y-%m-%d} \
+                                                --annotation-end={end:%Y-%m-%d} \
+                                                --output-path={output_path}" \
+                                                '''.format(config_path=fp.name, output_path=output_path, 
+                                                    job_time=job_time, i=i, start=start, end=start)
+
+            log("Executing command:")
+            log(command, '\n')
+
+            output = checked_call([command], shell=True, cwd=pipeline_dir)
+
+        annotation_id = parse_id_from_sbt_output(output)
+
+        log("Started annotation with ID:", annotation_id)
+
+        # TODO: decomplexify
+        pid = successfully_completed_one_of([annotation_id]) 
+        return pid
+    except KeyboardInterrupt as err:
+        return err
+
+
+def run_annotation(start_date, end_date, name, output_template):
+    paths = sharded_paths(start_date, end_date, force_daily=True)
 
     job_time = datetime.datetime.utcnow()
 
@@ -253,6 +271,8 @@ jsonAnnotations:
 
     for pid in pool.imap_unordered(run_annotation_core, 
             [(i, start, end, path, job_time) for (i, (start, end, path)) in enumerate(paths)]):
+        if isinstance(pid, KeyboardInterrupt):
+            raise pid
         log("Annotation Complete for", pid)
     log("Annotation Fully Complete")
 
@@ -334,6 +354,7 @@ if __name__ == "__main__":
             run_annotation(start_date, end_date, name, output_template)
 
     except Exception as err:
+        print("Execution failed with:", repr(err))
         log("Execution failed with:", repr(err))
 
 

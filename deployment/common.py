@@ -48,11 +48,10 @@ def clone_treniformis_if_needed():
         log("Using existing treniformis without updating")
 
 def log(*args, **kwargs):
-    """Just like 'print(), except that also outputs
+    """Just like 'print(), except that outputs
        to the file located at `logpath'
     """
     args = (str(datetime.datetime.now()), ':') + args
-    print(*args, **kwargs)
     with open(logpath, 'a') as f:
         kwargs['file'] = f
         print(*args, **kwargs)
