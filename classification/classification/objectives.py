@@ -625,7 +625,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                     last = None
                     fishing_ranges = []
                     for ts_raw, score in combined:
-			score = float(score)
+                        score = float(score)
                         ts = datetime.datetime.utcfromtimestamp(int(ts_raw))
                         if last and last[0] >= ts:
                             break
