@@ -79,7 +79,7 @@ class AnnotatorTests extends PipelineSpec with Matchers {
                                          "height",
                                          Instant.parse("20150101T06:00:00Z"),
                                          Instant.parse("20150101T08:00:00Z"),
-                                         0.0,
+                                         0.2,  // We use something that doesn't divide evenly here to test that rounding is working
                                          1.0),
 
                       MessageAnnotation(123,
@@ -108,9 +108,9 @@ class AnnotatorTests extends PipelineSpec with Matchers {
         tr(123, "20150101T03:00:00Z", 0.0, 0.0, Seq("height" -> 2.5)),
         tr(123, "20150101T04:00:00Z", 0.0, 0.0, Seq("height" -> 2.5)),
         tr(123, "20150101T05:00:00Z", 0.0, 0.0, Seq()),
-        tr(123, "20150101T06:00:00Z", 0.0, 0.0, Seq("height" -> 3.0, "weight" -> 100.0)),
-        tr(123, "20150101T07:00:00Z", 0.0, 0.0, Seq("height" -> 3.0, "weight" -> 100.0)),
-        tr(123, "20150101T08:00:00Z", 0.0, 0.0, Seq("height" -> 3.0, "weight" -> 100.0)),
+        tr(123, "20150101T06:00:00Z", 0.0, 0.0, Seq("height" -> 3.07, "weight" -> 100.0)),
+        tr(123, "20150101T07:00:00Z", 0.0, 0.0, Seq("height" -> 3.07, "weight" -> 100.0)),
+        tr(123, "20150101T08:00:00Z", 0.0, 0.0, Seq("height" -> 3.07, "weight" -> 100.0)),
         tr(123, "20150101T09:00:00Z", 0.0, 0.0, Seq("weight" -> 100.0))
       )
 

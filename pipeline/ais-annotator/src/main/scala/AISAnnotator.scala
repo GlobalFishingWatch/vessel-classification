@@ -136,7 +136,8 @@ object AISAnnotator extends LazyLogging {
         activeAnnotations.groupBy(_.name).map {
           case (name, annotation_list) => {
             val json: JValue = (name -> 
-              annotation_list.map(x => x.value * x.weight).sum / annotation_list.map(_.weight).sum)
+              // Note that we round to nearest hundreth here
+              (math rint annotation_list.map(x => x.value * x.weight).sum / annotation_list.map(_.weight).sum * 100) / 100)
             annotatedMsg = annotatedMsg merge json
           }
         }
