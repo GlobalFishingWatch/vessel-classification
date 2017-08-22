@@ -295,6 +295,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Update Vessel Lists.')
     parser.add_argument('--start-date', type=date, help='starting date in "%YYYY-%mmm-%dd" format')
+    parser.add_argument('--end-date', type=date, help='end date in "%YYYY-%mmm-%dd" format')
     parser.add_argument('--skip-feature-generation', help='skip generating new features', action='store_true')
     parser.add_argument('--skip-inference', help='skip running inference', action='store_true')
     parser.add_argument('--skip-annotation', help='skip annotating pipeline data', action='store_true')
@@ -321,7 +322,10 @@ if __name__ == "__main__":
 
     write_command_txt(base_dir, sys.argv)
 
-    end_date = common.most_recent(gcs_base + "{day:%Y-%m-%d}/*")
+    if args.end_date:
+        end_date = args.end_date
+    else:
+        end_date = common.most_recent(gcs_base + "{day:%Y-%m-%d}/*")
     log("Using", end_date, "for end date")
     if args.start_date is None:
         start_date = end_date - datetime.timedelta(days=14)
