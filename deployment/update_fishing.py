@@ -264,7 +264,7 @@ def run_annotation(start_date, end_date, name, output_template):
     job_time = datetime.datetime.utcnow()
 
     with futures.ProcessPoolExecutor() as executor:
-        for pid in executor.imap_unordered(run_annotation_core, 
+        for pid in executor.map(run_annotation_core, 
                 [(i, start, end, path, job_time) for (i, (start, end, path)) in enumerate(paths)]):
             if isinstance(pid, KeyboardInterrupt):
                 raise pid
