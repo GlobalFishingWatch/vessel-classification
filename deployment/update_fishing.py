@@ -203,10 +203,10 @@ inputFilePatterns:
 {paths}
 knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_LIKELY_AND_SUSPECTED/ANY_YEAR.txt"
 jsonAnnotations:
-- inputFilePattern: "{input_pattern}"
-timeRangeFieldName: "fishing_localisation"
-outputFieldName: "nnet_score"
-defaultValue: 1.0
+    - inputFilePattern: "{input_pattern}"
+      timeRangeFieldName: "fishing_localisation"
+      outputFieldName: "nnet_score"
+      defaultValue: 1.0
 """
 
 
