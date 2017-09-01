@@ -34,7 +34,7 @@ logpath = os.path.join(logdir, "log-{}".format(str(datetime.datetime.utcnow()).r
 def download_weights_if_needed():
     if not os.path.exists('vessel_characterization.model.ckpt'):
         checked_call(['gsutil', 'cp', 
-            'gs://world-fishing-827/data-production/classification/fishing_detection.model.ckpt', '.'],
+            'gs://world-fishing-827/data-production/classification/fishing_detection.model.ckpt', '.'], # TODO update
             cwd=classification_dir)
     else:
         log("Using existing weights without updating")
@@ -51,7 +51,7 @@ def successfully_completed_one_of(job_ids, sleep_time=10): # TODO: add timeout
         time.sleep(sleep_time)
 
 def upload_inference_results(name):
-    destination = "gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/{name}".format(name=name)
+    destination = "gs://machine-learning-dev-ttl-30d/classification/FISHING_UPDATER/{name}".format(name=name)
     log("Copying weights to", destination)
     checked_call(['gsutil', '-m', 'cp', 'update_fishing_detection/*.json', destination],
         cwd=classification_dir)
@@ -103,7 +103,7 @@ def generate_features(range_start, range_end):
 inputFilePatterns:
 {paths}
 knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_AND_LIKELY/ANY_YEAR.txt"
-anchoragesRootPath: "gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output"
+anchoragesRootPath: 
 minRequiredPositions: 10
 encounterMinHours: 3
 encounterMaxKilometers: 0.5
@@ -170,9 +170,10 @@ def run_generate_features(range_start, range_end):
 
 
 def run_inference(start_date, end_date):
+    # TODO: swap to machinelearning for features
     command = """
         python -m classification.run_inference_sharded prod.fishing_detection \\
-            --root_feature_path gs://world-fishing-827-dev-ttl30d/data-production/classification/{user}/update_fishing_detection/pipeline/output/features \\
+            --root_feature_path gs://machine-learning-dev-ttl-30d/classification/{user}/update_fishing_detection/pipeline/output/features \\
             --inference_parallelism 64 \\
             --feature_dimensions 15 \\
             --inference_results_path ./update_fishing_detection \\
@@ -210,7 +211,7 @@ jsonAnnotations:
 """
 
 
-    input_pattern = 'gs://world-fishing-827-dev-ttl30d/data-production/classification/FISHING_UPDATER/{name}/{date:%Y-%m-%d}.json'.format(
+    input_pattern = 'gs://machine-learning-dev-ttl-30d/classification/FISHING_UPDATER/{name}/{date:%Y-%m-%d}.json'.format(
         name=name, date=start)
 
     datestr = os.path.split(os.path.split(p)[0])[1]
@@ -301,7 +302,8 @@ if __name__ == "__main__":
     parser.add_argument('--skip-annotation', help='skip annotating pipeline data', action='store_true')
     parser.add_argument('--prod', action='store_true', help='place results in production tree')
     parser.add_argument('--prefix', default='annotated', help='prefix for directory results will be stored in')
-
+    parser.add_argument('--root_data_path', default="gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output",
+                        help="Path to input AIS data")
     args = parser.parse_args()
 
     command_str = ' '.join([x.replace('--', '\\\n    --') for x in sys.argv])
@@ -311,9 +313,9 @@ if __name__ == "__main__":
     name = '{prefix}-{hash}'.format(prefix=args.prefix, hash=short_hash)
 
     if args.prod:
-        base_dir_template = 'gs://world-fishing-827/data-production/annotation-pipeline/{name}'
+        base_dir_template = 'gs://machine-learning-production/annotation-pipeline/{name}'
     else:
-        base_dir_template = 'gs://world-fishing-827-dev-ttl30d/data-production/annotation-pipeline/{name}'
+        base_dir_template = 'gs://machine-learning-dev-ttl-30d/annotation-pipeline/{name}'
 
     base_dir = base_dir_template.format(name=name)
 
