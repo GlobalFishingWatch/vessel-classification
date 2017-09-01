@@ -26,7 +26,7 @@ import common
 from concurrent import futures
 from common import this_dir, classification_dir, pipeline_dir, top_dir, treniformis_dir, logdir
 from common import checked_call, log, job_status, status_at_completion, parse_id_from_sbt_output
-from common import gcs_base, clone_treniformis_if_needed
+from common import gcs_base as default_gcs_base, clone_treniformis_if_needed
 
 logpath = os.path.join(logdir, "log-{}".format(str(datetime.datetime.utcnow()).replace(' ', '_')))
 
@@ -59,7 +59,7 @@ def upload_inference_results(name):
 
 # TODO: perhaps just have two functions, 1 for daily sharding and one for monthly sharding and use
 # one for annotation and the other for features?
-def sharded_paths(range_start, range_end, force_daily=False):
+def sharded_paths(range_start, range_end, gcs_base, force_daily=False):
     """If the duration is longer than one month (30 days), shard by month, otherwise by day
 
     Don't check monthly shards, except limit to 2012+
@@ -98,18 +98,19 @@ def sharded_paths(range_start, range_end, force_daily=False):
     return paths
 
 
-def generate_features(range_start, range_end):
+def generate_features(range_start, range_end, gcs_base):
+    # TODO: update anchorages location
     template = """
 inputFilePatterns:
 {paths}
 knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_AND_LIKELY/ANY_YEAR.txt"
-anchoragesRootPath: 
+anchoragesRootPath: "gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output"
 minRequiredPositions: 10
 encounterMinHours: 3
 encounterMaxKilometers: 0.5
 """
     log("Generating paths for features")
-    paths = sharded_paths(range_start, range_end)
+    paths = sharded_paths(range_start, range_end, gcs_base)
 
     log("Generating config text for features")
     config = template.format(paths='\n'.join([p for (_, _, p) in paths]))
@@ -158,9 +159,9 @@ encounterMaxKilometers: 0.5
 """ # TODO: Need to update checkout / results / start and end dates. Maybe reduce parallelism too.
 
 
-def run_generate_features(range_start, range_end):
+def run_generate_features(range_start, range_end, gcs_base):
     log("Starting Feature Generation")
-    feature_id = generate_features(range_start, range_end)
+    feature_id = generate_features(range_start, range_end, gcs_base)
 
     log("Waiting for Feature Generation Complete, ID:", feature_id)
     status = status_at_completion(feature_id)
@@ -259,8 +260,8 @@ jsonAnnotations:
     return pid
 
 
-def run_annotation(start_date, end_date, name, output_template):
-    paths = sharded_paths(start_date, end_date, force_daily=True)
+def run_annotation(start_date, end_date, name, output_template, gcs_base):
+    paths = sharded_paths(start_date, end_date, gcs_base, force_daily=True)
 
     job_time = datetime.datetime.utcnow()
 
@@ -295,14 +296,14 @@ def write_command_txt(base_dir, args):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Update Vessel Lists.')
-    parser.add_argument('--start-date', type=date, help='starting date in "%YYYY-%mmm-%dd" format')
-    parser.add_argument('--end-date', type=date, help='end date in "%YYYY-%mmm-%dd" format')
+    parser.add_argument('--start-date', type=date, help='starting date in "%%YYYY-%%mmm-%%dd" format')
+    parser.add_argument('--end-date', type=date, help='end date in "%%YYYY-%%mmm-%%dd" format')
     parser.add_argument('--skip-feature-generation', help='skip generating new features', action='store_true')
     parser.add_argument('--skip-inference', help='skip running inference', action='store_true')
     parser.add_argument('--skip-annotation', help='skip annotating pipeline data', action='store_true')
     parser.add_argument('--prod', action='store_true', help='place results in production tree')
     parser.add_argument('--prefix', default='annotated', help='prefix for directory results will be stored in')
-    parser.add_argument('--root_data_path', default="gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output",
+    parser.add_argument('--root_data_path', default=default_gcs_base,
                         help="Path to input AIS data")
     args = parser.parse_args()
 
@@ -321,6 +322,7 @@ if __name__ == "__main__":
 
     output_template = os.path.join(base_dir, "{}")
 
+    gcs_base = args.root_data_path
 
     write_command_txt(base_dir, sys.argv)
 
@@ -345,14 +347,14 @@ if __name__ == "__main__":
 
         if not args.skip_feature_generation:
             # Generate features for last 30 datas
-            run_generate_features(feature_start_date, end_date)
+            run_generate_features(feature_start_date, end_date, gcs_base)
 
         if not args.skip_inference:
             run_inference(start_date, end_date)
             upload_inference_results(name)
 
         if not args.skip_annotation:
-            run_annotation(start_date, end_date, name, output_template)
+            run_annotation(start_date, end_date, name, output_template, gcs_base)
 
     except Exception as err:
         print("Execution failed with:", repr(err))
