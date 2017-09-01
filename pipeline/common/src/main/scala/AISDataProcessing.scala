@@ -122,6 +122,7 @@ object AISDataProcessing extends LazyLogging {
     }
   }
 
+  // TODO: consider interpolating onto hour grid instead of thinning
   def thinPoints(records: Iterable[VesselLocationRecord]): Iterable[VesselLocationRecord] = {
     val thinnedPoints = mutable.ListBuffer.empty[VesselLocationRecord]
 

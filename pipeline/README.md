@@ -54,8 +54,8 @@ run with the correct parameters. For example:
 
 **Features**
 
-    > project features
-    > run run  --env=dev --zone=us-central1-f --experiments=use_mem_shuffle --workerHarnessContainerImage=dataflow.gcr.io/v1beta3/java-batch:1.8.0-mm --maxNumWorkers=200 --job-name=encounters --generate-model-features=true --generate-encounters=false --anchorages-root-path=gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output --minRequiredPositions=100
+    sbt features/"run  --env=dev --experiments=shuffle_mode=service --maxNumWorkers=200 --job-name=hour_features --generate-model-features=true --generate-encounters=true --anchorages-root-path=gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output --minRequiredPositions=100 --job-config=feature-pipeline/config/standard_config.yaml" 
+
 
 **Encounters**
 
