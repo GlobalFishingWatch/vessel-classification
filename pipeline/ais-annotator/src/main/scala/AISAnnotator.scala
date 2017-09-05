@@ -157,8 +157,12 @@ object AISAnnotator extends LazyLogging {
     val annotationsByMmsi = allAnnotations.groupBy(x => 
       (x.mmsi, x.startTime.toDateTime(UTC).getYear(), x.startTime.toDateTime(UTC).getDayOfYear()))
 
-    // Do not process messages for MMSIs for which we have no annotations.
-    val filteredAISMessages = aisMessages.map { json =>
+    // Remove all but location messages and key by mmsi and day.
+    val filteredAISMessages = aisMessages
+    .filter {
+      json =>  json.has("lat") && json.has("lon") && json.has("timestamp")
+    }
+    .map { json =>
       val dateTime = Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T")).toDateTime(UTC)
       ((json.getLong("mmsi").toInt, dateTime.getYear(), dateTime.getDayOfYear()), json)
     }
@@ -167,11 +171,9 @@ object AISAnnotator extends LazyLogging {
         allowedMMSIs.isEmpty || allowedMMSIs.contains(mmsi))
     }
 
-    // Remove all but location messages and key by mmsi.
-    val filteredGroupedByMmsi = filteredAISMessages
-    // Keep only records with a location.
-    .filter { case (_, json) => json.has("lat") && json.has("lon") && json.has("timestamp")}.groupByKey
+    val filteredGroupedByMmsi = filteredAISMessages.groupByKey
 
+    // TODO: figure out how to add back in unfiltered messages
     filteredGroupedByMmsi.leftOuterJoin(annotationsByMmsi).flatMap {
       case (_, (messagesIt, Some(annotationsIt))) =>
         val messages = messagesIt.toSeq
@@ -219,10 +221,6 @@ object AISAnnotator extends LazyLogging {
       }
 
       val aisMessages = SCollection.unionAll(inputData)
-
-      val instants : SCollection[Instant] = aisMessages.map {json =>
-        Instant.parse(json.getString("timestamp").replace(" UTC", "Z").replace(" ", "T"))
-      } 
 
       // TODO verify that min_time is start of day, till then pull back 24 hours
       val min_time = startDate.map(Instant.parse(_, ISODateTimeFormat.date()).withDurationAdded(Duration.standardHours(24), -1))

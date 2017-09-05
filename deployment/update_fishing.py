@@ -73,7 +73,7 @@ def sharded_paths(range_start, range_end, gcs_base, force_daily=False):
             date = datetime.date(year, month, 1)
             if date > range_end:
                 break
-            pth = '{base}{date:%Y-%m}-*/*-of-*'.format(base=gcs_base, date=date)
+            pth = '{base}{date:%Y-%m}-*/*'.format(base=gcs_base, date=date)
             if month < 12:
                 month += 1
             else:
@@ -87,7 +87,7 @@ def sharded_paths(range_start, range_end, gcs_base, force_daily=False):
         paths = []
         day = range_start
         while day <= range_end:
-            pth = '{base}{day:%Y-%m-%d}/*-of-*'.format(base=gcs_base, day=day)
+            pth = '{base}{day:%Y-%m-%d}/*'.format(base=gcs_base, day=day)
             start_day = day
             day += datetime.timedelta(days=1)
             if common.exists_on_gcs(pth):
