@@ -13,7 +13,7 @@ before_script:
   - export PATH=$PATH:$PWD/protoc_dir/bin
   - export PATH=$HOME/.local/bin:$PATH
   - sudo pip install tensorflow
-  - pip install google-api-python-client pyyaml python-dateutil NewlineJSON pytz yattag
+  - sudo pip install google-api-python-client pyyaml python-dateutil NewlineJSON pytz yattag
 
 script:
   - ./test_all
