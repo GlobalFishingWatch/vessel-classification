@@ -98,6 +98,8 @@ def sharded_paths(range_start, range_end, gcs_base, force_daily=False):
     return paths
 
 
+# TODO: revisit generate encounters
+
 def generate_features(range_start, range_end, gcs_base):
     # TODO: update anchorages location
     template = """
@@ -124,12 +126,11 @@ encounterMaxKilometers: 0.5
 
         command = '''sbt features/"run --env=dev \
                                        --zone=us-central1-f \
-                                       --experiments=use_mem_shuffle \
-                                       --workerHarnessContainerImage=dataflow.gcr.io/v1beta3/java-batch:1.9.0-mm  \
+                                       --experiments=shuffle_mode=service \
                                        --maxNumWorkers=100 \
                                        --job-name=update_fishing_detection \
                                        --generate-model-features=true \
-                                       --generate-encounters=true \
+                                       --generate-encounters=false \
                                        --job-config={config_path}"'''.format(config_path=fp.name)
 
         log("Executing command:")
