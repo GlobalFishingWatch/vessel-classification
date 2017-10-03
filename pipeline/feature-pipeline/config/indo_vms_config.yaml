@@ -1,0 +1,10 @@
+inputFilePatterns:
+  - "gs://p_p525_indonesia_daily/data-production/normalize-pipeline/2014-*-*/2014????.json"
+  - "gs://p_p525_indonesia_daily/data-production/normalize-pipeline/2015-*-*/2015????.json"
+  - "gs://p_p525_indonesia_daily/data-production/normalize-pipeline/2016-*-*/2016????.json"
+  - "gs://p_p525_indonesia_daily/data-production/normalize-pipeline/2017-*-*/2017????.json"
+knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_AND_LIKELY/ANY_YEAR.txt"
+anchoragesRootPath: "gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output"
+minRequiredPositions: 3
+encounterMinHours: 3
+encounterMaxKilometers: 1.0

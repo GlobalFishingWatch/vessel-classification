@@ -1,11 +1,12 @@
 inputFilePatterns:
-  - "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/2012-*-*/*-of-*"
-  - "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/2013-*-*/*-of-*"
+  - "gs://p_p525_indonesia_daily/data-production/normalize-pipeline/2014-*-*/2014????.json"
+  - "gs://p_p525_indonesia_daily/data-production/normalize-pipeline/2015-*-*/2015????.json"
+  - "gs://p_p525_indonesia_daily/data-production/normalize-pipeline/2016-*-*/2016????.json"
+  - "gs://p_p525_indonesia_daily/data-production/normalize-pipeline/2017-*-*/2017????.json"
   - "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/2014-*-*/*-of-*"
   - "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/2015-*-*/*-of-*"
   - "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/2016-*-*/*-of-*"
   - "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/2017-*-*/*-of-*"
-  - "gs://world-fishing-827/scratch/timh/KKP_VMS_*.json"  
 knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_AND_LIKELY/ANY_YEAR.txt"
 anchoragesRootPath: "gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output"
 minRequiredPositions: 3
