@@ -22,7 +22,7 @@ import org.joda.time.{Duration, Instant}
 object InputDataParameters {
   // TODO(alexwilson): This should be per year.
   val minRequiredPositions = 100
-  val minTimeBetweenPoints = Duration.standardMinutes(60)
+  val minTimeBetweenPoints = Duration.standardMinutes(5)
 
   val stationaryPeriodMaxDistance = 0.8.of[kilometer]
   val stationaryPeriodMinDuration = Duration.standardHours(2 * 24)
