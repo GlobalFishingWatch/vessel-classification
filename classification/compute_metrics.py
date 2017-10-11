@@ -37,35 +37,24 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.utility import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT
+from classification.utility import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT, schema, atomic
 import gzip
 import dateutil.parser
 import datetime
 import pytz
 
-coarse_mapping = [
-    ['cargo_or_tanker', {'tanker', 'cargo'}],
-    ['reefer', {'reefer'}],
-    ['passenger', {'motor_passenger', 'sailing'}],
-    ['seismic_vessel', ['seismic_vessel']],
-    ['tug', {'tug'}],
-    # ['other_not_fishing', {'other_not_fishing'}],  # Currently aren't any 'other_not_fishing' test vessels
-    ['drifting_longlines', {'drifting_longlines'}],
-    ['purse_seines', {'purse_seines'}],
-    ['fixed_gear', {'pots_and_traps', 'set_gillnets', 'set_longlines'}],
-    ['squid_jigger', ['squid_jigger']],
-    ['gear', ['gear']],
-    ['trawlers', {'trawlers'}],
-    ['other_fishing', {'pole_and_line', 'trollers', 'other_fishing', 'drift_nets'}]
-]
+
+coarse_mapping = []
+for k0 in ['fishing', 'non_fishing']:
+    for k1, v1 in schema['unknown'][k0].items():
+        if v1 is None:
+            coarse_mapping.append([k1, {k1}])
+        else:
+            coarse_mapping.append([k1, set(atomic(schema['unknown'][k0][k1]))])
 
 fishing_mapping = [
-    ['fishing', {'drift_nets', 'drifting_longlines', 'other_fishing', 'pole_and_line',
-                 'pots_and_traps', 'purse_seines', 'set_gillnets',
-                 'set_longlines', 'squid_jigger', 'trawlers', 'trollers'}],
-    ['non_fishing', {'cargo', 'motor_passenger', 'other_not_fishing', 'reefer',
-                     'sailing', 'seismic_vessel', 'tanker', 'tug'}],
-    ['gear', {'gear'}]
+    ['fishing', set(atomic(schema['unknown']['fishing']))],
+    ['non_fishing', set(atomic(schema['unknown']['non_fishing']))],
 ]
 
 
