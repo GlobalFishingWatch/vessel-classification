@@ -126,13 +126,13 @@ fishing_mapping = [
 ]
 
 
-for k, v in coarse_mapping:
-    print(k, v)
-print()
-for k, v in fishing_mapping:
-    print(k, v)
+# for k, v in coarse_mapping:
+#     print(k, v)
+# print()
+# for k, v in fishing_mapping:
+#     print(k, v)
 
-raise SystemExit
+# raise SystemExit
 
 # Faster than using dateutil
 def _parse(x):
