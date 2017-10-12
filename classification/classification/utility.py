@@ -46,7 +46,7 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
 schema = yaml.load('''
 unknown:
-    fishing:
+    non_fishing:
       other_not_fishing:
       passenger:
       gear:
@@ -68,7 +68,7 @@ unknown:
       fish_factory:
       tug:
 
-    non_fishing:
+    fishing:
       squid_jigger:
       drifting_longlines:
       pole_and_line:
@@ -81,7 +81,7 @@ unknown:
       trawlers:
       purse_seines:
       driftnets:
-      unknown_fishing:
+      other_fishing:
 ''')
 
 

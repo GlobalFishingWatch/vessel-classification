@@ -106,7 +106,8 @@ unknown:
 
 coarse_categories = [
     'cargo_or_tanker', 'passenger', 'seismic_vessel', 'tug', 'other_fishing', 
-    'drifting_longlines', 'purse_seines', 'fixed_gear', 'squid_jigger', 'trawlers', 'other_fishing']
+    'drifting_longlines', 'purse_seines', 'fixed_gear', 'squid_jigger', 'trawlers', 
+    'other_not_fishing']
 
 coarse_mapping = defaultdict(set)
 for k0, extra in [('fishing', 'other_fishing'), 
@@ -116,7 +117,7 @@ for k0, extra in [('fishing', 'other_fishing'),
         if v1 is None:
             coarse_mapping[key] |= {k1}
         else:
-            coarse_mapping[key] |= set(atomic(schema['unknown'][k0][k1]))
+            coarse_mapping[key] |= set(atomic(v1))
 
 coarse_mapping = [(k, coarse_mapping[k]) for k in coarse_categories]
 
@@ -126,13 +127,13 @@ fishing_mapping = [
 ]
 
 
-# for k, v in coarse_mapping:
-#     print(k, v)
-# print()
-# for k, v in fishing_mapping:
-#     print(k, v)
+for k, v in coarse_mapping:
+    print(k, v)
+print()
+for k, v in fishing_mapping:
+    print(k, v)
 
-# raise SystemExit
+raise SystemExit
 
 # Faster than using dateutil
 def _parse(x):
