@@ -52,7 +52,7 @@ class Model(abstract_models.MisconceptionModel):
 
     @property
     def window_max_points(self):
-        nominal_max_points = (self.max_window_duration_seconds / (60 * 60))
+        nominal_max_points = (self.max_window_duration_seconds / (5 * 60)) / 4
         layer_reductions = np.prod(self.strides)
         final_size = int(round(nominal_max_points / layer_reductions))
         max_points = final_size * layer_reductions
