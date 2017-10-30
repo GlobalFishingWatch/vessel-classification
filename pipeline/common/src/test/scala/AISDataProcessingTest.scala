@@ -86,18 +86,18 @@ class VesselSeriesTests extends PipelineSpec with Matchers {
     val inputRecords = Seq(vlr("2011-07-01T00:00:00Z", lat = 10.0, lon = 10.0),
                            vlr("2011-07-01T00:02:00Z", lat = 10.0, lon = 10.0),
                            vlr("2011-07-01T00:03:00Z", lat = 10.0, lon = 10.0),
-                           vlr("2011-07-01T00:05:00Z", lat = 10.0, lon = 10.0),
-                           vlr("2011-07-01T00:07:00Z", lat = 10.0, lon = 10.0),
-                           vlr("2011-07-01T00:15:00Z", lat = 10.0, lon = 10.0),
-                           vlr("2011-07-01T00:19:00Z", lat = 10.0, lon = 10.0),
-                           vlr("2011-07-01T00:30:00Z", lat = 10.0, lon = 10.0),
-                           vlr("2011-07-01T00:40:00Z", lat = 10.0, lon = 10.0))
+                           vlr("2011-07-01T01:05:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T01:07:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T02:15:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T02:19:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T03:30:00Z", lat = 10.0, lon = 10.0),
+                           vlr("2011-07-01T04:40:00Z", lat = 10.0, lon = 10.0))
 
     val expected = Seq(vlr("2011-07-01T00:00:00Z", lat = 10.0, lon = 10.0),
-                       vlr("2011-07-01T00:05:00Z", lat = 10.0, lon = 10.0),
-                       vlr("2011-07-01T00:15:00Z", lat = 10.0, lon = 10.0),
-                       vlr("2011-07-01T00:30:00Z", lat = 10.0, lon = 10.0),
-                       vlr("2011-07-01T00:40:00Z", lat = 10.0, lon = 10.0))
+                       vlr("2011-07-01T01:05:00Z", lat = 10.0, lon = 10.0),
+                       vlr("2011-07-01T02:15:00Z", lat = 10.0, lon = 10.0),
+                       vlr("2011-07-01T03:30:00Z", lat = 10.0, lon = 10.0),
+                       vlr("2011-07-01T04:40:00Z", lat = 10.0, lon = 10.0))
 
     val result = AISDataProcessing.thinPoints(inputRecords)
 

@@ -54,13 +54,18 @@ run with the correct parameters. For example:
 
 **Features**
 
-    > project features
-    > run run  --env=dev --zone=us-central1-f --experiments=use_mem_shuffle --workerHarnessContainerImage=dataflow.gcr.io/v1beta3/java-batch:1.8.0-mm --maxNumWorkers=200 --job-name=encounters --generate-model-features=true --generate-encounters=false --anchorages-root-path=gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output --minRequiredPositions=100
+    sbt features/"run  --env=dev --experiments=shuffle_mode=service --maxNumWorkers=200 --job-name=hour_features --generate-model-features=true --generate-encounters=true --anchorages-root-path=gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output --minRequiredPositions=100 --job-config=feature-pipeline/config/standard_config.yaml" 
+
 
 **Encounters**
 
     > project features
-    > run  --env=dev --zone=us-central1-f --experiments=use_mem_shuffle --workerHarnessContainerImage=dataflow.gcr.io/v1beta3/java-batch:1.8.0-mm --maxNumWorkers=200 --job-name=encounters --generate-model-features=false --generate-encounters=true --anchorages-root-path=gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output --minRequiredPositions=3 --data-years=2016
+    > run  --env=dev --zone=us-central1-f --experiments=shuffle_mode=service --maxNumWorkers=200 --job-name=encounters --generate-model-features=false --generate-encounters=true --anchorages-root-path=gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output --minRequiredPositions=3 --data-years=2016
+
+    sbt features/"run  --env=dev --zone=us-central1-f --experiments=shuffle_mode=service --maxNumWorkers=200 --job-name=encounters-vms-ais-2014-2017_9-22-2017 --generate-model-features=false --generate-encounters=true --minRequiredPositions=3 --job-config=feature-pipeline/config/joint_indo_vms_config.yaml"
+
+sbt features/'run  --env=dev --zone=us-central1-f --experiments=shuffle_mode=service --maxNumWorkers=200 --job-name=encounters-vms-ais-2014-2017_6-14-2017 --generate-model-features=false --generate-encounters=true --job-config=feature-pipeline/config/vms_config.yaml'
+
 
 **Anchorages**
 

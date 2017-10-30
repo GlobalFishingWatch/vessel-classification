@@ -25,5 +25,5 @@ object Parameters {
 
   val maxClosestNeighbours = 10
 
-  val minDistanceToShoreForEncounter = 20.0.of[kilometer]
+  val minDistanceToShoreForEncounter = 0.0.of[kilometer]
 }

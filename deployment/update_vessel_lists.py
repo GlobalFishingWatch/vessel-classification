@@ -127,8 +127,7 @@ encounterMaxKilometers: 0.5
 
         command = '''sbt features/"run --env=dev \
                                        --zone=us-central1-f \
-                                       --experiments=use_mem_shuffle \
-                                       --workerHarnessContainerImage=dataflow.gcr.io/v1beta3/java-batch:1.9.0-mm  \
+                                       --experiments=shuffle_mode=service \
                                        --maxNumWorkers=100 \
                                        --job-name=update_vessel_lists \
                                        --generate-model-features=true \

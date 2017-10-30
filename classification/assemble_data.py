@@ -43,7 +43,7 @@ def augment_training_list(input_path, output_path, fishing_range_path, false_pos
 
     new_list = []
     used_mmsi = set()
-    for name in dict(VESSEL_CATEGORIES)['unknown_fishing']:
+    for name in dict(VESSEL_CATEGORIES)['fishing']:
         candidates = [x for x in range_mmsi if class_name_of(x) == name and x not in fp_mmsi]
         if not candidates:
             continue
