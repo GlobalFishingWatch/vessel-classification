@@ -22,6 +22,7 @@ import math
 import model
 import time
 import logging
+import yaml
 import newlinejson as nlj
 import numpy as np
 import os
@@ -43,45 +44,72 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 # be defined in principle, although at present the interaction between the mulithot and non multihot
 # versions makes that more complicated.
 
-#TODO: (bitsofbits) replace the lists of (name, list) with ordered dicts. And/or consider other ways
-# to express the treelike structure so that it is more clear.
-""" The finer vessel label set. """
-VESSEL_CLASS_DETAILED_NAMES = [
-    'tanker',
-    'cargo',
-    'reefer',
-    'motor_passenger',
-    'sailing',
-    'seismic_vessel',
-    'tug',
-    'other_not_fishing',
-    'drift_nets',
-    'drifting_longlines',
-    'pole_and_line',
-    'purse_seines',
-    'pots_and_traps',
-    'set_gillnets',
-    'set_longlines',
-    'squid_jigger',
-    'trawlers',
-    'trollers',
-    'other_fishing',
-    'gear'
-]
+schema = yaml.load('''
+unknown:
+    non_fishing:
+      other_not_fishing:
+      passenger:
+      gear:
+      seismic_vessel:
+      helicopter:
+      cargo_or_tanker:
+        bunker_or_tanker:
+          bunker:
+          tanker:
+        cargo_or_reefer:
+          cargo:
+          reefer:
+      patrol_vessel:
+      research:
+      dive_vessel:
+      submarine:
+      dredge:
+      supply_vessel:
+      fish_factory:
+      tug:
 
-VESSEL_CATEGORIES = [[x, [x]] for x in VESSEL_CLASS_DETAILED_NAMES]
+    fishing:
+      squid_jigger:
+      drifting_longlines:
+      pole_and_line:
+      other_fishing:
+      trollers:
+      fixed_gear:
+        pots_and_traps:
+        set_longlines:
+        set_gillnets:
+      trawlers:
+      purse_seines:
+      driftnets:
+      other_fishing:
+''')
 
-VESSEL_CATEGORIES += [
-    ['unknown_fishing',
-     ['drift_nets', 'drifting_longlines', 'set_longlines', 'trawlers', 'pots_and_traps',
-      'trollers', 'set_gillnets', 'purse_seines', 'squid_jigger',
-      'pole_and_line', 'other_fishing']], ['unknown_not_fishing', [
-          'cargo', 'tanker', 'reefer', 'sailing', 'motor_passenger',
-          'seismic_vessel', 'tug', 'other_not_fishing'
-      ]], ['unknown_longline', ['drifting_longlines', 'set_longlines']],
-    ['passenger', ['motor_passenger', 'sailing']],
-    ['unknown', VESSEL_CLASS_DETAILED_NAMES]
-]
+
+def atomic(obj):
+    for k, v in obj.items():
+        if v is None:
+            yield k
+        else:
+            for x in atomic(v):
+                yield x
+
+def categories(obj, include_atomic=True):
+    for k, v in obj.items():
+        if v is None:
+            if include_atomic:
+                yield k, [k]
+        else:
+            yield (k, list(atomic(v)))
+            for x in categories(v, include_atomic=include_atomic):
+                yield x
+
+
+
+
+#TODO: Better names
+VESSEL_CLASS_DETAILED_NAMES = list(atomic(schema))
+
+VESSEL_CATEGORIES = list(categories(schema))
 
 TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'

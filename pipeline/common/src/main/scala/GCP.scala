@@ -34,12 +34,12 @@ object GcpConfig extends LazyLogging {
     val now = new DateTime(DateTimeZone.UTC)
     val rootPath = environment match {
       case "prod" => {
-        s"gs://world-fishing-827/data-production/classification/$jobId"
+        s"gs://machine-learning-production/classification/$jobId"
       }
       case "dev" => {
         sys.env.get("USER") match {
           case Some(user) =>
-            s"gs://world-fishing-827-dev-ttl30d/data-production/classification/$user/$jobId"
+            s"gs://machine-learning-dev-ttl-30d/classification/$user/$jobId"
           case _ => logger.fatal("USER environment variable cannot be empty for dev runs.")
         }
       }

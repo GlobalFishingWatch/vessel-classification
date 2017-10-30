@@ -12,8 +12,8 @@ before_script:
   - unzip protoc-3.0.0-linux-x86_64.zip -d protoc_dir
   - export PATH=$PATH:$PWD/protoc_dir/bin
   - export PATH=$HOME/.local/bin:$PATH
-  - pip install tensorflow
-  - pip install google-api-python-client pyyaml python-dateutil NewlineJSON pytz yattag
+  - sudo pip install tensorflow
+  - sudo pip install google-api-python-client pyyaml python-dateutil NewlineJSON pytz yattag
 
 script:
   - ./test_all
