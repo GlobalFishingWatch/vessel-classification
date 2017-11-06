@@ -40,11 +40,11 @@ class Model(abstract_models.MisconceptionModel):
 
     initial_learning_rate = 1e-5
     learning_decay_rate = 0.5
-    decay_examples = 100000
+    decay_examples = 300000
 
     @property
     def number_of_steps(self):
-        return 600000
+        return 900000
 
     @property
     def max_window_duration_seconds(self):
