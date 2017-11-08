@@ -38,7 +38,7 @@ class Model(abstract_models.MisconceptionModel):
     assert len(strides) == len(feature_depths)
     feature_sub_depths = 1024
 
-    initial_learning_rate = 5e-5
+    initial_learning_rate = 8e-5
     learning_decay_rate = 0.5
     decay_examples = 100000
 
