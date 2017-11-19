@@ -163,7 +163,9 @@ object ModelFeatures extends LazyLogging {
                                       integratedCogDeltaDegrees / 180.0,
                                       math.log(1.0 + distanceToShoreKm),
                                       math.log(1.0 + distanceToBoundingAnchorageKm),
-                                      math.log(1.0 + timeToBoundingAnchorageS))
+                                      math.log(1.0 + timeToBoundingAnchorageS),
+                                      a0.numNeighbours
+                                    )
 
           feature.foreach { v =>
             if (v.isNaN || v.isInfinite) {
