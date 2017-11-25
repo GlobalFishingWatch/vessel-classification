@@ -326,6 +326,40 @@ class LogRegressionObjective(ObjectiveBase):
                           self.prediction, self.metrics)
 
 
+
+class LogRegressionObjectiveSigma(ObjectiveBase):
+
+    def build(self, net):
+        predictions = tf.squeeze(
+            slim.fully_connected(
+                net, 2, activation_fn=None))
+        self.prediction = predictions[:, 0]
+        self.sigma2 = tf.exp(predictions[:, 1])
+
+    def _masked_mean_loss(self, predictions, sigma2, mmsis):
+        expected, mask = self._expected_and_mask(mmsis)
+        count = tf.reduce_sum(mask)
+        squared_error = (
+            ((tf.log(expected + EPSILON) - predictions)**2 / sigma2 +
+                tf.log(sigma2))* mask)
+
+        loss = tf.reduce_sum(squared_error) / tf.maximum(count, EPSILON)
+
+        return loss
+
+    def build_trainer(self, timestamps, mmsis):
+        raw_loss = self._masked_mean_loss(self.prediction, self.sigma2, mmsis)
+
+        update_ops = []
+        update_ops.append(
+            tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
+
+        loss = raw_loss * self.loss_weight
+
+        return Trainer(loss, update_ops)
+
+
+
 class MultiClassificationObjective(ObjectiveBase):
     def __init__(self,
                  metadata_label,
@@ -519,6 +553,36 @@ class MultiClassificationObjectiveMarginLoss(MultiClassificationObjective):
 
             positives = tf.reduce_sum(
                 tf.to_float(labels) * margined_preds, reduction_indices=[1])
+            raw_loss = -tf.reduce_mean(tf.log(positives))
+
+        mask = tf.to_float(tf.equal(tf.reduce_sum(labels, 1), 1))
+        int_labels = tf.to_int32(tf.argmax(labels, 1))
+        int_predictions = tf.to_int32(tf.argmax(self.prediction, 1))
+        accuracy = metrics.accuracy(int_labels, int_predictions, weights=mask)
+
+        loss = raw_loss * self.loss_weight
+
+
+        update_ops = []
+        update_ops.append(
+            tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
+        update_ops.append(
+            tf.summary.scalar('%s/Training-accuracy' % self.name, accuracy))      
+
+        return Trainer(loss, update_ops)
+
+
+class MultiClassificationObjectiveSmoothed(MultiClassificationObjective):
+
+    epsilon = 0.1
+
+    def build_trainer(self, timestamps, mmsis):
+
+        labels = self.multihot_labels(mmsis)
+
+        with tf.variable_scope("custom-loss"):
+            positives = (1 - self.epsilon) * tf.reduce_sum(
+                tf.to_float(labels) * self.prediction, reduction_indices=[1]) + self.epsilon
             raw_loss = -tf.reduce_mean(tf.log(positives))
 
         mask = tf.to_float(tf.equal(tf.reduce_sum(labels, 1), 1))
