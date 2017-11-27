@@ -574,7 +574,7 @@ class MultiClassificationObjectiveMarginLoss(MultiClassificationObjective):
 
 class MultiClassificationObjectiveSmoothed(MultiClassificationObjective):
 
-    epsilon = 0.1
+    epsilon = 0.3
 
     def build_trainer(self, timestamps, mmsis):
 

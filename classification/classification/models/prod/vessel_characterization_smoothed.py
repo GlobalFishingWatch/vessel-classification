@@ -38,7 +38,7 @@ class Model(abstract_models.MisconceptionModel):
     assert len(strides) == len(feature_depths)
     feature_sub_depths = 1024
 
-    initial_learning_rate = 5e-5
+    initial_learning_rate = 10e-5
     learning_decay_rate = 0.5
     decay_examples = 100000
 
@@ -81,24 +81,28 @@ class Model(abstract_models.MisconceptionModel):
                 'length',
                 'Vessel-length',
                 XOrNone('length'),
-                metrics=metrics),
+                metrics=metrics,
+                loss_weight=0.1),
             LogRegressionObjective(
                 'tonnage',
                 'Vessel-tonnage',
                 XOrNone('tonnage'),
-                metrics=metrics),
+                metrics=metrics,
+                loss_weight=0.1),
             LogRegressionObjective(
                 'engine_power',
                 'Vessel-engine-Power',
                 XOrNone('engine_power'),
-                metrics=metrics),
+                metrics=metrics,
+                loss_weight=0.1),
             LogRegressionObjective(
                 'crew_size',
                 'Vessel-Crew-Size',
                 XOrNone('crew_size'),
-                metrics=metrics),
+                metrics=metrics,
+                loss_weight=0.1),
             MultiClassificationObjectiveSmoothed(
-                "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics)
+                "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics, loss_weight=1)
         ]
 
     def _build_model(self, features, timestamps, mmsis, is_training):
