@@ -82,28 +82,28 @@ class Model(abstract_models.MisconceptionModel):
                 'Vessel-length',
                 XOrNone('length'),
                 metrics=metrics,
-                loss_weight=0.1),
+                loss_weight=0.01),
             LogRegressionObjective(
                 'tonnage',
                 'Vessel-tonnage',
                 XOrNone('tonnage'),
                 metrics=metrics,
-                loss_weight=0.1),
+                loss_weight=0.01),
             LogRegressionObjective(
                 'engine_power',
                 'Vessel-engine-Power',
                 XOrNone('engine_power'),
                 metrics=metrics,
-                loss_weight=0.1),
+                loss_weight=0.01),
             LogRegressionObjective(
                 'crew_size',
                 'Vessel-Crew-Size',
                 XOrNone('crew_size'),
                 metrics=metrics,
-                loss_weight=0.1),
+                loss_weight=0.01),
             MultiClassificationObjectiveSmoothed(
                 "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics, loss_weight=1,
-                smoothing_coefficient=0.3)
+                smoothing_coefficient=0.1)
         ]
 
     def _build_model(self, features, timestamps, mmsis, is_training):

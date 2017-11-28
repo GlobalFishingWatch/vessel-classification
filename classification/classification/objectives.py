@@ -574,7 +574,16 @@ class MultiClassificationObjectiveMarginLoss(MultiClassificationObjective):
 
 class MultiClassificationObjectiveSmoothed(MultiClassificationObjective):
 
-    epsilon = 0.3
+    def __init__(self,
+                 metadata_label,
+                 name,
+                 vessel_metadata,
+                 loss_weight=1.0,
+                 metrics='all',
+                 smoothing_coefficient=0.1):
+        self.epsilon = smoothing_coefficient
+        super(MultiClassificationObjectiveSmoothed, self).__init__(metadata_label, name, vessel_metadata, loss_weight,
+                                                           metrics)
 
     def build_trainer(self, timestamps, mmsis):
 
