@@ -1,0 +1,13 @@
+inputFilePatterns:
+  - "gs://p_p516_daily/data-production/classify-pipeline/classify/2012-*-*/*-of-*"
+  - "gs://p_p516_daily/data-production/classify-pipeline/classify/2013-*-*/*-of-*"
+  - "gs://p_p516_daily/data-production/classify-pipeline/classify/2014-*-*/*-of-*"
+  - "gs://p_p516_daily/data-production/classify-pipeline/classify/2015-*-*/*-of-*"
+  - "gs://p_p516_daily/data-production/classify-pipeline/classify/2016-*-*/*-of-*"
+  - "gs://p_p516_daily/data-production/classify-pipeline/classify/2017-*-*/*-of-*"
+knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_LIKELY_AND_SUSPECTED/ANY_YEAR.txt"
+jsonAnnotations:
+  - inputFilePattern: "gs://machine-learning-dev-ttl-30d/old_old_fishing.json.gz"
+    timeRangeFieldName: "fishing_localisation"
+    outputFieldName: "nnet_score"
+    defaultValue: 1.0
