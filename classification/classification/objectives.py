@@ -327,6 +327,19 @@ class LogRegressionObjective(ObjectiveBase):
 
 
 
+class LogRegressionObjectiveMAE(LogRegressionObjective):
+
+    def _masked_mean_loss(self, predictions, mmsis):
+        expected, mask = self._expected_and_mask(mmsis)
+        count = tf.reduce_sum(mask)
+        mean_absolute_error = tf.abs(
+            (tf.log(expected + EPSILON) - predictions) * mask)
+
+        loss = tf.reduce_sum(mean_absolute_error) / tf.maximum(count, EPSILON)
+
+        return loss
+
+
 class LogRegressionObjectiveSigma(ObjectiveBase):
 
     def build(self, net):
