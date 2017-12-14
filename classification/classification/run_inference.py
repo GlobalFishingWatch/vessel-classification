@@ -32,6 +32,11 @@ from . import model
 from . import utility
 
 
+def log_dt(t0, message):
+    t1 = time.clock()
+    logging.info("%s (dt = %s s", message, t1 - t0)
+    return t1
+
 class Inferer(object):
     def __init__(self, model, model_checkpoint_path, root_feature_path, mmsis):
 
@@ -41,11 +46,13 @@ class Inferer(object):
         self.batch_size = self.model.batch_size
         self.min_points_for_classification = model.min_viable_timeslice_length
         self.mmsis = mmsis
+        logging.info('created Inferer with Model, %s, and dims %s', model, 
+                    model.num_feature_dimensions)
 
-    def _feature_files(self, split):
+    def _feature_files(self, mmsis):
         return [
-            '%s/%d.tfrecord' % (self.root_feature_path, mmsi)
-            for mmsi in self.mmsis
+            '%s/%s.tfrecord' % (self.root_feature_path, mmsi)
+            for mmsi in mmsis
         ]
 
     def _build_starts(self, interval_months):
@@ -67,8 +74,11 @@ class Inferer(object):
                 time_starts.append(dt)
         return time_starts
 
-    def run_inference(self, inference_parallelism, inference_results_path,
-                      interval_months, year):
+
+
+    def run_inference(self, inference_parallelism,
+                      interval_months, start_date, end_date):
+        t0 = time.clock()
         matching_files = self._feature_files(self.mmsis)
         filename_queue = tf.train.input_producer(
             matching_files, shuffle=False, num_epochs=1)
@@ -99,8 +109,10 @@ class Inferer(object):
             for _ in range(inference_parallelism * 2):
                 reader = utility.all_fixed_window_feature_file_reader(
                     filename_queue, self.model.num_feature_dimensions + 1,
-                    self.model.window_max_points, shift, year)
+                    self.model.window_max_points, shift, start_date, end_date)
                 readers.append(reader)
+
+        t0 = log_dt(t0, "built readers")
 
         features, timestamps, time_ranges, mmsis = tf.train.batch_join(
             readers,
@@ -113,10 +125,14 @@ class Inferer(object):
             ], [self.model.window_max_points], [2], []],
             allow_smaller_final_batch=True)
 
+        t0 = log_dt(t0, "built queus")
+
         objectives = self.model.build_inference_net(features, timestamps,
                                                     mmsis)
 
         all_predictions = [o.prediction for o in objectives]
+
+        t0 = log_dt(t0, "built net")
 
         # Open output file, on cloud storage - so what file api?
         config = tf.ConfigProto(
@@ -132,6 +148,8 @@ class Inferer(object):
             saver = tf.train.Saver()
             saver.restore(sess, self.model_checkpoint_path)
 
+            t0 = log_dt(t0, "restored net")
+
             logging.info("Starting queue runners.")
             tf.train.start_queue_runners()
 
@@ -139,39 +157,40 @@ class Inferer(object):
             # be terminated when an EOF exception is thrown.
             logging.info("Running predictions.")
             i = 0
-            with nlj.open(gzip.GzipFile(inference_results_path, 'w'),
-                          'w') as output_nlj:
-                while True:
-                    logging.info("Inference step: %d", i)
-                    i += 1
-                    try:
-                        batch_results = sess.run(
-                            [mmsis, time_ranges, timestamps] + all_predictions)
-                    except tf.errors.OutOfRangeError:
-                        break
-                    for result in zip(*batch_results):
-                        mmsi = result[0]
-                        (start_time_seconds, end_time_seconds) = result[1]
-                        timestamps_array = result[2]
-                        predictions_array = result[3:]
+            while True:
+                logging.info("Inference step: %d", i)
+                t0 = time.clock()
+                i += 1
+                try:
+                    batch_results = sess.run(
+                        [mmsis, time_ranges, timestamps] + all_predictions)
+                except tf.errors.OutOfRangeError:
+                    break
+                t0 = log_dt(t0, "executed step")
+                for result in zip(*batch_results):
+                    mmsi = result[0]
+                    (start_time_seconds, end_time_seconds) = result[1]
+                    timestamps_array = result[2]
+                    predictions_array = result[3:]
 
-                        start_time = datetime.datetime.utcfromtimestamp(
-                            start_time_seconds)
-                        end_time = datetime.datetime.utcfromtimestamp(
-                            end_time_seconds)
+                    start_time = datetime.datetime.utcfromtimestamp(
+                        start_time_seconds)
+                    end_time = datetime.datetime.utcfromtimestamp(
+                        end_time_seconds)
 
-                        output = dict(
-                            [(o.metadata_label,
-                              o.build_json_results(p, timestamps_array))
-                             for (o, p) in zip(objectives, predictions_array)])
+                    output = dict(
+                        [(o.metadata_label,
+                          o.build_json_results(p, timestamps_array))
+                         for (o, p) in zip(objectives, predictions_array)])
 
-                        output.update({
-                            'mmsi': int(mmsi),
-                            'start_time': start_time.isoformat(),
-                            'end_time': end_time.isoformat()
-                        })
+                    output.update({
+                        'mmsi': int(mmsi),
+                        'start_time': start_time.isoformat(),
+                        'end_time': end_time.isoformat()
+                    })
+                    t0 = log_dt(t0, "created output")
 
-                        output_nlj.write(output)
+                    yield output
 
 
 def main(args):
@@ -219,6 +238,11 @@ def main(args):
                 sys.exit(-1)
             with open(mmsis_file, 'r') as f:
                 mmsis.intersection_update([int(m) for m in f])
+    if args.mmsi:
+        if args.dataset_split:
+            logging.fatal("Only one of `mmsi` or `dataset_split` can be specified")
+            sys.exit(-1)
+        mmsis = [int(args.mmsi)]
 
     logging.info("Running inference with %d mmsis", len(mmsis))
 
@@ -236,8 +260,20 @@ def main(args):
         assert chosen_model.max_window_duration_seconds != 0, "can't set interval for point inferring model"
         interval_months = args.interval_months
 
-    infererer.run_inference(inference_parallelism, inference_results_path,
-                            interval_months, args.year)
+
+    with nlj.open(gzip.GzipFile(inference_results_path, 'w'),
+                          'w') as output_nlj:
+        for x in infererer.run_inference(inference_parallelism,
+                                interval_months, args.start_date, args.end_date):
+            output_nlj.write(x)
+
+
+def valid_date(s):
+    try:
+        return datetime.datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=pytz.utc)
+    except ValueError:
+        msg = "Not a valid date: '{0}'.".format(s)
+        raise argparse.ArgumentTypeError(msg)
 
 
 def parse_args():
@@ -277,6 +313,13 @@ def parse_args():
         'otherwise the name of a single-column csv file of mmsis.')
 
     argparser.add_argument(
+        '--mmsi',
+        type=str,
+        default='',
+        help='Run inference only for the given MMSI. Not compatible with'
+             'dataset_split.')
+
+    argparser.add_argument(
         '--feature_dimensions',
         required=True,
         help='The number of dimensions of a classification feature.')
@@ -298,10 +341,16 @@ def parse_args():
         help="Interval between successive classifications")
 
     argparser.add_argument(
-        '--year',
+        '--start_date',
         default=None,
-        type=int,
-        help='Year to run inference on (default run on all)')
+        type=valid_date,
+        help='start of period to run inference on (defaults to earliest date with data)')
+
+    argparser.add_argument(
+        '--end_date',
+        default=None,
+        type=valid_date,
+        help='stop of period to run inference on (defaults to latest date with data)')
 
     return argparser.parse_args()
 

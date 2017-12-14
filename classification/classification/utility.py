@@ -22,7 +22,6 @@ import math
 import model
 import time
 import logging
-import yaml
 import newlinejson as nlj
 import numpy as np
 import os
@@ -44,72 +43,45 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 # be defined in principle, although at present the interaction between the mulithot and non multihot
 # versions makes that more complicated.
 
-schema = yaml.load('''
-unknown:
-    non_fishing:
-      other_not_fishing:
-      passenger:
-      gear:
-      seismic_vessel:
-      helicopter:
-      cargo_or_tanker:
-        bunker_or_tanker:
-          bunker:
-          tanker:
-        cargo_or_reefer:
-          cargo:
-          reefer:
-      patrol_vessel:
-      research:
-      dive_vessel:
-      submarine:
-      dredge:
-      supply_vessel:
-      fish_factory:
-      tug:
+#TODO: (bitsofbits) replace the lists of (name, list) with ordered dicts. And/or consider other ways
+# to express the treelike structure so that it is more clear.
+""" The finer vessel label set. """
+VESSEL_CLASS_DETAILED_NAMES = [
+    'tanker',
+    'cargo',
+    'reefer',
+    'motor_passenger',
+    'sailing',
+    'seismic_vessel',
+    'tug',
+    'other_not_fishing',
+    'drift_nets',
+    'drifting_longlines',
+    'pole_and_line',
+    'purse_seines',
+    'pots_and_traps',
+    'set_gillnets',
+    'set_longlines',
+    'squid_jigger',
+    'trawlers',
+    'trollers',
+    'other_fishing',
+    'gear'
+]
 
-    fishing:
-      squid_jigger:
-      drifting_longlines:
-      pole_and_line:
-      other_fishing:
-      trollers:
-      fixed_gear:
-        pots_and_traps:
-        set_longlines:
-        set_gillnets:
-      trawlers:
-      purse_seines:
-      driftnets:
-      other_fishing:
-''')
+VESSEL_CATEGORIES = [[x, [x]] for x in VESSEL_CLASS_DETAILED_NAMES]
 
-
-def atomic(obj):
-    for k, v in obj.items():
-        if v is None:
-            yield k
-        else:
-            for x in atomic(v):
-                yield x
-
-def categories(obj, include_atomic=True):
-    for k, v in obj.items():
-        if v is None:
-            if include_atomic:
-                yield k, [k]
-        else:
-            yield (k, list(atomic(v)))
-            for x in categories(v, include_atomic=include_atomic):
-                yield x
-
-
-
-
-#TODO: Better names
-VESSEL_CLASS_DETAILED_NAMES = list(atomic(schema))
-
-VESSEL_CATEGORIES = list(categories(schema))
+VESSEL_CATEGORIES += [
+    ['unknown_fishing',
+     ['drift_nets', 'drifting_longlines', 'set_longlines', 'trawlers', 'pots_and_traps',
+      'trollers', 'set_gillnets', 'purse_seines', 'squid_jigger',
+      'pole_and_line', 'other_fishing']], ['unknown_not_fishing', [
+          'cargo', 'tanker', 'reefer', 'sailing', 'motor_passenger',
+          'seismic_vessel', 'tug', 'other_not_fishing'
+      ]], ['unknown_longline', ['drifting_longlines', 'set_longlines']],
+    ['passenger', ['motor_passenger', 'sailing']],
+    ['unknown', VESSEL_CLASS_DETAILED_NAMES]
+]
 
 TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
@@ -676,8 +648,12 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
     return zip(*slices)
 
 
+
+# TODO: pull out replicate_extract as class and write tests for it.
+
+
 def all_fixed_window_feature_file_reader(filename_queue, num_features,
-                                         window_size, shift, year):
+                                         window_size, shift, start_date, end_date):
     """ Set up a file reader and inference feature extractor for the files in a
         queue.
 
@@ -704,32 +680,25 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
     movement_features = sequence_features['movement_features']
     mmsi = tf.cast(context_features['mmsi'], tf.int32)
 
-    if year is not None:
-        start_date = datetime.datetime(
-            year=year,
-            month=1,
-            day=1,
-            hour=0,
-            minute=0,
-            second=0,
-            tzinfo=pytz.utc)
-        end_date = datetime.datetime(
-            year=year + 1,
-            month=1,
-            day=1,
-            hour=0,
-            minute=0,
-            second=0,
-            tzinfo=pytz.utc)
+    if start_date is not None:
         start_stamp = time.mktime(start_date.timetuple())
+    if end_date is not None:
         end_stamp = time.mktime(end_date.timetuple())
 
     def replicate_extract(input_series, mmsi):
-        if year is not None:
-            start_i = np.searchsorted(
-                input_series[:, 0], start_stamp, side='left')
-            end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
-            input_series = input_series[start_i:end_i]
+        if start_date is not None:
+            raw_start_i = np.searchsorted(input_series[:, 0], start_stamp, side='left')
+            # If possible go to shift before start so we have good data for whole length
+            start_i = max(raw_start_i - shift, 0)
+        else:
+            start_i = 0
+        if end_date is not None:
+            raw_end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
+            # If possible go to shift before end so that we have good data starting at end
+            end_i = min(raw_end_i + shift, len(input_series))
+        else:
+            end_i = len(input_series)
+        input_series = input_series[start_i:end_i]
         return np_array_extract_all_fixed_slices(input_series, num_features,
                                                  mmsi, window_size, shift)
 
@@ -947,13 +916,13 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
             vessel_type_set.add(coarse_vessel_type)
 
     # Calculate weights for each vessel type per split, for
-    # now use weights of sqrt(max_count / count), but eventually weight by prevalance
+    # now use weights of 1, but eventually weight by prevalance
     # in AIS (as best as we can figure) <== TODO
     dataset_kind_weights = defaultdict(lambda: {})
     for split, counts in dataset_kind_counts.iteritems():
         max_count = max(counts.values())
         for coarse_vessel_type, count in counts.iteritems():
-            dataset_kind_weights[split][coarse_vessel_type] = np.sqrt(max_count / float(count))
+            dataset_kind_weights[split][coarse_vessel_type] = 1
 
     metadata_dict = defaultdict(lambda: {})
     for mmsi, split, coarse_vessel_type, row in vessel_types:
