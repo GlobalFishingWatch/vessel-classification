@@ -1,3 +1,23 @@
+
+# Dataflow inference
+
+      python -m classification.inference \
+              --feature_path gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-old-old-school/pipeline/output/features \
+              --checkpoint_path gs://machine-learning-dev-ttl-30d/scratch/inference/model.ckpt-202582 \
+              --results_path=gs://machine-learning-dev-ttl-30d/scratch/test_inference_2015 \
+              --start_date 2015-01-01 \
+              --end_date 2015-12-31 \
+              --project world-fishing-827 \
+              --temp_location gs://machine-learning-dev-ttl-30d/scratch/inference \
+              --job_name dataflow-inference-test \
+              --max_num_workers 200 \
+              --setup_file ./setup.py \
+              --requirements_file requirements.txt \
+              --runner DataflowRunner \
+              --disk_size_gb 100
+
+
+
 # Neural Net Classification
 
 ## Running Stuff

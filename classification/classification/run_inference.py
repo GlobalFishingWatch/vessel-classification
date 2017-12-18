@@ -25,29 +25,85 @@ import os
 from pkg_resources import resource_filename
 import pytz
 import sys
-import tensorflow.contrib.slim as slim
 import tensorflow as tf
 import time
 from . import model
 from . import utility
-
+from . import file_iterator
+from itertools import chain
+import gc
+import subprocess
+import resource
 
 def log_dt(t0, message):
     t1 = time.clock()
     logging.info("%s (dt = %s s", message, t1 - t0)
     return t1
 
+def log_mem(message, mmsis):
+    mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    logging.info("%s for %s: %s", message, mmsis, mem)
+
 class Inferer(object):
-    def __init__(self, model, model_checkpoint_path, root_feature_path, mmsis):
+    def __init__(self, model, model_checkpoint_path, root_feature_path,
+                       inference_parallelism=1):
 
         self.model = model
         self.model_checkpoint_path = model_checkpoint_path
         self.root_feature_path = root_feature_path
         self.batch_size = self.model.batch_size
         self.min_points_for_classification = model.min_viable_timeslice_length
-        self.mmsis = mmsis
+        self.inference_parallelism = inference_parallelism
+        config = tf.ConfigProto(
+            inter_op_parallelism_threads=inference_parallelism,
+            intra_op_parallelism_threads=inference_parallelism)
+        self.sess = tf.Session()
+        self.objectives = self._build_objectives()
+        self._restore_graph()
+        self.deserializer = file_iterator.Deserializer(
+                num_features=model.num_feature_dimensions + 1, sess=self.sess)
         logging.info('created Inferer with Model, %s, and dims %s', model, 
                     model.num_feature_dimensions)
+
+    def close(self):
+        self.sess.close()
+
+
+    def _build_objectives(self):
+        with self.sess.as_default():
+            t0 = time.clock()
+
+            self.features_ph = tf.placeholder(tf.float32, 
+                shape=[None, 1, self.model.window_max_points, self.model.num_feature_dimensions])
+            self.timestamps_ph = tf.placeholder(tf.int32, shape=[None, self.model.window_max_points])
+            self.time_ranges_ph = tf.placeholder(tf.int32, shape=[None, 2])
+            self.mmsis_ph = tf.placeholder(tf.int32, shape=[None])
+
+            t0 = log_dt(t0, "built placeholders")
+
+
+            objectives = self.model.build_inference_net(self.features_ph, self.timestamps_ph,
+                                                        self.time_ranges_ph)
+
+            t0 = log_dt(t0, "built objectives")
+
+            return objectives
+
+
+    def _restore_graph(self):
+        t0 = time.clock()
+        init_op = tf.group(tf.local_variables_initializer(),
+                           tf.global_variables_initializer())
+
+        self.sess.run(init_op)
+        t0 = log_dt(t0, "Initialized variable")
+        logging.info("Restoring model: %s", self.model_checkpoint_path)
+        saver = tf.train.Saver()
+        saver.restore(self.sess, self.model_checkpoint_path)
+
+        t0 = log_dt(t0, "restored net")
+
+
 
     def _feature_files(self, mmsis):
         return [
@@ -76,14 +132,19 @@ class Inferer(object):
 
 
 
-    def run_inference(self, inference_parallelism,
-                      interval_months, start_date, end_date):
+    def run_inference(self, mmsis, interval_months, start_date, end_date):
         t0 = time.clock()
-        matching_files = self._feature_files(self.mmsis)
-        filename_queue = tf.train.input_producer(
-            matching_files, shuffle=False, num_epochs=1)
+        matching_files = self._feature_files(mmsis)
+        logging.info("MATCHING:")
+        for path in matching_files:
+            logging.info("matching_files: %s", path)
+        # filename_queue = tf.train.input_producer(
+        #     matching_files, shuffle=False, num_epochs=1)
+
+
 
         readers = []
+        assert self.inference_parallelism == 1 # TODO: rework
         if self.model.max_window_duration_seconds != 0:
 
             time_starts = self._build_starts(interval_months)
@@ -93,7 +154,8 @@ class Inferer(object):
             self.time_ranges = [(int(time.mktime(dt.timetuple())),
                                  int(time.mktime((dt + delta).timetuple())))
                                 for dt in time_starts]
-            for _ in range(inference_parallelism * 2):
+            raise NotImplentedError()
+            for _ in range(self.inference_parallelism * 2):
                 reader = utility.cropping_all_slice_feature_file_reader(
                     filename_queue, self.model.num_feature_dimensions + 1,
                     self.time_ranges, self.model.window_max_points,
@@ -106,91 +168,106 @@ class Inferer(object):
                 b, e = self.model.window
                 shift = e - b
 
-            for _ in range(inference_parallelism * 2):
-                reader = utility.all_fixed_window_feature_file_reader(
-                    filename_queue, self.model.num_feature_dimensions + 1,
-                    self.model.window_max_points, shift, start_date, end_date)
-                readers.append(reader)
+            # for _ in range(self.inference_parallelism * 2):
+            logging.info("Shift %s %s %s", start_date, end_date, shift)
+            reader = file_iterator.all_fixed_window_feature_file_iterator(
+                matching_files, self.deserializer,
+                self.model.window_max_points, shift, start_date, end_date)
+            readers.append(reader)
 
         t0 = log_dt(t0, "built readers")
 
-        features, timestamps, time_ranges, mmsis = tf.train.batch_join(
-            readers,
-            self.batch_size,
-            enqueue_many=True,
-            capacity=1000,
-            shapes=[[
-                1, self.model.window_max_points,
-                self.model.num_feature_dimensions
-            ], [self.model.window_max_points], [2], []],
-            allow_smaller_final_batch=True)
+        feature_iter = chain(*readers)
 
-        t0 = log_dt(t0, "built queus")
+        # features, timestamps, time_ranges, mmsis = tf.train.batch_join(
+        #     readers,
+        #     self.batch_size,
+        #     enqueue_many=True,
+        #     capacity=1000,
+        #     shapes=[[
+        #         1, self.model.window_max_points,
+        #         self.model.num_feature_dimensions
+        #     ], [self.model.window_max_points], [2], []],
+        #     allow_smaller_final_batch=True)
 
-        objectives = self.model.build_inference_net(features, timestamps,
-                                                    mmsis)
+        t0 = log_dt(t0, "built queues")
+
+        objectives = self.objectives
 
         all_predictions = [o.prediction for o in objectives]
 
-        t0 = log_dt(t0, "built net")
 
-        # Open output file, on cloud storage - so what file api?
-        config = tf.ConfigProto(
-            inter_op_parallelism_threads=inference_parallelism,
-            intra_op_parallelism_threads=inference_parallelism)
-        with tf.Session(config=config) as sess:
-            init_op = tf.group(tf.local_variables_initializer(),
-                               tf.initialize_all_variables())
 
-            sess.run(init_op)
 
-            logging.info("Restoring model: %s", self.model_checkpoint_path)
-            saver = tf.train.Saver()
-            saver.restore(sess, self.model_checkpoint_path)
 
-            t0 = log_dt(t0, "restored net")
+        # log_mem("Starting queue runners.", mmsis)
+        # resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        # threads = tf.train.start_queue_runners(sess=self.sess)
 
-            logging.info("Starting queue runners.")
-            tf.train.start_queue_runners()
+        # In a loop, calculate logits and predictions and write out. Will
+        # be terminated when an EOF exception is thrown.
+        log_mem("Running predictions.", mmsis)
+        i = 0
+        while True:
+            logging.info("Inference step: %d", i)
+            t0 = time.clock()
+            i += 1
+            try:
+                # logging.info("Evaluating queues")
+                # queue_vals = self.sess.run([filename_queue])
+                # logging.info("Type of queue_vals: %s", type(queue_vals))
 
-            # In a loop, calculate logits and predictions and write out. Will
-            # be terminated when an EOF exception is thrown.
-            logging.info("Running predictions.")
-            i = 0
-            while True:
-                logging.info("Inference step: %d", i)
-                t0 = time.clock()
-                i += 1
-                try:
-                    batch_results = sess.run(
-                        [mmsis, time_ranges, timestamps] + all_predictions)
-                except tf.errors.OutOfRangeError:
-                    break
-                t0 = log_dt(t0, "executed step")
-                for result in zip(*batch_results):
-                    mmsi = result[0]
-                    (start_time_seconds, end_time_seconds) = result[1]
-                    timestamps_array = result[2]
-                    predictions_array = result[3:]
 
-                    start_time = datetime.datetime.utcfromtimestamp(
-                        start_time_seconds)
-                    end_time = datetime.datetime.utcfromtimestamp(
-                        end_time_seconds)
+                # return
 
-                    output = dict(
-                        [(o.metadata_label,
-                          o.build_json_results(p, timestamps_array))
-                         for (o, p) in zip(objectives, predictions_array)])
+                log_mem("Evaluating queues", mmsis)
+                queue_vals = feature_iter.next() # TODO: switch to for loop
+                logging.info("Type of queue_vals: %s", type(queue_vals))
+                for i, qv in enumerate(queue_vals):
+                    logging.info("type(QV[%s]) = %s", i, type(qv))
+                    logging.info("tf.shape(QV[%s]) = %s", i, np.shape(qv))
+                logging.info("Type of queue_vals: %s", type(queue_vals))
+                feed_dict = {
+                    self.features_ph : [queue_vals[0]],
+                    self.timestamps_ph : [queue_vals[1]],
+                    self.time_ranges_ph : [queue_vals[2]],
+                    self.mmsis_ph : [queue_vals[3]]
+                }
+                t0 = log_dt(t0, "Queues evaluated")
+                log_mem("Queues evaluated", mmsis)
+                logging.info("GC count: %s", gc.get_count())
+                logging.info("DF: %s", subprocess.check_output('df'))
+            except StopIteration as err:
+                logging.info("Queues exhausted")
+                break
+            log_mem("Running Session", mmsis)
+            batch_results = self.sess.run(all_predictions, feed_dict=feed_dict)
+            log_mem("Ran Session", mmsis)
+            t0 = log_dt(t0, "executed step")
+            logging.info("queue_vals type %s, len %s", type(queue_vals), len(queue_vals))
+            for qv, predictions_array in zip([queue_vals], batch_results):
+                mmsi = qv[3]
+                (start_time_seconds, end_time_seconds) = qv[2]
+                timestamps_array = qv[1]
 
-                    output.update({
-                        'mmsi': int(mmsi),
-                        'start_time': start_time.isoformat(),
-                        'end_time': end_time.isoformat()
-                    })
-                    t0 = log_dt(t0, "created output")
+                start_time = datetime.datetime.utcfromtimestamp(
+                    start_time_seconds)
+                end_time = datetime.datetime.utcfromtimestamp(
+                    end_time_seconds)
 
-                    yield output
+                output = dict(
+                    [(o.metadata_label,
+                      o.build_json_results(p, timestamps_array))
+                     for (o, p) in zip(objectives, predictions_array)])
+
+                output.update({
+                    'mmsi': int(mmsi),
+                    'start_time': start_time.isoformat(),
+                    'end_time': end_time.isoformat()
+                })
+                t0 = log_dt(t0, "created output")
+
+                yield output
 
 
 def main(args):
@@ -250,7 +327,7 @@ def main(args):
     chosen_model = Model(feature_dimensions, None, None)
 
     infererer = Inferer(chosen_model, model_checkpoint_path, root_feature_path,
-                        mmsis)
+                        inference_parallelism)
 
     if args.interval_months is None:
         # This is ignored for point inference, but we can't care.
@@ -263,7 +340,7 @@ def main(args):
 
     with nlj.open(gzip.GzipFile(inference_results_path, 'w'),
                           'w') as output_nlj:
-        for x in infererer.run_inference(inference_parallelism,
+        for x in infererer.run_inference(mmsis,
                                 interval_months, args.start_date, args.end_date):
             output_nlj.write(x)
 

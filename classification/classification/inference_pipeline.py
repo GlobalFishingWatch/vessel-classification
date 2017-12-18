@@ -2,11 +2,13 @@ from __future__ import absolute_import
 import logging
 import posixpath as pp
 from apache_beam import io
-from apache_beam import Pipeline
+from apache_beam import Create
 from apache_beam import FlatMap
+from apache_beam import Pipeline
 from apache_beam.io import WriteToText
 from apache_beam.runners import PipelineState
 from pipe_tools.coders.jsoncoder import JSONDict
+from pipe_tools.coders.jsoncoder import JSONDictCoder
 
 from classification.options.inference_options import InferenceOptions
 
@@ -19,31 +21,33 @@ import pytz
 import tensorflow as tf
 
 
-FEATURE_DIMENSIONS = 14
-
 
 def date_string_to_date(s):
     return datetime.datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=pytz.utc)
 
 
-# TODO: try only creating model once per instance; use factory function.
+_inferer = None
+_inferer_args = None
+def get_inferer(*args):
+    global _inferer, _inferer_args
+    if _inferer_args != args:
+        if _inferer is not None:
+            logging.warn("Creating new inferer")
+            _inferer.close()
+        # TODO: close old inferer if present
+        checkpoint_path, feature_path, feature_dimensions = args
+        model = fishing_detection.Model(feature_dimensions, None, None)
+        _inferer = Inferer(model, checkpoint_path, feature_path)
+        _inferer_args = args
+    return _inferer
 
-_model = None
-def get_model():
-    global _model
-    if _model is None:
-        _model = fishing_detection.Model(FEATURE_DIMENSIONS , None, None)
-    return _model
-
-def run_inference(mmsi, checkpoint_path, feature_path, start_date, end_date):
-    with tf.Graph().as_default():
-        model = get_model()
-        inferer = Inferer(model, checkpoint_path, feature_path, [mmsi])
-        return list(inferer.run_inference(1, None, 
-                date_string_to_date(start_date), date_string_to_date(end_date)))
-        # for output in inferer.run_inference(1, None, 
-        #         date_string_to_date(start_date), date_string_to_date(end_date)):
-        #     yield JSONDict(**output)
+def run_inference(mmsi, checkpoint_path, feature_path, feature_dimensions, start_date, end_date):
+    inferer = get_inferer(checkpoint_path, feature_path, feature_dimensions)
+    return list(inferer.run_inference([mmsi], None, 
+            date_string_to_date(start_date), date_string_to_date(end_date)))
+    # for output in inferer.run_inference([mmsi], None, 
+    #         date_string_to_date(start_date), date_string_to_date(end_date)):
+    #     yield JSONDict(**output)
 
 
 def run(options):
@@ -55,10 +59,13 @@ def run(options):
     mmsi_path = pp.join(pp.dirname(iopts.feature_path), 'mmsis/part-00000-of-00001.txt')
 
     mmsis = p | io.ReadFromText(mmsi_path)
-    output = mmsis | FlatMap(run_inference, iopts.checkpoint_path, iopts.feature_path,
-                              iopts.start_date, iopts.end_date)
+    # mmsis = p | Create(['1', '200009595', '211516550', '225023360', '235003666', '240552000', '244780789', '255805905', '265725430', '304010593'])
+    output = mmsis | FlatMap(run_inference,  
+                                iopts.checkpoint_path, iopts.feature_path,
+                                iopts.feature_dimensions,
+                                iopts.start_date, iopts.end_date)
     output | WriteToText(num_shards=1, file_path_prefix=iopts.results_path, 
-                file_name_suffix='.json.gz')
+                file_name_suffix='.json.gz', shard_name_template='', coder=JSONDictCoder())
 
     result = p.run()
 

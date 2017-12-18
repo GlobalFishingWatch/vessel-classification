@@ -652,31 +652,7 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
 # TODO: pull out replicate_extract as class and write tests for it.
 
 
-def all_fixed_window_feature_file_reader(filename_queue, num_features,
-                                         window_size, shift, start_date, end_date):
-    """ Set up a file reader and inference feature extractor for the files in a
-        queue.
-
-    An inference feature extractor, pulling all sequential fixed-length slices
-    from a vessel movement series.
-
-    Args:
-        filename_queue: a queue of filenames for feature files to read.
-        num_features: the dimensionality of the features.
-
-    Returns:
-        A tuple comprising, for the n slices comprising each vessel:
-          1. A tensor of the feature slices drawn, of dimension
-             [n, 1, window_size, num_features].
-          2. A tensor of the timestamps for each feature point of dimension
-             [n, window_size].
-          3. A tensor of the timebounds for the slices, of dimension [n, 2].
-          4. A tensor of the mmsis of each vessel of dimension [n].
-
-    """
-    context_features, sequence_features = single_feature_file_reader(
-        filename_queue, num_features)
-
+def process_fixed_window_features(context_features, sequence_features):
     movement_features = sequence_features['movement_features']
     mmsi = tf.cast(context_features['mmsi'], tf.int32)
 
@@ -707,6 +683,35 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
         [tf.float32, tf.int32, tf.int32, tf.int32])
 
     return features_list, timeseries, time_bounds_list, mmsis
+
+
+
+def all_fixed_window_feature_file_reader(filename_queue, num_features,
+                                         window_size, shift, start_date, end_date):
+    """ Set up a file reader and inference feature extractor for the files in a
+        queue.
+
+    An inference feature extractor, pulling all sequential fixed-length slices
+    from a vessel movement series.
+
+    Args:
+        filename_queue: a queue of filenames for feature files to read.
+        num_features: the dimensionality of the features.
+
+    Returns:
+        A tuple comprising, for the n slices comprising each vessel:
+          1. A tensor of the feature slices drawn, of dimension
+             [n, 1, window_size, num_features].
+          2. A tensor of the timestamps for each feature point of dimension
+             [n, window_size].
+          3. A tensor of the timebounds for the slices, of dimension [n, 2].
+          4. A tensor of the mmsis of each vessel of dimension [n].
+
+    """
+    context_features, sequence_features = single_feature_file_reader(
+        filename_queue, num_features)
+
+    return process_fixed_window_features(context_features, sequence_features)
 
 
 class VesselMetadata(object):

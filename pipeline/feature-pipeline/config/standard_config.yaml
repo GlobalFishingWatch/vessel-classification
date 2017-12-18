@@ -1,11 +1,11 @@
 inputFilePatterns:
-  - "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/2012-*-*/*-of-*"
-  - "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/2013-*-*/*-of-*"
-  - "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/2014-*-*/*-of-*"
-  - "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/2015-*-*/*-of-*"
-  - "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/2016-*-*/*-of-*"
-  - "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/2017-*-*/*-of-*"
-knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_AND_LIKELY/ANY_YEAR.txt"
+  - "gs://p_p516_daily/data-production/classify-pipeline/classify/2012-*-*/*-of-*"
+  - "gs://p_p516_daily/data-production/classify-pipeline/classify/2013-*-*/*-of-*"
+  - "gs://p_p516_daily/data-production/classify-pipeline/classify/2014-*-*/*-of-*"
+  - "gs://p_p516_daily/data-production/classify-pipeline/classify/2015-*-*/*-of-*"
+  - "gs://p_p516_daily/data-production/classify-pipeline/classify/2016-*-*/*-of-*"
+  - "gs://p_p516_daily/data-production/classify-pipeline/classify/2017-*-*/*-of-*"
+knownFishingMMSIs: "../../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_AND_LIKELY/ANY_YEAR.txt"
 anchoragesRootPath: "gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output"
 minRequiredPositions: 100
 encounterMinHours: 3

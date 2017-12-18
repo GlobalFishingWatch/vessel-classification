@@ -32,6 +32,8 @@ class InferenceOptions(PipelineOptions):
                               help="First date to look for entry/exit events.")
         required.add_argument('--end_date', required=True, type=valid_date_string,
                             help="Last date (inclusive) to look for entry/exit events.")
+        required.add_argument('--feature_dimensions', required=True, type=int,
+                            help="Number of feature dimensions of model")
 
         optional.add_argument('--wait', action='store_true',
                             help='Wait for Dataflow to complete.')
