@@ -3,9 +3,9 @@
 set -e
 
 # Run scala dataflow pipeline tests.
-pushd pipeline
-sbt test
-popd
+#pushd pipeline
+#sbt test
+#popd
 
 # Run python TF tests.
 pushd classification
@@ -14,7 +14,8 @@ python -m compute_metrics_test
 python -m classification.utility_test
 python -m classification.objectives_test
 python -m classification.models.models_test
+python -m classification.file_iterator_test
 popd
 
 # Build docker containers
-docker build -f deployment/Dockerfile .
+# docker build -f deployment/Dockerfile .
