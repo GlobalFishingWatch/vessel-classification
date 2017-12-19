@@ -896,7 +896,7 @@ class FishingRangeExtractor(object):
             return
         mmsi = row['mmsi']
         rng = [(_parse(x['start_time']), _parse(x['end_time']))
-               for x in row['fishing_localisation']]
+               for x in row['fishing_localisation'] if x.get('value', False)]
         self.ranges_by_mmsi[mmsi].extend(rng)
         self.coverage_by_mmsi[mmsi].append(
             (_parse(row['start_time']), _parse(row['end_time'])))

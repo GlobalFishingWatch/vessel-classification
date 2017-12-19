@@ -669,6 +669,9 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                      for (k, v) in raw_metrics.items()})
 
             def build_json_results(self, prediction, timestamps):
+                InferencePoint = namedtuple('InferencePoint', ['timestamp', 'is_fishing'])
+                InferenceRange = namedtuple('InferenceRange', ['start_time', 'end_time', 'score'])
+
                 assert (len(prediction) == len(timestamps))
                 thresholded_prediction = prediction > 0.5
                 combined = zip(timestamps, thresholded_prediction)
@@ -680,28 +683,30 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 fishing_ranges = []
                 for ts_raw, is_fishing in combined:
                     ts = datetime.datetime.utcfromtimestamp(int(ts_raw))
-                    if last and last[0] >= ts:
+                    if last and last.timestamp >= ts:
                         break
-                    if is_fishing:
-                        if last and last[1]:
-                            if ts.date() > last[0].date():
-                                # We are crossing a day boundary here, so break into two ranges
-                                end_of_day = datetime.datetime.combine(last[0].date(), 
-                                    datetime.time(hour=23, minute=59, second=59))
-                                start_of_day = datetime.datetime.combine(ts.date(), 
-                                    datetime.time(hour=0, minute=0, second=0))
-                                fishing_ranges[-1][1] = end_of_day.isoformat()
-                                fishing_ranges.append([start_of_day.isoformat(), None])
-                            fishing_ranges[-1][1] = ts.isoformat()
-                        else:
-                            # TODO, append min(half the distance to previous / next point)
+                    if last and last.is_fishing == is_fishing:
+                        if ts.date() > last.timestamp.date():
+                            # We are crossing a day boundary here, so break into two ranges
+                            end_of_day = datetime.datetime.combine(last.timestamp.date(), 
+                                datetime.time(hour=23, minute=59, second=59))
+                            # TODO: are we skipping a day here if gaps is multi day? Check
+                            start_of_day = datetime.datetime.combine(ts.date(), 
+                                datetime.time(hour=0, minute=0, second=0))
+                            fishing_ranges[-1] = fishing_ranges[-1]._replace(
+                                                    end_time=end_of_day.isoformat())
                             fishing_ranges.append(
-                                [ts.isoformat(), ts.isoformat()])
-                    last = (ts, is_fishing)
+                                InferenceRange(start_of_day.isoformat(), None, is_fishing))
+                        fishing_ranges[-1] =  fishing_ranges[-1]._replace(end_time=ts.isoformat())
+                    else:
+                        # TODO, append min(half the distance to previous / next point)
+                        fishing_ranges.append(
+                            InferenceRange(ts.isoformat(), ts.isoformat(), is_fishing))
+                    last = InferencePoint(timestamp=ts, is_fishing=is_fishing)
 
-                return [{'start_time': start_time + 'Z',
-                         'end_time': end_time + 'Z'}
-                        for (start_time, end_time) in fishing_ranges]
+                return [{'start_time': x.start_time + 'Z',
+                         'end_time': x.end_time + 'Z', 'value': float(x.score)}
+                        for x in fishing_ranges]
 
         return Evaluation(self.metadata_label, self.name, self.prediction,
                           timestamps, mmsis, self.metrics)
