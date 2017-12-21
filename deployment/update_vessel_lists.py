@@ -13,7 +13,10 @@ import shutil
 import common
 
 
-gcs_base = "gs://p_p429_resampling_3/data-production/classify-pipeline/classify/"
+classify_gcs_root_path = ""
+anchorages_gcs_root_path = ""
+vessel_characterization_model_gcs_path = ""
+features_gcs_root_path = ""
 
 this_dir = os.path.abspath(os.path.dirname(__file__))
 classification_dir = os.path.abspath(os.path.join(this_dir, '../classification'))
@@ -74,12 +77,13 @@ def clone_treniformis_if_needed():
 def download_weights_if_needed():
     if not os.path.exists('vessel_characterization.model.ckpt'):
         checked_call(['gsutil', 'cp', 
-            'gs://world-fishing-827/data-production/classification/vessel_characterization.model.ckpt', '.'],
+            vessel_characterization_model_gcs_path, '.'],
             cwd=classification_dir)
     else:
         log("Using existing weights without updating")
 
 def create_dirs_if_needed():
+    log("Creating directories.")
     label_path = os.path.join(classification_dir, 'updated-labels')
     if not os.path.exists(label_path):
         log("Adding path", label_path)
@@ -90,6 +94,7 @@ def create_dirs_if_needed():
         os.mkdir(regression_path)
 
 def generate_features(range_end):
+    log("Generating features.")
     # We need 180 days, but do more, just to be safe, we usually don't have 
     # data right up to today anyway.
     range_start = range_end - datetime.timedelta(days=220)
@@ -98,7 +103,7 @@ def generate_features(range_end):
 inputFilePatterns:
 {}
 knownFishingMMSIs: "../../treniformis/treniformis/_assets/GFW/FISHING_MMSI/KNOWN_AND_LIKELY/ANY_YEAR.txt"
-anchoragesRootPath: "gs://world-fishing-827/data-production/classification/release-0.1.0/pipeline/output"
+anchoragesRootPath: "{}"
 minRequiredPositions: 100
 encounterMinHours: 3
 encounterMaxKilometers: 0.5
@@ -109,13 +114,13 @@ encounterMaxKilometers: 0.5
     while month < range_end.month or year < range_end.year:
         paths.append(
             '  - "{base}{year:4d}-{month:02d}-*/*-of-*"'.format(
-            base=gcs_base, year=year, month=month))
+            base=classify_gcs_root_path, year=year, month=month))
         month += 1
         if month > 12:
             month = 1
             year += 1
 
-    config = template.format('\n'.join(paths))
+    config = template.format('\n'.join(paths),anchorages_gcs_root_path)
 
 
     with tempfile.NamedTemporaryFile() as fp:
@@ -155,7 +160,7 @@ def run_generate_features(range_end):
 def run_inference():
     command = """
         python -m classification.run_inference prod.vessel_characterization \\
-            --root_feature_path gs://world-fishing-827-dev-ttl30d/data-production/classification/{}/update_vessel_lists/pipeline/output/features \\
+            --root_feature_path {} \\
             --inference_parallelism 128 \\
             --feature_dimensions 15 \\
             --inference_results_path ./update_vessel_lists.json.gz \\
@@ -163,7 +168,7 @@ def run_inference():
             --metadata_file training_classes.csv \\
             --fishing_ranges_file combined_fishing_ranges.csv
 
-    """.format(os.environ.get('USER'))
+    """.format(features_gcs_root_path.format(os.environ.get('USER')))
     log("Running command:")
     log(command)
 
@@ -212,15 +217,32 @@ def update_treniformis(date):
 
 if __name__ == "__main__":
     import argparse
+    
+    log("Started running python update script.")
+    
     parser = argparse.ArgumentParser(description='Update Vessel Lists.')
     parser.add_argument('--skip-feature-generation', help='skip generating new features', action='store_true')
     parser.add_argument('--skip-inference', help='skip running inference', action='store_true')
     parser.add_argument('--skip-list-generation', help='skip generating new lists', action='store_true')
     parser.add_argument('--skip-update-treniformis', help='skip updating treniformis with new lists', action='store_true')
+    parser.add_argument('--classify-gcs-root-path', help='path to the latest classify pipeline output', required=True)
+    parser.add_argument('--anchorages-gcs-root-path', help='path to the latest anchorages pipeline output', required=True)
+    parser.add_argument('--features-gcs-root-path', help='path to the latest features output', required=True)
+    parser.add_argument('--vessel-characterization-model-gcs-path', help='path to the latest vessel characterization model', required=True)
+    
     args = parser.parse_args()
 
-    date = common.most_recent(gcs_base + "{:%Y-%m-%d}/*")
+    classify_gcs_root_path = args.classify_gcs_root_path
+    anchorages_gcs_root_path = args.anchorages_gcs_root_path
+    vessel_characterization_model_gcs_path = args.vessel_characterization_model_gcs_path
+    features_gcs_root_path = args.features_gcs_root_path
 
+    date = common.most_recent(classify_gcs_root_path + "{:%Y-%m-%d}/*")
+    log("classify_gcs_root_path: {}".format(classify_gcs_root_path))
+    log("anchorages_gcs_root_path: {}".format(anchorages_gcs_root_path))
+    log("vessel_characterization_model_gcs_path: {}".format(vessel_characterization_model_gcs_path))
+    log("features_gcs_root_path: {}".format(features_gcs_root_path))
+    
     try:
         create_dirs_if_needed()
 
