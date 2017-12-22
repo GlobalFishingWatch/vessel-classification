@@ -13,10 +13,10 @@ import shutil
 import common
 
 
-classify_gcs_root_path = ""
-anchorages_gcs_root_path = ""
-vessel_characterization_model_gcs_path = ""
-features_gcs_root_path = ""
+classify_gcs_root_path = None
+anchorages_gcs_root_path = None
+vessel_characterization_model_gcs_path = None
+features_gcs_root_path = None
 
 this_dir = os.path.abspath(os.path.dirname(__file__))
 classification_dir = os.path.abspath(os.path.join(this_dir, '../classification'))
