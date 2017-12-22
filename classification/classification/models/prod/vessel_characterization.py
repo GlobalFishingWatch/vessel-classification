@@ -19,7 +19,7 @@ from . import abstract_models
 from . import layers
 from classification import utility
 from classification.objectives import (
-    TrainNetInfo, MultiClassificationObjective, LogRegressionObjective)
+    TrainNetInfo, MultiClassificationObjectiveSmoothed, LogRegressionObjectiveMAE)
 import logging
 import math
 import numpy as np
@@ -38,13 +38,13 @@ class Model(abstract_models.MisconceptionModel):
     assert len(strides) == len(feature_depths)
     feature_sub_depths = 1024
 
-    initial_learning_rate = 5e-5
+    initial_learning_rate = 1e-4
     learning_decay_rate = 0.5
     decay_examples = 100000
 
     @property
     def number_of_steps(self):
-        return 600000
+        return 800000
 
     @property
     def max_window_duration_seconds(self):
@@ -77,28 +77,34 @@ class Model(abstract_models.MisconceptionModel):
                 return np.float32(x)
 
         self.training_objectives = [
-            LogRegressionObjective(
+            # Length data is more reliable than other data, so give it higher weight.
+            LogRegressionObjectiveMAE(
                 'length',
                 'Vessel-length',
                 XOrNone('length'),
-                metrics=metrics),
-            LogRegressionObjective(
+                metrics=metrics,
+                loss_weight=0.1),
+            LogRegressionObjectiveMAE(
                 'tonnage',
                 'Vessel-tonnage',
                 XOrNone('tonnage'),
-                metrics=metrics),
-            LogRegressionObjective(
+                metrics=metrics,
+                loss_weight=0.1),
+            LogRegressionObjectiveMAE(
                 'engine_power',
                 'Vessel-engine-Power',
                 XOrNone('engine_power'),
-                metrics=metrics),
-            LogRegressionObjective(
+                metrics=metrics,
+                loss_weight=0.1),
+            LogRegressionObjectiveMAE(
                 'crew_size',
                 'Vessel-Crew-Size',
                 XOrNone('crew_size'),
-                metrics=metrics),
-            MultiClassificationObjective(
-                "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics)
+                metrics=metrics,
+                loss_weight=0.1),
+            MultiClassificationObjectiveSmoothed(
+                "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics, loss_weight=1,
+                smoothing_coefficient=0.01)
         ]
 
     def _build_model(self, features, timestamps, mmsis, is_training):

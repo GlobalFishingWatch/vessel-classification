@@ -326,6 +326,21 @@ class LogRegressionObjective(ObjectiveBase):
                           self.prediction, self.metrics)
 
 
+
+class LogRegressionObjectiveMAE(LogRegressionObjective):
+
+    def _masked_mean_loss(self, predictions, mmsis):
+        expected, mask = self._expected_and_mask(mmsis)
+        count = tf.reduce_sum(mask)
+        mean_absolute_error = tf.abs(
+            (tf.log(expected + EPSILON) - predictions) * mask)
+
+        loss = tf.reduce_sum(mean_absolute_error) / tf.maximum(count, EPSILON)
+
+        return loss
+
+
+
 class MultiClassificationObjective(ObjectiveBase):
     def __init__(self,
                  metadata_label,
@@ -471,6 +486,46 @@ class MultiClassificationObjective(ObjectiveBase):
 
         return Evaluation(self.metadata_label, self.name, self.training_label,
                           self.classes, self.num_classes, logits, self.metrics)
+
+
+class MultiClassificationObjectiveSmoothed(MultiClassificationObjective):
+
+    def __init__(self,
+                 metadata_label,
+                 name,
+                 vessel_metadata,
+                 loss_weight=1.0,
+                 metrics='all',
+                 smoothing_coefficient=0.1):
+        self.epsilon = smoothing_coefficient
+        super(MultiClassificationObjectiveSmoothed, self).__init__(metadata_label, name, vessel_metadata, loss_weight,
+                                                           metrics)
+
+    def build_trainer(self, timestamps, mmsis):
+
+        labels = self.multihot_labels(mmsis)
+
+        with tf.variable_scope("custom-loss"):
+            positives = (1 - self.epsilon) * tf.reduce_sum(
+                tf.to_float(labels) * self.prediction, reduction_indices=[1]) + self.epsilon
+            raw_loss = -tf.reduce_mean(tf.log(positives))
+
+        mask = tf.to_float(tf.equal(tf.reduce_sum(labels, 1), 1))
+        int_labels = tf.to_int32(tf.argmax(labels, 1))
+        int_predictions = tf.to_int32(tf.argmax(self.prediction, 1))
+        accuracy = metrics.accuracy(int_labels, int_predictions, weights=mask)
+
+        loss = raw_loss * self.loss_weight
+
+
+        update_ops = []
+        update_ops.append(
+            tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
+        update_ops.append(
+            tf.summary.scalar('%s/Training-accuracy' % self.name, accuracy))      
+
+        return Trainer(loss, update_ops)
+
 
 
 class AbstractFishingLocalizationObjective(ObjectiveBase):
