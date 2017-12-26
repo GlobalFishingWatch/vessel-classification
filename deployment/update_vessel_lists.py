@@ -162,7 +162,7 @@ def run_inference():
         python -m classification.run_inference prod.vessel_characterization \\
             --root_feature_path {} \\
             --inference_parallelism 128 \\
-            --feature_dimensions 15 \\
+            --feature_dimensions 14 \\
             --inference_results_path ./update_vessel_lists.json.gz \\
             --model_checkpoint_path   ./vessel_characterization.model.ckpt  \\
             --metadata_file training_classes.csv \\
