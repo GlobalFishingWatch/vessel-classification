@@ -3,7 +3,7 @@ from pipe_tools.beam import logging_monkeypatch
 from pipe_tools.options import validate_options
 from pipe_tools.options import LoggingOptions
 
-from classification.options.inference_options import InferenceOptions
+from .options.inference_options import InferenceOptions
 
 from apache_beam.options.pipeline_options import PipelineOptions
 
@@ -13,7 +13,7 @@ def run(args):
 
     options.view_as(LoggingOptions).configure_logging()
 
-    from classification import inference_pipeline
+    from . import inference_pipeline
 
     inference_pipeline.run(options)
 

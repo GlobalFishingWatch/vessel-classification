@@ -26,8 +26,8 @@ class InferenceOptions(PipelineOptions):
                             help='Path to directory containing MMSI sharded feature files')
         required.add_argument('--checkpoint_path', required=True, 
                             help='Path to model checkpoint')
-        required.add_argument('--results_path', required=True, 
-                            help='Path to write inference results to. `.json.gz` will be appended to this')
+        required.add_argument('--results_table', required=True, 
+                            help='BigQuery table to write inference results to.')
         required.add_argument('--start_date', required=True, type=valid_date_string,
                               help="First date to look for entry/exit events.")
         required.add_argument('--end_date', required=True, type=valid_date_string,
@@ -37,3 +37,5 @@ class InferenceOptions(PipelineOptions):
 
         optional.add_argument('--wait', action='store_true',
                             help='Wait for Dataflow to complete.')
+        optional.add_argument('--results_path', 
+                            help='GCS Path to write inference results to.')

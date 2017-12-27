@@ -700,6 +700,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                         fishing_ranges[-1] =  fishing_ranges[-1]._replace(end_time=ts.isoformat())
                     else:
                         # TODO, append min(half the distance to previous / next point)
+                        # TODO, but maybe we should drop long ranges with no points
                         fishing_ranges.append(
                             InferenceRange(ts.isoformat(), ts.isoformat(), is_fishing))
                     last = InferencePoint(timestamp=ts, is_fishing=is_fishing)

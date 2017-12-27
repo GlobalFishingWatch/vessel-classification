@@ -1,20 +1,46 @@
 
 # Dataflow inference
 
-      python -m classification.inference \
-              --feature_path gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-old-old-school/pipeline/output/features \
-              --checkpoint_path gs://machine-learning-dev-ttl-30d/scratch/inference/model.ckpt-202582 \
-              --results_path=gs://machine-learning-dev-ttl-30d/scratch/test_inference_2015 \
-              --start_date 2015-01-01 \
-              --end_date 2015-12-31 \
-              --project world-fishing-827 \
-              --temp_location gs://machine-learning-dev-ttl-30d/scratch/inference \
-              --job_name dataflow-inference-test \
-              --max_num_workers 200 \
-              --setup_file ./setup.py \
-              --requirements_file requirements.txt \
-              --runner DataflowRunner \
-              --disk_size_gb 100
+    python -m classification.pipelines.inference \
+            --feature_path gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-old-old-school-2/pipeline/output/features \
+            --checkpoint_path gs://machine-learning-dev-ttl-30d/old_old_fishing.ckpt \
+            --feature_dimensions 14 \
+            --results_table=world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_2016_current \
+            --start_date 2012-01-01 \
+            --end_date 2017-12-31 \
+            --project world-fishing-827 \
+            --temp_location gs://machine-learning-dev-ttl-30d/scratch/inference \
+            --job_name dataflow-inference-test \
+            --max_num_workers 200 \
+            --setup_file ./setup.py \
+            --requirements_file requirements.txt \
+            --runner DataflowRunner \
+            --disk_size_gb 100
+
+        python -m classification.pipelines.annotation \
+                --annotation_table=world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_2016_current \
+                --message_table=world-fishing-827:pipeline_classify_p_p429_resampling_2. \
+                --sink_table=machine_learning_dev_ttl_30d.test_annotation_pipe_all \
+                --start_date 2012-01-01 \
+                --end_date 2017-12-31 \
+                --project world-fishing-827 \
+                --temp_location gs://machine-learning-dev-ttl-30d/scratch/inference \
+                --job_name dataflow-annotation-test \
+                --max_num_workers 200 \
+                --setup_file ./setup.py \
+                --requirements_file requirements.txt \
+                --runner DataflowRunner \
+                --disk_size_gb 100
+
+
+    python -m classification.metrics.compute_fishing_metrics \
+           --inference-table world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_2016_current --label-path classification/data/fishing_classes.csv \
+           --dest-path test_fishing.html \
+           --fishing-ranges classification/data/combined_fishing_ranges.csv  \
+           --project-id world-fishing-827
+
+
+
 
 
 
@@ -144,6 +170,8 @@ be autoformatted with YAPF before committing. To install it, run:
 * `sudo pip install yapf`
 
 Run `yapf -r -i .` in the top level directory to fix the format of the full project.
+
+
 
 
 
