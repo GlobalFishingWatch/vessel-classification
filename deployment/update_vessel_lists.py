@@ -77,7 +77,7 @@ def clone_treniformis_if_needed():
 def download_weights_if_needed():
     if not os.path.exists('vessel_characterization.model.ckpt'):
         checked_call(['gsutil', 'cp', 
-            vessel_characterization_model_gcs_path, '.'],
+            vessel_characterization_model_gcs_path, './vessel_characterization.model.ckpt'],
             cwd=classification_dir)
     else:
         log("Using existing weights without updating")
