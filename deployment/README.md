@@ -27,7 +27,7 @@ Logs are placed in `vessel-classification\logs`
 
 ## To run full update from the instance
 
-`sudo docker run --rm -v ~/.ssh:/root/.ssh -v ~/vessel-classification/logs:/app/logs update_vessel_lists python deployment/update_vessel_lists.py`
+`sudo docker run --rm -v ~/.ssh:/root/.ssh -v ~/vessel-classification/logs:/app/logs update_vessel_lists python deployment/update_vessel_lists.py --classify-gcs-root-path [CLASSIFY_PIPELINE_OUTPUT_GCS_PATH] --anchorages-gcs-root-path [ANCHORAGES_PIPELINE_OUTPUT_GCS_PATH] --features-gcs-root-path [ANCHORAGES_PIPELINE_OUTPUT_GCS_PATH] --vessel-characterization-model-gcs-path [CHARACTERIZATION_MODEL_GCS_PATH]`
 
 ## To run manually
 
@@ -39,7 +39,7 @@ Then for options:
 
 Now can run just the failing part for sped up debugging. For instance to just run inference:
 
-`python deployment/update_vessel_lists.py --skip-feature-generation --skip-list-generation --skip-update-treniformis`
+`python deployment/update_vessel_lists.py --classify-gcs-root-path [CLASSIFY_PIPELINE_OUTPUT_GCS_PATH] --anchorages-gcs-root-path [ANCHORAGES_PIPELINE_OUTPUT_GCS_PATH] --features-gcs-root-path [ANCHORAGES_PIPELINE_OUTPUT_GCS_PATH] --vessel-characterization-model-gcs-path [CHARACTERIZATION_MODEL_GCS_PATH] --skip-feature-generation --skip-list-generation --skip-update-treniformis`
 
 
 
