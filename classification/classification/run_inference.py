@@ -14,37 +14,20 @@
 
 from __future__ import absolute_import
 
-import argparse
-import datetime
-import gzip
-import importlib
 import logging
-import newlinejson as nlj
 import numpy as np
 import os
-from pkg_resources import resource_filename
 import pytz
-import sys
+import subprocess
 import tempfile
 import tensorflow as tf
 import time
-from . import model
-from . import utility
-from . import file_iterator
-from itertools import chain
-import gc
-import subprocess
 import uuid
-import resource
+from datetime import datetime
+from datetime import timedelta
 
-def log_dt(t0, message):
-    t1 = time.clock()
-    logging.info("%s (dt = %s s", message, t1 - t0)
-    return t1
+from . import file_iterator
 
-def log_mem(message, mmsis):
-    mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    logging.info("%s for %s: %s", message, mmsis, mem)
 
 class Inferer(object):
     def __init__(self, model, model_checkpoint_path, root_feature_path):
@@ -65,35 +48,23 @@ class Inferer(object):
     def close(self):
         self.sess.close()
 
-
     def _build_objectives(self):
         # with self.sess.as_default():
-            t0 = time.clock()
-
             self.features_ph = tf.placeholder(tf.float32, 
                 shape=[None, 1, self.model.window_max_points, self.model.num_feature_dimensions])
             self.timestamps_ph = tf.placeholder(tf.int32, shape=[None, self.model.window_max_points])
             self.time_ranges_ph = tf.placeholder(tf.int32, shape=[None, 2])
             self.mmsis_ph = tf.placeholder(tf.int32, shape=[None])
 
-            t0 = log_dt(t0, "built placeholders")
-
-
             objectives = self.model.build_inference_net(self.features_ph, self.timestamps_ph,
                                                         self.time_ranges_ph)
-
-            t0 = log_dt(t0, "built objectives")
-
             return objectives
 
-
     def _restore_graph(self):
-        t0 = time.clock()
         init_op = tf.group(tf.local_variables_initializer(),
                            tf.global_variables_initializer())
 
         self.sess.run(init_op)
-        t0 = log_dt(t0, "Initialized variable")
         logging.info("Restoring model: %s", self.model_checkpoint_path)
         saver = tf.train.Saver()
         gspath = self.model_checkpoint_path.startswith('gs:')
@@ -111,10 +82,6 @@ class Inferer(object):
         finally:
             os.unlink(temppath)
 
-        t0 = log_dt(t0, "restored net")
-
-
-
     def _feature_files(self, mmsis):
         return [
             '%s/%s.tfrecord' % (self.root_feature_path, mmsi)
@@ -124,8 +91,8 @@ class Inferer(object):
     def _build_starts(self, interval_months):
         # TODO: should use min_window_duration here
         window_dur_seconds = self.model.max_window_duration_seconds
-        last_viable_date = datetime.datetime.now(
-            pytz.utc) - datetime.timedelta(seconds=window_dur_seconds)
+        last_viable_date = datetime.now(
+            pytz.utc) - timedelta(seconds=window_dur_seconds)
         time_starts = []
         start_year = 2012
         month_count = 0
@@ -133,7 +100,7 @@ class Inferer(object):
             year = start_year + month_count // 12
             month = month_count % 12 + 1
             month_count += interval_months
-            dt = datetime.datetime(year, month, 1, tzinfo=pytz.utc)
+            dt = datetime(year, month, 1, tzinfo=pytz.utc)
             if dt > last_viable_date:
                 break
             else:
@@ -143,7 +110,6 @@ class Inferer(object):
 
 
     def run_inference(self, mmsis, interval_months, start_date, end_date):
-        t0 = time.clock()
         matching_files = self._feature_files(mmsis)
         logging.info("MATCHING:")
         for path in matching_files:
@@ -157,7 +123,7 @@ class Inferer(object):
 
             time_starts = self._build_starts(interval_months)
 
-            delta = datetime.timedelta(
+            delta = timedelta(
                 seconds=self.model.max_window_duration_seconds)
             self.time_ranges = [(int(time.mktime(dt.timetuple())),
                                  int(time.mktime((dt + delta).timetuple())))
@@ -177,266 +143,52 @@ class Inferer(object):
                 matching_files, self.deserializer,
                 self.model.window_max_points, shift, start_date, end_date)
 
-        t0 = log_dt(t0, "built feature_iter")
 
         objectives = self.objectives
 
         all_predictions = [o.prediction for o in objectives]
 
-
-
-
-
-        # log_mem("Starting queue runners.", mmsis)
-        # resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        # threads = tf.train.start_queue_runners(sess=self.sess)
-
         # In a loop, calculate logits and predictions and write out. Will
         # be terminated when an EOF exception is thrown.
-        log_mem("Running predictions.", mmsis)
-        i = 0
-        while True:
+        for i, queue_vals in enumerate(feature_iter):
             logging.info("Inference step: %d", i)
             t0 = time.clock()
-            i += 1
-            try:
-                # logging.info("Evaluating queues")
-                # queue_vals = self.sess.run([filename_queue])
-                # logging.info("Type of queue_vals: %s", type(queue_vals))
+            logging.info("Type of queue_vals: %s", type(queue_vals))
+            for i, qv in enumerate(queue_vals):
+                logging.info("type(QV[%s]) = %s", i, type(qv))
+                logging.info("tf.shape(QV[%s]) = %s", i, np.shape(qv))
+            logging.info("Type of queue_vals: %s", type(queue_vals))
 
+            feed_dict = {
+                self.features_ph : queue_vals[0][np.newaxis],
+                self.timestamps_ph : queue_vals[1][np.newaxis],
+                self.time_ranges_ph : queue_vals[2][np.newaxis],
+                self.mmsis_ph : queue_vals[3][np.newaxis]
+            }
 
-                # return
-
-                log_mem("Evaluating queues", mmsis)
-                queue_vals = feature_iter.next() # TODO: switch to for loop
-                logging.info("Type of queue_vals: %s", type(queue_vals))
-                for i, qv in enumerate(queue_vals):
-                    logging.info("type(QV[%s]) = %s", i, type(qv))
-                    logging.info("tf.shape(QV[%s]) = %s", i, np.shape(qv))
-                logging.info("Type of queue_vals: %s", type(queue_vals))
-
-                # TODO: remove extra level of depth here and then below!
-
-
-                feed_dict = {
-                    self.features_ph : queue_vals[0][None],
-                    self.timestamps_ph : queue_vals[1][None],
-                    self.time_ranges_ph : queue_vals[2][None],
-                    self.mmsis_ph : queue_vals[3][None]
-                }
-                t0 = log_dt(t0, "Queues evaluated")
-                log_mem("Queues evaluated", mmsis)
-                logging.info("GC count: %s", gc.get_count())
-                logging.info("DF: %s", subprocess.check_output('df'))
-            except StopIteration as err:
-                logging.info("Queues exhausted")
-                break
-            log_mem("Running Session", mmsis)
-            batch_results = self.sess.run([self.mmsis_ph, self.time_ranges_ph, self.timestamps_ph] 
+            batch_result = self.sess.run([self.mmsis_ph, self.time_ranges_ph, self.timestamps_ph] 
                                          + all_predictions, 
                                          feed_dict=feed_dict)
-            log_mem("Ran Session", mmsis)
-            t0 = log_dt(t0, "executed step")
-            logging.info("queue_vals type %s, len %s", type(queue_vals), len(queue_vals))
-            # logging.info("batch_results: %s", batch_results)
-            fixed_results = []
-            for x in batch_results:
-                if np.isscalar(x):
-                    x = np.reshape(x, [1])
-                fixed_results.append(x)
-            # logging.info("batch_results.shape = %s", np.shape(batch_results))
-            # for qv, predictions_array in zip([queue_vals], batch_results):
-                # mmsi = qv[3]
-                # (start_time_seconds, end_time_seconds) = qv[2]
-                # timestamps_array = qv[1]
-            for result in zip(*fixed_results):
-                mmsi = result[0]
-                (start_time_seconds, end_time_seconds) = result[1]
-                timestamps_array = result[2]
-                predictions_array = result[3:]
 
-                logging.info("mmsi = %s", mmsi)
-                # logging.info("predictions_array.shape = %s", np.shape(predictions_array))
-                logging.info("Type of predictions_array: %s", type(predictions_array))
-                # logging.info("DType of predictions_array: %s", predictions_array.dtype)
-                logging.info("Len(objectives): %s", len(objectives))
-                logging.info("Len(all_predictions): %s", len(all_predictions))
+            # Tensorflow returns some items one would expect to be shape (1,)
+            # as shape (). Compensate for that here by checking for is_scalar
+            result = [(x if np.isscalar(x) else x[0]) for x in batch_result]
+
+            mmsi = result[0]
+            start_time, end_time = [datetime.utcfromtimestamp(x) for x in result[1]]
+            timestamps_array = result[2]
+            predictions_array = result[3:]
+
+            output = {
+                'mmsi': int(mmsi),
+                'start_time': start_time.isoformat(),
+                'end_time': end_time.isoformat()
+            }
+            for (o, p) in zip(objectives, predictions_array):
+                output[o.metadata_label] = o.build_json_results(p, timestamps_array)
+
+            yield output
 
 
-                start_time = datetime.datetime.utcfromtimestamp(
-                    start_time_seconds)
-                end_time = datetime.datetime.utcfromtimestamp(
-                    end_time_seconds)
-
-                output = dict(
-                    [(o.metadata_label,
-                      o.build_json_results(p, timestamps_array))
-                     for (o, p) in zip(objectives, predictions_array)])
-
-                output.update({
-                    'mmsi': int(mmsi),
-                    'start_time': start_time.isoformat(),
-                    'end_time': end_time.isoformat()
-                })
-                t0 = log_dt(t0, "created output")
-
-                yield output
 
 
-def main(args):
-    logging.getLogger().setLevel(logging.DEBUG)
-    tf.logging.set_verbosity(tf.logging.DEBUG)
-
-    model_checkpoint_path = args.model_checkpoint_path
-    root_feature_path = args.root_feature_path
-    inference_results_path = args.inference_results_path
-
-    mmsis = utility.find_available_mmsis(args.root_feature_path)
-
-    module = "classification.models.{}".format(args.model_name)
-    try:
-        Model = importlib.import_module(module).Model
-    except:
-        logging.error("Could not load model: {}".format(module))
-        raise
-
-    if args.dataset_split:
-        if args.dataset_split in ['Training', 'Test']:
-            metadata_file = os.path.abspath(
-                resource_filename('classification.data', args.metadata_file))
-            fishing_range_file = os.path.abspath(
-                resource_filename('classification.data',
-                                  args.fishing_ranges_file))
-            if not os.path.exists(metadata_file):
-                logging.fatal("Could not find metadata file: %s.",
-                              metadata_file)
-                sys.exit(-1)
-
-            fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
-            vessel_metadata = Model.read_metadata(
-                mmsis, metadata_file, fishing_ranges=fishing_ranges)
-
-            mmsis.intersection_update(
-                vessel_metadata.mmsis_for_split(args.dataset_split))
-        else:
-            mmsis_file = os.path.abspath(
-                resource_filename('classification.data', args.dataset_split))
-            if not os.path.exists(mmsis_file):
-                logging.fatal("Could not find mmsis file: %s.",
-                              args.dataset_split)
-                sys.exit(-1)
-            with open(mmsis_file, 'r') as f:
-                mmsis.intersection_update([int(m) for m in f])
-    if args.mmsi:
-        if args.dataset_split:
-            logging.fatal("Only one of `mmsi` or `dataset_split` can be specified")
-            sys.exit(-1)
-        mmsis = [int(args.mmsi)]
-
-    logging.info("Running inference with %d mmsis", len(mmsis))
-
-    feature_dimensions = int(args.feature_dimensions)
-    chosen_model = Model(feature_dimensions, None, None)
-
-    infererer = Inferer(chosen_model, model_checkpoint_path, root_feature_path)
-
-    if args.interval_months is None:
-        # This is ignored for point inference, but we can't care.
-        interval_months = 6
-    else:
-        # Break if the user sets a time interval when we can't honor it.
-        assert chosen_model.max_window_duration_seconds != 0, "can't set interval for point inferring model"
-        interval_months = args.interval_months
-
-
-    with nlj.open(gzip.GzipFile(inference_results_path, 'w'),
-                          'w') as output_nlj:
-        for x in infererer.run_inference(mmsis,
-                                interval_months, args.start_date, args.end_date):
-            output_nlj.write(x)
-
-
-def valid_date(s):
-    try:
-        return datetime.datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=pytz.utc)
-    except ValueError:
-        msg = "Not a valid date: '{0}'.".format(s)
-        raise argparse.ArgumentTypeError(msg)
-
-
-def parse_args():
-    """ Parses command-line arguments for training."""
-    argparser = argparse.ArgumentParser(
-        'Infer behavioural labels for a set of vessels.')
-
-    argparser.add_argument('model_name')
-
-    argparser.add_argument(
-        '--root_feature_path',
-        required=True,
-        help='The path to the vessel movement feature directories.')
-
-    argparser.add_argument(
-        '--model_checkpoint_path',
-        required=True,
-        help='Path to the checkpointed model to use for inference.')
-
-    argparser.add_argument(
-        '--inference_results_path',
-        required=True,
-        help='Path to the csv file to dump all inference results.')
-
-    argparser.add_argument(
-        '--dataset_split',
-        type=str,
-        default='',
-        help='Data split to classify. If unspecified, all vessels. Otherwise '
-        'if Training or Test, read from built-in training/test split, '
-        'otherwise the name of a single-column csv file of mmsis.')
-
-    argparser.add_argument(
-        '--mmsi',
-        type=str,
-        default='',
-        help='Run inference only for the given MMSI. Not compatible with'
-             'dataset_split.')
-
-    argparser.add_argument(
-        '--feature_dimensions',
-        required=True,
-        help='The number of dimensions of a classification feature.')
-
-    argparser.add_argument(
-        '--metadata_file',
-        required=True,
-        help='Name of file containing metadata.')
-
-    argparser.add_argument(
-        '--fishing_ranges_file',
-        required=True,
-        help='Name of the file containing fishing ranges.')
-
-    argparser.add_argument(
-        '--interval_months',
-        default=None,
-        type=int,
-        help="Interval between successive classifications")
-
-    argparser.add_argument(
-        '--start_date',
-        default=None,
-        type=valid_date,
-        help='start of period to run inference on (defaults to earliest date with data)')
-
-    argparser.add_argument(
-        '--end_date',
-        default=None,
-        type=valid_date,
-        help='stop of period to run inference on (defaults to latest date with data)')
-
-    return argparser.parse_args()
-
-
-if __name__ == '__main__':
-    args = parse_args()
-    main(args)
