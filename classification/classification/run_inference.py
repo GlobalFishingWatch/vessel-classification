@@ -25,6 +25,7 @@ import os
 from pkg_resources import resource_filename
 import pytz
 import sys
+import tempfile
 import tensorflow as tf
 import time
 from . import model
@@ -33,6 +34,7 @@ from . import file_iterator
 from itertools import chain
 import gc
 import subprocess
+import uuid
 import resource
 
 def log_dt(t0, message):
@@ -45,18 +47,13 @@ def log_mem(message, mmsis):
     logging.info("%s for %s: %s", message, mmsis, mem)
 
 class Inferer(object):
-    def __init__(self, model, model_checkpoint_path, root_feature_path,
-                       inference_parallelism=1):
+    def __init__(self, model, model_checkpoint_path, root_feature_path):
 
         self.model = model
         self.model_checkpoint_path = model_checkpoint_path
         self.root_feature_path = root_feature_path
         self.batch_size = self.model.batch_size
         self.min_points_for_classification = model.min_viable_timeslice_length
-        self.inference_parallelism = inference_parallelism
-        config = tf.ConfigProto(
-            inter_op_parallelism_threads=inference_parallelism,
-            intra_op_parallelism_threads=inference_parallelism)
         self.sess = tf.Session()
         self.objectives = self._build_objectives()
         self._restore_graph()
@@ -70,7 +67,7 @@ class Inferer(object):
 
 
     def _build_objectives(self):
-        with self.sess.as_default():
+        # with self.sess.as_default():
             t0 = time.clock()
 
             self.features_ph = tf.placeholder(tf.float32, 
@@ -99,7 +96,20 @@ class Inferer(object):
         t0 = log_dt(t0, "Initialized variable")
         logging.info("Restoring model: %s", self.model_checkpoint_path)
         saver = tf.train.Saver()
-        saver.restore(self.sess, self.model_checkpoint_path)
+        gspath = self.model_checkpoint_path.startswith('gs:')
+        # Models over a certain size don't seem to load properly from gcs(?!),
+        # so copy locally and then load
+        if gspath:
+            tempdir = tempfile.gettempdir()
+            temppath = os.path.join(tempdir, uuid.uuid4().hex)
+            subprocess.check_call(['gsutil', 'cp', self.model_checkpoint_path, temppath])
+            model_checkpoint_path = temppath
+        else:
+            model_checkpoint_path = self.model_checkpoint_path
+        try:
+            saver.restore(self.sess, model_checkpoint_path)
+        finally:
+            os.unlink(temppath)
 
         t0 = log_dt(t0, "restored net")
 
@@ -143,8 +153,6 @@ class Inferer(object):
 
 
 
-        readers = []
-        assert self.inference_parallelism == 1 # TODO: rework
         if self.model.max_window_duration_seconds != 0:
 
             time_starts = self._build_starts(interval_months)
@@ -154,43 +162,22 @@ class Inferer(object):
             self.time_ranges = [(int(time.mktime(dt.timetuple())),
                                  int(time.mktime((dt + delta).timetuple())))
                                 for dt in time_starts]
-            raise NotImplentedError()
-            for _ in range(self.inference_parallelism * 2):
-                reader = utility.cropping_all_slice_feature_file_reader(
-                    filename_queue, self.model.num_feature_dimensions + 1,
-                    self.time_ranges, self.model.window_max_points,
-                    self.min_points_for_classification)  # TODO: add year
-                readers.append(reader)
+            feature_iter = file_iterator.cropping_all_slice_feature_file_iterator(
+                matching_files, self.deserializer,
+                self.time_ranges, self.model.window_max_points,
+                self.min_points_for_classification)  # TODO: add year
         else:
             if self.model.window is None:
                 shift = self.model.window_max_points
             else:
                 b, e = self.model.window
                 shift = e - b
-
-            # for _ in range(self.inference_parallelism * 2):
             logging.info("Shift %s %s %s", start_date, end_date, shift)
-            reader = file_iterator.all_fixed_window_feature_file_iterator(
+            feature_iter = file_iterator.all_fixed_window_feature_file_iterator(
                 matching_files, self.deserializer,
                 self.model.window_max_points, shift, start_date, end_date)
-            readers.append(reader)
 
-        t0 = log_dt(t0, "built readers")
-
-        feature_iter = chain(*readers)
-
-        # features, timestamps, time_ranges, mmsis = tf.train.batch_join(
-        #     readers,
-        #     self.batch_size,
-        #     enqueue_many=True,
-        #     capacity=1000,
-        #     shapes=[[
-        #         1, self.model.window_max_points,
-        #         self.model.num_feature_dimensions
-        #     ], [self.model.window_max_points], [2], []],
-        #     allow_smaller_final_batch=True)
-
-        t0 = log_dt(t0, "built queues")
+        t0 = log_dt(t0, "built feature_iter")
 
         objectives = self.objectives
 
@@ -227,11 +214,15 @@ class Inferer(object):
                     logging.info("type(QV[%s]) = %s", i, type(qv))
                     logging.info("tf.shape(QV[%s]) = %s", i, np.shape(qv))
                 logging.info("Type of queue_vals: %s", type(queue_vals))
+
+                # TODO: remove extra level of depth here and then below!
+
+
                 feed_dict = {
-                    self.features_ph : [queue_vals[0]],
-                    self.timestamps_ph : [queue_vals[1]],
-                    self.time_ranges_ph : [queue_vals[2]],
-                    self.mmsis_ph : [queue_vals[3]]
+                    self.features_ph : queue_vals[0][None],
+                    self.timestamps_ph : queue_vals[1][None],
+                    self.time_ranges_ph : queue_vals[2][None],
+                    self.mmsis_ph : queue_vals[3][None]
                 }
                 t0 = log_dt(t0, "Queues evaluated")
                 log_mem("Queues evaluated", mmsis)
@@ -241,14 +232,36 @@ class Inferer(object):
                 logging.info("Queues exhausted")
                 break
             log_mem("Running Session", mmsis)
-            batch_results = self.sess.run(all_predictions, feed_dict=feed_dict)
+            batch_results = self.sess.run([self.mmsis_ph, self.time_ranges_ph, self.timestamps_ph] 
+                                         + all_predictions, 
+                                         feed_dict=feed_dict)
             log_mem("Ran Session", mmsis)
             t0 = log_dt(t0, "executed step")
             logging.info("queue_vals type %s, len %s", type(queue_vals), len(queue_vals))
-            for qv, predictions_array in zip([queue_vals], batch_results):
-                mmsi = qv[3]
-                (start_time_seconds, end_time_seconds) = qv[2]
-                timestamps_array = qv[1]
+            # logging.info("batch_results: %s", batch_results)
+            fixed_results = []
+            for x in batch_results:
+                if np.isscalar(x):
+                    x = np.reshape(x, [1])
+                fixed_results.append(x)
+            # logging.info("batch_results.shape = %s", np.shape(batch_results))
+            # for qv, predictions_array in zip([queue_vals], batch_results):
+                # mmsi = qv[3]
+                # (start_time_seconds, end_time_seconds) = qv[2]
+                # timestamps_array = qv[1]
+            for result in zip(*fixed_results):
+                mmsi = result[0]
+                (start_time_seconds, end_time_seconds) = result[1]
+                timestamps_array = result[2]
+                predictions_array = result[3:]
+
+                logging.info("mmsi = %s", mmsi)
+                # logging.info("predictions_array.shape = %s", np.shape(predictions_array))
+                logging.info("Type of predictions_array: %s", type(predictions_array))
+                # logging.info("DType of predictions_array: %s", predictions_array.dtype)
+                logging.info("Len(objectives): %s", len(objectives))
+                logging.info("Len(all_predictions): %s", len(all_predictions))
+
 
                 start_time = datetime.datetime.utcfromtimestamp(
                     start_time_seconds)
@@ -277,7 +290,6 @@ def main(args):
     model_checkpoint_path = args.model_checkpoint_path
     root_feature_path = args.root_feature_path
     inference_results_path = args.inference_results_path
-    inference_parallelism = args.inference_parallelism
 
     mmsis = utility.find_available_mmsis(args.root_feature_path)
 
@@ -326,8 +338,7 @@ def main(args):
     feature_dimensions = int(args.feature_dimensions)
     chosen_model = Model(feature_dimensions, None, None)
 
-    infererer = Inferer(chosen_model, model_checkpoint_path, root_feature_path,
-                        inference_parallelism)
+    infererer = Inferer(chosen_model, model_checkpoint_path, root_feature_path)
 
     if args.interval_months is None:
         # This is ignored for point inference, but we can't care.
@@ -373,12 +384,6 @@ def parse_args():
     argparser.add_argument(
         '--inference_results_path',
         required=True,
-        help='Path to the csv file to dump all inference results.')
-
-    argparser.add_argument(
-        '--inference_parallelism',
-        type=int,
-        default=4,
         help='Path to the csv file to dump all inference results.')
 
     argparser.add_argument(

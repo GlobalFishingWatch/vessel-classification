@@ -77,7 +77,6 @@ class Model(abstract_models.MisconceptionModel):
                 return np.float32(x)
 
         self.training_objectives = [
-            # Length data is more reliable than other data, so give it higher weight.
             LogRegressionObjectiveMAE(
                 'length',
                 'Vessel-length',

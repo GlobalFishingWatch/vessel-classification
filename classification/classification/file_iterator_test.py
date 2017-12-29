@@ -5,17 +5,39 @@ from file_iterator import *
 def test_file_iterator():
     path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/251822362.tfrecord"
     with tf.Session() as sess:
-        for i, val in enumerate(all_fixed_window_feature_file_iterator([path], 13,
+        deserializer = Deserializer(num_features=13)
+        for i, val in enumerate(all_fixed_window_feature_file_iterator([path], deserializer,
                         256, 64, datetime.datetime(2015,1,1), datetime.datetime(2017,7,31))):
-            assert (val[0].shape, val[1].shape, val[2].shape, val[3].shape) == ((1, 256, 14), (256,), (2,), ())
+            assert (val[0].shape, val[1].shape, val[2].shape, val[3].shape) == ((1, 256, 12), (256,), (2,), ()), (val[0].shape, val[1].shape, val[2].shape, val[3].shape)
         assert i == 1
 
 
+epoch = datetime.datetime(1970,1,1)
+def to_stamp(x):
+    return (x - epoch).total_seconds()
+
+
+def test_file_iterator_2():
+    path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/251822362.tfrecord"
+    with tf.Session() as sess:
+        deserializer = Deserializer(num_features=13)
+        for i, val in enumerate(cropping_all_slice_feature_file_iterator([path], deserializer,
+                        [(to_stamp(datetime.datetime(2012,1,1)), to_stamp(datetime.datetime(2017,6,30)))] * 3, 256, 64)):
+            assert (val[0].shape, val[1].shape, val[2].shape, val[3].shape) == ((1, 256, 12), (256,), (2,), ())
+        assert i == 2, i
+
+def test_file_iterator_3():
+    path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/251822362.tfrecord"
+    with tf.Session() as sess:
+        deserializer = Deserializer(num_features=13)
+        for i, val in enumerate(cropping_all_slice_feature_file_iterator([path], deserializer,
+                        [(to_stamp(datetime.datetime(2014,4,1)), to_stamp(datetime.datetime(2014,6,1)))] * 3, 256, 64)):
+            assert (val[0].shape, val[1].shape, val[2].shape, val[3].shape) == ((1, 256, 12), (256,), (2,), ())
+        assert i == 2, i
 
 
 def test_deserialize_file():
     path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/251822362.tfrecord"
-
     with tf.Session() as sess:
         deserializer = Deserializer(num_features=13)
         with GCSExampleIter(path) as exmpliter:
@@ -84,9 +106,10 @@ def test_read_leak():
 
 
 logging.basicConfig(level=logging.INFO)
-# test_read_files_from_gcs()
 test_deserialize_file()
-# test_iterator_leak() # Fixed (at least mostly; now tops out at 185). Earlier leaks (316)
-# test_deserialize_leak() # Doesn't leak
-# test_read_leak() # doesn't leak
-# test_file_iterator() # doesn't leaks
+test_file_iterator() 
+test_file_iterator_2()
+test_file_iterator_3() 
+
+
+

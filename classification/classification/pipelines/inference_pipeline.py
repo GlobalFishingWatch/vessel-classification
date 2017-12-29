@@ -17,10 +17,10 @@ from pipe_tools.io import WriteToBigQueryDatePartitioned
 
 from .objects.namedtuples import epoch
 from .options.inference_options import InferenceOptions
-from .schemas.inference_output import build as build_output_schema
+from .schemas.inference_output import build_fishing as build_fishing_schema
+from .schemas.inference_output import build_vessel as build_vessel_schema
 
 import datetime
-from classification.models.prod import fishing_detection
 from classification.run_inference import Inferer
 import datetime
 import pytz
@@ -35,37 +35,63 @@ def time_string_to_stamp(s):
     return(datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.utc) - epoch).total_seconds()
 
 
-# TODO: Clean up by converting to a namedtuple when pulling from inference.
-
 _inferer = None
 _inferer_args = None
 def get_inferer(*args):
     global _inferer, _inferer_args
     if _inferer_args != args:
         if _inferer is not None:
-            logging.warn("Creating new inferer")
+            logging.warn("Inferer already exists; deleting")
             _inferer.close()
-        checkpoint_path, feature_path, feature_dimensions = args
-        model = fishing_detection.Model(feature_dimensions, None, None)
+        logging.info("Creating new inferer")
+        model_class, checkpoint_path, feature_path, feature_dimensions = args
+        model = model_class(feature_dimensions, None, None)
         _inferer = Inferer(model, checkpoint_path, feature_path)
         _inferer_args = args
+        logging.info("inferer created")
     return _inferer
 
-def run_inference(mmsi, checkpoint_path, feature_path, feature_dimensions, start_date, end_date):
-    inferer = get_inferer(checkpoint_path, feature_path, feature_dimensions)
-    return list(inferer.run_inference([mmsi], None, 
+def run_inference(mmsi, model_class, checkpoint_path, feature_path, feature_dimensions, start_date, end_date):
+    inferer = get_inferer(model_class, checkpoint_path, feature_path, feature_dimensions)
+    interval_months = 6 # TODO parameterize
+    return list(inferer.run_inference([mmsi], interval_months, 
             date_string_to_date(start_date), date_string_to_date(end_date)))
     # for output in inferer.run_inference([mmsi], None, 
     #         date_string_to_date(start_date), date_string_to_date(end_date)):
     #     yield JSONDict(**output)
 
-def flatten(item):
+def fishing_flatten(item):
     vessel_id = str(item['mmsi'])
     for x in item['fishing_localisation']:
         yield JSONDict(vessel_id=vessel_id, start_time=time_string_to_stamp(x['start_time']), 
                        end_time=time_string_to_stamp(x['end_time']), fishing_score=x['value'])
 
-def run(options):
+
+def vessel_flatten(item):
+    vessel_id = str(item['mmsi'])
+    start_time = item['start_time'] + 'Z'
+    end_time = item['end_time'] + 'Z'
+    result = JSONDict(vessel_id=vessel_id, 
+                      start_time=time_string_to_stamp(start_time), 
+                      end_time=time_string_to_stamp(end_time), 
+                      max_label=item['Multiclass']['max_label'])
+    result['max_label'] = item['Multiclass']['max_label']
+
+    for regression_name in ['length', 'tonnage', 'engine_power', 'crew_size']:
+        result[regression_name] = item[regression_name]['value']
+        if start_time:
+            assert item['start_time'] + 'Z' == start_time, (start_time, item['start_time'])
+        if end_time:
+            assert item['end_time'] + 'Z' == end_time, (end_time, item['end_time'])
+
+    # label scores is a repeated field
+    label_scores = item['Multiclass']['label_scores']
+    result['label_scores'] = [{'label': x, 'score': label_scores[x]} for x in sorted(label_scores)]
+
+    return [result]
+
+
+def run(options, model_class, flatten_func, schema):
 
     p = Pipeline(options=options)
 
@@ -76,6 +102,7 @@ def run(options):
 
     mmsis = p | io.ReadFromText(mmsi_path)
     output = mmsis | FlatMap(run_inference,  
+                                model_class,
                                 iopts.checkpoint_path, iopts.feature_path,
                                 iopts.feature_dimensions,
                                 iopts.start_date, iopts.end_date)
@@ -85,13 +112,13 @@ def run(options):
                              shard_name_template='', coder=JSONDictCoder())
 
     (output 
-        | FlatMap(flatten)
+        | FlatMap(flatten_func)
         | Map(lambda x: TimestampedValue(x, x['start_time']))
         | WriteToBigQueryDatePartitioned(
             temp_gcs_location=cloud_options.temp_location,
             table=iopts.results_table,
             write_disposition="WRITE_TRUNCATE",
-            schema=build_output_schema()
+            schema=schema
             )
     )
 

@@ -41,6 +41,22 @@
 
 
 
+    python -m classification.pipelines.vessel_inference \
+            --feature_path gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-old-old-school-2/pipeline/output/features \
+            --checkpoint_path gs://machine-learning-dev-ttl-30d/old_old_vessel.ckpt \
+            --feature_dimensions 14 \
+            --results_table=world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_current \
+            --start_date 2012-01-01 \
+            --end_date 2017-12-31 \
+            --project world-fishing-827 \
+            --temp_location gs://machine-learning-dev-ttl-30d/scratch/inference \
+            --job_name dataflow-vessel-inference-test \
+            --max_num_workers 200 \
+            --setup_file ./setup.py \
+            --requirements_file requirements.txt \
+            --runner DataflowRunner \
+            --disk_size_gb 100 
+
 
 
 

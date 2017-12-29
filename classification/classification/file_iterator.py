@@ -11,6 +11,7 @@ import time
 import tensorflow as tf
 
 from .utility import np_array_extract_all_fixed_slices
+from .utility import np_array_extract_slices_for_time_ranges
 from .utility import np_pad_repeat_slice
 
 
@@ -139,5 +140,55 @@ def all_fixed_window_feature_file_iterator(filenames, deserializer,
                                         window_size, shift, start_date, end_date)):
                     yield values
 
+
+
+def process_all_slice_features(context_features, sequence_features, 
+        time_ranges, window_size, min_points_for_classification, num_features):
+
+    movement_features = sequence_features['movement_features']
+    mmsi = context_features['mmsi']
+
+    random_state = np.random.RandomState()
+
+    def replicate_extract(input, mmsi):
+        return np_array_extract_slices_for_time_ranges(
+            random_state, input, num_features, mmsi, time_ranges, window_size,
+            min_points_for_classification)
+
+    return replicate_extract(movement_features, mmsi)
+
+
+
+def cropping_all_slice_feature_file_iterator(filenames, deserializer,
+                                           time_ranges, window_size,
+                                           min_points_for_classification):
+    """ Set up a file reader and inference feature extractor for the files in a
+        queue.
+
+    An inference feature extractor, pulling all sequential fixed-time slices
+    from a vessel movement series.
+
+    Args:
+        filename_queue: a queue of filenames for feature files to read.
+        num_features: the dimensionality of the features.
+
+    Returns:
+        A tuple comprising, for the n slices comprising each vessel:
+          1. A tensor of the feature timeslices drawn, of dimension
+             [n, 1, window_size, num_features].
+          2. A tensor of the timestamps for each feature point of dimension
+             [n, window_size].
+          3. A tensor of the timebounds for the timeslices, of dimension [n, 2].
+          4. A tensor of the mmsis of each vessel of dimension [n].
+
+    """
+    for path in filenames:
+        with GCSExampleIter(path) as exmpliter:
+            for exmp in exmpliter:
+                context_features, sequence_features = deserializer(exmp) 
+                for values in zip(*process_all_slice_features(
+                        context_features, sequence_features, time_ranges, 
+                        window_size, min_points_for_classification, deserializer.num_features)):
+                    yield values
 
 

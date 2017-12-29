@@ -591,14 +591,14 @@ def np_array_extract_slices_for_time_ranges(
             slices.append(
                 (np.stack([without_timestamp]), timeseries, time_bounds, mmsi))
 
-    if slices == []:
-        # Return an appropriately shaped empty numpy array.
-        return (np.empty(
-            [0, 1, window_size, num_features_inc_timestamp - 1],
-            dtype=np.float32), np.empty(
-                shape=[0, window_size], dtype=np.int32), np.empty(
-                    shape=[0, 2], dtype=np.int32), np.empty(
-                        shape=[0], dtype=np.int32))
+    # if slices == []:
+    #     # Return an appropriately shaped empty numpy array.
+    #     return (np.empty(
+    #         [0, 1, window_size, num_features_inc_timestamp - 1],
+    #         dtype=np.float32), np.empty(
+    #             shape=[0, window_size], dtype=np.int32), np.empty(
+    #                 shape=[0, 2], dtype=np.int32), np.empty(
+    #                     shape=[0], dtype=np.int32))
 
     return zip(*slices)
 
