@@ -1,11 +1,11 @@
 
 # Dataflow inference
 
-    python -m classification.pipelines.inference \
-            --feature_path gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-old-old-school-2/pipeline/output/features \
-            --checkpoint_path gs://machine-learning-dev-ttl-30d/old_old_fishing.ckpt \
+    python -m classification.pipelines.fishing_inference \
+            --feature_path gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-through-2017/pipeline/output/features \
+            --checkpoint_path gs://world-fishing-827-dev-ttl30d/data-production/classification/timothyhochberg/new_fishing_lists_2018_01_05/models/prod.fishing_detection/train/model.ckpt-402912 \
             --feature_dimensions 14 \
-            --results_table=world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_2016_current \
+            --results_table=world-fishing-827:machine_learning_dev_ttl_30d.fishing_detection_ranges_through_2017 \
             --start_date 2012-01-01 \
             --end_date 2017-12-31 \
             --project world-fishing-827 \
@@ -18,9 +18,9 @@
             --disk_size_gb 100
 
         python -m classification.pipelines.annotation \
-                --annotation_table=world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_2016_current \
+                --annotation_table=world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_fishing_current \
                 --message_table=world-fishing-827:pipeline_classify_p_p429_resampling_2. \
-                --sink_table=machine_learning_dev_ttl_30d.test_annotation_pipe_all \
+                --sink_table=machine_learning_dev_ttl_30d.test_dataflow_fishing_annotation_all \
                 --start_date 2012-01-01 \
                 --end_date 2017-12-31 \
                 --project world-fishing-827 \
@@ -34,7 +34,7 @@
 
 
     python -m classification.metrics.compute_fishing_metrics \
-           --inference-table world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_2016_current --label-path classification/data/fishing_classes.csv \
+           --inference-table world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_fishing_current --label-path classification/data/fishing_classes.csv \
            --dest-path test_fishing.html \
            --fishing-ranges classification/data/combined_fishing_ranges.csv  \
            --project-id world-fishing-827
@@ -42,10 +42,10 @@
 
 
     python -m classification.pipelines.vessel_inference \
-            --feature_path gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-old-old-school-2/pipeline/output/features \
-            --checkpoint_path gs://machine-learning-dev-ttl-30d/old_old_vessel.ckpt \
+            --feature_path gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-through-2017/pipeline/output/features \
+            --checkpoint_path gs://world-fishing-827-dev-ttl30d/data-production/classification/timothyhochberg/new_lists_2018_01_05c/models/prod.vessel_characterization/train/model.ckpt-589795 \
             --feature_dimensions 14 \
-            --results_table=world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_current \
+            --results_table=world-fishing-827:machine_learning_dev_ttl_30d.vessel_classes_through_2017 \
             --start_date 2012-01-01 \
             --end_date 2017-12-31 \
             --project world-fishing-827 \

@@ -46,41 +46,50 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
 schema = yaml.load('''
 unknown:
-    non_fishing:
-      other_not_fishing:
-      passenger:
-      gear:
-      seismic_vessel:
-      helicopter:
-      cargo_or_tanker:
-        bunker_or_tanker:
-          bunker:
-          tanker:
-        cargo_or_reefer:
-          cargo:
-          reefer:
-      patrol_vessel:
-      research:
-      dive_vessel:
-      submarine:
-      dredge:
-      supply_vessel:
-      fish_factory:
-      tug:
-    fishing:
-      squid_jigger:
-      drifting_longlines:
-      pole_and_line:
-      other_fishing:
-      trollers:
-      fixed_gear:
-        pots_and_traps:
-        set_longlines:
-        set_gillnets:
-      trawlers:
-      purse_seines:
-      driftnets:
-      other_fishing:
+  non_fishing:
+    passenger:
+    gear:
+    fish_factory:
+    cargo_or_tanker:
+      bunker_or_tanker:
+        bunker:
+        tanker:
+      cargo_or_reefer:
+        cargo:
+        reefer:
+          specialized_reefer:
+          container_reefer:
+        fish_tender:
+          well_boat:
+    patrol_vessel:
+    research:
+    dive_vessel:
+    submarine:
+    dredge_non_fishing:
+    supply_vessel:
+    tug:
+    seismic_vessel:
+    helicopter:
+    other_not_fishing:
+
+  fishing:
+    squid_jigger:
+    drifting_longlines:
+    pole_and_line:
+    other_fishing:
+    trollers:
+    fixed_gear:
+      pots_and_traps:
+      set_longlines:
+      set_gillnets:
+    trawlers:
+    dredge_fishing:
+    seiners:
+     purse_seines:
+      tuna_purse_seines:
+      other_purse_seines:
+     other_seines:
+    driftnets:
 ''')
 
 

@@ -43,70 +43,10 @@ import dateutil.parser
 import datetime
 import pytz
 
-'''
-unknown:
-    fishing:
-      other_not_fishing:
-      passenger:
-      gear:
-      seismic_vessel:
-      helicopter:
-      cargo_or_tanker:
-        bunker_or_tanker:
-          bunker:
-          tanker:
-        cargo_or_reefer:
-          cargo:
-          reefer:
-      patrol_vessel:
-      research:
-      dive_vessel:
-      submarine:
-      dredge:
-      supply_vessel:
-      fish_factory:
-      tug:
-
-    non_fishing:
-      squid_jigger:
-      drifting_longlines:
-      pole_and_line:
-      other_fishing:
-      trollers:
-      fixed_gear:
-        pots_and_traps:
-        set_longlines:
-        set_gillnets:
-      trawlers:
-      purse_seines:
-      driftnets:
-      unknown_fishing:
-'''
-
-
-# coarse_mapping = [
-#     ['cargo_or_tanker', {'tanker', 'cargo', 'bunker', 'reefer'}],
-#     ['passenger', {'passenger'}],
-#     ['helicopter', {'helicopter'}]
-#     ['seismic_vessel', ['seismic_vessel'}],
-#     ['patrol_vessel', {'patrol_vessel'}],
-#     ['research', {'research'}],
-#     ['']
-#     ['tug', {'tug'}],
-#     ['other_not_fishing', {'other_not_fishing'}],  
-#     ['drifting_longlines', {'drifting_longlines'}],
-#     ['purse_seines', {'purse_seines'}],
-#     ['fixed_gear', {'pots_and_traps', 'set_gillnets', 'set_longlines'}],
-#     ['squid_jigger', ['squid_jigger']],
-#     ['gear', ['gear']],
-#     ['trawlers', {'trawlers'}],
-#     ['other_fishing', {'pole_and_line', 'trollers', 'other_fishing', 'drift_nets'}]
-# ]
-
 
 coarse_categories = [
     'cargo_or_tanker', 'passenger', 'seismic_vessel', 'tug', 'other_fishing', 
-    'drifting_longlines', 'purse_seines', 'fixed_gear', 'squid_jigger', 'trawlers', 
+    'drifting_longlines', 'seiners', 'fixed_gear', 'squid_jigger', 'trawlers', 
     'other_not_fishing']
 
 coarse_mapping = defaultdict(set)
@@ -773,7 +713,8 @@ def load_inferred(inference_path, extractors, whitelist):
     """Load inferred data and generate comparison data
 
     """
-    with gzip.GzipFile(inference_path) as f:
+    # with gzip.GzipFile(inference_path) as f:
+    with open(inference_path) as f:
         with nlj.open(f, json_lib='ujson') as src:
             for row in src:
                 if whitelist is not None and row['mmsi'] not in whitelist:
