@@ -49,9 +49,10 @@ def annotate_vessel_message(items, input_field):
     annotation_ends = np.array([_datetime_to_s(x.end_time) for x in annotations])
 
     for msg in messages:
-        i0 = np.searchsorted(annotation_starts, _datetime_to_s(msg.timestamp), side='left')
-        i1 = np.searchsorted(annotation_ends, _datetime_to_s(msg.timestamp), side='right')
-        active_annotations = annotation_values[i0:i1]
+        target = _datetime_to_s(msg.timestamp)
+        i0 = np.searchsorted(annotation_starts, target, side='left')
+        active_annotations = [x for (i, x) in enumerate(annotation_values)
+                if annotation_starts[i] <= target <= annotation_ends[i]]
         if len(active_annotations):
             try:
                 value = np.mean(active_annotations)
@@ -65,6 +66,7 @@ def annotate_vessel_message(items, input_field):
                                   lon=msg.lon,
                                   nnet_score=value) # TODO: lat, lon can be removed once we have message_id
                 yield result
+
 
 
 # This still needs some finalization of imports and, of course,

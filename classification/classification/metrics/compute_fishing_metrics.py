@@ -45,70 +45,11 @@ import datetime
 import pytz
 from .ydump import css, ydump_table
 
-'''
-unknown:
-    fishing:
-      other_not_fishing:
-      passenger:
-      gear:
-      seismic_vessel:
-      helicopter:
-      cargo_or_tanker:
-        bunker_or_tanker:
-          bunker:
-          tanker:
-        cargo_or_reefer:
-          cargo:
-          reefer:
-      patrol_vessel:
-      research:
-      dive_vessel:
-      submarine:
-      dredge:
-      supply_vessel:
-      fish_factory:
-      tug:
-
-    non_fishing:
-      squid_jigger:
-      drifting_longlines:
-      pole_and_line:
-      other_fishing:
-      trollers:
-      fixed_gear:
-        pots_and_traps:
-        set_longlines:
-        set_gillnets:
-      trawlers:
-      purse_seines:
-      driftnets:
-      unknown_fishing:
-'''
-
-
-# coarse_mapping = [
-#     ['cargo_or_tanker', {'tanker', 'cargo', 'bunker', 'reefer'}],
-#     ['passenger', {'passenger'}],
-#     ['helicopter', {'helicopter'}]
-#     ['seismic_vessel', ['seismic_vessel'}],
-#     ['patrol_vessel', {'patrol_vessel'}],
-#     ['research', {'research'}],
-#     ['']
-#     ['tug', {'tug'}],
-#     ['other_not_fishing', {'other_not_fishing'}],  
-#     ['drifting_longlines', {'drifting_longlines'}],
-#     ['purse_seines', {'purse_seines'}],
-#     ['fixed_gear', {'pots_and_traps', 'set_gillnets', 'set_longlines'}],
-#     ['squid_jigger', ['squid_jigger']],
-#     ['gear', ['gear']],
-#     ['trawlers', {'trawlers'}],
-#     ['other_fishing', {'pole_and_line', 'trollers', 'other_fishing', 'drift_nets'}]
-# ]
 
 
 coarse_categories = [
     'cargo_or_tanker', 'passenger', 'seismic_vessel', 'tug', 'other_fishing', 
-    'drifting_longlines', 'purse_seines', 'fixed_gear', 'squid_jigger', 'trawlers', 
+    'drifting_longlines', 'seiners', 'fixed_gear', 'squid_jigger', 'trawlers', 
     'other_not_fishing']
 
 coarse_mapping = defaultdict(set)
@@ -129,13 +70,15 @@ fishing_mapping = [
 ]
 
 
-# for k, v in coarse_mapping:
-#     print(k, v)
-# print()
-# for k, v in fishing_mapping:
-#     print(k, v)
+fishing_category_map = {}
+atomic_fishing = fishing_mapping[0][1]
+for coarse, fine in coarse_mapping:
+    for atomic in fine:
+        if atomic in atomic_fishing:
+            fishing_category_map[atomic] = coarse
 
-# raise SystemExit
+print(fishing_category_map )
+
 
 # Faster than using dateutil
 def _parse(x):
@@ -220,14 +163,6 @@ def ydump_fishing_localisation(doc, results):
              for row in rows])
 
 
-fishing_category_map = {
-    'drifting_longlines' : 'drifting_longlines',
-    'trawlers' : 'trawlers',
-    'purse_seines' : 'purse_seines',
-    'pots_and_traps' : 'stationary_gear',
-    'set_gillnets' : 'stationary_gear',
-    'set_longlines' : 'stationary_gear'
-}
 
 
 def precision_score(y_true, y_pred):
@@ -282,6 +217,7 @@ def load_inferred_fishing(table, id_list, project_id, threshold=True):
     ranges = defaultdict(list)
     for year in range(2012, 2018):
         query = query_template.format(table=table, year=year, ids=ids)
+        print(query)
         for x in pd.read_gbq(query, project_id=project_id).itertuples():
             score = x.fishing_score
             if threshold:
