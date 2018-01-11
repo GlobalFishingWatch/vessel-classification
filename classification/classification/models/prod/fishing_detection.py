@@ -86,13 +86,6 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             metrics=metrics,
             window=self.window)
 
-        self.aux_fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
-            'aux_fishing_localisation',
-            'Aux-Fishing-localisation',
-            vessel_metadata,
-            metrics=metrics,
-            window=self.window)
-
         self.classification_training_objectives = []
         self.training_objectives = [self.fishing_localisation_objective]
 
