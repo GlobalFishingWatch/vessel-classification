@@ -684,6 +684,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 for ts_raw, is_fishing in combined:
                     ts = datetime.datetime.utcfromtimestamp(int(ts_raw))
                     if last and last.timestamp >= ts:
+                        logging.warning("last.timestamp >= timestamp")
                         break
                     if last and last.is_fishing == is_fishing:
                         if ts.date() > last.timestamp.date():
