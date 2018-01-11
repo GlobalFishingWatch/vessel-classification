@@ -8,6 +8,7 @@ import pytz
 
 import tensorflow as tf
 
+from apache_beam import core
 from apache_beam import io
 from apache_beam import Create
 from apache_beam import FlatMap
@@ -18,6 +19,7 @@ from apache_beam import Pipeline
 from apache_beam.io import WriteToText
 from apache_beam.options.pipeline_options import GoogleCloudOptions
 from apache_beam.runners import PipelineState
+from apache_beam.transforms import window
 from apache_beam.transforms.window import TimestampedValue
 
 from pipe_tools.coders.jsoncoder import JSONDict
@@ -39,33 +41,70 @@ def _datetime_to_s(x):
     return (x - epoch).total_seconds()
 
 
+MAX_GAP_S = 30 * 60
+MICROSECOND = 1e-6
+
+def fix_gaps(starts, ends):
+    """Close gaps in annotations
+
+    Because inference operates on a wider (and possibly uneven)
+    time grip, there are gaps between the annotated regions. If the
+    gaps are less than MAX_GAP_S, close them up. Otherwise extend by
+    half of MAX_GAP_S
+    """
+    n = len(starts)
+    assert len(ends) == n
+    for i in range(n - 1):
+        e = ends[i]
+        s = starts[i + 1]
+        delta = s - e
+        assert delta > 0, (delta, s, e)
+        if delta <= MAX_GAP_S:
+            if delta > 2 * MICROSECOND:
+                # Set end to midpoint
+                e += delta / 2
+                # Set start to one microsecond later
+                s = e + MICROSECOND
+        else:
+            # Pad s/e by MAX_GAP_S / 2
+            e += MAX_GAP_S / 2
+            s -= MAX_GAP_S / 2
+            if s <= e: 
+                # Bad rounding?
+                logging.warning("s <= e in fix_gaps (%s, %s)", s, e)
+                s = e + MICROSECOND
+        ends[i] = e
+        starts[i + 1] = s
+    return starts, ends
+
+
+
 def annotate_vessel_message(items, input_field):
     key, (messages, annotations) = items
     # Sort both messages and annotations by (start) time
     messages.sort(key = lambda x: x.timestamp)
     annotations.sort(key = lambda x: x.start_time)
+
     annotation_values = np.array([getattr(x, input_field) for x in annotations])
-    annotation_starts = np.array([_datetime_to_s(x.start_time) for x in annotations])
-    annotation_ends = np.array([_datetime_to_s(x.end_time) for x in annotations])
+    annotation_starts, annotation_ends = fix_gaps(
+        np.array([_datetime_to_s(x.start_time) for x in annotations]),
+        np.array([_datetime_to_s(x.end_time) for x in annotations]))
 
     for msg in messages:
         target = _datetime_to_s(msg.timestamp)
-        i0 = np.searchsorted(annotation_starts, target, side='left')
         active_annotations = [x for (i, x) in enumerate(annotation_values)
                 if annotation_starts[i] <= target <= annotation_ends[i]]
-        if len(active_annotations):
-            try:
-                value = np.mean(active_annotations)
-            except:
-                logging.warning("Could not find value for %s", active_annotations)
-            else:
-                result = JSONDict(message_id=0,   #msg.message_id)
-                                  timestamp=_datetime_to_s(msg.timestamp),
-                                  vessel_id=msg.vessel_id,
-                                  lat=msg.lat,
-                                  lon=msg.lon,
-                                  nnet_score=value) # TODO: lat, lon can be removed once we have message_id
-                yield result
+        n_annotations = len(active_annotations)
+        if n_annotations == 1:
+            yield JSONDict(message_id=0,   #msg.message_id)
+                           timestamp=_datetime_to_s(msg.timestamp),
+                           vessel_id=msg.vessel_id,
+                           # TODO: lat, lon can be removed once we have message_id
+                           lat=msg.lat,
+                           lon=msg.lon,
+                           nnet_score=active_annotations[0]) 
+        elif n_annotations > 1:
+            logging.warning("Message has %s annotations: %s", n_annotations, msg)
 
 
 

@@ -660,7 +660,9 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
     slices = []
     input_length = len(input_series)
     for end_index in range(input_length, 0, -shift):
-        start_index = max(0, end_index - window_size)
+        start_index = end_index - window_size
+        if start_index < 0:
+            continue
         cropped = input_series[start_index:end_index]
         start_time = int(cropped[0][0])
         end_time = int(cropped[-1][0])
