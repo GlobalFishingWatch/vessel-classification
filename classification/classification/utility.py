@@ -668,7 +668,8 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
         end_time = int(cropped[-1][0])
         time_bounds = np.array([start_time, end_time], dtype=np.int32)
 
-        output_slice = np_pad_repeat_slice(cropped, window_size)
+        assert len(cropped) == window_size
+        output_slice = cropped
         without_timestamp = output_slice[:, 1:]
         timeseries = output_slice[:, 0].astype(np.int32)
         slices.append(

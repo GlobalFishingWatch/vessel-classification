@@ -81,32 +81,57 @@ class Deserializer(object):
 def process_fixed_window_features(context_features, sequence_features, 
         num_features, window_size, shift, start_date, end_date):
     
-    movement_features = sequence_features['movement_features']
+    features = sequence_features['movement_features']
     mmsi = context_features['mmsi']
+
+    is_sorted = all(features[i, 0] <= features[i+1, 0] for i in xrange(len(features)-1))
+    assert is_sorted
+    double_pad = window_size - shift
+    assert double_pad % 2 == 0, "double_pad must be even"
+    pad = double_pad // 2
 
     if start_date is not None:
         start_stamp = time.mktime(start_date.timetuple())
     if end_date is not None:
         end_stamp = time.mktime(end_date.timetuple())
 
-    def replicate_extract(input_series, mmsi):
-        if start_date is not None:
-            raw_start_i = np.searchsorted(input_series[:, 0], start_stamp, side='left')
-            # If possible go to shift before start so we have good data for whole length
-            start_i = max(raw_start_i - shift, 0)
-        else:
-            start_i = 0
-        if end_date is not None:
-            raw_end_i = np.searchsorted(input_series[:, 0], end_stamp, side='left')
-            # If possible go to shift before end so that we have good data starting at end
-            end_i = min(raw_end_i + shift, len(input_series))
-        else:
-            end_i = len(input_series)
-        input_series = input_series[start_i:end_i]
-        return np_array_extract_all_fixed_slices(input_series, num_features,
-                                                 mmsi, window_size, shift)
+    if end_date is not None:
+        raw_end_i = np.searchsorted(features[:, 0], end_stamp, side='left')
+        # If possible go to pad after end so that we have good data starting at end
+        end_i = min(raw_end_i + pad, len(features))
+    else:
+        end_i = len(features)
 
-    return replicate_extract(movement_features, mmsi)
+    #    \/ raw_start_i
+    #              ppBBBBpp<--- shift
+    # ppBBBBpp.........ppBBBBpp
+    #   end_i - winsize^       ^ end_i
+
+    if start_date is not None:
+        # If possible go to shift before pad so we have good data for whole length
+        raw_start_i = np.searchsorted(features[:, 0], start_stamp, side='left') - pad
+    else:
+        raw_start_i = 0
+
+    # Now clean up raw_start. 
+    #   First add enough points that we are at the beginning of a shift.
+    delta = ((end_i - window_size) - raw_start_i) % shift
+
+    if delta == 0:
+        start_i = raw_start_i
+    else:
+        start_i = raw_start_i - (shift - delta)
+
+    # Now shift forward till we are nonnegative:
+
+    while start_i < 0:
+        start_i += shift
+
+    features = features[start_i:end_i]
+
+    return np_array_extract_all_fixed_slices(features, num_features,
+                                             mmsi, window_size, shift)
+
 
 
 

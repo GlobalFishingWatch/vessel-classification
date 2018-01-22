@@ -1,5 +1,6 @@
 
 import gc
+import posixpath as pp
 from file_iterator import *
 
 def test_file_iterator():
@@ -105,11 +106,56 @@ def test_read_leak():
                     pass
 
 
+def test_coverage(base_path, mmsi_list, num_features, year):
+    start = datetime.date(year, 1, 1)
+    end = datetime.date(year, 12, 31)
+    dates = set()
+    with tf.Session() as sess:
+        deserializer = Deserializer(num_features=num_features)
+        for mmsi in mmsi_list:
+            path = pp.join(base_path, 'features', str(mmsi) + '.tfrecord')
+            counter = 0
+            with GCSExampleIter(path) as exmpliter:
+                for exmp in exmpliter:
+                    context_features, sequence_features = deserializer(exmp)
+                    movement_features = sequence_features['movement_features']
+                    timestamps = movement_features[:, 0]
+                    for t in timestamps:
+                        counter += 1
+                        date = datetime.datetime.utcfromtimestamp(t).date()
+                        if start <= date <= end:
+                            dates.add(date)
+                        if counter % 10000 == 0:
+                            print(len(dates))
+    return dates
+
+
+
+
+
 logging.basicConfig(level=logging.INFO)
-test_deserialize_file()
-test_file_iterator() 
-test_file_iterator_2()
-test_file_iterator_3() 
+if True:
+    test_deserialize_file()
+    test_file_iterator() 
+    test_file_iterator_2()
+    test_file_iterator_3() 
+
+
+def read_mmsi(base_path):
+    path = pp.join(base_path, "mmsis/part-00000-of-00001.txt")
+    with GCSFile(path) as fp:
+        return fp.read().strip().split()
+
+
+base = 'gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-through-2017/pipeline/output/'
+
+
+mmsi_list = read_mmsi(base)[::1000][:100]
+print mmsi_list
+
+# test_coverage(base, mmsi_list, 15, year=2018)
+# test_coverage(base, mmsi_list, 15, year=2017)
+
 
 
 
