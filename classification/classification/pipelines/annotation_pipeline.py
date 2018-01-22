@@ -19,7 +19,6 @@ from apache_beam import Pipeline
 from apache_beam.io import WriteToText
 from apache_beam.options.pipeline_options import GoogleCloudOptions
 from apache_beam.runners import PipelineState
-from apache_beam.transforms import window
 from apache_beam.transforms.window import TimestampedValue
 
 from pipe_tools.coders.jsoncoder import JSONDict
@@ -39,10 +38,11 @@ epoch = datetime.datetime.utcfromtimestamp(0).replace(tzinfo=pytz.utc)
 
 def _datetime_to_s(x):
     return (x - epoch).total_seconds()
-
+datetime_to_s = _datetime_to_s
 
 MAX_GAP_S = 30 * 60
 MICROSECOND = 1e-6
+
 
 def fix_gaps(starts, ends):
     """Close gaps in annotations
@@ -87,17 +87,17 @@ def annotate_vessel_message(items, input_field):
 
     annotation_values = np.array([getattr(x, input_field) for x in annotations])
     annotation_starts, annotation_ends = fix_gaps(
-        np.array([_datetime_to_s(x.start_time) for x in annotations]),
-        np.array([_datetime_to_s(x.end_time) for x in annotations]))
+        np.array([datetime_to_s(x.start_time) for x in annotations]),
+        np.array([datetime_to_s(x.end_time) for x in annotations]))
 
     for msg in messages:
-        target = _datetime_to_s(msg.timestamp)
+        target = datetime_to_s(msg.timestamp)
         active_annotations = [x for (i, x) in enumerate(annotation_values)
                 if annotation_starts[i] <= target <= annotation_ends[i]]
         n_annotations = len(active_annotations)
         if n_annotations == 1:
             yield JSONDict(message_id=0,   #msg.message_id)
-                           timestamp=_datetime_to_s(msg.timestamp),
+                           timestamp=datetime_to_s(msg.timestamp),
                            vessel_id=msg.vessel_id,
                            # TODO: lat, lon can be removed once we have message_id
                            lat=msg.lat,
@@ -200,8 +200,7 @@ def run(options):
     sink_dataset, sink_table = aopts.sink_table.split('.')
 
     (annotated_msg_ids 
-        | Map(lambda x: TimestampedValue(x, x['timestamp']))
-        # | Map(log_occasionally)
+        | "TimestampResults" >> Map(lambda x: TimestampedValue(x, x['timestamp']))
         | WriteToBigQueryDatePartitioned(
             temp_gcs_location=cloud_options.temp_location,
             table=sink_table,
