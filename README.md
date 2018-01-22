@@ -1,7 +1,7 @@
 
 # Dataflow inference
 
-    python -m classification.pipelines.fishing_inference \
+    python -m pipeline.fishing_inference \
             --feature_path gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-through-2017/pipeline/output/features \
             --checkpoint_path gs://world-fishing-827-dev-ttl30d/data-production/classification/timothyhochberg/new_fishing_lists_2018_01_05/models/prod.fishing_detection/train/model.ckpt-402912 \
             --feature_dimensions 14 \
@@ -17,20 +17,6 @@
             --runner DataflowRunner \
             --disk_size_gb 100
 
-        python -m classification.pipelines.annotation \
-                --annotation_table=world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_fishing_current \
-                --message_table=world-fishing-827:pipeline_classify_p_p429_resampling_2. \
-                --sink_table=machine_learning_dev_ttl_30d.test_dataflow_fishing_annotation_all \
-                --start_date 2012-01-01 \
-                --end_date 2017-12-31 \
-                --project world-fishing-827 \
-                --temp_location gs://machine-learning-dev-ttl-30d/scratch/inference \
-                --job_name dataflow-annotation-test \
-                --max_num_workers 200 \
-                --setup_file ./setup.py \
-                --requirements_file requirements.txt \
-                --runner DataflowRunner \
-                --disk_size_gb 100
 
 
     python -m classification.metrics.compute_fishing_metrics \
@@ -41,7 +27,7 @@
 
 
 
-    python -m classification.pipelines.vessel_inference \
+    python -m pipeline.vessel_inference \
             --feature_path gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-through-2017/pipeline/output/features \
             --checkpoint_path gs://world-fishing-827-dev-ttl30d/data-production/classification/timothyhochberg/new_lists_2018_01_05c/models/prod.vessel_characterization/train/model.ckpt-589795 \
             --feature_dimensions 14 \

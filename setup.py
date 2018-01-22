@@ -85,10 +85,10 @@ setuptools.setup(
         'classification.models',
         'classification.models.prod',
         'classification.models.dev',
-        'classification.pipelines',
-        'classification.pipelines.objects',
-        'classification.pipelines.options',
-        'classification.pipelines.schemas',
+        'pipeline',
+        'pipeline.objects',
+        'pipeline.options',
+        'pipeline.schemas',
     ],
     install_requires=DEPENDENCIES + DATAFLOW_PINNED_DEPENDENCIES
 )
