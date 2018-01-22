@@ -29,10 +29,13 @@ import tensorflow as tf
 
 
 def date_string_to_date(s):
-    return datetime.datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=pytz.utc)
+    return datetime.datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=pytz.utc).date()
+
+def time_string_to_time(s):
+    return datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.utc)
 
 def time_string_to_stamp(s):
-    return(datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.utc) - epoch).total_seconds()
+    return (datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.utc) - epoch).total_seconds()
 
 
 _inferer = None
@@ -54,20 +57,21 @@ def get_inferer(*args):
 def run_inference(mmsi, model_class, checkpoint_path, feature_path, feature_dimensions, start_date, end_date):
     inferer = get_inferer(model_class, checkpoint_path, feature_path, feature_dimensions)
     interval_months = 6 # TODO parameterize
-    return list(inferer.run_inference([mmsi], interval_months, 
-            date_string_to_date(start_date), date_string_to_date(end_date)))
-    # for output in inferer.run_inference([mmsi], None, 
-    #         date_string_to_date(start_date), date_string_to_date(end_date)):
-    #     yield JSONDict(**output)
+    start = datetime.datetime.combine(start_date, datetime.time(0, tzinfo=pytz.utc))
+    end = datetime.datetime.combine(end_date, datetime.time(23, 59, 59, 999999, tzinfo=pytz.utc))
+    for output in inferer.run_inference([mmsi], interval_months, start, end):
+        yield JSONDict(**output)
 
-def fishing_flatten(item):
+def fishing_flatten(item, start_date, end_date):
     vessel_id = str(item['mmsi'])
     for x in item['fishing_localisation']:
-        yield JSONDict(vessel_id=vessel_id, start_time=time_string_to_stamp(x['start_time']), 
-                       end_time=time_string_to_stamp(x['end_time']), fishing_score=x['value'])
+        # Dates are only approximately enforced during inference so prune here.
+        if start_date <= time_string_to_time(x['start_time']).date() <= end_date:
+            yield JSONDict(vessel_id=vessel_id, start_time=time_string_to_stamp(x['start_time']), 
+                           end_time=time_string_to_stamp(x['end_time']), fishing_score=x['value'])
 
 
-def vessel_flatten(item):
+def vessel_flatten(item, start_date, ende_date):
     vessel_id = str(item['mmsi'])
     start_time = item['start_time'] + 'Z'
     end_time = item['end_time'] + 'Z'
@@ -98,6 +102,9 @@ def run(options, model_class, flatten_func, schema):
     iopts = options.view_as(InferenceOptions)
     cloud_options = options.view_as(GoogleCloudOptions)
 
+    start_date = date_string_to_date(iopts.start_date)
+    end_date = date_string_to_date(iopts.end_date)
+
     mmsi_path = pp.join(pp.dirname(iopts.feature_path), 'mmsis/part-00000-of-00001.txt')
 
     mmsis = p | io.ReadFromText(mmsi_path)
@@ -105,14 +112,14 @@ def run(options, model_class, flatten_func, schema):
                                 model_class,
                                 iopts.checkpoint_path, iopts.feature_path,
                                 iopts.feature_dimensions,
-                                iopts.start_date, iopts.end_date)
+                                start_date, end_date)
 
     if iopts.results_path:
         output | WriteToText(num_shards=1, file_path_prefix=iopts.results_path, 
                              shard_name_template='', coder=JSONDictCoder())
 
     (output 
-        | FlatMap(flatten_func)
+        | FlatMap(flatten_func, start_date, end_date)
         | Map(lambda x: TimestampedValue(x, x['start_time']))
         | WriteToBigQueryDatePartitioned(
             temp_gcs_location=cloud_options.temp_location,
