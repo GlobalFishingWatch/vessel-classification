@@ -1,140 +1,194 @@
-# Global Fishing Watch Vessel Classification Pipeline.
 
-[Global Fishing Watch](http://globalfishingwatch.org) is a partnership between [Skytruth](https://skytruth.org), [Google](https://environment.google/projects/fishing-watch/) and [Oceana](http://oceana.org) to map all of the trackable commercial fishing activity in the world, in near-real time, and make it accessible to researchers, regulators, decision-makers, and the public.
+# Dataflow inference
 
-This repository contains code to process [AIS](https://en.wikipedia.org/wiki/Automatic_identification_system) data to produce features and to build Tensorflow models to classify vessels and identify fishing behaviour.
+    python -m classification.pipelines.fishing_inference \
+            --feature_path gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-through-2017/pipeline/output/features \
+            --checkpoint_path gs://world-fishing-827-dev-ttl30d/data-production/classification/timothyhochberg/new_fishing_lists_2018_01_05/models/prod.fishing_detection/train/model.ckpt-402912 \
+            --feature_dimensions 14 \
+            --results_table=world-fishing-827:machine_learning_dev_ttl_30d.fishing_detection_ranges_through_2017 \
+            --start_date 2012-01-01 \
+            --end_date 2017-12-31 \
+            --project world-fishing-827 \
+            --temp_location gs://machine-learning-dev-ttl-30d/scratch/inference \
+            --job_name dataflow-inference-test \
+            --max_num_workers 200 \
+            --setup_file ./setup.py \
+            --requirements_file requirements.txt \
+            --runner DataflowRunner \
+            --disk_size_gb 100
 
-(This is not an official Google Product).
-
-[![Build Status](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline.svg?branch=master)](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline)
-
-## Overview
-
-Use AIS, and possibly VMS data in the future, to extract various types of information including:
-   
-  - Vessel types
-
-  - Vessel fishing activity
-
-  - Vessel attributes (length, tonnage, etc)
-
-  - Vessel encounters
-
-  - Port locations
-
-
-The project consists of two parts, a Scala pipleline that ingests and processes AIS data and convolutional
-neural networks (CNN) that infers vessel features.
-
-### Scala Pipeline
-
-The original purpose of the Scala pipeline was to extract features for the CNN. However it is now also
-used to produces lists of vessel encounters and port locations. 
-
-The pipeline generates features by first thinning the points to a density of at most one per 5 minutes, then 
-collecting the following features at each point:
-
-  - timestamp
-  - time-delta (time difference between current and previous point)
-  - distance-delta (distance between current and previous point)
-  - speed (reported speed at current point)
-  - inferred-speed (speed inferred from change in lat/lon)
-  - course-delta (change in reported course relative to previous point)
-  - local-time-of-day
-  - local-month-of-year
-  - inferred-course-delta (change in course inferred from lat/lon points between 
-                            previous and current, and current and next points)
-  - distance-to-shore
-  - distance-to-bounding-anchorage (distance to nearest location that appears to be an anchorage)
-  - time-to-bounding-anchorage (time till arrival / departure at nearest location that appears to
-                                 be an anchorage)
-  - num-neighbors (number of nearby vessels)
-
-[comment]: # (TODO: add more info on encounters) 
-
-[comment]: # (TODO: add more info on port locations) 
-
-The code associated with the Scala pipeline is located under `vessel-classification-pipeline/pipeline`
-and a good place to start examining the code is `vessel-classification-pipeline/pipeline/src/main/scala`.
-More details on the pipeline and instructions for running it are located in
-`vessel-classification-pipeline/pipeline/README.md`
+        python -m classification.pipelines.annotation \
+                --annotation_table=world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_fishing_current \
+                --message_table=world-fishing-827:pipeline_classify_p_p429_resampling_2. \
+                --sink_table=machine_learning_dev_ttl_30d.test_dataflow_fishing_annotation_all \
+                --start_date 2012-01-01 \
+                --end_date 2017-12-31 \
+                --project world-fishing-827 \
+                --temp_location gs://machine-learning-dev-ttl-30d/scratch/inference \
+                --job_name dataflow-annotation-test \
+                --max_num_workers 200 \
+                --setup_file ./setup.py \
+                --requirements_file requirements.txt \
+                --runner DataflowRunner \
+                --disk_size_gb 100
 
 
-### Neural Networks
-
-We have three CNN in production, as well as several experimental nets. One net
-predict vessel class (`longliner`, `cargo`, `sailing`, etc), the second predicts
-vessel length, while the third predicts whether a vessel is fishing or not at
-a given time point.
-
-*We initially used a single CNN to predict everything at once,
-we're moving to having one CNN for each predicted value.  The original
-hope was that we would be able to take advantage of transfer learning between
-the various features. However, we did not see any gains from that, and using
-a different net for each feature add useful flexibility.*
-
-The nets share a similar structure, consisting of a large number (currently 9)
-of 1-D convolutional layers, followed by a single dense layer. The net for 
-fishing prediction is somewhat more complicated since it must predict fishing at
-each point. To do this all of the layers of the net are combined, with upscaling
-of the upper layers, to produce. These design of these nets incorporate ideas are borrowed
-from the ResNets and Inception nets among other places but adapted for the 1D environment.
-
-The code associated with the neural networks is located in
-`vessel-classification/classification`. The models themselves are located
-in `vessel-classification/classification/classification/models`. More details
-on the neural network code and instructions for running it is located in 
-`vessel-classification-pipeline/classification/README.md`
+    python -m classification.metrics.compute_fishing_metrics \
+           --inference-table world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_fishing_current --label-path classification/data/fishing_classes.csv \
+           --dest-path test_fishing.html \
+           --fishing-ranges classification/data/combined_fishing_ranges.csv  \
+           --project-id world-fishing-827
 
 
-## Data layout
 
-The production classification pipeline has multiple stages, computing: feature generation, port
-inference, encounters, model training, vessel type inference, fishing locality inference, accuracy
-evaluation. This is implemented in several stages, each requiring outputs to GCS. In addition we
-run experiments of our own to improve or develop the pipeline further. We need the data to be laid
-out systematically on GCS. Currently we use the following structure:
+    python -m classification.pipelines.vessel_inference \
+            --feature_path gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-through-2017/pipeline/output/features \
+            --checkpoint_path gs://world-fishing-827-dev-ttl30d/data-production/classification/timothyhochberg/new_lists_2018_01_05c/models/prod.vessel_characterization/train/model.ckpt-589795 \
+            --feature_dimensions 14 \
+            --results_table=world-fishing-827:machine_learning_dev_ttl_30d.vessel_classes_through_2017 \
+            --start_date 2012-01-01 \
+            --end_date 2017-12-31 \
+            --project world-fishing-827 \
+            --temp_location gs://machine-learning-dev-ttl-30d/scratch/inference \
+            --job_name dataflow-vessel-inference-test \
+            --max_num_workers 200 \
+            --setup_file ./setup.py \
+            --requirements_file requirements.txt \
+            --runner DataflowRunner \
+            --disk_size_gb 100 
 
-* `world-fishing-827/data-production` (prod)
-  * `classification`
-    * `<date> or <job name>`
-      * `pipeline` (for cloud dataflow pipeline output)
-        * `staging` (for the various files required for runs, e.g. dataflow jars).
-        * `output` (for the output from the dataflow pipeline).
-      * `inference` (for the output from inference + the eval framework).
-* `world-fishing-827-dev-ttl30d/data-production` (dev)
-    * `classification`
-      * `alex`
-        * `<job name>`
-          * A mirror of the files you see under `production`.
-          * Plus a new directory `models`
-      * `tim`
-      * etc...
 
-Here, we have a production pipeline running under (probably) cron, generating new results daily to
-(`world-fishing-827/data-production`).
-We have tight control over the code that's pushed to run on production (probably via a Docker image
-registered on GCR).
 
-We then have a dev directory (`world-fishing-827-dev-ttl30d/data-production`). Anything we're trying
-that hasn't yet hit production will end up in a `dev/<username>` directory, mirroring the
-directories in prod but isolated from prod and from other developer's experiments. This directory
-has a TTL set on all contents such that anything that is older than 30 days will be automatically
-deleted (to keep our GCS costs low and prevent infinite accumulation of experiments).
 
-I further propose we have also have a subdirectory under `dev`: `models` (or some other name) where
-we experiment with and train new models. Given our models are quite small, I would be inclined to
-package them in the Docker images we deploy rather than store them on GCS. We could commit the
-latest model files to git.
+# Neural Net Classification
 
-### Common parameters
+## Running Stuff
 
-In order to support the above layout, all our programs need the following common parameters:
+-  `deploy_cloudml.py` -- launch a training run on cloudml. Use `--help` to see options
 
-* `env`: to specify the environment - either development or production.
-* `job-name`: for the name (or date) of the current job.
-* Additionally if the job is a dev job, the programs will read the $USER environment variable
-  in order to be able to choose the appropriate subdirectory for the output data.
+   If not running in the SkyTruth/GFW environment, you will need to edit `deploy_cloudml.yaml`
+   to set the gcs paths correctly.
+
+   For example, to run vessel classification in the dev environment with the name `test`:
+
+        `./deploy_cloudml.py --model_name prod.vessel_classification --env dev --job_name test`
+
+   **IMPORTANT**: Even though there is a maximum number of training steps specified, the CloudML
+   process does not shut down reliably.  You need to periodically check on the process and kill it
+   manually if it has completed and is hanging. In addition, there are occasionally other problems
+   where either the master or chief will hang or die so that new checkpoints aren't written, or
+   new validation data isn't written out. Again, killing and restarting the training is the solution.
+   (This will pick up at the last checkpoint saved.)
+
+- *running training locally* -- this is primarily for testing as it will be quite slow unless you
+  have a heavy duty machine:
+
+        python -m classification.run_training \
+            prod.fishing_range_classification \
+            --feature_dimensions 12 \
+            --root_feature_path FEATURE_PATH \
+            --training_output_path OUTPUT_PATH \
+            --fishing_range_training_upweight 1 \
+            --metadata_file training_classes.csv \
+            --fishing_ranges_file combined_fishing_ranges.csv \
+            --metrics minimal
+
+
+- `compute_metrics.py` -- evaluate restults and dump vessel lists. Use `--help` to see options
+
+
+- *running inference* -- Unless you have local access to a heavy duty machine, you should
+  probably run this on ComputeEngine as described below. If running remotely, use tmux so 
+  that your run doesn't die if your connection gets dropped.
+
+   - Copy a model checkpoint locally:
+
+      gsutil cp GCS_PATH_TO_CHECKPOINT  ./model.ckpt
+
+   - Run inference job:
+
+    * *Vessel Classification*. This command only infers result for only the test data 
+      (for evaluation purposes), and infers a seperarate classification every 6 months:
+
+       python -m classification.run_inference prod.vessel_classification \
+              --root_feature_path GCS_PATH_TO_FEATURES \
+              --inference_parallelism 32 \
+              --feature_dimensions 12 \
+              --dataset_split Test \
+              --inference_results_path=./RESULT_NAME.json.gz \
+              --model_checkpoint_path ./model.ckpt \
+              --metadata_file training_classes.csv \
+              --fishing_ranges_file combined_fishing_ranges.csv \
+              --interval_months 6
+
+   - *Fishing localisation*: This infers all fishing at all time points (no `--dataset_split` specification)
+
+         python -m classification.run_inference prod.fishing_range_classification \
+                --root_feature_path GCS_PATH_TO_FEATURES \
+                --inference_parallelism 32 \
+                --feature_dimensions 12 \
+                --inference_results_path=./RESULT_NAME.json.gz \
+                --model_checkpoint_path ./model.ckpt \
+                --metadata_file training_classes.csv \
+                --fishing_ranges_file combined_fishing_ranges.csv
+
+
+
+## Local Environment Setup
+
+* Python 2.7+
+* Tensorflow 12.1 from (https://www.tensorflow.org/get_started/os_setup)
+* `pip install google-api-python-client pyyaml pytz newlinejson python-dateutil yattag`
+
+## ComputeEngine Setup for Inference 
+
+* Install the SDK: https://cloud.google.com/sdk/docs/.
+* Sign in: `gcloud auth application-default login`.
+* Create an instance:
+      - Need at least 8 cores; here is the command to create a 16 core machine named 'nnet-inference'
+        in the 'us-east1-d' zone:
+
+        gcloud compute instances create nnet-inference --zone=us-east1-d --machine-type=n1-standard-16
+
+  - SSH into the machine:
+
+        gcloud compute ssh nnet-inference --zone=us-east1-d
+
+  - Install and activate `tmux`:
+
+        sudo apt-get -y update
+        sudo apt-get install -y tmux
+        tmux
+
+  - Install other dependencies:
+
+        sudo apt-get -y install python python-pip python-dev build-essential git virtualenv
+        sudo easy_install pip
+        sudo pip install --upgrade pip
+        sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.12.1-cp27-none-linux_x86_64.whl
+        sudo pip install google-api-python-client pyyaml pytz newlinejson python-dateutil yattag
+        git clone https://github.com/GlobalFishingWatch/vessel-classification-pipeline.git
+
+## Adding new models
+
+* For development: create a directory in `classification/classification/models/dev` with the model name 
+  (usually the developer name).  A `__init__.py` is required for the model to be picked up and the model
+  package directory must be added to `setup.py`.
+
+* For production: add the model to `classification/classification/models/prod`
+
+
+## Formatting
+
+[YAPF](https://github.com/google/yapf) is a code formatter for Python. All our python code should
+be autoformatted with YAPF before committing. To install it, run:
+
+* `sudo pip install yapf`
+
+Run `yapf -r -i .` in the top level directory to fix the format of the full project.
+
+
+
 
 
 

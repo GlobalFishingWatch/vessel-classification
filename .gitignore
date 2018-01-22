@@ -1,5 +1,4 @@
-classification/temp
-pipeline/temp
+temp
 target
 .cache
 classification/bigquery_credentials.dat
