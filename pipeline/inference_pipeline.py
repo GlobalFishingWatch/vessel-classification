@@ -22,7 +22,7 @@ from .schemas.inference_output import build_vessel as build_vessel_schema
 
 import datetime
 from classification.run_inference import Inferer
-import datetime
+import numpy as np
 import pytz
 import tensorflow as tf
 
@@ -71,6 +71,9 @@ def fishing_flatten(item, start_date, end_date):
                            end_time=time_string_to_stamp(x['end_time']), fishing_score=x['value'])
 
 
+def replace_inf(x):
+    return 1e99 if np.isinf(x) else x
+
 def vessel_flatten(item, start_date, ende_date):
     vessel_id = str(item['mmsi'])
     start_time = item['start_time'] + 'Z'
@@ -82,7 +85,7 @@ def vessel_flatten(item, start_date, ende_date):
     result['max_label'] = item['Multiclass']['max_label']
 
     for regression_name in ['length', 'tonnage', 'engine_power', 'crew_size']:
-        result[regression_name] = item[regression_name]['value']
+        result[regression_name] = replace_inf(item[regression_name]['value'])
         if start_time:
             assert item['start_time'] + 'Z' == start_time, (start_time, item['start_time'])
         if end_time:
@@ -90,7 +93,7 @@ def vessel_flatten(item, start_date, ende_date):
 
     # label scores is a repeated field
     label_scores = item['Multiclass']['label_scores']
-    result['label_scores'] = [{'label': x, 'score': label_scores[x]} for x in sorted(label_scores)]
+    result['label_scores'] = [{'label': x, 'score': replace_inf(label_scores[x])} for x in sorted(label_scores)]
 
     return [result]
 
