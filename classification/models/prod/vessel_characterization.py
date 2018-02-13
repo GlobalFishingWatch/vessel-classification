@@ -44,7 +44,7 @@ class Model(abstract_models.MisconceptionModel):
 
     @property
     def number_of_steps(self):
-        return 1200000
+        return 800000
 
     @property
     def max_window_duration_seconds(self):
@@ -103,7 +103,7 @@ class Model(abstract_models.MisconceptionModel):
                 loss_weight=0.1),
             MultiClassificationObjectiveSmoothed(
                 "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics, loss_weight=1,
-                smoothing_coefficient=0.1)
+                smoothing_coefficient=0.01)
         ]
 
     def _build_model(self, features, timestamps, mmsis, is_training):

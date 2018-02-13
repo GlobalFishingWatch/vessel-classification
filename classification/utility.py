@@ -960,13 +960,13 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
             vessel_type_set.add(coarse_vessel_type)
 
     # Calculate weights for each vessel type per split, for
-    # now use weights of 1, but eventually weight by prevalance
+    # now use weights of sqrt(max_count / count), but eventually weight by prevalance
     # in AIS (as best as we can figure) <== TODO
     dataset_kind_weights = defaultdict(lambda: {})
     for split, counts in dataset_kind_counts.iteritems():
         max_count = max(counts.values())
         for coarse_vessel_type, count in counts.iteritems():
-            dataset_kind_weights[split][coarse_vessel_type] = 1
+            dataset_kind_weights[split][coarse_vessel_type] = np.sqrt(max_count / float(count))
 
     metadata_dict = defaultdict(lambda: {})
     for mmsi, split, coarse_vessel_type, row in vessel_types:
