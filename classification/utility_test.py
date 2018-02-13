@@ -134,9 +134,9 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
         result = utility.read_vessel_multiclass_metadata_lines(
             available_vessels, parsed_lines, {}, 1)
 
-        self.assertEquals(1.0, result.vessel_weight(100001))
+        self.assertEquals(1.2247448713915889, result.vessel_weight(100001))
         self.assertEquals(1.0, result.vessel_weight(100002))
-        self.assertEquals(1.0, result.vessel_weight(100011))
+        self.assertEquals(1.7320508075688772, result.vessel_weight(100011))
 
         self._check_splits(result)
 
