@@ -1,3 +1,14 @@
+"""
+
+Typical Usage:
+
+python -m train.assemble_data \
+        --fishing-range-dir ../training-data-source/data/time-ranges \
+        --fishing-range-output-path classification/data/combined_fishing_ranges.csv \
+        --training-class-input-path classification/data/training_classes.csv \
+        --training-class-output-path classification/data/fishing_classes.csv \
+        --force 
+"""
 import numpy as np
 import os
 import argparse
@@ -119,15 +130,3 @@ if __name__ == '__main__':
                               args.fishing_range_output_path,
                               false_positive_path)
 
-    # vessel_list = pd.read_csv("classification/data/training_classes.csv")
-"""
-python assemble_data.py \
-        --fishing-range-dir ../../training-data-source/data/time-ranges \
-        --fishing-range-output-path classification/data/combined_fishing_ranges.csv \
-        --training-class-input-path classification/data/training_classes.csv \
-        --training-class-output-path classification/data/fishing_classes.csv \
-        --force 
-"""
-
-# TODO: remove current vessel lists from git and add instruction on how to create training lists
-# using augment.

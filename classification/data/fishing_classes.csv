@@ -1,478 +1,478 @@
-mmsi,geartype,length,tonnage,engine_power,crew,split,label,crew_size
-259656000,trawlers,,,,,Test,trawlers,
-366820000,trawlers,,,,,Test,trawlers,
-250000608,trawlers,,,,,Test,trawlers,
-224067690,trawlers,,,,,Test,trawlers,
-235627000,trawlers,,,,,Test,trawlers,
-247151110,trawlers,,,,,Test,trawlers,
-250003407,trawlers,,,,,Test,trawlers,
-244309000,trawlers,,,,,Test,trawlers,
-367162190,trawlers,,,,,Test,trawlers,
-263501000,trawlers,,,,,Test,trawlers,
-250140400,trawlers,,,,,Test,trawlers,
-247142730,trawlers,,,,,Test,trawlers,
-512236000,trawlers,,,,,Test,trawlers,
-211238930,trawlers,,,,,Test,trawlers,
-616798000,trawlers,,,,,Test,trawlers,
-247120760,trawlers,,,,,Test,trawlers,
-247083390,trawlers,,,,,Test,trawlers,
-247145510,trawlers,,,,,Test,trawlers,
-247100480,trawlers,,,,,Test,trawlers,
-512000015,trawlers,,,,,Test,trawlers,
-233714000,trawlers,,,,,Test,trawlers,
-247051830,trawlers,,,,,Test,trawlers,
-224208650,trawlers,,,,,Training,trawlers,
-247100530,trawlers,,,,,Training,trawlers,
-273357170,trawlers,,,,,Training,trawlers,
-247068110,trawlers,,,,,Training,trawlers,
-275162000,trawlers,,,,,Training,trawlers,
-231036000,trawlers,,,,,Training,trawlers,
-275141000,trawlers,,,,,Training,trawlers,
-207426000,trawlers,,,,,Training,trawlers,
-247152310,trawlers,,,,,Training,trawlers,
-245553000,trawlers,,,,,Training,trawlers,
-275019000,trawlers,,,,,Training,trawlers,
-247150040,trawlers,,,,,Training,trawlers,
-227139900,trawlers,,,,,Training,trawlers,
-247146610,trawlers,,,,,Training,trawlers,
-275270000,trawlers,,,,,Training,trawlers,
-247144080,trawlers,,,,,Training,trawlers,
-247141390,trawlers,,,,,Training,trawlers,
-235105524,trawlers,,,,,Training,trawlers,
-367318950,trawlers,,,,,Training,trawlers,
-576497000,trawlers,,,,,Training,trawlers,
-219001703,trawlers,,,,,Training,trawlers,
-207421000,trawlers,,,,,Training,trawlers,
-432525000,pole_and_line,,,,,Test,pole_and_line,
-204209570,pole_and_line,,,,,Test,pole_and_line,
-227132100,pole_and_line,,,,,Test,pole_and_line,
-255402650,pole_and_line,,,,,Test,pole_and_line,
-204285000,pole_and_line,,,,,Training,pole_and_line,
-204838000,pole_and_line,,,,,Training,pole_and_line,
-204209890,pole_and_line,,,,,Training,pole_and_line,
-431200880,pole_and_line,,,,,Training,pole_and_line,
-204206740,pole_and_line,,,,,Training,pole_and_line,
-412371203,squid_jigger,,,,,Test,squid_jigger,
-416004892,squid_jigger,,,,,Test,squid_jigger,
-416242500,squid_jigger,,,,,Test,squid_jigger,
-412422694,squid_jigger,,,,,Test,squid_jigger,
-416510000,squid_jigger,,,,,Test,squid_jigger,
-412420872,squid_jigger,,,,,Test,squid_jigger,
-412421005,squid_jigger,,,,,Test,squid_jigger,
-412354055,squid_jigger,,,,,Test,squid_jigger,
-416236800,squid_jigger,,,,,Training,squid_jigger,
-412420937,squid_jigger,,,,,Training,squid_jigger,
-412420609,squid_jigger,,,,,Training,squid_jigger,
-416029700,squid_jigger,,,,,Training,squid_jigger,
-412371205,squid_jigger,,,,,Training,squid_jigger,
-412371204,squid_jigger,,,,,Training,squid_jigger,
-416248800,squid_jigger,,,,,Training,squid_jigger,
-412320033,squid_jigger,,,,,Training,squid_jigger,
-412354056,squid_jigger,,,,,Training,squid_jigger,
-235007143,pots_and_traps,,,,,Test,pots_and_traps,
-275461000,pots_and_traps,,,,,Test,pots_and_traps,
-235097217,pots_and_traps,,,,,Test,pots_and_traps,
-204848000,pots_and_traps,,,,,Test,pots_and_traps,
-275455000,pots_and_traps,,,,,Test,pots_and_traps,
-227316570,pots_and_traps,,,,,Training,pots_and_traps,
-265661180,pots_and_traps,,,,,Training,pots_and_traps,
-235100159,pots_and_traps,,,,,Training,pots_and_traps,
-227581550,pots_and_traps,,,,,Training,pots_and_traps,
-265612260,pots_and_traps,,,,,Training,pots_and_traps,
-224082580,pots_and_traps,,,,,Training,pots_and_traps,
-224074730,set_longlines,,,,,Test,set_longlines,
-247142520,set_longlines,,,,,Test,set_longlines,
-204225000,set_longlines,,,,,Test,set_longlines,
-224038000,set_longlines,,,,,Training,set_longlines,
-207343400,set_longlines,,,,,Training,set_longlines,
-224093760,set_longlines,,,,,Training,set_longlines,
-247131490,set_longlines,,,,,Training,set_longlines,
-224173660,set_gillnets,,,,,Test,set_gillnets,
-225382000,set_gillnets,,,,,Test,set_gillnets,
-224112790,set_gillnets,,,,,Test,set_gillnets,
-227883000,set_gillnets,,,,,Training,set_gillnets,
-263401590,set_gillnets,,,,,Training,set_gillnets,
-266358000,set_gillnets,,,,,Training,set_gillnets,
-247300180,set_gillnets,,,,,Training,set_gillnets,
-249000980,drifting_longlines,,,,,Test,drifting_longlines,
-413300480,drifting_longlines,,,,,Test,drifting_longlines,
-540002300,drifting_longlines,,,,,Test,drifting_longlines,
-441251000,drifting_longlines,,,,,Test,drifting_longlines,
-432453000,drifting_longlines,,,,,Test,drifting_longlines,
-440778000,drifting_longlines,,,,,Test,drifting_longlines,
-224099450,drifting_longlines,,,,,Test,drifting_longlines,
-601111600,drifting_longlines,,,,,Test,drifting_longlines,
-224308000,drifting_longlines,,,,,Test,drifting_longlines,
-224933000,drifting_longlines,,,,,Test,drifting_longlines,
-431813000,drifting_longlines,,,,,Test,drifting_longlines,
-432984000,drifting_longlines,,,,,Test,drifting_longlines,
-224170000,drifting_longlines,,,,,Test,drifting_longlines,
-601425000,drifting_longlines,,,,,Test,drifting_longlines,
-440522000,drifting_longlines,,,,,Test,drifting_longlines,
-224122000,drifting_longlines,,,,,Test,drifting_longlines,
-416002441,drifting_longlines,,,,,Test,drifting_longlines,
-224120840,drifting_longlines,,,,,Test,drifting_longlines,
-416003561,drifting_longlines,,,,,Test,drifting_longlines,
-432503000,drifting_longlines,,,,,Test,drifting_longlines,
-540010800,drifting_longlines,,,,,Test,drifting_longlines,
-224020790,drifting_longlines,,,,,Test,drifting_longlines,
-416225500,drifting_longlines,,,,,Test,drifting_longlines,
-412691520,drifting_longlines,,,,,Test,drifting_longlines,
-431802000,drifting_longlines,,,,,Test,drifting_longlines,
-617073000,drifting_longlines,,,,,Test,drifting_longlines,
-412460114,drifting_longlines,,,,,Test,drifting_longlines,
-416004411,drifting_longlines,,,,,Test,drifting_longlines,
-503362600,drifting_longlines,,,,,Test,drifting_longlines,
-416217800,drifting_longlines,,,,,Test,drifting_longlines,
-224545000,drifting_longlines,,,,,Test,drifting_longlines,
-431500470,drifting_longlines,,,,,Test,drifting_longlines,
-440595000,drifting_longlines,,,,,Test,drifting_longlines,
-540004100,drifting_longlines,,,,,Test,drifting_longlines,
-412209234,drifting_longlines,,,,,Test,drifting_longlines,
-432426000,drifting_longlines,,,,,Test,drifting_longlines,
-431022000,drifting_longlines,,,,,Test,drifting_longlines,
-224071000,drifting_longlines,,,,,Test,drifting_longlines,
-440574000,drifting_longlines,,,,,Test,drifting_longlines,
-540002000,drifting_longlines,,,,,Test,drifting_longlines,
-431444000,drifting_longlines,,,,,Test,drifting_longlines,
-432276000,drifting_longlines,,,,,Test,drifting_longlines,
-412460115,drifting_longlines,,,,,Test,drifting_longlines,
-440617000,drifting_longlines,,,,,Test,drifting_longlines,
-416001838,drifting_longlines,,,,,Test,drifting_longlines,
-431927000,drifting_longlines,,,,,Test,drifting_longlines,
-224154000,drifting_longlines,,,,,Test,drifting_longlines,
-432942000,drifting_longlines,,,,,Test,drifting_longlines,
-503798700,drifting_longlines,,,,,Test,drifting_longlines,
-431700830,drifting_longlines,,,,,Test,drifting_longlines,
-432444000,drifting_longlines,,,,,Test,drifting_longlines,
-576843000,drifting_longlines,,,,,Test,drifting_longlines,
-440654000,drifting_longlines,,,,,Test,drifting_longlines,
-503337100,drifting_longlines,,,,,Test,drifting_longlines,
-601433000,drifting_longlines,,,,,Test,drifting_longlines,
-412371198,drifting_longlines,,,,,Test,drifting_longlines,
-416000784,drifting_longlines,,,,,Test,drifting_longlines,
-540010700,drifting_longlines,,,,,Test,drifting_longlines,
-416004662,drifting_longlines,,,,,Test,drifting_longlines,
-431700550,drifting_longlines,,,,,Test,drifting_longlines,
-432319000,drifting_longlines,,,,,Test,drifting_longlines,
-540002200,drifting_longlines,,,,,Training,drifting_longlines,
-440549000,drifting_longlines,,,,,Training,drifting_longlines,
-263415290,drifting_longlines,,,,,Training,drifting_longlines,
-416004073,drifting_longlines,,,,,Training,drifting_longlines,
-441242000,drifting_longlines,,,,,Training,drifting_longlines,
-431457000,drifting_longlines,,,,,Training,drifting_longlines,
-416002304,drifting_longlines,,,,,Training,drifting_longlines,
-431154000,drifting_longlines,,,,,Training,drifting_longlines,
-540005000,drifting_longlines,,,,,Training,drifting_longlines,
-224183670,drifting_longlines,,,,,Training,drifting_longlines,
-440950000,drifting_longlines,,,,,Training,drifting_longlines,
-441018000,drifting_longlines,,,,,Training,drifting_longlines,
-503798900,drifting_longlines,,,,,Training,drifting_longlines,
-432228000,drifting_longlines,,,,,Training,drifting_longlines,
-440934000,drifting_longlines,,,,,Training,drifting_longlines,
-540003900,drifting_longlines,,,,,Training,drifting_longlines,
-224456000,drifting_longlines,,,,,Training,drifting_longlines,
-412460288,drifting_longlines,,,,,Training,drifting_longlines,
-540000800,drifting_longlines,,,,,Training,drifting_longlines,
-576850000,drifting_longlines,,,,,Training,drifting_longlines,
-416234700,drifting_longlines,,,,,Training,drifting_longlines,
-432298000,drifting_longlines,,,,,Training,drifting_longlines,
-540003800,drifting_longlines,,,,,Training,drifting_longlines,
-431838000,drifting_longlines,,,,,Training,drifting_longlines,
-224052370,drifting_longlines,,,,,Training,drifting_longlines,
-431753000,drifting_longlines,,,,,Training,drifting_longlines,
-540011500,drifting_longlines,,,,,Training,drifting_longlines,
-576737000,drifting_longlines,,,,,Training,drifting_longlines,
-416171600,drifting_longlines,,,,,Training,drifting_longlines,
-224173000,drifting_longlines,,,,,Training,drifting_longlines,
-540001900,drifting_longlines,,,,,Training,drifting_longlines,
-432458000,drifting_longlines,,,,,Training,drifting_longlines,
-412209233,drifting_longlines,,,,,Training,drifting_longlines,
-440089000,drifting_longlines,,,,,Training,drifting_longlines,
-416039500,drifting_longlines,,,,,Training,drifting_longlines,
-224053650,drifting_longlines,,,,,Training,drifting_longlines,
-441650000,drifting_longlines,,,,,Training,drifting_longlines,
-540004200,drifting_longlines,,,,,Training,drifting_longlines,
-416002643,drifting_longlines,,,,,Training,drifting_longlines,
-416003074,drifting_longlines,,,,,Training,drifting_longlines,
-431135000,drifting_longlines,,,,,Training,drifting_longlines,
-204212000,drifting_longlines,,,,,Training,drifting_longlines,
-441811000,drifting_longlines,,,,,Training,drifting_longlines,
-540004000,drifting_longlines,,,,,Training,drifting_longlines,
-441812000,drifting_longlines,,,,,Training,drifting_longlines,
-432045000,drifting_longlines,,,,,Training,drifting_longlines,
-416002655,drifting_longlines,,,,,Training,drifting_longlines,
-416032700,drifting_longlines,,,,,Training,drifting_longlines,
-432367000,drifting_longlines,,,,,Training,drifting_longlines,
-431101320,drifting_longlines,,,,,Training,drifting_longlines,
-431038000,drifting_longlines,,,,,Training,drifting_longlines,
-440641000,drifting_longlines,,,,,Training,drifting_longlines,
-224371000,drifting_longlines,,,,,Training,drifting_longlines,
-440236000,drifting_longlines,,,,,Training,drifting_longlines,
-412371197,drifting_longlines,,,,,Training,drifting_longlines,
-431750000,drifting_longlines,,,,,Training,drifting_longlines,
-503798800,drifting_longlines,,,,,Training,drifting_longlines,
-361001100,drifting_longlines,,,,,Training,drifting_longlines,
-224472000,drifting_longlines,,,,,Training,drifting_longlines,
-440224000,drifting_longlines,,,,,Training,drifting_longlines,
-540002100,drifting_longlines,,,,,Training,drifting_longlines,
-431200740,drifting_longlines,,,,,Training,drifting_longlines,
-224042740,tuna_purse_seines,,,,,Test,tuna_purse_seines,
-529695000,tuna_purse_seines,,,,,Test,tuna_purse_seines,
-238769140,tuna_purse_seines,,,,,Test,tuna_purse_seines,
-224004420,tuna_purse_seines,,,,,Test,tuna_purse_seines,
-645379000,tuna_purse_seines,,,,,Test,tuna_purse_seines,
-345080022,tuna_purse_seines,,,,,Test,tuna_purse_seines,
-412439605,tuna_purse_seines,,,,,Test,tuna_purse_seines,
-416853000,tuna_purse_seines,,,,,Test,tuna_purse_seines,
-431686000,tuna_purse_seines,,,,,Training,tuna_purse_seines,
-345080900,tuna_purse_seines,,,,,Training,tuna_purse_seines,
-538060008,tuna_purse_seines,,,,,Training,tuna_purse_seines,
-224088000,tuna_purse_seines,,,,,Training,tuna_purse_seines,
-224106260,tuna_purse_seines,,,,,Training,tuna_purse_seines,
-660001800,tuna_purse_seines,,,,,Training,tuna_purse_seines,
-553111754,tuna_purse_seines,,,,,Training,tuna_purse_seines,
-416411000,tuna_purse_seines,,,,,Training,tuna_purse_seines,
-367157650,trollers,,,,,Test,trollers,
-265629560,trollers,,,,,Test,trollers,
-316018816,trollers,,,,,Test,trollers,
-265704020,trollers,,,,,Training,trollers,
-316002956,trollers,,,,,Training,trollers,
-271072603,trollers,,,,,Training,trollers,
-204248000,,,,,,Training,unknown,
-205259000,,,,,,Training,unknown,
-205307000,,,,,,Training,unknown,
-209121000,,,,,,Training,unknown,
-211232850,,,,,,Training,unknown,
-211351000,,,,,,Training,unknown,
-211402250,,,,,,Training,unknown,
-219001614,,,,,,Training,unknown,
-219005837,,,,,,Training,unknown,
-219016004,,,,,,Training,unknown,
-219108000,,,,,,Training,unknown,
-219125000,,,,,,Training,unknown,
-219922000,,,,,,Training,unknown,
-224012690,,,,,,Training,unknown,
-224017460,,,,,,Training,unknown,
-224021550,,,,,,Training,unknown,
-224021640,,,,,,Training,unknown,
-224022490,,,,,,Training,unknown,
-224025440,,,,,,Training,unknown,
-224027970,,,,,,Training,unknown,
-224029580,,,,,,Training,unknown,
-224044170,,,,,,Training,unknown,
-224052340,,,,,,Training,unknown,
-224064850,,,,,,Training,unknown,
-224068000,,,,,,Training,unknown,
-224085260,,,,,,Training,unknown,
-224089000,,,,,,Training,unknown,
-224098250,,,,,,Training,unknown,
-224103220,,,,,,Training,unknown,
-224103760,,,,,,Training,unknown,
-224108130,,,,,,Training,unknown,
-224140000,,,,,,Training,unknown,
-224156290,,,,,,Training,unknown,
-224175430,,,,,,Training,unknown,
-224185220,,,,,,Training,unknown,
-224241000,,,,,,Training,unknown,
-224259000,,,,,,Training,unknown,
-224353650,,,,,,Training,unknown,
-224523000,,,,,,Training,unknown,
-224581000,,,,,,Training,unknown,
-224597000,,,,,,Training,unknown,
-224626000,,,,,,Training,unknown,
-226180000,,,,,,Training,unknown,
-227142200,,,,,,Training,unknown,
-227302000,,,,,,Training,unknown,
-227550000,,,,,,Training,unknown,
-227635680,,,,,,Training,unknown,
-228157700,,,,,,Training,unknown,
-228168000,,,,,,Training,unknown,
-228367000,,,,,,Training,unknown,
-230034210,,,,,,Training,unknown,
-231180000,,,,,,Training,unknown,
-235000150,,,,,,Training,unknown,
-235000640,,,,,,Training,unknown,
-235001800,,,,,,Training,unknown,
-235003355,,,,,,Training,unknown,
-235013957,,,,,,Training,unknown,
-235070169,,,,,,Training,unknown,
-235094999,,,,,,Training,unknown,
-237963000,,,,,,Training,unknown,
-238288740,,,,,,Training,unknown,
-238361240,,,,,,Training,unknown,
-238561110,,,,,,Training,unknown,
-238613210,,,,,,Training,unknown,
-239139000,,,,,,Training,unknown,
-239329000,,,,,,Training,unknown,
-244583000,,,,,,Training,unknown,
-244759000,,,,,,Training,unknown,
-245655000,,,,,,Training,unknown,
-245744000,,,,,,Training,unknown,
-246269000,,,,,,Training,unknown,
-246338000,,,,,,Training,unknown,
-246511000,,,,,,Training,unknown,
-247086590,,,,,,Training,unknown,
-247140580,,,,,,Training,unknown,
-247143860,,,,,,Training,unknown,
-247144270,,,,,,Training,unknown,
-247151930,,,,,,Training,unknown,
-247151990,,,,,,Training,unknown,
-247220620,,,,,,Training,unknown,
-247239900,,,,,,Training,unknown,
-247305860,,,,,,Training,unknown,
-247306030,,,,,,Training,unknown,
-248000280,,,,,,Training,unknown,
-251178110,,,,,,Training,unknown,
-251251110,,,,,,Training,unknown,
-251739110,,,,,,Training,unknown,
-251848640,,,,,,Training,unknown,
-255401690,,,,,,Training,unknown,
-256000527,,,,,,Training,unknown,
-257004210,,,,,,Training,unknown,
-257225000,,,,,,Training,unknown,
-257599500,,,,,,Training,unknown,
-258045000,,,,,,Training,unknown,
-258380500,,,,,,Training,unknown,
-259329000,,,,,,Training,unknown,
-259647000,,,,,,Training,unknown,
-265752900,,,,,,Training,unknown,
-271008508,,,,,,Training,unknown,
-271072871,,,,,,Training,unknown,
-273310630,,,,,,Training,unknown,
-273313640,,,,,,Training,unknown,
-273315570,,,,,,Training,unknown,
-273417010,,,,,,Training,unknown,
-273453080,,,,,,Training,unknown,
-273842800,,,,,,Training,unknown,
-273844100,,,,,,Training,unknown,
-273845700,,,,,,Training,unknown,
-273846400,,,,,,Training,unknown,
-275164000,,,,,,Training,unknown,
-275226000,,,,,,Training,unknown,
-316015632,,,,,,Training,unknown,
-338622000,,,,,,Training,unknown,
-345050700,,,,,,Training,unknown,
-345080027,,,,,,Training,unknown,
-355212000,,,,,,Training,unknown,
-367037040,,,,,,Training,unknown,
-367147350,,,,,,Training,unknown,
-367343270,,,,,,Training,unknown,
-367492340,,,,,,Training,unknown,
-367522830,,,,,,Training,unknown,
-367683710,,,,,,Training,unknown,
-367701560,,,,,,Training,unknown,
-371224000,,,,,,Training,unknown,
-412110441,,,,,,Training,unknown,
-412200993,,,,,,Training,unknown,
-412320026,,,,,,Training,unknown,
-412320034,,,,,,Training,unknown,
-412329436,,,,,,Training,unknown,
-412331031,,,,,,Training,unknown,
-412331036,,,,,,Training,unknown,
-412420611,,,,,,Training,unknown,
-412420892,,,,,,Training,unknown,
-412420973,,,,,,Training,unknown,
-412460283,,,,,,Training,unknown,
-412460285,,,,,,Training,unknown,
-412460287,,,,,,Training,unknown,
-412500157,,,,,,Training,unknown,
-412500244,,,,,,Training,unknown,
-412672010,,,,,,Training,unknown,
-412691540,,,,,,Training,unknown,
-416002116,,,,,,Training,unknown,
-416002195,,,,,,Training,unknown,
-416002257,,,,,,Training,unknown,
-416002287,,,,,,Training,unknown,
-416002492,,,,,,Training,unknown,
-416002596,,,,,,Training,unknown,
-416002768,,,,,,Training,unknown,
-416002875,,,,,,Training,unknown,
-416003236,,,,,,Training,unknown,
-416004375,,,,,,Training,unknown,
-416004409,,,,,,Training,unknown,
-416004453,,,,,,Training,unknown,
-416004675,,,,,,Training,unknown,
-416011800,,,,,,Training,unknown,
-416154700,,,,,,Training,unknown,
-416218500,,,,,,Training,unknown,
-416219500,,,,,,Training,unknown,
-416221900,,,,,,Training,unknown,
-416237800,,,,,,Training,unknown,
-416239700,,,,,,Training,unknown,
-416240900,,,,,,Training,unknown,
-416773000,,,,,,Training,unknown,
-416775000,,,,,,Training,unknown,
-419900150,,,,,,Training,unknown,
-419900160,,,,,,Training,unknown,
-431006011,,,,,,Training,unknown,
-431006207,,,,,,Training,unknown,
-431006268,,,,,,Training,unknown,
-431047000,,,,,,Training,unknown,
-431316000,,,,,,Training,unknown,
-431395000,,,,,,Training,unknown,
-431503000,,,,,,Training,unknown,
-431682000,,,,,,Training,unknown,
-431700190,,,,,,Training,unknown,
-431700260,,,,,,Training,unknown,
-431702140,,,,,,Training,unknown,
-431702990,,,,,,Training,unknown,
-431704490,,,,,,Training,unknown,
-431704520,,,,,,Training,unknown,
-431714000,,,,,,Training,unknown,
-431725000,,,,,,Training,unknown,
-431782000,,,,,,Training,unknown,
-431873000,,,,,,Training,unknown,
-431889000,,,,,,Training,unknown,
-432226000,,,,,,Training,unknown,
-432306000,,,,,,Training,unknown,
-432388000,,,,,,Training,unknown,
-432410000,,,,,,Training,unknown,
-432448000,,,,,,Training,unknown,
-432685000,,,,,,Training,unknown,
-432955000,,,,,,Training,unknown,
-440110490,,,,,,Training,unknown,
-440246000,,,,,,Training,unknown,
-440329000,,,,,,Training,unknown,
-440623000,,,,,,Training,unknown,
-441864000,,,,,,Training,unknown,
-452009111,,,,,,Training,unknown,
-466512960,,,,,,Training,unknown,
-503003170,,,,,,Training,unknown,
-503016050,,,,,,Training,unknown,
-503018300,,,,,,Training,unknown,
-503042740,,,,,,Training,unknown,
-503413000,,,,,,Training,unknown,
-503748900,,,,,,Training,unknown,
-503798600,,,,,,Training,unknown,
-512003467,,,,,,Training,unknown,
-512006000,,,,,,Training,unknown,
-512119000,,,,,,Training,unknown,
-512235000,,,,,,Training,unknown,
-520218000,,,,,,Training,unknown,
-520238000,,,,,,Training,unknown,
-520241000,,,,,,Training,unknown,
-520243000,,,,,,Training,unknown,
-525014085,,,,,,Training,unknown,
-576093000,,,,,,Training,unknown,
-601254000,,,,,,Training,unknown,
-601352000,,,,,,Training,unknown,
-627067000,,,,,,Training,unknown,
-627073000,,,,,,Training,unknown,
-657107500,,,,,,Training,unknown,
-660000500,,,,,,Training,unknown,
-660000700,,,,,,Training,unknown,
-660001500,,,,,,Training,unknown,
-660005300,,,,,,Training,unknown,
-660006100,,,,,,Training,unknown,
-667001223,,,,,,Training,unknown,
-701000962,,,,,,Training,unknown,
-701007011,,,,,,Training,unknown,
-710131976,,,,,,Training,unknown,
-711680307,,,,,,Training,unknown,
-735059255,,,,,,Training,unknown,
-774559424,,,,,,Training,unknown,
-775610060,,,,,,Training,unknown,
-775626000,,,,,,Training,unknown,
-800033817,,,,,,Training,unknown,
-900200018,,,,,,Training,unknown,
+uvi,mmsi,shipname_matched,callsign_matched,flag,imo_matched,length,tonnage,engine_power,geartype_best,label,crew_size,owner,first_timestamp,last_timestamp,messages,can,ccamlr,clav,eu,ffa,iattc,isl,issf,itu,iuu,kor,nor,npfc,rus,sprfmo,usa,usa2,wcpfc,corr,rev,reclsfy,chnsprfmo,carriers,chnfsh,isfishingvessel,issinglematch,split,label.1
+149638,259656000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,275270000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,250000608,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224067690,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,235105524,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,247151110,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,250003407,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,235627000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,366820000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,263501000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,250140400,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,247142730,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,512000015,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,211238930,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,576497000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,247100530,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,247068110,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,247145510,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,247083390,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,367318950,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,231036000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,245553000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224208650,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247100480,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,273357170,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247051830,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,275162000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,230034210,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,275141000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,207426000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247152310,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,244309000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,275019000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247150040,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,227139900,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247146610,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,275226000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247144080,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247141390,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,233714000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,367162190,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,512236000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,219001703,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,207421000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,616798000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trawlers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432525000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pole_and_line,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,204209570,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pole_and_line,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,227132100,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pole_and_line,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,255402650,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pole_and_line,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,204285000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pole_and_line,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,204838000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pole_and_line,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,204209890,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pole_and_line,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431200880,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pole_and_line,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,204206740,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pole_and_line,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416510000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,412371204,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,412422694,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,412354055,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,416029700,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,416236800,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,412421005,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,416004892,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412420937,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412420609,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416242500,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412320033,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412354056,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416248800,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,squid_jigger,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,235097217,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pots_and_traps,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,204848000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pots_and_traps,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,235007143,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pots_and_traps,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,227316570,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pots_and_traps,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,227581550,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pots_and_traps,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,235100159,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pots_and_traps,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,265612260,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pots_and_traps,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,275455000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pots_and_traps,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224082580,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pots_and_traps,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,265661180,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pots_and_traps,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,275461000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,pots_and_traps,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224093760,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,247131490,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,219001614,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,207343400,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224074730,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247142520,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,204225000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224038000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224112790,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_gillnets,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224173660,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_gillnets,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,247300180,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_gillnets,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,219922000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_gillnets,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,225382000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_gillnets,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,266358000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_gillnets,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,275164000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_gillnets,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,263401590,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_gillnets,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,227883000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,set_gillnets,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224122000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,431753000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224308000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,432045000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,431135000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224099450,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,440522000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,432503000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,431200740,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,601433000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224071000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,431038000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,440549000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,431022000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,440595000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,431700550,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,431927000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,416039500,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,432444000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,416217800,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,440574000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,432458000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,540002000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,432276000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,440617000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224154000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,416032700,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,432942000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,431700830,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,503798700,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,416001838,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224120840,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,601111600,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,431154000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224545000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,432453000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224183670,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,416004073,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,440089000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,441811000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224020790,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,503798900,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224456000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416225500,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224933000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,601425000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432426000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432228000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,361001100,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,440934000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431101320,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,503798800,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,441251000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224052370,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,576850000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431838000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,503362600,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224173000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,503337100,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224170000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416003561,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431750000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,441018000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,617073000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431813000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224053650,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,576737000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431444000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431500470,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432367000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,204212000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540000800,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,440641000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431457000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431802000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,441812000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432319000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432298000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224371000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416004411,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,440224000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416003074,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224472000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,576843000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,drifting_longlines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,660001800,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224106260,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224088000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,416853000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,345080022,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,538060008,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,224042740,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,416411000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,345080900,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,645379000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224004420,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431686000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,553111754,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,529695000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,tuna_purse_seines,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,316002956,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trollers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,265704020,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trollers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,367157650,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trollers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Test,reefer
+149638,247306030,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trollers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,265629560,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trollers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,271072603,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trollers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,316018816,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,trollers,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,204248000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,205259000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,205307000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,209121000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,211232850,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,211351000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,211402250,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,219005837,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,219016004,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,219108000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,219125000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224012690,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224017460,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224021550,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224021640,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224022490,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224025440,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224027970,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224029580,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224044170,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224052340,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224064850,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224068000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224085260,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224089000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224098250,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224103220,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224103760,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224108130,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224140000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224156290,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224175430,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224185220,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224241000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224259000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224353650,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224523000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224581000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224597000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,224626000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,226180000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,227142200,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,227302000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,227550000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,227635680,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,228157700,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,228168000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,228367000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,231180000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,235000150,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,235000640,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,235001800,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,235003355,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,235013957,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,235070169,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,235094999,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,237963000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,238288740,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,238361240,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,238561110,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,238613210,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,238769140,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,239139000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,239329000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,244583000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,244759000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,245655000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,245744000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,246269000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,246338000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,246511000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247086590,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247120760,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247140580,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247143860,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247144270,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247151930,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247151990,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247220620,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247239900,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,247305860,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,248000280,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,249000980,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,251178110,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,251251110,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,251739110,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,251848640,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,255401690,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,256000527,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,257004210,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,257225000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,257599500,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,258045000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,258380500,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,259329000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,259647000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,263415290,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,265752900,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,271008508,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,271072871,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,273310630,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,273313640,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,273315570,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,273417010,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,273453080,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,273842800,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,273844100,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,273845700,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,273846400,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,316015632,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,338622000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,345050700,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,345080027,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,355212000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,367037040,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,367147350,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,367343270,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,367492340,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,367522830,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,367683710,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,367701560,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,371224000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412110441,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412200993,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412209233,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412209234,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412320026,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412320034,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412329436,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412331031,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412331036,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412371197,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412371198,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412371203,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412371205,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412420611,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412420872,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412420892,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412420973,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412439605,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412460114,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412460115,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412460283,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412460285,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412460287,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412460288,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412500157,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412500244,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412672010,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412691520,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,412691540,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,413300480,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416000784,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416002116,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416002195,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416002257,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416002287,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416002304,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416002441,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416002492,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416002596,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416002643,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416002655,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416002768,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416002875,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416003236,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416004375,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416004409,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416004453,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416004662,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416004675,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416011800,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416154700,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416171600,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416218500,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416219500,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416221900,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416234700,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416237800,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416239700,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416240900,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416773000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,416775000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,419900150,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,419900160,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431006011,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431006207,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431006268,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431047000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431316000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431395000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431503000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431682000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431700190,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431700260,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431702140,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431702990,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431704490,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431704520,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431714000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431725000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431782000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431873000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,431889000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432226000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432306000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432388000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432410000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432448000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432685000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432955000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,432984000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,440110490,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,440236000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,440246000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,440329000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,440623000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,440654000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,440778000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,440950000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,441242000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,441650000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,441864000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,452009111,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,466512960,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,503003170,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,503016050,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,503018300,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,503042740,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,503413000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,503748900,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,503798600,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,512003467,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,512006000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,512119000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,512235000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,520218000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,520238000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,520241000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,520243000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,525014085,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540001900,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540002100,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540002200,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540002300,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540003800,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540003900,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540004000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540004100,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540004200,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540005000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540010700,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540010800,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,540011500,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,576093000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,601254000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,601352000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,627067000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,627073000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,657107500,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,660000500,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,660000700,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,660001500,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,660005300,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,660006100,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,667001223,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,701000962,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,701007011,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,710131976,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,711680307,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,735059255,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,774559424,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,775610060,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,775626000,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,800033817,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
+149638,900200018,SEABREEZE1,5VEZ6,None,8514772.0,,,,reefer,unknown,,MARINE FISHERIES CORP CO. LTD,2017-04-07 17:02:46 UTC,2017-04-10 09:25:10 UTC,20.0,,,,,,,,,,632.0,,,,,,,,,,,,,,,False,True,Training,reefer
