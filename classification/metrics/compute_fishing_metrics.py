@@ -379,7 +379,7 @@ python -m classification.metrics.compute_fishing_metrics \
 
 
 if __name__ == '__main__':
-    logging.getLogger().setLevel('DEBUG')
+    logging.getLogger().setLevel(logging.DEBUG)
 
     parser = argparse.ArgumentParser(
         description='Test fishing inference results and output metrics.\n')
