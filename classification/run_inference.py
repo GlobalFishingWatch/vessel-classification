@@ -54,7 +54,7 @@ class Inferer(object):
                 shape=[None, 1, self.model.window_max_points, self.model.num_feature_dimensions])
             self.timestamps_ph = tf.placeholder(tf.int32, shape=[None, self.model.window_max_points])
             self.time_ranges_ph = tf.placeholder(tf.int32, shape=[None, 2])
-            self.mmsis_ph = tf.placeholder(tf.int32, shape=[None])
+            self.mmsis_ph = tf.placeholder(tf.int64, shape=[None])
 
             objectives = self.model.build_inference_net(self.features_ph, self.timestamps_ph,
                                                         self.time_ranges_ph)

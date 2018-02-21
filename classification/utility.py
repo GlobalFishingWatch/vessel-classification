@@ -525,7 +525,7 @@ def random_feature_cropping_file_reader(vessel_metadata,
         filename_queue, num_features)
 
     movement_features = sequence_features['movement_features']
-    mmsi = tf.cast(context_features['mmsi'], tf.int32)
+    mmsi = tf.cast(context_features['mmsi'], tf.int64)
     random_state = np.random.RandomState()
 
     num_slices_per_mmsi = 8
@@ -543,7 +543,7 @@ def random_feature_cropping_file_reader(vessel_metadata,
 
     (features_list, timestamps, time_bounds_list, mmsis) = tf.py_func(
         replicate_extract, [movement_features, mmsi],
-        [tf.float32, tf.int32, tf.int32, tf.int32])
+        [tf.float32, tf.int32, tf.int32, tf.int64])
 
     return features_list, timestamps, time_bounds_list, mmsis
 
@@ -571,7 +571,7 @@ def np_array_extract_slices_for_time_ranges(
            dimension [n, window_size].
         3. A numpy array comprising timebounds for each slice, of dimension
             [n, 2].
-        4. A numpy array with an int32 mmsi for each slice, of dimension [n].
+        4. A numpy array with an int64 mmsi for each slice, of dimension [n].
 
     """
     slices = []
@@ -607,7 +607,7 @@ def np_array_extract_slices_for_time_ranges(
     #         dtype=np.float32), np.empty(
     #             shape=[0, window_size], dtype=np.int32), np.empty(
     #                 shape=[0, 2], dtype=np.int32), np.empty(
-    #                     shape=[0], dtype=np.int32))
+    #                     shape=[0], dtype=np.int64))
 
     return zip(*slices)
 
@@ -639,7 +639,7 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
         filename_queue, num_features)
 
     movement_features = sequence_features['movement_features']
-    mmsi = tf.cast(context_features['mmsi'], tf.int32)
+    mmsi = tf.cast(context_features['mmsi'], tf.int64)
 
     random_state = np.random.RandomState()
 
@@ -650,7 +650,7 @@ def cropping_all_slice_feature_file_reader(filename_queue, num_features,
 
     features_list, timeseries, time_bounds_list, mmsis = tf.py_func(
         replicate_extract, [movement_features, mmsi],
-        [tf.float32, tf.int32, tf.int32, tf.int32])
+        [tf.float32, tf.int32, tf.int32, tf.int64])
 
     return features_list, timeseries, time_bounds_list, mmsis
 
@@ -682,7 +682,7 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
                 np.empty(
                     shape=[0, window_size], dtype=np.int32), np.empty(
                         shape=[0, 2], dtype=np.int32), np.empty(
-                            shape=[0], dtype=np.int32))
+                            shape=[0], dtype=np.int64))
 
     return zip(*slices)
 
@@ -693,7 +693,7 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
 
 def process_fixed_window_features(context_features, sequence_features):
     movement_features = sequence_features['movement_features']
-    mmsi = tf.cast(context_features['mmsi'], tf.int32)
+    mmsi = tf.cast(context_features['mmsi'], tf.int64)
 
     if start_date is not None:
         start_stamp = time.mktime(start_date.timetuple())
@@ -719,7 +719,7 @@ def process_fixed_window_features(context_features, sequence_features):
 
     features_list, timeseries, time_bounds_list, mmsis = tf.py_func(
         replicate_extract, [movement_features, mmsi],
-        [tf.float32, tf.int32, tf.int32, tf.int32])
+        [tf.float32, tf.int32, tf.int32, tf.int64])
 
     return features_list, timeseries, time_bounds_list, mmsis
 
@@ -755,9 +755,9 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
 
 def int_or_hash(x):
     try:
-        return np.int32(int(x))
+        return int(x)
     except:
-        return np.int32(hash(x))
+        return hash(x)
 
 class VesselMetadata(object):
     def __init__(self,
@@ -785,10 +785,10 @@ class VesselMetadata(object):
             fishing_range_multiplier = self.fishing_range_training_upweight
         else:
             fishing_range_multiplier = 1.0
-        return self.metadata_by_mmsi[np.int32(mmsi)][1] * fishing_range_multiplier
+        return self.metadata_by_mmsi[mmsi][1] * fishing_range_multiplier
 
     def vessel_label(self, label_name, mmsi):
-        return self.metadata_by_mmsi[np.int32(mmsi)][0][label_name]
+        return self.metadata_by_mmsi[mmsi][0][label_name]
 
     def mmsis_for_split(self, split):
         assert split in [TRAINING_SPLIT, TEST_SPLIT]
