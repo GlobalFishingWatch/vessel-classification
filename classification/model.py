@@ -79,7 +79,7 @@ class ModelBase(object):
             self.max_replication_factor,
             boundary=boundary)
         return [
-            '%s/%d.tfrecord' % (base_feature_path, mmsi)
+            '%s/%s.tfrecord' % (base_feature_path, mmsi)
             for mmsi in training_mmsis
         ]
 

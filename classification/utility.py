@@ -753,6 +753,12 @@ def all_fixed_window_feature_file_reader(filename_queue, num_features,
     return process_fixed_window_features(context_features, sequence_features)
 
 
+def int_or_hash(x):
+    try:
+        return np.int32(int(x))
+    except:
+        return np.int32(hash(x))
+
 class VesselMetadata(object):
     def __init__(self,
                  metadata_dict,
@@ -764,6 +770,7 @@ class VesselMetadata(object):
         self.fishing_range_training_upweight = fishing_range_training_upweight
         for split, vessels in metadata_dict.iteritems():
             for mmsi, data in vessels.iteritems():
+                mmsi = int_or_hash(mmsi)
                 self.metadata_by_mmsi[mmsi] = data
 
         intersection_mmsis = set(self.metadata_by_mmsi.keys()).intersection(
@@ -778,11 +785,10 @@ class VesselMetadata(object):
             fishing_range_multiplier = self.fishing_range_training_upweight
         else:
             fishing_range_multiplier = 1.0
-
-        return self.metadata_by_mmsi[mmsi][1] * fishing_range_multiplier
+        return self.metadata_by_mmsi[np.int32(mmsi)][1] * fishing_range_multiplier
 
     def vessel_label(self, label_name, mmsi):
-        return self.metadata_by_mmsi[mmsi][0][label_name]
+        return self.metadata_by_mmsi[np.int32(mmsi)][0][label_name]
 
     def mmsis_for_split(self, split):
         assert split in [TRAINING_SPLIT, TEST_SPLIT]
@@ -880,7 +886,7 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
     min_time_per_mmsi = np.inf
 
     for row in lines:
-        mmsi = int(row['mmsi'])
+        mmsi = row['mmsi'].strip()
         if mmsi in available_mmsis:
             if mmsi not in fishing_range_dict:
                 continue
@@ -946,11 +952,12 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
     dataset_kind_counts = defaultdict(lambda: defaultdict(lambda: 0))
     vessel_types = []
 
+    available_mmsis = set(available_mmsis)
     # Build a list of vessels + split + and vessel type. Calculate the split on
     # the fly, but deterministically. Count the occurrence of each vessel type
     # per split.
     for row in lines:
-        mmsi = int(row['mmsi'])
+        mmsi = row['mmsi'].strip()
         coarse_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
         if mmsi in available_mmsis and coarse_vessel_type:
             split = row['split']
@@ -958,6 +965,9 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
             vessel_types.append((mmsi, split, coarse_vessel_type, row))
             dataset_kind_counts[split][coarse_vessel_type] += 1
             vessel_type_set.add(coarse_vessel_type)
+        # else:
+        #     logging.warning('No training data for %s, (%s) %s %s', mmsi, sorted(available_mmsis)[:10], 
+        #         type(mmsi), type(sorted(available_mmsis)[0]))
 
     # Calculate weights for each vessel type per split, for
     # now use weights of sqrt(max_count / count), but eventually weight by prevalance
@@ -1016,7 +1026,7 @@ def find_available_mmsis(feature_path):
         mmsi_list_tensor = tf.read_file(root_output_path +
                                         '/mmsis/part-00000-of-00001.txt')
         els = sess.run(mmsi_list_tensor).split('\n')
-        mmsi_list = [int(mmsi) for mmsi in els if mmsi != '']
+        mmsi_list = [mmsi.strip() for mmsi in els if mmsi.strip() != '']
 
         logging.info('Found %d mmsis.', len(mmsi_list))
         return set(mmsi_list)
@@ -1043,7 +1053,7 @@ def read_fishing_ranges(fishing_range_file):
     with open(fishing_range_file, 'r') as f:
         for l in f.readlines()[1:]:
             els = l.split(',')
-            mmsi = int(els[0])
+            mmsi = els[0].strip()
             start_time = parse_date(els[1])
             end_time = parse_date(els[2])
             is_fishing = float(els[3])
