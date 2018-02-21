@@ -506,9 +506,17 @@ class MultiClassificationObjectiveSmoothed(MultiClassificationObjective):
         labels = self.multihot_labels(mmsis)
 
         with tf.variable_scope("custom-loss"):
-            positives = (1 - self.epsilon) * tf.reduce_sum(
-                tf.to_float(labels) * self.prediction, reduction_indices=[1]) + self.epsilon
-            raw_loss = -tf.reduce_mean(tf.log(positives))
+            # Normal args are the totals for each correct value (as used in standard cross entropy)
+            normal_args = tf.reduce_sum(tf.to_float(labels) * self.prediction, 
+                                            reduction_indices=[1])
+
+            # To encourage self consistency in the face of noise we also use a component where the args
+            # is the largest prediction.
+            consistent_args = tf.reduce_max(self.prediction, axis=[1])
+            #
+            positives = (1 - self.epsilon) * tf.log(normal_args) + self.epsilon * tf.log(consistent_args)
+
+            raw_loss = -tf.reduce_mean(positives)
 
         mask = tf.to_float(tf.equal(tf.reduce_sum(labels, 1), 1))
         int_labels = tf.to_int32(tf.argmax(labels, 1))
