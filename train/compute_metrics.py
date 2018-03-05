@@ -713,8 +713,8 @@ def load_inferred(inference_path, extractors, whitelist):
     """Load inferred data and generate comparison data
 
     """
-    # with gzip.GzipFile(inference_path) as f:
-    with open(inference_path) as f:
+    with gzip.GzipFile(inference_path) as f:
+    # with open(inference_path) as f:
         with nlj.open(f, json_lib='ujson') as src:
             for row in src:
                 if whitelist is not None and row['mmsi'] not in whitelist:
@@ -751,8 +751,11 @@ class ClassificationExtractor(InferenceResults):
         self.all_labels = set(label_map.values())
 
     def extract(self, row):
-        mmsi = row['mmsi']
+        mmsi = row['mmsi'].strip()
         lbl = self.label_map.get(mmsi)
+
+        # if lbl is not None:
+        #     print(self.field, repr(mmsi), lbl, self.label_map.keys()[:10])
         if self.field not in row:
             return
         label_scores = row[self.field]['label_scores']
@@ -926,7 +929,7 @@ def load_true_fishing_ranges_by_mmsi(fishing_range_path,
     parse = dateutil.parser.parse
     with open(fishing_range_path) as f:
         for row in csv.DictReader(f):
-            mmsi = int(row['mmsi'].strip())
+            mmsi = row['mmsi'].strip()
             if not split_map.get(mmsi) == TEST_SPLIT:
                 continue
             val = float(row['is_fishing'])
@@ -1118,7 +1121,17 @@ def compute_results(args):
     maps = defaultdict(dict)
     with open(args.label_path) as f:
         for row in csv.DictReader(f):
-            mmsi = int(row['mmsi'].strip())
+            mmsi = row['mmsi'].strip()
+            try:
+                mmsi = int(mmsi)
+                maps['mmsi'][str(mmsi)] = mmsi
+            except:
+                print("HASHING!")
+                mmsi = hash(mmsi)
+                maps['mmsi'][str(mmsi)] = row['mmsi'].strip()
+            mmsi = str(mmsi)
+            # TODO: USE MMSI MAP TO fix output dumps
+
             if not row['split'] == TEST_SPLIT:
                 continue
             for field in ['label', 'length', 'tonnage', 'engine_power', 'crew_size', 'split'

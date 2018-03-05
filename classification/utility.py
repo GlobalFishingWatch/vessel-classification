@@ -115,9 +115,9 @@ def categories(obj, include_atomic=True):
 
 
 #TODO: Better names
-VESSEL_CLASS_DETAILED_NAMES = list(atomic(schema))
+VESSEL_CLASS_DETAILED_NAMES = sorted(atomic(schema))
 
-VESSEL_CATEGORIES = list(categories(schema))
+VESSEL_CATEGORIES = sorted(categories(schema))
 
 TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
