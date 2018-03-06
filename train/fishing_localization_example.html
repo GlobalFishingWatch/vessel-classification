@@ -1,0 +1,228 @@
+<style type="text/css">
+
+table {
+    text-align: center;
+    border-collapse: collapse;
+}
+
+.confusion-matrix th.col {
+  height: 140px; 
+  white-space: nowrap;
+}
+
+.confusion-matrix th.col div {
+    transform: translate(16px, 49px) rotate(315deg); 
+    width: 30px;
+}
+
+.confusion-matrix th.col span {
+    border-bottom: 1px solid #ccc; 
+    padding: 5px 10px; 
+    text-align: left;
+}
+
+.confusion-matrix th.row {
+    text-align: right;
+}
+
+.confusion-matrix td.diagonal {
+    border: 1px solid black;
+}
+
+.confusion-matrix td.offdiagonal {
+    border: 1px dotted grey;
+}
+
+.unbreakable {
+    page-break-inside: avoid;
+}
+
+
+
+
+</style>
+<h2>
+  Fishing Localisation
+</h2>
+<div class="unbreakable">
+  <table>
+    <tr>
+      <th>
+        Gear Type
+      </th>
+      <th>
+        Precision
+      </th>
+      <th>
+        Recall
+      </th>
+      <th>
+        Accuracy
+      </th>
+      <th>
+        F1-Score
+      </th>
+    </tr>
+    <tr>
+      <td>
+        drifting_longlines
+      </td>
+      <td>
+        0.89
+      </td>
+      <td>
+        0.94
+      </td>
+      <td>
+        0.93
+      </td>
+      <td>
+        0.91
+      </td>
+    </tr>
+    <tr>
+      <td>
+        pole_and_line
+      </td>
+      <td>
+        0.66
+      </td>
+      <td>
+        0.42
+      </td>
+      <td>
+        0.98
+      </td>
+      <td>
+        0.51
+      </td>
+    </tr>
+    <tr>
+      <td>
+        pots_and_traps
+      </td>
+      <td>
+        0.93
+      </td>
+      <td>
+        0.90
+      </td>
+      <td>
+        0.97
+      </td>
+      <td>
+        0.91
+      </td>
+    </tr>
+    <tr>
+      <td>
+        purse_seines
+      </td>
+      <td>
+        0.93
+      </td>
+      <td>
+        0.89
+      </td>
+      <td>
+        0.95
+      </td>
+      <td>
+        0.91
+      </td>
+    </tr>
+    <tr>
+      <td>
+        set_gillnets
+      </td>
+      <td>
+        0.97
+      </td>
+      <td>
+        0.90
+      </td>
+      <td>
+        0.94
+      </td>
+      <td>
+        0.93
+      </td>
+    </tr>
+    <tr>
+      <td>
+        set_longlines
+      </td>
+      <td>
+        0.92
+      </td>
+      <td>
+        0.86
+      </td>
+      <td>
+        0.92
+      </td>
+      <td>
+        0.89
+      </td>
+    </tr>
+    <tr>
+      <td>
+        trawlers
+      </td>
+      <td>
+        0.82
+      </td>
+      <td>
+        0.96
+      </td>
+      <td>
+        0.95
+      </td>
+      <td>
+        0.88
+      </td>
+    </tr>
+    <tr>
+      <td>
+        trollers
+      </td>
+      <td>
+        1.00
+      </td>
+      <td>
+        0.04
+      </td>
+      <td>
+        0.81
+      </td>
+      <td>
+        0.07
+      </td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>
+        Overall
+      </td>
+      <td>
+        0.89
+      </td>
+      <td>
+        0.93
+      </td>
+      <td>
+        0.94
+      </td>
+      <td>
+        0.91
+      </td>
+    </tr>
+  </table>
+</div>
+<hr />

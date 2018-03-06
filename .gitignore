@@ -1,6 +1,7 @@
-classification/temp
-pipeline/temp
+temp
 target
+.cache
+bigquery_credentials.dat
 *.swp
 *.pyc
 .DS_Store
