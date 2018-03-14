@@ -336,7 +336,8 @@ def np_array_random_fixed_points_extract(random_state, input_series,
                 start_index, end_index = extract_start_end(min_ndx, max_ndx)
                 break
         else:
-            logging.warning('Pulling data for %s from full range', mmsi)
+            logging.warning('Pulling data for %s from full range (input_length = %s, %s, %s)',
+                     mmsi, input_length, min_ndx, max_ndx)
             start_index, end_index = extract_start_end(0, input_length - 1)
     else:
         logging.warning('No ranges')
@@ -532,8 +533,8 @@ def random_feature_cropping_file_reader(vessel_metadata,
 
     def replicate_extract(input, mmsi):
         # Extract several random windows from each vessel track
-        if mmsi in vessel_metadata.fishing_ranges_map:
-            ranges = vessel_metadata.fishing_ranges_map[mmsi]
+        if mmsi in vessel_metadata.fishing_ranges_map_int:
+            ranges = vessel_metadata.fishing_ranges_map_int[mmsi]
         else:
             ranges = {}
 
@@ -767,6 +768,7 @@ class VesselMetadata(object):
         self.metadata_by_split = metadata_dict
         self.metadata_by_mmsi = {}
         self.fishing_ranges_map = fishing_ranges_map
+        self.fishing_ranges_map_int = {int_or_hash(k) : v for (k, v) in fishing_ranges_map.items()}
         self.fishing_range_training_upweight = fishing_range_training_upweight
         for split, vessels in metadata_dict.iteritems():
             for mmsi, data in vessels.iteritems():
@@ -785,10 +787,10 @@ class VesselMetadata(object):
             fishing_range_multiplier = self.fishing_range_training_upweight
         else:
             fishing_range_multiplier = 1.0
-        return self.metadata_by_mmsi[mmsi][1] * fishing_range_multiplier
+        return self.metadata_by_mmsi[int_or_hash(mmsi)][1] * fishing_range_multiplier
 
     def vessel_label(self, label_name, mmsi):
-        return self.metadata_by_mmsi[mmsi][0][label_name]
+        return self.metadata_by_mmsi[int_or_hash(mmsi)][0][label_name]
 
     def mmsis_for_split(self, split):
         assert split in [TRAINING_SPLIT, TEST_SPLIT]

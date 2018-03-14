@@ -557,9 +557,9 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 dense_labels = np.zeros_like(timestamps, dtype=np.float32)
                 dense_labels.fill(-1.0)
                 mmsi = int(mmsi)
-                if mmsi in self.vessel_metadata.fishing_ranges_map:
+                if mmsi in self.vessel_metadata.fishing_ranges_map_int:
                     for (start_time, end_time, is_fishing
-                         ) in self.vessel_metadata.fishing_ranges_map[mmsi]:
+                         ) in self.vessel_metadata.fishing_ranges_map_int[mmsi]:
                         start_range = calendar.timegm(start_time.utctimetuple(
                         ))
                         end_range = calendar.timegm(end_time.utctimetuple())
