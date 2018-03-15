@@ -526,15 +526,17 @@ def random_feature_cropping_file_reader(vessel_metadata,
         filename_queue, num_features)
 
     movement_features = sequence_features['movement_features']
-    mmsi = tf.cast(context_features['mmsi'], tf.int64)
+    int_mmsi = tf.cast(context_features['mmsi'], tf.int64)
     random_state = np.random.RandomState()
 
     num_slices_per_mmsi = 8
 
-    def replicate_extract(input, mmsi):
+    def replicate_extract(input, int_mmsi):
         # Extract several random windows from each vessel track
-        if mmsi in vessel_metadata.fishing_ranges_map_int:
-            ranges = vessel_metadata.fishing_ranges_map_int[mmsi]
+        # TODO: Fix feature generation so it returns strings directly
+        mmsi = vessel_metadata.mmsi_map_int2str[int_mmsi]
+        if mmsi in vessel_metadata.fishing_ranges_map:
+            ranges = vessel_metadata.fishing_ranges_map[mmsi]
         else:
             ranges = {}
 
@@ -543,8 +545,8 @@ def random_feature_cropping_file_reader(vessel_metadata,
             window_size, min_timeslice_size, mmsi, ranges)
 
     (features_list, timestamps, time_bounds_list, mmsis) = tf.py_func(
-        replicate_extract, [movement_features, mmsi],
-        [tf.float32, tf.int32, tf.int32, tf.int64])
+        replicate_extract, [movement_features, int_mmsi],
+        [tf.float32, tf.int32, tf.int32, tf.string])
 
     return features_list, timestamps, time_bounds_list, mmsis
 
@@ -768,12 +770,12 @@ class VesselMetadata(object):
         self.metadata_by_split = metadata_dict
         self.metadata_by_mmsi = {}
         self.fishing_ranges_map = fishing_ranges_map
-        self.fishing_ranges_map_int = {int_or_hash(k) : v for (k, v) in fishing_ranges_map.items()}
         self.fishing_range_training_upweight = fishing_range_training_upweight
         for split, vessels in metadata_dict.iteritems():
             for mmsi, data in vessels.iteritems():
-                mmsi = int_or_hash(mmsi)
                 self.metadata_by_mmsi[mmsi] = data
+        self.mmsi_map_int2str = {int_or_hash(k) : k for k in self.metadata_by_mmsi}
+
 
         intersection_mmsis = set(self.metadata_by_mmsi.keys()).intersection(
             set(fishing_ranges_map.keys()))
@@ -787,10 +789,10 @@ class VesselMetadata(object):
             fishing_range_multiplier = self.fishing_range_training_upweight
         else:
             fishing_range_multiplier = 1.0
-        return self.metadata_by_mmsi[int_or_hash(mmsi)][1] * fishing_range_multiplier
+        return self.metadata_by_mmsi[mmsi][1] * fishing_range_multiplier
 
     def vessel_label(self, label_name, mmsi):
-        return self.metadata_by_mmsi[int_or_hash(mmsi)][0][label_name]
+        return self.metadata_by_mmsi[mmsi][0][label_name]
 
     def mmsis_for_split(self, split):
         assert split in [TRAINING_SPLIT, TEST_SPLIT]

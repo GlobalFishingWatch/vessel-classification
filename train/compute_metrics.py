@@ -37,6 +37,7 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
+from classification import utility
 from classification.utility import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT, schema, atomic
 import gzip
 import dateutil.parser
@@ -45,19 +46,27 @@ import pytz
 
 
 coarse_categories = [
-    'cargo_or_tanker', 'passenger', 'seismic_vessel', 'tug', 'other_fishing', 
-    'drifting_longlines', 'seiners', 'fixed_gear', 'squid_jigger', 'trawlers', 
-    'other_not_fishing']
+    'cargo_or_tanker', 'passenger', 'tug',  'seismic_vessel','other_not_fishing', 
+    'drifting_longlines', 'gear', 'purse_seines', 'set_gillnets', 'set_longlines', 'pots_and_traps',
+     'trawlers', 'squid_jigger','other_fishing', 
+    ]
+
+
+all_classes = set(utility.VESSEL_CLASS_DETAILED_NAMES)
+categories = dict(utility.VESSEL_CATEGORIES)
+is_fishing = set(categories['fishing'])
+not_fishing = set(categories['non_fishing'])
 
 coarse_mapping = defaultdict(set)
-for k0, extra in [('fishing', 'other_fishing'), 
-                  ('non_fishing', 'other_not_fishing')]:
-    for k1, v1 in schema['unknown'][k0].items():
-        key = k1 if (k1 in coarse_categories) else extra
-        if v1 is None:
-            coarse_mapping[key] |= {k1}
-        else:
-            coarse_mapping[key] |= set(atomic(v1))
+used = set()
+for cat in coarse_categories:
+    atomic_cats = set(categories[cat])
+    assert not atomic_cats & used
+    used |= atomic_cats
+    coarse_mapping[cat] = atomic_cats
+unused = all_classes - used
+coarse_mapping['other_fishing'] |= (is_fishing & unused)
+coarse_mapping['other_not_fishing'] |= (not_fishing & unused)
 
 coarse_mapping = [(k, coarse_mapping[k]) for k in coarse_categories]
 
