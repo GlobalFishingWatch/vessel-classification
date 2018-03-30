@@ -1131,13 +1131,13 @@ def compute_results(args):
     with open(args.label_path) as f:
         for row in csv.DictReader(f):
             mmsi = row['mmsi'].strip()
-            try:
-                mmsi = int(mmsi)
-                maps['mmsi'][str(mmsi)] = mmsi
-            except:
-                print("HASHING!")
-                mmsi = hash(mmsi)
-                maps['mmsi'][str(mmsi)] = row['mmsi'].strip()
+            # try:
+            #     mmsi = int(mmsi)
+            #     maps['mmsi'][str(mmsi)] = mmsi
+            # except:
+            #     print("HASHING!")
+            #     mmsi = hash(mmsi)
+            #     maps['mmsi'][str(mmsi)] = row['mmsi'].strip()
             mmsi = str(mmsi)
             # TODO: USE MMSI MAP TO fix output dumps
 
