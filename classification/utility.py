@@ -964,8 +964,8 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
         mmsi = row['mmsi'].strip()
         coarse_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
         if mmsi in available_mmsis and coarse_vessel_type:
-            split = row['split']
-            assert split in ('Training', 'Test')
+            split = row['split'].strip()
+            assert split in ('Training', 'Test'), repr(split)
             vessel_types.append((mmsi, split, coarse_vessel_type, row))
             dataset_kind_counts[split][coarse_vessel_type] += 1
             vessel_type_set.add(coarse_vessel_type)
