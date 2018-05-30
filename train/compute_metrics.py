@@ -297,10 +297,10 @@ def ydump_confusion_matrix(doc, cm, labels, **kwargs):
             for x in labels:
                 with tag('th', klass='col'):
                     with tag('div'):
-                        line('span', x)
+                        line('span', x.replace('_', ' '))
         for i, (l, row) in enumerate(zip(labels, cm.scaled)):
             with tag('tr'):
-                line('th', str(l), klass='row')
+                line('th', str(l.replace('_', ' ')), klass='row')
                 for j, x in enumerate(row):
                     if i == j:
                         if x == -1:
