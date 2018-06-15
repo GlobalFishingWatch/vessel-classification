@@ -10,3 +10,4 @@ dist/
 *.json.gz
 classification/classification/models/prod/TEMP
 .ipynb_checkpoints
+train/ssvid_to_vessel_id.csv
