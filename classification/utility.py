@@ -336,7 +336,8 @@ def np_array_random_fixed_points_extract(random_state, input_series,
                 start_index, end_index = extract_start_end(min_ndx, max_ndx)
                 break
         else:
-            logging.warning('Pulling data for %s from full range', mmsi)
+            logging.warning('Pulling data for %s from full range (input_length = %s, %s, %s)',
+                     mmsi, input_length, min_ndx, max_ndx)
             start_index, end_index = extract_start_end(0, input_length - 1)
     else:
         logging.warning('No ranges')
@@ -525,13 +526,15 @@ def random_feature_cropping_file_reader(vessel_metadata,
         filename_queue, num_features)
 
     movement_features = sequence_features['movement_features']
-    mmsi = tf.cast(context_features['mmsi'], tf.int64)
+    int_mmsi = tf.cast(context_features['mmsi'], tf.int64)
     random_state = np.random.RandomState()
 
     num_slices_per_mmsi = 8
 
-    def replicate_extract(input, mmsi):
+    def replicate_extract(input, int_mmsi):
         # Extract several random windows from each vessel track
+        # TODO: Fix feature generation so it returns strings directly
+        mmsi = vessel_metadata.mmsi_map_int2str[int_mmsi]
         if mmsi in vessel_metadata.fishing_ranges_map:
             ranges = vessel_metadata.fishing_ranges_map[mmsi]
         else:
@@ -542,8 +545,8 @@ def random_feature_cropping_file_reader(vessel_metadata,
             window_size, min_timeslice_size, mmsi, ranges)
 
     (features_list, timestamps, time_bounds_list, mmsis) = tf.py_func(
-        replicate_extract, [movement_features, mmsi],
-        [tf.float32, tf.int32, tf.int32, tf.int64])
+        replicate_extract, [movement_features, int_mmsi],
+        [tf.float32, tf.int32, tf.int32, tf.string])
 
     return features_list, timestamps, time_bounds_list, mmsis
 
@@ -770,8 +773,9 @@ class VesselMetadata(object):
         self.fishing_range_training_upweight = fishing_range_training_upweight
         for split, vessels in metadata_dict.iteritems():
             for mmsi, data in vessels.iteritems():
-                mmsi = int_or_hash(mmsi)
                 self.metadata_by_mmsi[mmsi] = data
+        self.mmsi_map_int2str = {int_or_hash(k) : k for k in self.metadata_by_mmsi}
+
 
         intersection_mmsis = set(self.metadata_by_mmsi.keys()).intersection(
             set(fishing_ranges_map.keys()))
@@ -960,8 +964,8 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
         mmsi = row['mmsi'].strip()
         coarse_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
         if mmsi in available_mmsis and coarse_vessel_type:
-            split = row['split']
-            assert split in ('Training', 'Test')
+            split = row['split'].strip()
+            assert split in ('Training', 'Test'), repr(split)
             vessel_types.append((mmsi, split, coarse_vessel_type, row))
             dataset_kind_counts[split][coarse_vessel_type] += 1
             vessel_type_set.add(coarse_vessel_type)
