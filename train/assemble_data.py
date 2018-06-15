@@ -34,15 +34,16 @@ def assemble_fishing_data(src_dir, output_path):
             output.writelines(lines[1:])
 
 
-def augment_training_list(input_path, output_path, fishing_range_path, false_positive_path, seed=0):
+def augment_training_list(input_path, output_path, fishing_range_path, false_positive_paths, seed=0):
     np.random.seed(seed)
     logging.basicConfig(level=logging.INFO)
     vessel_list = pd.read_csv(input_path)
     range_mmsi = sorted(set(pd.read_csv(fishing_range_path).mmsi))
-    fp_mmsi = set(pd.read_csv(false_positive_path)['mmsi'])
+    fp_mmsi = set()
+    for pth in false_positive_paths:
+        fp_mmsi |= set(pd.read_csv(pth)['mmsi'])
 
     class_name_of = {x.mmsi : x.label for x in vessel_list.itertuples()}.get
-
 
     template = vessel_list.iloc[-1].copy()
     template.label = "unknown"
@@ -123,10 +124,10 @@ if __name__ == '__main__':
             print(
                 'classes already exist, exiting (use `--force` to overwrite)')
             raise SystemExit()
-        [false_positive_path] = [x for x in glob(os.path.join(args.fishing_range_dir, '*.csv')) if os.path.basename(x).startswith('false_')]
+        false_positive_paths = [x for x in glob(os.path.join(args.fishing_range_dir, '*.csv')) if os.path.basename(x).startswith('false_')]
  
         augment_training_list(args.training_class_input_path,
                               args.training_class_output_path,
                               args.fishing_range_output_path,
-                              false_positive_path)
+                              false_positive_paths)
 
