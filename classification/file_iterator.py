@@ -112,15 +112,15 @@ def process_fixed_window_features(context_features, sequence_features,
         raw_start_i = np.searchsorted(features[:, 0], start_stamp, side='left') - pad
     else:
         raw_start_i = 0
+t
+
+    # 1037, 781, 1037, 1024, 768 => 12
 
     # Now clean up raw_start. 
     #   First add enough points that we are at the beginning of a shift.
     delta = ((end_i - window_size) - raw_start_i) % shift
 
-    if delta == 0:
-        start_i = raw_start_i
-    else:
-        start_i = raw_start_i - (shift - delta)
+    start_i = raw_start_i - delta
 
     # Now shift forward till we are nonnegative:
     logging.info("PFW0: %s, %s, %s, %s, %s, %s", mmsi, len(features), start_i)
