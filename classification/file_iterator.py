@@ -120,7 +120,14 @@ t
     #   First add enough points that we are at the beginning of a shift.
     delta = ((end_i - window_size) - raw_start_i) % shift
 
-    start_i = raw_start_i - delta
+    if delta == 0:
+        start_i = raw_start_i
+    else:
+        start_i = raw_start_i + delta - shift
+
+    # Shift backwards till we can hold at least one window
+    while end_i - start_i < window_size:
+        start_i -= shift
 
     # Now shift forward till we are nonnegative:
     logging.info("PFW0: %s, %s, %s, %s, %s, %s", mmsi, len(features), start_i)
