@@ -662,6 +662,7 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
                                       window_size, shift):
     slices = []
     input_length = len(input_series)
+    logging.info("PFW2: %s, %s, %s", mmsi, input_length, shift)
     for end_index in range(input_length, 0, -shift):
         start_index = end_index - window_size
         if start_index < 0:

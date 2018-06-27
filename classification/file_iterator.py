@@ -127,6 +127,8 @@ def process_fixed_window_features(context_features, sequence_features,
     while start_i < 0:
         start_i += shift
 
+    logging.info("PFW: %s, %s, %s, %s, %s, %s", mmsi, len(features), start_i, end_i, window_size, shift)
+
     features = features[start_i:end_i]
 
     return np_array_extract_all_fixed_slices(features, num_features,
