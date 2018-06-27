@@ -123,11 +123,14 @@ def process_fixed_window_features(context_features, sequence_features,
         start_i = raw_start_i - (shift - delta)
 
     # Now shift forward till we are nonnegative:
+    logging.info("PFW0: %s, %s, %s, %s, %s, %s", mmsi, len(features), start_i)
 
     while start_i < 0:
         start_i += shift
 
-    logging.info("PFW: %s, %s, %s, %s, %s, %s", mmsi, len(features), start_i, end_i, window_size, shift)
+    logging.info("PFW: %s, %s, %s, %s, %s, %s", mmsi, len(features), start_i, end_i, window_size, shift, raw_start_i)
+
+1037, 781, 1037, 1024, 768
 
     features = features[start_i:end_i]
 
