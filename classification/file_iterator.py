@@ -112,7 +112,6 @@ def process_fixed_window_features(context_features, sequence_features,
         raw_start_i = np.searchsorted(features[:, 0], start_stamp, side='left') - pad
     else:
         raw_start_i = 0
-t
 
     # 1037, 781, 1037, 1024, 768 => 12
 
