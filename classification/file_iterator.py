@@ -90,6 +90,8 @@ def process_fixed_window_features(context_features, sequence_features,
     assert double_pad % 2 == 0, "double_pad must be even"
     pad = double_pad // 2
 
+    # TODO: redo plumbing so that we pass in start_pad and end_pad
+
     if start_date is not None:
         start_stamp = time.mktime(start_date.timetuple())
     if end_date is not None:
@@ -113,7 +115,14 @@ def process_fixed_window_features(context_features, sequence_features,
     else:
         raw_start_i = 0
 
-    # 1037, 781, 1037, 1024, 768 => 12
+    if end_i < window_size:
+        # There aren't enough points to classify, so pad by replicating the first point.
+        # Do this here so raw_start_i is calculated on actual features
+        count = window_size - end_i
+        extra = [features[0]] * count
+        features = np.concatenate([extra, features], axis=0)
+        end_i += count
+        raw_start_i += count
 
     # Now clean up raw_start. 
     #   First add enough points that we are at the beginning of a shift.
@@ -129,12 +138,8 @@ def process_fixed_window_features(context_features, sequence_features,
         start_i -= shift
 
     # Now shift forward till we are nonnegative:
-    logging.info("PFW0: %s, %s, %s, %s, %s, %s", mmsi, len(features), start_i)
-
     while start_i < 0:
         start_i += shift
-
-    logging.info("PFW: %s, %s, %s, %s, %s, %s", mmsi, len(features), start_i, end_i, window_size, shift, raw_start_i)
 
     features = features[start_i:end_i]
 
