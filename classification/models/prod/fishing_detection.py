@@ -42,7 +42,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     learning_decay_rate = 0.5
     decay_examples = 50000
 
-    window = (256, 768)
+    window = (256, 1024)
 
     @property
     def number_of_steps(self):
