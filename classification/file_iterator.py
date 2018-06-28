@@ -79,18 +79,17 @@ class Deserializer(object):
 # Can we unify this with the version in utility?
 
 def process_fixed_window_features(context_features, sequence_features, 
-        num_features, window_size, shift, start_date, end_date):
+        num_features, window_size, shift, start_date, end_date, win_start, win_end):
     
     features = sequence_features['movement_features']
     mmsi = context_features['mmsi']
 
+    assert win_end - win_start == shift, (win_end, win_start, shift)
+    pad_end = window_size - win_end
+    pad_start = win_start
+
     is_sorted = all(features[i, 0] <= features[i+1, 0] for i in xrange(len(features)-1))
     assert is_sorted
-    double_pad = window_size - shift
-    assert double_pad % 2 == 0, "double_pad must be even"
-    pad = double_pad // 2
-
-    # TODO: redo plumbing so that we pass in start_pad and end_pad
 
     if start_date is not None:
         start_stamp = time.mktime(start_date.timetuple())
@@ -100,7 +99,7 @@ def process_fixed_window_features(context_features, sequence_features,
     if end_date is not None:
         raw_end_i = np.searchsorted(features[:, 0], end_stamp, side='left')
         # If possible go to pad after end so that we have good data starting at end
-        end_i = min(raw_end_i + pad, len(features))
+        end_i = min(raw_end_i + pad_end, len(features))
     else:
         end_i = len(features)
 
@@ -111,7 +110,7 @@ def process_fixed_window_features(context_features, sequence_features,
 
     if start_date is not None:
         # If possible go to shift before pad so we have good data for whole length
-        raw_start_i = np.searchsorted(features[:, 0], start_stamp, side='left') - pad
+        raw_start_i = np.searchsorted(features[:, 0], start_stamp, side='left') - pad_start
     else:
         raw_start_i = 0
 
@@ -150,7 +149,8 @@ def process_fixed_window_features(context_features, sequence_features,
 
 
 def all_fixed_window_feature_file_iterator(filenames, deserializer,
-                                         window_size, shift, start_date, end_date):
+                                         window_size, shift, start_date, end_date,
+                                         win_start, win_end):
     """ Set up a file reader and inference feature extractor for the specified files
 
     An inference feature extractor, pulling all sequential fixed-length slices
@@ -176,7 +176,7 @@ def all_fixed_window_feature_file_iterator(filenames, deserializer,
                 context_features, sequence_features = deserializer(exmp) 
                 for values in zip(*process_fixed_window_features(context_features, 
                                         sequence_features, deserializer.num_features, 
-                                        window_size, shift, start_date, end_date)):
+                                        window_size, shift, start_date, end_date, win_start, win_end)):
                     yield values
 
 

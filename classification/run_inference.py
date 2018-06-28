@@ -140,7 +140,7 @@ class Inferer(object):
             logging.info("Shift %s %s %s", start_date, end_date, shift)
             feature_iter = file_iterator.all_fixed_window_feature_file_iterator(
                 matching_files, self.deserializer,
-                self.model.window_max_points, shift, start_date, end_date)
+                self.model.window_max_points, shift, start_date, end_date, b, e)
 
 
         objectives = self.objectives
