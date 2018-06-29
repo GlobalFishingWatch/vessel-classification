@@ -8,9 +8,9 @@ def test_file_iterator():
     with tf.Session() as sess:
         deserializer = Deserializer(num_features=13)
         for i, val in enumerate(all_fixed_window_feature_file_iterator([path], deserializer,
-                        256, 64, datetime.datetime(2015,1,1), datetime.datetime(2017,7,31))):
+                        256, 64, datetime.datetime(2015,1,1), datetime.datetime(2017,7,31), 96, 160)):
             assert (val[0].shape, val[1].shape, val[2].shape, val[3].shape) == ((1, 256, 12), (256,), (2,), ()), (val[0].shape, val[1].shape, val[2].shape, val[3].shape)
-        assert i == 1
+        assert i == 0, (i, val)
 
 
 epoch = datetime.datetime(1970,1,1)
@@ -147,11 +147,11 @@ def read_mmsi(base_path):
         return fp.read().strip().split()
 
 
-base = 'gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-through-2017/pipeline/output/'
+# base = 'gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-through-2017/pipeline/output/'
 
 
-mmsi_list = read_mmsi(base)[::1000][:100]
-print mmsi_list
+# mmsi_list = read_mmsi(base)[::1000][:100]
+# print mmsi_list
 
 # test_coverage(base, mmsi_list, 15, year=2018)
 # test_coverage(base, mmsi_list, 15, year=2017)

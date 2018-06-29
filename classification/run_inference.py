@@ -54,8 +54,7 @@ class Inferer(object):
                 shape=[None, 1, self.model.window_max_points, self.model.num_feature_dimensions])
             self.timestamps_ph = tf.placeholder(tf.int32, shape=[None, self.model.window_max_points])
             self.time_ranges_ph = tf.placeholder(tf.int32, shape=[None, 2])
-            self.mmsis_ph = tf.placeholder(tf.int64, shape=[None])
-
+            self.mmsis_ph = tf.placeholder(tf.int64, shape=[None])  # TODO: MMSI_CLEANUP -> tf.string
             objectives = self.model.build_inference_net(self.features_ph, self.timestamps_ph,
                                                         self.time_ranges_ph)
             return objectives
@@ -141,7 +140,7 @@ class Inferer(object):
             logging.info("Shift %s %s %s", start_date, end_date, shift)
             feature_iter = file_iterator.all_fixed_window_feature_file_iterator(
                 matching_files, self.deserializer,
-                self.model.window_max_points, shift, start_date, end_date)
+                self.model.window_max_points, shift, start_date, end_date, b, e)
 
 
         objectives = self.objectives

@@ -42,7 +42,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     learning_decay_rate = 0.5
     decay_examples = 50000
 
-    window = (256, 768)
+    window = (256, 1024)
 
     @property
     def number_of_steps(self):
@@ -94,7 +94,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         training_mmsis = self.vessel_metadata.fishing_range_only_list(
             random_state, split, self.max_replication_factor)
         return [
-            '%s/%d.tfrecord' % (base_feature_path, mmsi)
+            '%s/%s.tfrecord' % (base_feature_path, mmsi)
             for mmsi in training_mmsis
         ]
 
