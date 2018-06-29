@@ -4,8 +4,10 @@ import pandas as pd
 import numpy as np
 import os
 from collections import defaultdict
+import pandas as pd
 
-"""
+
+query = """
 #StandardSql
 # This could still have some duplicates if there are multiple
 # things per range.
@@ -31,31 +33,6 @@ def load_ranges(path):
     df = pd.read_csv(p)
     return df
 
-# def process_fishing(path, idmap):
-#     # TODO: we should really keep TEST / TRAIN from crossing between vessels with the same MMIS
-#     # even if they have different VESSEL_IDS
-#     in_path = os.path.join(path, "combined_fishing_ranges.csv")
-#     out_path = os.path.join(path, "combined_fishing_vessel_id.csv")
-#     active_vids = set()
-#     missing = set()
-#     initial_rows = 0
-#     transcriped_rows = 0
-#     with open(out_path, 'w') as f:
-#         f.write("mmsi,start_time,end_time,is_fishing\n")
-#         for x in pd.read_csv(in_path).itertuples():
-#             initial_rows += 1
-#             _, mmsi, start_time, end_time, is_fishing = x
-#             if mmsi not in idmap:
-#                 if mmsi not in missing:
-#                     print(mmsi, "missing; skipping")
-#                     missing.add(mmsi)
-#                 continue
-#             transcriped_rows += 1
-#             for vid in idmap[mmsi]:
-#                 f.write(','.join([str(x) for x in (vid, start_time, end_time, is_fishing)]) + '\n')
-#                 active_vids.add(vid)
-#     print("Transcribed", transcriped_rows, "out of", initial_rows)
-#     return sorted(active_vids)
 
 def process_ranges(path, ranges):
     out_path = os.path.join(path, "fishing_classes_vessel_id.csv")
@@ -66,12 +43,22 @@ def process_ranges(path, ranges):
             f.write("{},,,,,{}\n".format(v, split))
 
 
-
-
 def process(path):
     ranges = load_ranges(path)
     process_ranges(path, ranges)
 
 
 if __name__ == "__main__":
+    print("""
+    Steps: 
+      1. upload combined_fishing_ranges_by_mmsi.csv to big query as 
+         machine_learning_dev_ttl_120d.combined_fishing_ranges_by_mmsi
+
+      2. Run the query above
+
+      3. Place the resulting output into `classfication/data/fishing_classes_vessel_id.csv"
+
+      4. Then run this (if you are running this without the above -- start over!)
+
+    """)
     process(base_dir)
