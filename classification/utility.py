@@ -33,7 +33,8 @@ import threading
 import yaml
 
 # Upweight false positives to strongly discourage transits
-FALSE_POSITIVE_UPWEIGHT = 10
+FALSE_POSITIVE_UPWEIGHT = 1
+MAX_UPWEIGHT = 100
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 
@@ -302,12 +303,14 @@ def np_array_random_fixed_points_extract(random_state, input_series,
     input_length = len(input_series)
 
     def extract_start_end(min_index, max_index):
-        effective_length = max_index - min_index + 1
-        # Pick a random fixed-length window rather than fixed-time.
-        max_offset = max(effective_length - output_length, 0)
-        start_index = min_index + random_state.randint(0, max_offset + 1)
-        end_index = min(start_index + output_length, max_index)
-        return start_index, end_index
+        max_start = min(max_index, input_length - output_length)
+        if max_start >= min_index:
+            ndx = random_state.randint(min_index, max_start)
+            return ndx, ndx + output_length
+        else:
+            logging.warning('Cant grab data for range for %s (%s %s)',
+                      mmsi, input_length, output_length)
+            return None, None
 
     if selection_ranges:
 
@@ -317,32 +320,38 @@ def np_array_random_fixed_points_extract(random_state, input_series,
 
         for sel_range in selections_ranges:
             # For each range figure out the min and max acceptable point in input_series
-            # if these points are at least min_timeslice_size long then we grab that
-            # series
+            # If there are any points then pick a range that either: 
+            # a. if there <= output_length points, include all of them
+            # b. if there are > output_length points include a random subset.
             rng_start_stamp = (sel_range.start_time - datetime.datetime(
                 1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
             rng_start_ndx = np.searchsorted(input_series[:, 0],
                                             rng_start_stamp)
-            min_ndx = max(rng_start_ndx - min_timeslice_size + 1,
-                          0)  # TODO: bitsofbits: CHECK
 
             rng_end_stamp = (sel_range.end_time - datetime.datetime(
                 1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
             rng_end_ndx = np.searchsorted(input_series[:, 0], rng_end_stamp)
-            max_ndx = min(rng_end_ndx + min_timeslice_size - 1 + 1,
-                          input_length - 1)  # TODO: bitsofbits: CHECK
 
-            if max_ndx - min_ndx >= min_timeslice_size - 1:
-                start_index, end_index = extract_start_end(min_ndx, max_ndx)
+            if rng_end_ndx <= rng_start_ndx:
+                continue
+
+            min_ndx = max(rng_start_ndx - output_length + 1,
+                          0)  
+
+            max_ndx = min(rng_end_ndx + output_length - 1 + 1,
+                          input_length - 1) 
+
+            max_start = min(max_ndx, input_length - output_length)
+
+            if max_start >= min_ndx:
+                start_index = random_state.randint(min_ndx, max_start)
+                end_index = start_index + output_length
                 break
         else:
-            logging.warning('Pulling data for %s from full range (input_length = %s, %s, %s)',
-                     mmsi, input_length, min_ndx, max_ndx)
+            logging.warning('Pulling data for %s from full range (input_length = %s)',
+                      mmsi, input_length)
             start_index, end_index = extract_start_end(0, input_length - 1)
-    else:
-        logging.warning('No ranges')
-        start_index, end_index = extract_start_end(0, input_length - 1)
-
+ 
     cropped = input_series[start_index:end_index]
     output_series = np_pad_repeat_slice(cropped, output_length)
 
@@ -920,7 +929,7 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
     for split_dict in metadata_dict.values():
         for mmsi in split_dict:
             row, time = split_dict[mmsi]
-            split_dict[mmsi] = (row, time / min_time_per_mmsi)
+            split_dict[mmsi] = (row, min(time / min_time_per_mmsi, MAX_UPWEIGHT))
 
     return VesselMetadata(dict(metadata_dict), fishing_range_dict, 1.0)
 

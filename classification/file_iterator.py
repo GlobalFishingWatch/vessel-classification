@@ -97,7 +97,7 @@ def process_fixed_window_features(context_features, sequence_features,
         end_stamp = time.mktime(end_date.timetuple())
 
     if end_date is not None:
-        raw_end_i = np.searchsorted(features[:, 0], end_stamp, side='left')
+        raw_end_i = np.searchsorted(features[:, 0], end_stamp, side='right')
         # If possible go to pad after end so that we have good data starting at end
         end_i = min(raw_end_i + pad_end, len(features))
     else:
