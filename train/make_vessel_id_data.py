@@ -28,6 +28,11 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(this_dir)
 base_dir = os.path.join(parent_dir, "classification/data")
 
+# '9ce4d61b-394f-c237-1fb9-dd1c724db2c1', 367780410 -- Just wrong.... # Add to training (7/2 - 7/29 at least
+# '9ce4d61b-394f-c237-79cd-92491e418fc', 312854000, -- Just wrong.... # Add to training (7/25-7/27)
+# 9ce4d61b-394f-c237-79cd-92491e418fc,2017-07-25T12:00:00Z,2017-07-27T12:00:00Z,0.0
+# 9ce4d61b-394f-c237-1fb9-dd1c724db2c1,2017-07-02T12:00:00Z,2017-07-29T12:00:00Z,0.0
+
 def load_ranges(path):
     p = os.path.join(path, "combined_fishing_ranges_vessel_id.csv")
     df = pd.read_csv(p)
@@ -35,12 +40,20 @@ def load_ranges(path):
 
 
 def process_ranges(path, ranges):
+    map_path = os.path.join(path, "temp/mmsi_to_multiple_vessel_ids.csv")
+    map_df = pd.read_csv(map_path)
+    vid_map = {x.vessel_id: x.mmsi for x in map_df.itertuples()}
+    label_path = os.path.join(path, "training_classes.csv")
+    label_df = pd.read_csv(label_path)
+    label_map = {x.mmsi : x.label for x in label_df.itertuples()}
+
     out_path = os.path.join(path, "fishing_classes_vessel_id.csv")
     with open(out_path, 'w') as f:
         f.write("mmsi,label,length,tonnage,engine_power,split\n")
         for v in sorted(set(ranges.mmsi)):
             split = "Test" if ((hash(v) & 3) == 0) else "Training" 
-            f.write("{},,,,,{}\n".format(v, split))
+            label = label_map.get(vid_map.get(v), '')
+            f.write("{},{},,,,{}\n".format(v, label, split))
 
 
 def process(path):
