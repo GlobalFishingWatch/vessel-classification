@@ -208,7 +208,7 @@ def load_inferred_fishing(table, id_list, project_id, threshold=True):
 
     """
     query_template = """
-    SELECT vessel_id, start_time, end_time, fishing_score FROM 
+    SELECT vessel_id, start_time, end_time, nnet_score FROM 
         TABLE_DATE_RANGE([{table}],
             TIMESTAMP('{year}-01-01'), TIMESTAMP('{year}-12-31'))
         WHERE vessel_id in ({ids})
@@ -219,7 +219,7 @@ def load_inferred_fishing(table, id_list, project_id, threshold=True):
         query = query_template.format(table=table, year=year, ids=ids)
         print(query)
         for x in pd.read_gbq(query, project_id=project_id).itertuples():
-            score = x.fishing_score
+            score = x.nnet_score
             if threshold:
                 score = score > 0.5
             start = x.start_time.replace(tzinfo=pytz.utc)
@@ -235,7 +235,7 @@ def load_true_fishing_ranges_by_mmsi(fishing_range_path,
     parse = dateutil.parser.parse
     with open(fishing_range_path) as f:
         for row in csv.DictReader(f):
-            mmsi = int(row['mmsi'].strip())
+            mmsi = row['mmsi'].strip()
             if not split_map.get(mmsi) == TEST_SPLIT:
                 continue
             val = float(row['is_fishing'])
@@ -317,7 +317,7 @@ def compute_results(args):
     maps = defaultdict(dict)
     with open(args.label_path) as f:
         for row in csv.DictReader(f):
-            mmsi = int(row['mmsi'].strip())
+            mmsi = row['mmsi'].strip()
             if not row['split'] == TEST_SPLIT:
                 continue
             for field in ['label', 'split']:
