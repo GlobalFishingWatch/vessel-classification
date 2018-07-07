@@ -326,11 +326,11 @@ def np_array_random_fixed_points_extract(random_state, input_series,
             rng_start_stamp = (sel_range.start_time - datetime.datetime(
                 1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
             rng_start_ndx = np.searchsorted(input_series[:, 0],
-                                            rng_start_stamp)
+                                            rng_start_stamp, side='left')
 
             rng_end_stamp = (sel_range.end_time - datetime.datetime(
                 1970, 1, 1, tzinfo=pytz.utc)).total_seconds()
-            rng_end_ndx = np.searchsorted(input_series[:, 0], rng_end_stamp)
+            rng_end_ndx = np.searchsorted(input_series[:, 0], rng_end_stamp, side='right')
 
             if rng_end_ndx <= rng_start_ndx:
                 continue
