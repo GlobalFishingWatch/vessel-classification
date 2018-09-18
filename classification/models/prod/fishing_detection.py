@@ -20,14 +20,13 @@ from . import layers
 from classification import utility
 from classification.objectives import (
     FishingLocalizationObjectiveCrossEntropy, TrainNetInfo)
+from classification import fishing_feature_generation
 import logging
 import math
 import numpy as np
 import os
 
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
-import tensorflow.contrib.metrics as metrics
 
 
 class Model(abstract_models.MisconceptionWithFishingRangesModel):
@@ -113,18 +112,19 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     def build_training_net(self, features, timestamps, mmsis):
         self._build_net(features, timestamps, mmsis, True)
 
-        trainers = [
-            self.fishing_localisation_objective.build_trainer(timestamps,
+
+        loss_and_metrics = [
+            self.fishing_localisation_objective.create_loss_and_metrics(timestamps,
                                                               mmsis)
         ]
 
         learning_rate = tf.train.exponential_decay(
-            self.initial_learning_rate, slim.get_or_create_global_step(), 
+            self.initial_learning_rate, tf.get_or_create_global_step(), 
             self.decay_examples, self.learning_decay_rate)
 
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 
-        return TrainNetInfo(optimizer, trainers)
+        return (optimizer, loss_and_metrics)
 
     def build_inference_net(self, features, timestamps, mmsis):
         self._build_net(features, timestamps, mmsis, False)
@@ -135,3 +135,84 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         ]
 
         return evaluations
+
+
+
+    def make_model_fn(self):
+        def _model_fn(features, labels, mode, params):
+            is_train = (mode == tf.estimator.ModeKeys.TRAIN)
+            features, timestamps, time_bounds, mmsis = features
+            features = features[:, None, :, :] # Still using 2d convs in
+            self._build_net(features, timestamps, mmsis, is_train)
+
+            if mode == tf.estimator.ModeKeys.PREDICT:
+                raise NotImplementedError()
+
+            global_step = tf.train.get_global_step()
+
+            learning_rate = tf.train.exponential_decay(
+                self.initial_learning_rate, global_step, 
+                self.decay_examples, self.learning_decay_rate)
+
+            loss_and_metrics = [
+                self.fishing_localisation_objective.create_loss_and_metrics(labels)
+            ]
+            total_loss = 0
+            eval_metrics = {}
+            for l, em in loss_and_metrics:
+                total_loss += l
+                eval_metrics.update(em)
+
+            if mode == tf.estimator.ModeKeys.TRAIN:
+                optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+
+                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                with tf.control_dependencies(update_ops):
+                    train_op = optimizer.minimize(loss=total_loss, 
+                                                  global_step=global_step)
+
+                return tf.estimator.EstimatorSpec(
+                    mode=mode, loss=total_loss, train_op=train_op,
+                    eval_metric_ops=eval_metrics)
+
+            return tf.estimator.EstimatorSpec(
+              mode=mode,
+              loss=total_loss,
+              eval_metric_ops=eval_metrics)
+        return _model_fn
+
+    def make_estimator(self, checkpoint_dir):
+        session_config = tf.ConfigProto(allow_soft_placement=True)
+        return  tf.estimator.Estimator(
+            config=tf.estimator.RunConfig(
+                            model_dir=checkpoint_dir, 
+                            save_summary_steps=20,
+                            save_checkpoints_secs=300, 
+                            keep_checkpoint_max=10,
+                            session_config=session_config),
+            model_fn=self.make_model_fn(),
+            params={
+            })   
+
+    def make_input_fn(self, base_feature_path, split, num_parallel_reads):
+        def input_fn():
+            return (fishing_feature_generation.input_fn(
+                        self.vessel_metadata,
+                        self.build_training_file_list(base_feature_path, split),
+                        self.num_feature_dimensions + 1,
+                        self.max_window_duration_seconds,
+                        self.window_max_points,
+                        self.min_viable_timeslice_length,
+                        select_ranges=self.use_ranges_for_training,
+                        num_parallel_reads=num_parallel_reads)
+                .prefetch(self.batch_size)
+                .batch(self.batch_size)
+                )
+        return input_fn
+
+    def make_training_input_fn(self, base_feature_path, num_parallel_reads):
+        return self.make_input_fn(base_feature_path, utility.TRAINING_SPLIT, num_parallel_reads)
+
+
+    def make_test_input_fn(self, base_feature_path, num_parallel_reads):
+        return self.make_input_fn(base_feature_path, utility.TEST_SPLIT, num_parallel_reads)

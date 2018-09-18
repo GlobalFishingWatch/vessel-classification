@@ -29,29 +29,31 @@ import tensorflow.contrib.slim as slim
 import tensorflow.contrib.metrics as metrics
 
 
-def run_training(config, server, trainer):
-    logging.info("Starting training task %s, %d", config.task_type,
-                 config.task_index)
-    if config.is_ps():
-        # This task is a parameter server.
-        server.join()
-    else:
-        if config.is_worker():
-            # This task is a worker, running training and sharing parameters with
-            # other workers via the parameter server.
-            device = tf.train.replica_device_setter(
-                worker_device='/job:%s/task:%d' % (config.task_type,
-                                                   config.task_index),
-                cluster=config.cluster_spec)
-            # The chief worker is responsible for writing out checkpoints as the
-            # run progresses.
-            trainer.run_training(
-                server.target, config.is_chief(), device=device)
-        elif config.is_master():
-            # This task is the master, running evaluation.
-            trainer.run_evaluation(server.target)
-        else:
-            raise ValueError('Unexpected task type: %s', config.task_type)
+num_parallel_readers = 32
+
+# def run_training(config, server, trainer):
+#     logging.info("Starting training task %s, %d", config.task_type,
+#                  config.task_index)
+#     if config.is_ps():
+#         # This task is a parameter server.
+#         server.join()
+#     else:
+#         if config.is_worker():
+#             # This task is a worker, running training and sharing parameters with
+#             # other workers via the parameter server.
+#             device = tf.train.replica_device_setter(
+#                 worker_device='/job:%s/task:%d' % (config.task_type,
+#                                                    config.task_index),
+#                 cluster=config.cluster_spec)
+#             # The chief worker is responsible for writing out checkpoints as the
+#             # run progresses.
+#             trainer.run_training(
+#                 server.target, config.is_chief(), device=device)
+#         elif config.is_master():
+#             # This task is the master, running evaluation.
+#             trainer.run_evaluation(server.target)
+#         else:
+#             raise ValueError('Unexpected task type: %s', config.task_type)
 
 
 def main(args):
@@ -94,22 +96,42 @@ def main(args):
     chosen_model = Model(feature_dimensions, vessel_metadata, args.metrics)
 
     # TODO: training verbosity --training-verbosity
-    trainer = Trainer(chosen_model, args.root_feature_path,
-                      args.training_output_path)
+    # trainer = Trainer(chosen_model, args.root_feature_path,
+    #                   args.training_output_path)
 
-    config = json.loads(os.environ.get('TF_CONFIG', '{}'))
-    if (config == {}):
-        logging.info("Running locally, training only...")
-        node_config = utility.ClusterNodeConfig.create_local_server_config()
-        server = tf.train.Server.create_local_server()
-        run_training(node_config, server, trainer)
-    else:
-        logging.info("Config dictionary: %s", config)
+    # TODO: get rid of Trainer and just make run_training a method here.
+    # trainer.run_training()
 
-        node_config = utility.ClusterNodeConfig(config)
-        server = node_config.create_server()
+    # config = json.loads(os.environ.get('TF_CONFIG', '{}'))
+    # if (config == {}):
+    #     logging.info("Running locally, training only...")
+    #     node_config = utility.ClusterNodeConfig.create_local_server_config()
+    #     server = tf.train.Server.create_local_server()
+    #     run_training(node_config, server, trainer)
+    # else:
+    #     logging.info("Config dictionary: %s", config)
 
-        run_training(node_config, server, trainer)
+    #     node_config = utility.ClusterNodeConfig(config)
+    #     server = node_config.create_server()
+
+    #     run_training(node_config, server, trainer)
+
+
+    train_input_fn = chosen_model.make_training_input_fn(args.root_feature_path, num_parallel_readers)
+    test_input_fn = chosen_model.make_test_input_fn(args.root_feature_path, num_parallel_readers)
+    estimator = chosen_model.make_estimator(args.training_output_path)
+    train_spec = tf.estimator.TrainSpec(
+                    input_fn=train_input_fn, 
+                    max_steps=chosen_model.number_of_steps)
+    eval_spec = tf.estimator.EvalSpec(
+                    input_fn=test_input_fn,
+                    start_delay_secs=120,
+                    throttle_secs=300
+                    )
+
+    tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
+
+
 
 
 def parse_args():

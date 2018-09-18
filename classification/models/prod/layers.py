@@ -198,7 +198,7 @@ def misconception_fishing(input,
     fishing_outputs = tf.squeeze(
         slim.conv2d(
             embedding, 1, [1, 1], activation_fn=None, normalizer_fn=None),
-        squeeze_dims=[1, 3])
+        axis=[1, 3])
 
     return objective_function.build(fishing_outputs)
 

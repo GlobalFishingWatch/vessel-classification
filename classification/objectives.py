@@ -614,6 +614,40 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
 
         return Trainer(loss, update_ops)
 
+    def create_loss_and_metrics(self, dense_labels):
+        eval_metrics = {}
+
+        thresholded_prediction = tf.to_int32(self.prediction > 0.5)
+        valid = tf.to_int32(tf.not_equal(dense_labels, -1))
+        ones = tf.to_int32(dense_labels > 0.5)
+        weights = tf.to_float(valid)
+
+        raw_loss = self.loss_function(dense_labels)
+
+        if self.window:
+            b, e = self.window
+            dense_labels = dense_labels[:, b:e]
+            thresholded_prediction = thresholded_prediction[:, b:e]
+            valid = valid[:, b:e]
+            ones = ones[:, b:e]
+            weights = weights[:, b:e]
+
+        name = '%s/Training-loss' % self.name
+        tf.summary.scalar(name, raw_loss)
+        eval_metrics[name] = (raw_loss, raw_loss)
+
+        accuracy = tf.metrics.accuracy(
+            thresholded_prediction, ones, weights=weights)
+        name = '%s/Training-accuracy' % self.name
+        tf.summary.scalar(name, accuracy[1])
+        eval_metrics[name] = accuracy
+
+        loss = raw_loss * self.loss_weight
+
+        return loss, eval_metrics
+
+
+
     def build_evaluation(self, timestamps, mmsis):
 
         dense_labels_fn = self.dense_labels
