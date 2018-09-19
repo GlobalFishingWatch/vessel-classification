@@ -185,9 +185,9 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
                         self.min_viable_timeslice_length,
                         select_ranges=self.use_ranges_for_training,
                         num_parallel_reads=num_parallel_reads)
-                .prefetch(self.batch_size)
-                .batch(self.batch_size)
+                .prefetch(1024)
                 .shuffle(1024)
+                .batch(self.batch_size)
                 )
         return input_fn
 

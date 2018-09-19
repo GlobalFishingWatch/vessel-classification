@@ -611,7 +611,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
             'precision': tf.metrics.precision(labels, thresholded_prediction, weights=weights),
             'recall':    tf.metrics.recall(labels, thresholded_prediction, weights=weights)
         }
-        return {"{}/{}".format(self.name, k) : v for (k, v) in raw_eval_metrics.items()}
+        eval_metrics = {"{}/{}".format(self.name, k) : v for (k, v) in raw_eval_metrics.items()}
         for k, v in eval_metrics.items():
             tf.summary.scalar(k, v[1])
 

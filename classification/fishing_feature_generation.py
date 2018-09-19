@@ -90,8 +90,9 @@ def input_fn(vessel_metadata,
 
 
     path_ds = (tf.data.Dataset.from_tensor_slices(filenames)
+                    .repeat()
                     .shuffle(len(filenames))
-                    .repeat())
+                    )
 
     return (tf.data.TFRecordDataset(path_ds, num_parallel_reads=num_parallel_reads)
                 .map(_parse_function)

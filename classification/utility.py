@@ -340,7 +340,7 @@ def np_array_random_fixed_points_extract(random_state, input_series,
                 end_index = start_index + output_length
                 break
         else:
-            logging.warning('Pulling data for %s from full range (input_length = %s)',
+            logging.info('Pulling data for %s from full range (input_length = %s)',
                       mmsi, input_length)
             start_index, end_index = extract_start_end(0, input_length - 1)
  
