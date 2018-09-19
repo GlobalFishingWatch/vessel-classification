@@ -89,11 +89,13 @@ def input_fn(vessel_metadata,
         return ((features, timestamps, time_ranges, mmsi), labels)
 
 
-    return (tf.data.TFRecordDataset(filenames, num_parallel_reads=num_parallel_reads)
-                .shuffle(len(filenames))
-                .repeat()
+    path_ds = (tf.data.Dataset.from_tensor_slices(filenames)
+                    .shuffle(len(filenames))
+                    .repeat())
+
+    return (tf.data.TFRecordDataset(path_ds, num_parallel_reads=num_parallel_reads)
                 .map(_parse_function)
-                .flat_map(xform)
+                .flat_map(xform) # This makes multiple small slices from each file
                 .map(add_labels)
                 .map(set_shapes)
            )

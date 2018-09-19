@@ -13,8 +13,7 @@
 # limitations under the License.
 
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
-from classification import utility
+import tensorflow.layers as ly
 import numpy as np
 
 
@@ -25,17 +24,22 @@ def zero_pad_features(features, depth):
     extra_feature_count = depth - n
     assert n >= 0
     if n > 0:
-        padding = tf.tile(features[:, :, :, :1] * 0,
-                          [1, 1, 1, extra_feature_count])
-        features = tf.concat([features, padding], 3)
+        padding = tf.tile(features[:, :, :1] * 0,
+                          [1, 1, extra_feature_count])
+        features = tf.concat([features, padding], 2)
     return features
 
+def repeat_tensor(input, n):
+    batch_size, width, depth = input.get_shape()
+    repeated = tf.concat([input] * n, 2)
+    return tf.reshape(repeated, [-1, int(width) * n, int(depth)])
 
-def misconception_layer(input,
-                        window_size,
-                        stride,
-                        depth,
-                        is_training,
+
+def misconception_layer(inputs,
+                        filters,
+                        kernel_size,
+                        strides,
+                        training,
                         scope=None):
     """ A single layer of the misconception convolutional network.
 
@@ -49,56 +53,49 @@ def misconception_layer(input,
     a tensor of size [batch_size, 1, width/stride, depth].
   """
     with tf.name_scope(scope):
-        with slim.arg_scope(
-            [slim.conv2d],
-                padding='SAME',
-                activation_fn=tf.nn.relu,
-                normalizer_fn=slim.batch_norm,
-                normalizer_params={'is_training': is_training}):
-            stage_conv = slim.conv2d(
-                input, depth, [1, window_size], stride=[1, stride])
-            stage_max_pool_reduce = slim.max_pool2d(
-                input, [1, window_size], stride=[1, stride], padding='SAME')
+        extra = kernel_size - strides
+        p0 = extra // 2
+        p1 = extra - p0
+        padded = tf.pad(inputs, [[0, 0], [p0, p1], [0, 0]])
+        stage_conv = ly.conv1d(
+            padded, filters, kernel_size, strides=strides, padding="valid", activation=tf.nn.relu)
+        stage_conv = ly.batch_normalization(stage_conv, 
+                        training=training, center=False, scale=False, renorm=False)
+        stage_max_pool_reduce = tf.layers.max_pooling1d(
+            padded, kernel_size, strides=strides, padding="valid")
+        concat = tf.concat([stage_conv, stage_max_pool_reduce], 2)
 
-            concat = tf.concat([stage_conv, stage_max_pool_reduce], 3)
+        total = ly.conv1d(concat, filters, 1, activation=tf.nn.relu)
+        total = ly.batch_normalization(total, 
+                        training=training, center=False, scale=False)
+        return total
 
-            return slim.conv2d(concat, depth, [1, 1])
 
 
-def misconception_with_bypass(input,
-                              window_size,
-                              stride,
-                              depth,
-                              is_training,
+def misconception_with_bypass(inputs,
+                              filters,
+                              kernel_size,
+                              strides,
+                              training,
                               scope=None):
     with tf.name_scope(scope):
-        with slim.arg_scope(
-            [slim.conv2d],
-                padding='SAME',
-                activation_fn=tf.nn.relu,
-                normalizer_fn=slim.batch_norm,
-                normalizer_params={'is_training': is_training}):
-            residual = misconception_layer(input, window_size, stride, depth,
-                                           is_training, scope)
-
-            if stride > 1:
-                input = slim.avg_pool2d(
-                    input, [1, stride], stride=[1, stride], padding='SAME')
-
-            input = zero_pad_features(input, depth)
-
-            return input + residual
+        residual = misconception_layer(inputs, filters, kernel_size, strides, training, scope)
+        if strides > 1:
+            inputs = tf.layers.max_pooling1d(
+                inputs, strides, strides=strides, padding="valid")
+        inputs = zero_pad_features(inputs, filters)
+        return inputs + residual
 
 
-def misconception_model(input,
-                        window_size,
-                        depths,
-                        strides,
+def misconception_model(inputs,
+                        filters_list,
+                        kernel_size,
+                        strides_list,
+                        training,
                         objective_functions,
-                        is_training,
-                        sub_count=128,
+                        sub_filters=128,
                         sub_layers=2,
-                        keep_prob=0.5):
+                        dropout_rate=0.5):
     """ A misconception tower.
 
   Args:
@@ -114,154 +111,73 @@ def misconception_model(input,
     a tensor of size [batch_size, num_classes].
   """
     layers = []
-    with slim.arg_scope([slim.batch_norm], decay=0.999):
-        with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu):
-            net = input
-            layers.append(net)
-            for depth, stride in zip(depths, strides):
-                net = misconception_with_bypass(net, window_size, stride,
-                                                depth, is_training)
-                layers.append(net)
-            outputs = []
-            for ofunc in objective_functions:
-                onet = net
-                for _ in range(sub_layers - 1):
-                    onet = slim.conv2d(
-                        onet,
-                        sub_count, [1, 1],
-                        activation_fn=tf.nn.relu,
-                        normalizer_fn=slim.batch_norm,
-                        normalizer_params={'is_training': is_training})
+    net = inputs
+    layers.append(net)
+    for filters, strides in zip(filters_list, strides_list):
+        net = misconception_with_bypass(net, filters, kernel_size, strides, training)
+        layers.append(net)
+    outputs = []
+    for ofunc in objective_functions:
+        onet = net
+        for _ in range(sub_layers - 1):
+            onet = ly.conv1d(onet, sub_filters, 1, activation=tf.nn.relu)
+            onet = ly.batch_normalization(onet, 
+                        training=training, center=False, scale=False)
+        onet = ly.conv1d(onet, sub_filters, 1, activation=tf.nn.relu)
 
-                # Don't use batch norm on last layer, just use dropout.
-                onet = slim.conv2d(onet, sub_count, [1, 1], normalizer_fn=None)
-                # Global average pool
-                n = int(onet.get_shape().dims[1])
-                onet = slim.avg_pool2d(onet, [1, n], stride=[1, n])
-                onet = slim.flatten(onet)
-                #
-                onet = slim.dropout(onet, keep_prob, is_training=is_training)
-                outputs.append(ofunc.build(onet))
+        n = int(onet.get_shape().dims[1])
+        onet = ly.average_pooling1d(onet, n, n)
+        onet = ly.flatten(onet)
+        #
+        onet = ly.dropout(onet, training=training, rate=dropout_rate)
+        outputs.append(ofunc.build(onet))
 
     return outputs, layers
 
 
-def misconception_fishing(input,
-                          window_size,
-                          depths,
-                          strides,
+def misconception_fishing(inputs,
+                          filters_list,
+                          kernel_size,
+                          strides_list,
                           objective_function,
-                          is_training,
-                          pre_count=128,
-                          post_count=128,
+                          training,
+                          pre_filters=128,
+                          post_filters=128,
                           post_layers=1,
-                          keep_prob=0.5,
-                          internal_keep_prob=0.5,
+                          dropout_rate=0.5,
+                          internal_dropout_rate=0.5,
                           other_objectives=()):
 
     _, layers = misconception_model(
-        input,
-        window_size,
-        depths,
-        strides,
+        inputs,
+        filters_list,
+        kernel_size,
+        strides_list,
+        training,
         other_objectives,
-        is_training,
-        sub_count=post_count,
-        sub_layers=2)
+        sub_filters=post_filters,
+        sub_layers=2,
+        dropout_rate=internal_dropout_rate)
 
     expanded_layers = []
     for i, lyr in enumerate(layers):
-        lyr = slim.conv2d(
-            lyr,
-            pre_count, [1, 1],
-            activation_fn=tf.nn.relu,
-            normalizer_fn=slim.batch_norm,
-            normalizer_params={'is_training': is_training})
-        expanded_layers.append(utility.repeat_tensor(lyr, 2**i))
+        lyr = ly.conv1d(lyr, pre_filters, 1, activation=tf.nn.relu)
+        lyr = ly.batch_normalization(lyr, training=training, center=False, scale=False)
+        expanded_layers.append(repeat_tensor(lyr, 2**i))
 
     embedding = tf.add_n(expanded_layers)
 
     for _ in range(post_layers - 1):
-        embedding = slim.conv2d(
-            embedding,
-            post_count, [1, 1],
-            activation_fn=tf.nn.relu,
-            normalizer_fn=slim.batch_norm,
-            normalizer_params={'is_training': is_training})
-    embedding = slim.conv2d(
-        embedding,
-        post_count, [1, 1],
-        activation_fn=tf.nn.relu,
-        normalizer_fn=None)
-    embedding = slim.dropout(embedding, keep_prob, is_training=is_training)
+        embedding = ly.conv1d(lyr, post_filters, 1, activation=tf.nn.relu)
+        lyr = ly.batch_normalization(embedding, training=training, center=False, scale=False)
+
+    embedding = ly.conv1d(embedding, post_filters, 1, activation=tf.nn.relu)
+    embedding = ly.dropout(embedding, training=training, rate=dropout_rate)
 
     fishing_outputs = tf.squeeze(
-        slim.conv2d(
-            embedding, 1, [1, 1], activation_fn=None, normalizer_fn=None),
-        axis=[1, 3])
+        ly.conv1d(embedding, 1, 1, activation=None))
 
     return objective_function.build(fishing_outputs)
 
 
-def misconception_fishing_2(input,
-                          window_size,
-                          depths,
-                          strides,
-                          objective_function,
-                          is_training,
-                          pre_count=128,
-                          post_count=128,
-                          post_layers=1,
-                          keep_prob=0.5,
-                          internal_keep_prob=0.5,
-                          other_objectives=()):
-
-    
-    dt = tf.exp(input[:, 0, :, 0]) - 1
-    dt = tf.maximum(dt, 12 * 60 * 60)
-    dt = 0.5 * (dt[:, 1:] +  dt[:, :-1])
-
-
-    _, layers = misconception_model(
-        input,
-        window_size,
-        depths,
-        strides,
-        other_objectives,
-        is_training,
-        sub_count=post_count,
-        sub_layers=2)
-
-    expanded_layers = []
-    for i, lyr in enumerate(layers):
-        lyr = slim.conv2d(
-            lyr,
-            pre_count, [1, 1],
-            activation_fn=tf.nn.relu,
-            normalizer_fn=slim.batch_norm,
-            normalizer_params={'is_training': is_training})
-        expanded_layers.append(utility.repeat_tensor(lyr, 2**i))
-
-    embedding = tf.add_n(expanded_layers)
-
-    for _ in range(post_layers - 1):
-        embedding = slim.conv2d(
-            embedding,
-            post_count, [1, 1],
-            activation_fn=tf.nn.relu,
-            normalizer_fn=slim.batch_norm,
-            normalizer_params={'is_training': is_training})
-    embedding = slim.conv2d(
-        embedding,
-        post_count, [1, 1],
-        activation_fn=tf.nn.relu,
-        normalizer_fn=None)
-    embedding = slim.dropout(embedding, keep_prob, is_training=is_training)
-
-    fishing_outputs = tf.squeeze(
-        slim.conv2d(
-            embedding, 1, [1, 1], activation_fn=None, normalizer_fn=None),
-        squeeze_dims=[1, 3])
-
-    return objective_function.build(fishing_outputs, dt)
 

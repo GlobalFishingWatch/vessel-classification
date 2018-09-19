@@ -28,7 +28,6 @@ import os
 import struct
 import sys
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
 import threading
 import yaml
 
@@ -122,13 +121,6 @@ VESSEL_CATEGORIES = sorted(categories(schema))
 
 TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
-
-
-def repeat_tensor(input, n):
-    batch_size, _, width, depth = input.get_shape()
-    repeated = tf.concat([input] * n, 3)
-    return tf.reshape(repeated, [-1, 1, int(width) * n, int(depth)])
-
 
 FishingRange = namedtuple('FishingRange',
                           ['start_time', 'end_time', 'is_fishing'])
@@ -308,7 +300,7 @@ def np_array_random_fixed_points_extract(random_state, input_series,
             ndx = random_state.randint(min_index, max_start)
             return ndx, ndx + output_length
         else:
-            logging.warning('Cant grab data for range for %s (%s %s)',
+            logging.info('Cant grab data for range for %s (%s %s)',
                       mmsi, input_length, output_length)
             return None, None
 
@@ -502,6 +494,8 @@ def np_array_extract_n_random_features(random_state, input, n, max_time_delta,
     return zip(*samples)
 
 
+
+# TODO: select_ranges is (a) ignored and (b) never set. Do something about that!
 def random_feature_cropping_file_reader(vessel_metadata,
                                         filename_queue,
                                         num_features,

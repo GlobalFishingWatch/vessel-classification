@@ -13,12 +13,7 @@
 # limitations under the License.
 
 import abc
-from collections import namedtuple
-import logging
 import numpy as np
-import tensorflow as tf
-import tensorflow.contrib.slim as slim
-import tensorflow.contrib.metrics as metrics
 import utility
 
 
@@ -92,35 +87,4 @@ class ModelBase(object):
             all_available_mmsis, metadata_file, fishing_ranges,
             fishing_upweight)
 
-    @abc.abstractmethod
-    def build_training_net(self, features, timestamps, mmsis):
-        """Build net suitable for training model
 
-        Args:
-            features : features to feed into net
-            timestamps: a list of timestamps, one for each feature point.
-            mmsis: a list of mmsis, one for each batch element.
-
-        Returns:
-            TrainNetInfo
-
-        """
-        optimizer = trainers = None
-        return optimizer, trainers
-
-    @abc.abstractmethod
-    def build_inference_net(self, features, timestamps, mmsis):
-        """Build net suitable for running inference on model
-
-        Args:
-            features : features to feed into net
-            timestamps: a list of timestamps, one for each feature point.
-            mmsis: a list of mmsis, one for each batch element.
-
-        Returns:
-            A list of objects derived from EvaluationBase providing
-            functionality to log evaluation statistics as well as to
-            return the results of inference as JSON.
-
-        """
-        return []

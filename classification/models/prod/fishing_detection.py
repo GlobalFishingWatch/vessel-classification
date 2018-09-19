@@ -100,41 +100,26 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     def _build_net(self, features, timestamps, mmsis, is_training):
         layers.misconception_fishing(
             features,
-            self.window_size,
             self.feature_depths,
+            self.window_size,
             self.strides,
             self.fishing_localisation_objective,
             is_training,
-            pre_count=128,
-            post_count=128,
+            pre_filters=128,
+            post_filters=128,
             post_layers=1)
 
-    def build_training_net(self, features, timestamps, mmsis):
-        self._build_net(features, timestamps, mmsis, True)
 
 
-        loss_and_metrics = [
-            self.fishing_localisation_objective.create_loss_and_metrics(timestamps,
-                                                              mmsis)
-        ]
+    # def build_inference_net(self, features, timestamps, mmsis):
+    #     self._build_net(features, timestamps, mmsis, False)
 
-        learning_rate = tf.train.exponential_decay(
-            self.initial_learning_rate, tf.get_or_create_global_step(), 
-            self.decay_examples, self.learning_decay_rate)
+    #     evaluations = [
+    #         self.fishing_localisation_objective.build_evaluation(timestamps,
+    #                                                              mmsis)
+    #     ]
 
-        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-
-        return (optimizer, loss_and_metrics)
-
-    def build_inference_net(self, features, timestamps, mmsis):
-        self._build_net(features, timestamps, mmsis, False)
-
-        evaluations = [
-            self.fishing_localisation_objective.build_evaluation(timestamps,
-                                                                 mmsis)
-        ]
-
-        return evaluations
+    #     return evaluations
 
 
 
@@ -142,7 +127,6 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
         def _model_fn(features, labels, mode, params):
             is_train = (mode == tf.estimator.ModeKeys.TRAIN)
             features, timestamps, time_bounds, mmsis = features
-            features = features[:, None, :, :] # Still using 2d convs in
             self._build_net(features, timestamps, mmsis, is_train)
 
             if mode == tf.estimator.ModeKeys.PREDICT:
@@ -150,18 +134,11 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
             global_step = tf.train.get_global_step()
 
+            total_loss = self.fishing_localisation_objective.create_loss(labels)
+
             learning_rate = tf.train.exponential_decay(
                 self.initial_learning_rate, global_step, 
                 self.decay_examples, self.learning_decay_rate)
-
-            loss_and_metrics = [
-                self.fishing_localisation_objective.create_loss_and_metrics(labels)
-            ]
-            total_loss = 0
-            eval_metrics = {}
-            for l, em in loss_and_metrics:
-                total_loss += l
-                eval_metrics.update(em)
 
             if mode == tf.estimator.ModeKeys.TRAIN:
                 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
@@ -172,8 +149,11 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
                                                   global_step=global_step)
 
                 return tf.estimator.EstimatorSpec(
-                    mode=mode, loss=total_loss, train_op=train_op,
-                    eval_metric_ops=eval_metrics)
+                    mode=mode, loss=total_loss, train_op=train_op)
+
+            assert mode == tf.estimator.ModeKeys.EVAL
+
+            eval_metrics = self.fishing_localisation_objective.create_metrics(labels)
 
             return tf.estimator.EstimatorSpec(
               mode=mode,
@@ -207,6 +187,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
                         num_parallel_reads=num_parallel_reads)
                 .prefetch(self.batch_size)
                 .batch(self.batch_size)
+                .shuffle(1024)
                 )
         return input_fn
 

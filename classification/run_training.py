@@ -14,47 +14,13 @@
 
 from __future__ import absolute_import
 import argparse
-import json
 import logging
-import math
 import os
-from pkg_resources import resource_filename
 import sys
-from . import model
-from . import utility
-from .trainer import Trainer
 import importlib
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
-import tensorflow.contrib.metrics as metrics
-
-
-num_parallel_readers = 32
-
-# def run_training(config, server, trainer):
-#     logging.info("Starting training task %s, %d", config.task_type,
-#                  config.task_index)
-#     if config.is_ps():
-#         # This task is a parameter server.
-#         server.join()
-#     else:
-#         if config.is_worker():
-#             # This task is a worker, running training and sharing parameters with
-#             # other workers via the parameter server.
-#             device = tf.train.replica_device_setter(
-#                 worker_device='/job:%s/task:%d' % (config.task_type,
-#                                                    config.task_index),
-#                 cluster=config.cluster_spec)
-#             # The chief worker is responsible for writing out checkpoints as the
-#             # run progresses.
-#             trainer.run_training(
-#                 server.target, config.is_chief(), device=device)
-#         elif config.is_master():
-#             # This task is the master, running evaluation.
-#             trainer.run_evaluation(server.target)
-#         else:
-#             raise ValueError('Unexpected task type: %s', config.task_type)
-
+from pkg_resources import resource_filename
+from . import utility
 
 def main(args):
     logging.getLogger().setLevel(logging.DEBUG)
@@ -95,30 +61,8 @@ def main(args):
     feature_dimensions = int(args.feature_dimensions)
     chosen_model = Model(feature_dimensions, vessel_metadata, args.metrics)
 
-    # TODO: training verbosity --training-verbosity
-    # trainer = Trainer(chosen_model, args.root_feature_path,
-    #                   args.training_output_path)
-
-    # TODO: get rid of Trainer and just make run_training a method here.
-    # trainer.run_training()
-
-    # config = json.loads(os.environ.get('TF_CONFIG', '{}'))
-    # if (config == {}):
-    #     logging.info("Running locally, training only...")
-    #     node_config = utility.ClusterNodeConfig.create_local_server_config()
-    #     server = tf.train.Server.create_local_server()
-    #     run_training(node_config, server, trainer)
-    # else:
-    #     logging.info("Config dictionary: %s", config)
-
-    #     node_config = utility.ClusterNodeConfig(config)
-    #     server = node_config.create_server()
-
-    #     run_training(node_config, server, trainer)
-
-
-    train_input_fn = chosen_model.make_training_input_fn(args.root_feature_path, num_parallel_readers)
-    test_input_fn = chosen_model.make_test_input_fn(args.root_feature_path, num_parallel_readers)
+    train_input_fn = chosen_model.make_training_input_fn(args.root_feature_path, args.num_parallel_readers)
+    test_input_fn = chosen_model.make_test_input_fn(args.root_feature_path, args.num_parallel_readers)
     estimator = chosen_model.make_estimator(args.training_output_path)
     train_spec = tf.estimator.TrainSpec(
                     input_fn=train_input_fn, 
@@ -130,7 +74,6 @@ def main(args):
                     )
 
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
-
 
 
 
@@ -169,6 +112,11 @@ def parse_args():
         '--metrics',
         default='all',
         help='How many metrics to dump ["all" | "minimal"]')
+
+    argparser.add_argument(
+        '--num_parallel_readers',
+        default=32, type=int,
+        help='How many parallel readers to employ reading data')
 
     return argparser.parse_args()
 

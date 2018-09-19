@@ -69,10 +69,6 @@ class ObjectiveBase(object):
         pass
 
     @abc.abstractmethod
-    def build_trainer(self, timestamps, mmsis):
-        pass
-
-    @abc.abstractmethod
     def build_evaluation(self, timestamps, mmsis):
         pass
 
@@ -549,30 +545,6 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
         self.vessel_metadata = vessel_metadata
         self.window = window
 
-    def dense_labels(self, template_shape, timestamps, mmsis):
-        # Convert fishing range labels to per-point labels.
-        def dense_fishing_labels(mmsis_array, timestamps_array):
-            dense_labels_list = []
-            for mmsi, timestamps in zip(mmsis_array, timestamps_array):
-                dense_labels = np.zeros_like(timestamps, dtype=np.float32)
-                dense_labels.fill(-1.0)
-                if mmsi in self.vessel_metadata.fishing_ranges_map:
-                    for (start_time, end_time, is_fishing
-                         ) in self.vessel_metadata.fishing_ranges_map[mmsi]:
-                        start_range = calendar.timegm(start_time.utctimetuple(
-                        ))
-                        end_range = calendar.timegm(end_time.utctimetuple())
-                        mask = (timestamps >= start_range) & (
-                            timestamps <= end_range)
-                        dense_labels[mask] = is_fishing
-                dense_labels_list.append(dense_labels)
-            return np.array(dense_labels_list)
-
-        return tf.reshape(
-            tf.py_func(dense_fishing_labels, [mmsis, timestamps],
-                       [tf.float32]),
-            shape=template_shape)
-
     @abc.abstractmethod
     def loss_function(self, logits, dense_labels):
         loss_function = None
@@ -582,72 +554,70 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
         self.logits = net
         self.prediction = tf.sigmoid(net)
 
-    def build_trainer(self, timestamps, mmsis):
-        update_ops = []
+    # def build_trainer(self, timestamps, mmsis):
+    #     update_ops = []
 
-        dense_labels = self.dense_labels(
-            tf.shape(self.prediction), timestamps, mmsis)
+    #     dense_labels = self.dense_labels(
+    #         tf.shape(self.prediction), timestamps, mmsis)
+    #     thresholded_prediction = tf.to_int32(self.prediction > 0.5)
+    #     valid = tf.to_int32(tf.not_equal(dense_labels, -1))
+    #     ones = tf.to_int32(dense_labels > 0.5)
+    #     weights = tf.to_float(valid)
+
+    #     raw_loss = self.loss_function(dense_labels)
+
+    #     if self.window:
+    #         b, e = self.window
+    #         dense_labels = dense_labels[:, b:e]
+    #         thresholded_prediction = thresholded_prediction[:, b:e]
+    #         valid = valid[:, b:e]
+    #         ones = ones[:, b:e]
+    #         weights = weights[:, b:e]
+
+    #     update_ops.append(
+    #         tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
+
+    #     accuracy = slim.metrics.accuracy(
+    #         thresholded_prediction, ones, weights=weights)
+    #     update_ops.append(
+    #         tf.summary.scalar('%s/Training-accuracy' % self.name, accuracy))
+
+    #     loss = raw_loss * self.loss_weight
+
+    #     return Trainer(loss, update_ops)
+
+    def create_loss(self, dense_labels):
+        return self.loss_weight * self.loss_function(dense_labels)
+
+    def create_metrics(self, dense_labels):
         thresholded_prediction = tf.to_int32(self.prediction > 0.5)
         valid = tf.to_int32(tf.not_equal(dense_labels, -1))
-        ones = tf.to_int32(dense_labels > 0.5)
+        labels = tf.to_int32(dense_labels > 0.5)
         weights = tf.to_float(valid)
-
-        raw_loss = self.loss_function(dense_labels)
+        prediction = self.prediction
 
         if self.window:
             b, e = self.window
+            prediction = prediction[:, b:e]
             dense_labels = dense_labels[:, b:e]
             thresholded_prediction = thresholded_prediction[:, b:e]
             valid = valid[:, b:e]
-            ones = ones[:, b:e]
+            labels = labels[:, b:e]
             weights = weights[:, b:e]
 
-        update_ops.append(
-            tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
+        raw_eval_metrics = {
+            'MSE': tf.metrics.mean_squared_error(prediction, dense_labels, weights=weights),
+            'accuracy': tf.metrics.precision(labels, thresholded_prediction, weights=weights),
+            'precision': tf.metrics.precision(labels, thresholded_prediction, weights=weights),
+            'recall':    tf.metrics.recall(labels, thresholded_prediction, weights=weights)
+        }
+        return {"{}/{}".format(self.name, k) : v for (k, v) in raw_eval_metrics.items()}
+        for k, v in eval_metrics.items():
+            tf.summary.scalar(k, v[1])
 
-        accuracy = slim.metrics.accuracy(
-            thresholded_prediction, ones, weights=weights)
-        update_ops.append(
-            tf.summary.scalar('%s/Training-accuracy' % self.name, accuracy))
+        return eval_metrics
 
-        loss = raw_loss * self.loss_weight
-
-        return Trainer(loss, update_ops)
-
-    def create_loss_and_metrics(self, dense_labels):
-        eval_metrics = {}
-
-        thresholded_prediction = tf.to_int32(self.prediction > 0.5)
-        valid = tf.to_int32(tf.not_equal(dense_labels, -1))
-        ones = tf.to_int32(dense_labels > 0.5)
-        weights = tf.to_float(valid)
-
-        raw_loss = self.loss_function(dense_labels)
-
-        if self.window:
-            b, e = self.window
-            dense_labels = dense_labels[:, b:e]
-            thresholded_prediction = thresholded_prediction[:, b:e]
-            valid = valid[:, b:e]
-            ones = ones[:, b:e]
-            weights = weights[:, b:e]
-
-        name = '%s/Training-loss' % self.name
-        tf.summary.scalar(name, raw_loss)
-        eval_metrics[name] = (raw_loss, raw_loss)
-
-        accuracy = tf.metrics.accuracy(
-            thresholded_prediction, ones, weights=weights)
-        name = '%s/Training-accuracy' % self.name
-        tf.summary.scalar(name, accuracy[1])
-        eval_metrics[name] = accuracy
-
-        loss = raw_loss * self.loss_weight
-
-        return loss, eval_metrics
-
-
-
+    # TODO: free compute json results from the rest of this!
     def build_evaluation(self, timestamps, mmsis):
 
         dense_labels_fn = self.dense_labels
@@ -660,54 +630,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                                                  prediction, timestamps, mmsis,
                                                  metrics)
 
-            def build_test_metrics(self):
-                dense_labels = dense_labels_fn(
-                    tf.shape(self.prediction), self.timestamps, self.mmsis)
-                thresholded_prediction = tf.to_int32(self.prediction > 0.5)
-                valid = tf.to_int32(tf.not_equal(dense_labels, -1))
-                ones = tf.to_int32(dense_labels > 0.5)
-                weights = tf.to_float(valid)
-                prediction = self.prediction
-                unclear = tf.to_int32((self.prediction > 0.333) & (
-                    self.prediction < 0.666))
 
-                if eval_window:
-                    b, e = eval_window
-                    prediction = prediction[:, b:e]
-                    dense_labels = dense_labels[:, b:e]
-                    thresholded_prediction = thresholded_prediction[:, b:e]
-                    valid = valid[:, b:e]
-                    ones = ones[:, b:e]
-                    weights = weights[:, b:e]
-                    unclear = unclear[:, b:e]
-
-                recall = slim.metrics.streaming_recall(
-                    thresholded_prediction, ones, weights=weights)
-
-                precision = slim.metrics.streaming_precision(
-                    thresholded_prediction, ones, weights=weights)
-
-                raw_metrics = {
-                    'Test-MSE': slim.metrics.streaming_mean_squared_error(
-                        prediction, tf.to_float(ones), weights=weights),
-                    'Test-accuracy': slim.metrics.streaming_accuracy(
-                        thresholded_prediction, ones, weights=weights),
-                    'Test-precision': precision,
-                    'Test-recall': recall,
-                    'Test-F1-score': f1(recall, precision),
-                    'Test-prediction-fraction':
-                    slim.metrics.streaming_accuracy(
-                        thresholded_prediction, valid, weights=weights),
-                    'Test-unclear-fraction':
-                    slim.metrics.streaming_accuracy(
-                        unclear, valid, weights=weights),
-                    'Test-label-fraction': slim.metrics.streaming_accuracy(
-                        ones, valid, weights=weights)
-                }
-
-                return metrics.aggregate_metric_map(
-                    {"{}/{}".format(self.name, k): v
-                     for (k, v) in raw_metrics.items()})
 
             def build_json_results(self, prediction, timestamps):
                 InferencePoint = namedtuple('InferencePoint', ['timestamp', 'is_fishing'])
