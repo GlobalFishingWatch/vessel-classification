@@ -574,9 +574,8 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
             shape=template_shape)
 
     @abc.abstractmethod
-    def loss_function(self, logits, dense_labels):
-        loss_function = None
-        return loss_function
+    def loss_function(self, dense_labels):
+        return None
 
     def build(self, net):
         self.logits = net
@@ -618,6 +617,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
 
         dense_labels_fn = self.dense_labels
         eval_window = self.window
+        loss_fn = self.loss_function
 
         class Evaluation(EvaluationBase):
             def __init__(self, metadata_label, name, prediction, timestamps,
@@ -637,6 +637,8 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 unclear = tf.to_int32((self.prediction > 0.333) & (
                     self.prediction < 0.666))
 
+                loss = loss_fn(dense_labels)
+
                 if eval_window:
                     b, e = eval_window
                     prediction = prediction[:, b:e]
@@ -653,6 +655,7 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                 precision = slim.metrics.streaming_precision(
                     thresholded_prediction, ones, weights=weights)
 
+
                 raw_metrics = {
                     'Test-MSE': slim.metrics.streaming_mean_squared_error(
                         prediction, tf.to_float(ones), weights=weights),
@@ -668,7 +671,8 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                     slim.metrics.streaming_accuracy(
                         unclear, valid, weights=weights),
                     'Test-label-fraction': slim.metrics.streaming_accuracy(
-                        ones, valid, weights=weights)
+                        ones, valid, weights=weights),
+                    'Test-loss' : (loss, loss)
                 }
 
                 return metrics.aggregate_metric_map(
