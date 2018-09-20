@@ -14,7 +14,7 @@
 
 import abc
 import numpy as np
-import utility
+from classification import utility
 
 
 class ModelBase(object):
@@ -87,4 +87,14 @@ class ModelBase(object):
             all_available_mmsis, metadata_file, fishing_ranges,
             fishing_upweight)
 
+    def zero_pad_features(self, features):
+        """ Zero-pad features in the depth dimension to match requested feature depth. """
 
+        feature_pad_size = self.feature_depth - self.num_feature_dimensions
+        assert (feature_pad_size >= 0)
+        batch_size, _, _, _ = features.get_shape()
+        zero_padding = tf.tile(features[:, :, :, :1] * 0,
+                               [1, 1, 1, feature_pad_size])
+        padded = tf.concat(3, [features, zero_padding])
+
+        return padded

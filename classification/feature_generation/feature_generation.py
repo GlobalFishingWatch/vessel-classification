@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from . import utility
+from classification import utility
 
 
 

@@ -19,7 +19,6 @@ import dateutil.parser
 import pytz
 import hashlib
 import math
-import model
 import time
 import logging
 import newlinejson as nlj

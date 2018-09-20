@@ -39,8 +39,7 @@ setuptools.setup(
         'classification',
         'classification.data',
         'classification.models',
-        'classification.models.prod',
-        'classification.models.dev',
+        'classification.feature_generation'
     ],
-    install_requires=DEPENDENCIES #+ DATAFLOW_PINNED_DEPENDENCIES
+    install_requires=DEPENDENCIES 
 )

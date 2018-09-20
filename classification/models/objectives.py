@@ -20,7 +20,7 @@ import logging
 import numpy as np
 import tensorflow as tf
 import tensorflow.metrics as metrics
-import utility
+from classification import utility
 import pytz
 """ Terminology in the context of objectives.
     
@@ -243,17 +243,20 @@ class MultiClassificationObjective(ObjectiveBase):
 
     def create_loss(self, labels):
         with tf.variable_scope("custom-loss"):
+            mask = tf.to_float(tf.equal(tf.reduce_sum(labels, axis=1), 1))
             positives = tf.reduce_sum(
                 tf.to_float(labels) * self.prediction, reduction_indices=[1])
-            raw_loss = -tf.reduce_mean(tf.log(positives))
+            raw_loss = -tf.reduce_mean(mask * tf.log(positives + EPSILON))
         return raw_loss * self.loss_weight
 
     def create_raw_metrics(self, labels):
         mask = tf.to_float(tf.equal(tf.reduce_sum(labels, axis=1), 1))
         encoded_labels = tf.to_int32(tf.argmax(labels, axis=1))
         predictions = tf.to_int32(tf.argmax(self.prediction, axis=1))
+        loss = self.create_loss(labels)
         return {
-            'accuracy' : metrics.accuracy(predictions, encoded_labels, weights=mask) 
+            'accuracy' : metrics.accuracy(predictions, encoded_labels, weights=mask),
+            'loss' : (loss, loss)
                 }
 
     def build_json_results(self, class_probabilities, timestamps):

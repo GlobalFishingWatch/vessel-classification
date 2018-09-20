@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import
 import argparse
 import json
-from . import abstract_models
+from .model import ModelBase
 from . import layers
 from classification import utility
-from classification.objectives import (
-    TrainNetInfo, MultiClassificationObjective, LogRegressionObjectiveMAE)
-from classification import vessel_feature_generation
+from .objectives import (
+    FishingLocalizationObjectiveCrossEntropy, TrainNetInfo)
+from classification.feature_generation import fishing_feature_generation
 import logging
 import math
 import numpy as np
@@ -29,87 +29,91 @@ import os
 import tensorflow as tf
 
 
-class Model(abstract_models.MisconceptionModel):
+class Model(ModelBase):
 
     window_size = 3
+    stride = 2
     feature_depths = [48, 64, 96, 128, 192, 256, 384, 512, 768]
     strides = [2] * 9
     assert len(strides) == len(feature_depths)
-    feature_sub_depths = 1024
 
-    initial_learning_rate = 10e-5
+    initial_learning_rate = 1e-3
     learning_decay_rate = 0.5
-    decay_examples = 100000
+    decay_examples = 10000
+
+    window = (256, 1024)
 
     @property
     def number_of_steps(self):
-        return 800000
+        return 50000
 
     @property
     def max_window_duration_seconds(self):
-        return 180 * 24 * 3600
+        # A fixed-length rather than fixed-duration window.
+        return 0
 
     @property
     def window_max_points(self):
-        nominal_max_points = (self.max_window_duration_seconds / (5 * 60)) / 4
-        layer_reductions = np.prod(self.strides)
-        final_size = int(round(nominal_max_points / layer_reductions))
-        max_points = final_size * layer_reductions
-        logging.info('Using %s points', max_points)
-        return max_points
+        return 1024
+
 
     @property
-    def min_viable_timeslice_length(self):
-        return 500
+    def batch_size(self):
+        return 64
+
+
+    @property
+    def max_replication_factor(self):
+        return 10000.0
+
+    @staticmethod
+    def read_metadata(all_available_mmsis,
+                      metadata_file,
+                      fishing_ranges,
+                      fishing_upweight=1.0):
+        return utility.read_vessel_time_weighted_metadata(
+            all_available_mmsis, metadata_file, fishing_ranges)
 
     def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
 
-        class XOrNan:
-            def __init__(self, key):
-                self.key = key
+        def length_or_none(mmsi):
+            length = vessel_metadata.vessel_label('length', mmsi)
+            if length == '':
+                return None
 
-            def __call__(self, mmsi):
-                x = vessel_metadata.vessel_label(self.key, mmsi)
-                if x == '':
-                    x = np.nan
-                return np.float32(x)
+            return np.float32(length)
 
-        self.training_objectives = [
-            LogRegressionObjectiveMAE(
-                'length',
-                'Vessel-length',
-                XOrNan('length'),
-                metrics=metrics,
-                loss_weight=0.1),
-            LogRegressionObjectiveMAE(
-                'tonnage',
-                'Vessel-tonnage',
-                XOrNan('tonnage'),
-                metrics=metrics,
-                loss_weight=0.1),
-            LogRegressionObjectiveMAE(
-                'engine_power',
-                'Vessel-engine-Power',
-                XOrNan('engine_power'),
-                metrics=metrics,
-                loss_weight=0.1),
-            MultiClassificationObjective(
-                "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics, loss_weight=1)
+        self.fishing_localisation_objective = FishingLocalizationObjectiveCrossEntropy(
+            'fishing_localisation',
+            'Fishing-localisation',
+            vessel_metadata,
+            metrics=metrics,
+            window=self.window)
+
+        self.objectives = [self.fishing_localisation_objective]
+
+    def build_training_file_list(self, base_feature_path, split):
+        random_state = np.random.RandomState()
+        training_mmsis = self.vessel_metadata.fishing_range_only_list(
+            random_state, split, self.max_replication_factor)
+        return [
+            '%s/%s.tfrecord' % (base_feature_path, mmsi)
+            for mmsi in training_mmsis
         ]
 
     def _build_net(self, features, timestamps, mmsis, is_training):
-        outputs, _ = layers.misconception_model(
+        layers.misconception_fishing(
             features,
             filters_list=self.feature_depths,
             kernel_size=self.window_size,
             strides_list=self.strides,
-            objective_functions=self.training_objectives,
+            objective_function=self.fishing_localisation_objective,
             training=is_training,
-            sub_filters=self.feature_sub_depths,
-            sub_layers=2
-            )
-        return outputs
+            pre_filters=128,
+            post_filters=128,
+            post_layers=1)
+
 
     def make_model_fn(self):
         def _model_fn(features, labels, mode, params):
@@ -118,20 +122,17 @@ class Model(abstract_models.MisconceptionModel):
             self._build_net(features, timestamps, mmsis, is_train)
 
             if mode == tf.estimator.ModeKeys.PREDICT:
-                raise NotImplementedError()
-                # predictions = {
-                #     "mmsis" : mmsi,
-                #     "time_ranges": time_ranges,
-                #     "timestamps" : timestamps,
-                #     self.fishing_localisation_objective.name : self.fishing_localisation_objective.prediction
-                #     }
-                # return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+                predictions = {
+                    "mmsis" : mmsi,
+                    "time_ranges": time_ranges,
+                    "timestamps" : timestamps,
+                    self.fishing_localisation_objective.name : self.fishing_localisation_objective.prediction
+                    }
+                return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
             global_step = tf.train.get_global_step()
 
-            total_loss = 0
-            for obj in self. training_objectives:
-                total_loss += obj.create_loss(labels[obj.name])
+            total_loss = self.fishing_localisation_objective.create_loss(labels)
 
             learning_rate = tf.train.exponential_decay(
                 self.initial_learning_rate, global_step, 
@@ -150,9 +151,7 @@ class Model(abstract_models.MisconceptionModel):
 
             assert mode == tf.estimator.ModeKeys.EVAL
 
-            eval_metrics = {}
-            for obj in self.training_objectives:
-                eval_metrics.update(obj.create_metrics(labels[obj.name]))
+            eval_metrics = self.fishing_localisation_objective.create_metrics(labels)
 
             return tf.estimator.EstimatorSpec(
               mode=mode,
@@ -175,14 +174,13 @@ class Model(abstract_models.MisconceptionModel):
 
     def make_input_fn(self, base_feature_path, split, num_parallel_reads, prefetch):
         def input_fn():
-            return (vessel_feature_generation.input_fn(
+            return (fishing_feature_generation.input_fn(
                         self.vessel_metadata,
                         self.build_training_file_list(base_feature_path, split),
                         self.num_feature_dimensions + 1,
                         self.max_window_duration_seconds,
                         self.window_max_points,
                         self.min_viable_timeslice_length,
-                        objectives=self.training_objectives,
                         num_parallel_reads=num_parallel_reads)
                 .prefetch(prefetch)
                 .shuffle(prefetch)

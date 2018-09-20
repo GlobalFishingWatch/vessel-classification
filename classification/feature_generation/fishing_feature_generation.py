@@ -1,7 +1,7 @@
 import calendar
 import numpy as np
 import tensorflow as tf
-import feature_generation
+from . import feature_generation
 
 
 def input_fn(vessel_metadata,

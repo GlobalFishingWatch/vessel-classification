@@ -16,9 +16,7 @@ import numpy as np
 import tensorflow as tf
 
 from classification import utility
-from prod import vessel_characterization, fishing_detection as fishing_detection
-
-# TODO(alexwilson): Feed some data in. Also check evaluation.build_json_results
+from . import vessel_characterization, fishing_detection 
 
 
 class ModelsTest(tf.test.TestCase):

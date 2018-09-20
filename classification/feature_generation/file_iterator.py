@@ -10,9 +10,9 @@ import time
 
 import tensorflow as tf
 
-from .utility import np_array_extract_all_fixed_slices
-from .utility import np_array_extract_slices_for_time_ranges
-from .utility import np_pad_repeat_slice
+from classification.utility import np_array_extract_all_fixed_slices
+from classification.utility import np_array_extract_slices_for_time_ranges
+from classification.utility import np_pad_repeat_slice
 
 
 class GCSFile(object):

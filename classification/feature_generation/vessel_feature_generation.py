@@ -1,7 +1,9 @@
 import tensorflow as tf
 import feature_generation
-from objectives import MultiClassificationObjective
-from . import utility
+# TODO: rather than importing this, hang the shape off of the objective
+from classification.models.objectives import MultiClassificationObjective
+from classification import utility
+from . import feature_generation
 
 
 def input_fn(vessel_metadata,

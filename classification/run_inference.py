@@ -26,7 +26,7 @@ import uuid
 from datetime import datetime
 from datetime import timedelta
 
-from . import file_iterator
+from feature_generation import file_iterator
 
 
 class Inferer(object):
@@ -34,55 +34,6 @@ class Inferer(object):
 
         self.model = model
         self.estimator = model.make_estimator(model_checkpoint_path)
-
-        # self.model = model
-        # self.model_checkpoint_path = model_checkpoint_path
-        # self.root_feature_path = root_feature_path
-        # self.batch_size = self.model.batch_size
-        # self.min_points_for_classification = model.min_viable_timeslice_length
-        # self.sess = tf.Session()
-        # self.objectives = self._build_objectives()
-        # self._restore_graph()
-        # self.deserializer = file_iterator.Deserializer(
-        #         num_features=model.num_feature_dimensions + 1, sess=self.sess)
-        # logging.info('created Inferer with Model, %s, and dims %s', model, 
-        #             model.num_feature_dimensions)
-
-    # def close(self):
-    #     self.sess.close()
-
-    # def _build_objectives(self):
-    #     # with self.sess.as_default():
-    #         self.features_ph = tf.placeholder(tf.float32, 
-    #             shape=[None, 1, self.model.window_max_points, self.model.num_feature_dimensions])
-    #         self.timestamps_ph = tf.placeholder(tf.int32, shape=[None, self.model.window_max_points])
-    #         self.time_ranges_ph = tf.placeholder(tf.int32, shape=[None, 2])
-    #         self.mmsis_ph = tf.placeholder(tf.int64, shape=[None])  # TODO: MMSI_CLEANUP -> tf.string
-    #         objectives = self.model.build_inference_net(self.features_ph, self.timestamps_ph,
-    #                                                     self.time_ranges_ph)
-    #         return objectives
-
-    # def _restore_graph(self):
-    #     init_op = tf.group(tf.local_variables_initializer(),
-    #                        tf.global_variables_initializer())
-
-    #     self.sess.run(init_op)
-    #     logging.info("Restoring model: %s", self.model_checkpoint_path)
-    #     saver = tf.train.Saver()
-    #     gspath = self.model_checkpoint_path.startswith('gs:')
-    #     # Models over a certain size don't seem to load properly from gcs(?!),
-    #     # so copy locally and then load
-    #     if gspath:
-    #         tempdir = tempfile.gettempdir()
-    #         temppath = os.path.join(tempdir, uuid.uuid4().hex)
-    #         subprocess.check_call(['gsutil', 'cp', self.model_checkpoint_path, temppath])
-    #         model_checkpoint_path = temppath
-    #     else:
-    #         model_checkpoint_path = self.model_checkpoint_path
-    #     try:
-    #         saver.restore(self.sess, model_checkpoint_path)
-    #     finally:
-    #         os.unlink(temppath)
 
     def _feature_files(self, mmsis):
         return [
