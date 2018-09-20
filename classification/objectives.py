@@ -19,8 +19,7 @@ import datetime
 import logging
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
-import tensorflow.contrib.metrics as metrics
+import tensorflow.metrics as metrics
 import utility
 import pytz
 """ Terminology in the context of objectives.
@@ -97,8 +96,7 @@ class RegressionObjective(ObjectiveBase):
 
     def build(self, net):
         self.prediction = tf.squeeze(
-            slim.fully_connected(
-                net, 1, activation_fn=None))
+            tf.layers.dense(net, 1, activation=None))
 
     def expected_and_mask(self, labels):
         mask = ~tf.is_nan(labels)
@@ -144,20 +142,13 @@ class LogRegressionObjective(ObjectiveBase):
 
     def build(self, net):
         self.prediction = tf.squeeze(
-            slim.fully_connected(
-                net, 1, activation_fn=None))
+            tf.layers.dense(net, 1, activation=None))
 
     def expected_and_mask(self, labels):
-        def _f(labels):
-            mask = ~np.isnan(labels)
-            expected = np.zeros_like(labels)
-            expected[mask] = labels
-            return expected, mask
-        return tf.py_func(_f, [labels], [tf.float32, tf.bool])
-        # mask = ~tf.is_nan(labels)
-        # valid = tf.boolean_mask(labels, mask)
-        # idx = tf.to_int32(tf.where(mask))
-        # expected = tf.scatter_nd(idx, valid, tf.shape(labels))
+        mask = ~tf.is_nan(labels)
+        valid = tf.boolean_mask(labels, mask)
+        idx = tf.to_int32(tf.where(mask))
+        expected = tf.scatter_nd(idx, valid, tf.shape(labels))
         return expected, mask
 
     def masked_mean_loss(self, labels):
@@ -236,9 +227,9 @@ class MultiClassificationObjective(ObjectiveBase):
 
 
     def build(self, net):
-        self.logits = slim.fully_connected(
-            net, self.num_classes, activation_fn=None)
-        self.prediction = slim.softmax(self.logits)
+        self.logits = tf.layers.dense(
+            net, self.num_classes, activation=None)
+        self.prediction = tf.nn.softmax(self.logits)
 
     def create_label(self, mmsi, timestamps):
         encoded = np.zeros([self.num_classes], dtype=np.int32)
@@ -258,9 +249,9 @@ class MultiClassificationObjective(ObjectiveBase):
         return raw_loss * self.loss_weight
 
     def create_raw_metrics(self, labels):
-        mask = tf.to_float(tf.equal(tf.reduce_sum(labels, 1), 1))
-        encoded_labels = tf.to_int32(tf.argmax(labels, 1))
-        predictions = tf.to_int32(tf.argmax(self.prediction, 1))
+        mask = tf.to_float(tf.equal(tf.reduce_sum(labels, axis=1), 1))
+        encoded_labels = tf.to_int32(tf.argmax(labels, axis=1))
+        predictions = tf.to_int32(tf.argmax(self.prediction, axis=1))
         return {
             'accuracy' : metrics.accuracy(predictions, encoded_labels, weights=mask) 
                 }

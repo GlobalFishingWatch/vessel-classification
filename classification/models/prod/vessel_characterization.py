@@ -27,8 +27,6 @@ import numpy as np
 import os
 
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
-import tensorflow.contrib.metrics as metrics
 
 
 class Model(abstract_models.MisconceptionModel):
@@ -78,24 +76,24 @@ class Model(abstract_models.MisconceptionModel):
                 return np.float32(x)
 
         self.training_objectives = [
-            # LogRegressionObjectiveMAE(
-            #     'length',
-            #     'Vessel-length',
-            #     XOrNan('length'),
-            #     metrics=metrics,
-            #     loss_weight=0.1),
-            # LogRegressionObjectiveMAE(
-            #     'tonnage',
-            #     'Vessel-tonnage',
-            #     XOrNan('tonnage'),
-            #     metrics=metrics,
-            #     loss_weight=0.1),
-            # LogRegressionObjectiveMAE(
-            #     'engine_power',
-            #     'Vessel-engine-Power',
-            #     XOrNan('engine_power'),
-            #     metrics=metrics,
-            #     loss_weight=0.1),
+            LogRegressionObjectiveMAE(
+                'length',
+                'Vessel-length',
+                XOrNan('length'),
+                metrics=metrics,
+                loss_weight=0.1),
+            LogRegressionObjectiveMAE(
+                'tonnage',
+                'Vessel-tonnage',
+                XOrNan('tonnage'),
+                metrics=metrics,
+                loss_weight=0.1),
+            LogRegressionObjectiveMAE(
+                'engine_power',
+                'Vessel-engine-Power',
+                XOrNan('engine_power'),
+                metrics=metrics,
+                loss_weight=0.1),
             MultiClassificationObjective(
                 "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics, loss_weight=1)
         ]
