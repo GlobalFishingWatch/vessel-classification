@@ -172,7 +172,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             params={
             })   
 
-    def make_input_fn(self, base_feature_path, split, num_parallel_reads, prefetch=1024):
+    def make_input_fn(self, base_feature_path, split, num_parallel_reads, prefetch):
         def input_fn():
             return (fishing_feature_generation.input_fn(
                         self.vessel_metadata,
@@ -190,7 +190,6 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
     def make_training_input_fn(self, base_feature_path, num_parallel_reads, prefetch=1024):
         return self.make_input_fn(base_feature_path, utility.TRAINING_SPLIT, num_parallel_reads, prefetch)
-
 
     def make_test_input_fn(self, base_feature_path, num_parallel_reads, prefetch=1024):
         return self.make_input_fn(base_feature_path, utility.TEST_SPLIT, num_parallel_reads, prefetch)

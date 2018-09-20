@@ -68,78 +68,17 @@ class ObjectiveBase(object):
     def build(self, net):
         pass
 
+    def create_metrics(self, labels):
+        raw_metrics = self.create_raw_metrics(labels)
+        try:
+            eval_metrics = {"{}/{}".format(self.name, k) : v for (k, v) in raw_metrics.items()}
+        except:
+            logging.warning("Problem creating eval_metrics in {}".format(self))
+            return {}
+        for k, v in eval_metrics.items():
+            tf.summary.scalar(k, v[1])
+        return eval_metrics
 
-# # TODO: remove
-# class EvaluationBase(object):
-#     __metaclass__ = abc.ABCMeta
-
-#     def __init__(self, metadata_label, name, prediction, timestamps, mmsis,
-#                  metrics):
-#         self.metadata_label = metadata_label
-#         self.name = name
-#         self.prediction = prediction
-#         self.timestamps = timestamps
-#         self.mmsis = mmsis
-#         self.metrics = metrics
-
-#     @abc.abstractmethod
-#     def build_test_metrics(self):
-#         pass
-
-#     @abc.abstractmethod
-#     def build_json_results(self, prediction, timestamps):
-#         pass
-
-
-# class SummaryObjective(ObjectiveBase):
-#     def __init__(self, metadata_label, name, metrics):
-#         super(SummaryObjective, self).__init__(metadata_label, name, 0.0,
-#                                                metrics)
-
-#     def build(self, net):
-#         self.inputs = net
-
-#     def _build_summary(self):
-#         #TODO(bitsofbits): pull these names from someplace
-#         ops = {}
-#         if self.metrics == 'all':
-#             for i, name in enumerate(
-#                 ['log_timestampDeltaSeconds', 'log_distanceDeltaMeters',
-#                  'log_speedMps', 'log_integratedSpeedMps',
-#                  'cogDeltaDegrees_div_180', 'localTodFeature',
-#                  'localMonthOfYearFeature',
-#                  'integratedCogDeltaDegrees_div_180', 'log_distanceToShoreKm',
-#                  'log_distanceToBoundingAnchorageKm',
-#                  'log_timeToBoundingAnchorageS']):
-#                 ops[name] = tf.summary.histogram(
-#                     "input/{}-{}".format(name, i),
-#                     tf.reshape(self.inputs[:, :, :, i], [-1]),
-#                     #TODO(bitsofbits): may need not need all of these collection keys
-#                     collections=[tf.GraphKeys.UPDATE_OPS,
-#                                  tf.GraphKeys.SUMMARIES])
-#         return ops
-
-#     def build_trainer(self, timestamps, mmsis):
-#         ops = self._build_summary()
-#         # We return a constant loss of zero here, so this doesn't effect the training,
-#         # only adds summaries to the output.
-#         return Trainer(0, ops.values())
-
-#     def build_evaluation(self, timestamps, mmsis):
-
-#         build_summary = self._build_summary
-
-#         class Evaluation(EvaluationBase):
-#             def build_test_metrics(self):
-#                 ops = build_summary()
-
-#                 return {}, ops
-
-#             def build_json_results(self, prediction, timestamps):
-#                 return {}
-
-#         return Evaluation(self.metadata_label, self.name, None, None, None,
-#                           self.metrics)
 
 
 class RegressionObjective(ObjectiveBase):
@@ -153,77 +92,41 @@ class RegressionObjective(ObjectiveBase):
                                                   loss_weight, metrics)
         self.value_from_mmsi = value_from_mmsi
 
+    def create_label(self, mmsi, timestamps):
+        self.value_from_mmsi(mmsi)
+
     def build(self, net):
         self.prediction = tf.squeeze(
             slim.fully_connected(
                 net, 1, activation_fn=None))
 
-    def _expected_and_mask(self, mmsis):
-        def impl(mmsis_array):
-            expected = []
-            mask = []
-            for mmsi in mmsis_array:
-                e = self.value_from_mmsi(mmsi)
-                if e != None:
-                    expected.append(e)
-                    mask.append(1.0)
-                else:
-                    expected.append(0.0)
-                    mask.append(0.0)
-            return (np.array(
-                expected, dtype=np.float32), np.array(
-                    mask, dtype=np.float32))
-
-        expected, mask = tf.py_func(impl, [mmsis], [tf.float32, tf.float32])
-
+    def expected_and_mask(self, labels):
+        mask = ~tf.is_nan(labels)
+        valid = tf.boolean_mask(labels, mask)
+        idx = tf.to_int32(tf.where(mask))
+        expected = tf.scatter_nd(idx, valid, tf.shape(labels))
         return expected, mask
 
-    def _masked_mean_error(self, predictions, mmsis):
-        expected, mask = self._expected_and_mask(mmsis)
+    def masked_mean_error(self, labels):
+        expected, mask = self.expected_and_mask(labels)
+        mask = tf.cast(mask, tf.float32)
         count = tf.reduce_sum(mask)
-        diff = tf.abs((expected - predictions) * mask)
-
-        epsilon = 1e-7
-        error = tf.reduce_sum(diff) / tf.maximum(count, epsilon)
-
+        diff = tf.abs((expected - self.prediction) * mask)
+        error = tf.reduce_sum(diff) / tf.maximum(count, EPSILON)
         return error
 
-    # def build_trainer(self, timestamps, mmsis):
-    #     raw_loss = self._masked_mean_error(self.prediction, mmsis)
+    def create_loss(self, labels):
+        raw_loss = self._masked_mean_error(self.prediction, mmsis)
+        return raw_loss * self.loss_weight
 
-    #     update_ops = []
-    #     update_ops.append(
-    #         tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
+    def create_raw_metrics(self, labels):
+        error = self.masked_mean_error(labels)
+        loss = self.masked_mean_loss(self.prediction)
+        return {
+            'loss' : (loss, loss),
+        }
 
-    #     loss = raw_loss * self.loss_weight
-
-    #     return Trainer(loss, update_ops)
-
-    # def build_evaluation(self, timestamps, mmsis):
-    #     class Evaluation(EvaluationBase):
-    #         def __init__(self, metadata_label, name, masked_mean_error,
-    #                      prediction, metrics):
-    #             super(Evaluation, self).__init__(metadata_label, name,
-    #                                              prediction, timestamps, mmsis,
-    #                                              metrics)
-    #             self.masked_mean_error = masked_mean_error
-    #             self.mmsis = mmsis
-
-    #         def build_test_metrics(self):
-    #             raw_loss = self.masked_mean_error(self.prediction, self.mmsis)
-
-    #             return metrics.aggregate_metric_map({
-    #                 '%s/Test-error' % self.name:
-    #                 metrics.streaming_mean(raw_loss)
-    #             })
-
-    #         def build_json_results(self, prediction, timestamps):
-    #             return {'name': self.name, 'value': float(prediction)}
-
-    #     return Evaluation(self.metadata_label, self.name,
-    #                       self._masked_mean_error, self.prediction,
-    #                       self.metrics)
-
+   
 
 class LogRegressionObjective(ObjectiveBase):
     def __init__(self,
@@ -236,101 +139,84 @@ class LogRegressionObjective(ObjectiveBase):
                                                      loss_weight, metrics)
         self.value_from_mmsi = value_from_mmsi
 
+    def create_label(self, mmsi, timestamps):
+        return self.value_from_mmsi(mmsi)
+
     def build(self, net):
         self.prediction = tf.squeeze(
             slim.fully_connected(
                 net, 1, activation_fn=None))
 
-    def _expected_and_mask(self, mmsis):
-        def impl(mmsis_array):
-            expected = []
-            mask = []
-            for mmsi in mmsis_array:
-                e = self.value_from_mmsi(mmsi)
-                if e != None:
-                    expected.append(e)
-                    mask.append(1.0)
-                else:
-                    expected.append(0.0)
-                    mask.append(0.0)
-            return (np.array(
-                expected, dtype=np.float32), np.array(
-                    mask, dtype=np.float32))
-
-        expected, mask = tf.py_func(impl, [mmsis], [tf.float32, tf.float32])
-
+    def expected_and_mask(self, labels):
+        def _f(labels):
+            mask = ~np.isnan(labels)
+            expected = np.zeros_like(labels)
+            expected[mask] = labels
+            return expected, mask
+        return tf.py_func(_f, [labels], [tf.float32, tf.bool])
+        # mask = ~tf.is_nan(labels)
+        # valid = tf.boolean_mask(labels, mask)
+        # idx = tf.to_int32(tf.where(mask))
+        # expected = tf.scatter_nd(idx, valid, tf.shape(labels))
         return expected, mask
 
-    def _masked_mean_loss(self, predictions, mmsis):
-        expected, mask = self._expected_and_mask(mmsis)
+    def masked_mean_loss(self, labels):
+        expected, mask = self.expected_and_mask(labels)
+        mask = tf.cast(mask, tf.float32)
         count = tf.reduce_sum(mask)
         squared_error = (
-            (tf.log(expected + EPSILON) - predictions)**2 * mask)
-
+            (tf.log(expected + EPSILON) - self.prediction)**2 * mask)
         loss = tf.reduce_sum(squared_error) / tf.maximum(count, EPSILON)
-
         return loss
 
-    def _masked_mean_error(self, predictions, mmsis):
-        expected, mask = self._expected_and_mask(mmsis)
+    def masked_mean_error(self, labels):
+        expected, mask = self.expected_and_mask(labels)
+        mask = tf.cast(mask, tf.float32)
         count = tf.reduce_sum(mask)
-        diff = tf.abs((expected - tf.exp(predictions)) * mask)
-
+        diff = tf.abs((expected - tf.exp(self.prediction)) * mask)
         error = tf.reduce_sum(diff) / tf.maximum(count, EPSILON)
-
         return error
 
-    # def build_trainer(self, timestamps, mmsis):
-    #     raw_loss = self._masked_mean_loss(self.prediction, mmsis)
+    def create_loss(self, labels):
+        raw_loss = self.masked_mean_loss(labels)
+        print(raw_loss, self.loss_weight)
+        return raw_loss * self.loss_weight
 
-    #     update_ops = []
-    #     update_ops.append(
-    #         tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
+    def create_raw_metrics(self, labels):
+        loss = self.masked_mean_loss(labels)
+        error = self.masked_mean_error(labels)
+        return {
+            'loss': (loss, loss),
+            'error': (error, error)
+        }
 
-    #     loss = raw_loss * self.loss_weight
-
-    #     return Trainer(loss, update_ops)
-
-    # def build_evaluation(self, timestamps, mmsis):
-    #     class Evaluation(EvaluationBase):
-    #         def __init__(self, metadata_label, name, masked_mean_loss,
-    #                      masked_mean_error, prediction, metrics):
-    #             super(Evaluation, self).__init__(metadata_label, name,
-    #                                              prediction, timestamps, mmsis,
-    #                                              metrics)
-    #             self.masked_mean_loss = masked_mean_loss
-    #             self.masked_mean_error = masked_mean_error
-    #             self.mmsis = mmsis
-
-    #         def build_test_metrics(self):
-    #             loss = self.masked_mean_loss(self.prediction, self.mmsis)
-    #             error = self.masked_mean_error(self.prediction, self.mmsis)
-
-    #             return metrics.aggregate_metric_map({
-    #                 '%s/Test-loss' % self.name: metrics.streaming_mean(loss),
-    #                 '%s/Test-error' % self.name: metrics.streaming_mean(error)
-    #             })
-
-    #         def build_json_results(self, prediction, timestamps):
-    #             return {'name': self.name, 'value': np.exp(float(prediction))}
-
-    #     return Evaluation(self.metadata_label, self.name,
-    #                       self._masked_mean_loss, self._masked_mean_error,
-    #                       self.prediction, self.metrics)
+    def build_json_results(self, prediction, timestamps):
+        return {'name': self.name, 'value': np.exp(float(prediction))}
 
 
 
-# class LogRegressionObjectiveMAE(LogRegressionObjective):
+class LogRegressionObjectiveMAE(LogRegressionObjective):
 
-#     def _masked_mean_loss(self, predictions, mmsis):
-#         expected, mask = self._expected_and_mask(mmsis)
-#         count = tf.reduce_sum(mask)
-#         mean_absolute_error = tf.abs(
-#             (tf.log(expected + EPSILON) - predictions) * mask)
+    def __init__(self,
+                 metadata_label,
+                 name,
+                 value_from_mmsi,
+                 loss_weight=1.0,
+                 metrics='all'):
+        super(LogRegressionObjectiveMAE, self).__init__(metadata_label, name, value_from_mmsi,
+                                                     loss_weight, metrics)
 
-#         loss = tf.reduce_sum(mean_absolute_error) / tf.maximum(count, EPSILON)
+    def create_label(self, mmsi, timestamps):
+        return self.value_from_mmsi(mmsi)
 
-#         return loss
+    def masked_mean_loss(self, labels):
+        expected, mask = self.expected_and_mask(labels)
+        mask = tf.cast(mask, tf.float32)
+        count = tf.reduce_sum(mask)
+        mean_absolute_error = tf.abs(
+            (tf.log(expected + EPSILON) - self.prediction) * mask)
+        loss = tf.reduce_sum(mean_absolute_error) / tf.maximum(count, EPSILON)
+        return loss
 
 
 
@@ -346,186 +232,52 @@ class MultiClassificationObjective(ObjectiveBase):
         self.vessel_metadata = vessel_metadata
         self.classes = utility.VESSEL_CLASS_DETAILED_NAMES
         self.num_classes = utility.multihot_lookup_table.shape[-1]
+        self.class_indices = {k[0]: i for (i, k) in enumerate(utility.VESSEL_CATEGORIES)}
+
 
     def build(self, net):
         self.logits = slim.fully_connected(
             net, self.num_classes, activation_fn=None)
         self.prediction = slim.softmax(self.logits)
 
-    def build_from_logits(self, logits):
-        self.logits = logits
-        self.prediction = slim.softmax(self.logits)
+    def create_label(self, mmsi, timestamps):
+        encoded = np.zeros([self.num_classes], dtype=np.int32)
+        lbl_str = self.vessel_metadata.vessel_label('label', mmsi).strip()
+        if lbl_str:
+            for lbl in lbl_str.split('|'):
+                j = self.class_indices[lbl]
+                # Use '|' rather than '+' since classes might not be disjoint
+                encoded |= utility.multihot_lookup_table[j]
+        return encoded.astype(np.float32)
 
-    def training_label(self, mmsi, label):
-        """ Return the index of this training label, or if it's unset, return
-            -1 so the loss function can ignore the example.
-        """
-        return self.vessel_metadata.vessel_label(label, mmsi) or -1
-
-    def multihot_labels(self, mmsis):
-
-        class_count = len(utility.VESSEL_CLASS_DETAILED_NAMES)
-
-        def labels_from_mmsis(seq, class_indices):
-            encoded = np.zeros([len(seq), class_count], dtype=np.int32)
-            for i, m in enumerate(seq):
-                lbl_str = self.vessel_metadata.vessel_label('label', m).strip()
-                if lbl_str:
-                    for lbl in lbl_str.split('|'):
-                        j = class_indices[lbl]
-                        # Use '|' rather than '+' since classes might not be disjoint
-                        encoded[i] |= utility.multihot_lookup_table[j]
-            return encoded
-
-        indices = {k[0]: i for (i, k) in enumerate(utility.VESSEL_CATEGORIES)}
-
-        labels = tf.py_func(lambda x: labels_from_mmsis(x, indices), [mmsis],
-                            [tf.int32])
-
-        labels = tf.reshape(
-            labels, shape=tf.concat([tf.shape(mmsis), [class_count]], 0))
-
-        return labels
-
-    def build_trainer(self, timestamps, mmsis):
-
-        labels = self.multihot_labels(mmsis)
-
+    def create_loss(self, labels):
         with tf.variable_scope("custom-loss"):
             positives = tf.reduce_sum(
                 tf.to_float(labels) * self.prediction, reduction_indices=[1])
             raw_loss = -tf.reduce_mean(tf.log(positives))
+        return raw_loss * self.loss_weight
 
+    def create_raw_metrics(self, labels):
         mask = tf.to_float(tf.equal(tf.reduce_sum(labels, 1), 1))
-        int_labels = tf.to_int32(tf.argmax(labels, 1))
-        int_predictions = tf.to_int32(tf.argmax(self.prediction, 1))
-        accuracy = metrics.accuracy(int_labels, int_predictions, weights=mask)
-
-        loss = raw_loss * self.loss_weight
-
-
-        update_ops = []
-        update_ops.append(
-            tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
-        update_ops.append(
-            tf.summary.scalar('%s/Training-accuracy' % self.name, accuracy))      
-
-        return Trainer(loss, update_ops)
-
-    def build_evaluation(self, timestamps, mmsis):
-
-        logits = self.logits
-
-        multihot_labels = self.multihot_labels
-
-        class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name, training_label_lookup,
-                         classes, num_classes, prediction, metrics):
-                super(Evaluation, self).__init__(metadata_label, name,
-                                                 prediction, timestamps, mmsis,
-                                                 metrics)
-                self.training_label_lookup = training_label_lookup
-                self.classes = classes
-                self.num_classes = num_classes
-                self.prediction = slim.softmax(logits)
-
-            def build_test_metrics(self):
-
-                raw_labels = multihot_labels(self.mmsis)
-                mask = tf.to_float(tf.equal(tf.reduce_sum(raw_labels, 1), 1))
-                labels = tf.to_int32(tf.argmax(raw_labels, 1))
-
-                predictions = tf.to_int32(tf.argmax(self.prediction, 1))
-
-                metrics_map = {
-                    '%s/Test-accuracy' % self.name: metrics.streaming_accuracy(
-                        predictions, labels, weights=mask)
+        encoded_labels = tf.to_int32(tf.argmax(labels, 1))
+        predictions = tf.to_int32(tf.argmax(self.prediction, 1))
+        return {
+            'accuracy' : metrics.accuracy(predictions, encoded_labels, weights=mask) 
                 }
 
-                if self.metrics == 'all':
-                    for i, cls in enumerate(self.classes):
-                        cls_name = cls.replace(' ', '-')
-                        trues = tf.to_int32(tf.equal(labels, i))
-                        preds = tf.to_int32(tf.equal(predictions, i))
-                        recall = metrics.streaming_recall(
-                            preds, trues, weights=mask)
-                        precision = metrics.streaming_precision(
-                            preds, trues, weights=mask)
-                        metrics_map["%s/Class-%s-Precision" %
-                                    (self.name, cls_name)] = recall
-                        metrics_map["%s/Class-%s-Recall" %
-                                    (self.name, cls_name)] = precision
-                        metrics_map["%s/Class-%s-F1-Score" % (
-                            self.name, cls_name)] = f1(recall, precision)
-                        metrics_map["%s/Class-%s-ROC-AUC" % (
-                            self.name, cls_name)] = metrics.streaming_auc(
-                                self.prediction[:, i], trues, weights=mask)
+    def build_json_results(self, class_probabilities, timestamps):
+        max_prob_index = np.argmax(class_probabilities)
+        max_probability = float(class_probabilities[max_prob_index])
+        max_label = self.classes[max_prob_index]
+        full_scores = dict(
+            zip(self.classes, [float(v) for v in class_probabilities]))
 
-                return metrics.aggregate_metric_map(metrics_map)
-
-            def build_json_results(self, class_probabilities, timestamps):
-                max_prob_index = np.argmax(class_probabilities)
-                max_probability = float(class_probabilities[max_prob_index])
-                max_label = self.classes[max_prob_index]
-                full_scores = dict(
-                    zip(self.classes, [float(v) for v in class_probabilities]))
-
-                return {
-                    'name': self.name,
-                    'max_label': max_label,
-                    'max_label_probability': max_probability,
-                    'label_scores': full_scores
-                }
-
-        return Evaluation(self.metadata_label, self.name, self.training_label,
-                          self.classes, self.num_classes, logits, self.metrics)
-
-
-# class MultiClassificationObjectiveSmoothed(MultiClassificationObjective):
-
-#     def __init__(self,
-#                  metadata_label,
-#                  name,
-#                  vessel_metadata,
-#                  loss_weight=1.0,
-#                  metrics='all',
-#                  smoothing_coefficient=0.1):
-#         self.epsilon = smoothing_coefficient
-#         super(MultiClassificationObjectiveSmoothed, self).__init__(metadata_label, name, vessel_metadata, loss_weight,
-#                                                            metrics)
-
-#     def build_trainer(self, timestamps, mmsis):
-
-#         labels = self.multihot_labels(mmsis)
-
-#         with tf.variable_scope("custom-loss"):
-#             # Normal args are the totals for each correct value (as used in standard cross entropy)
-#             normal_args = tf.reduce_sum(tf.to_float(labels) * self.prediction, 
-#                                             reduction_indices=[1])
-
-#             # To encourage self consistency in the face of noise we also use a component where the args
-#             # is the largest prediction.
-#             consistent_args = tf.reduce_max(self.prediction, axis=[1])
-#             #
-#             positives = (1 - self.epsilon) * tf.log(normal_args) + self.epsilon * tf.log(consistent_args)
-
-#             raw_loss = -tf.reduce_mean(positives)
-
-#         mask = tf.to_float(tf.equal(tf.reduce_sum(labels, 1), 1))
-#         int_labels = tf.to_int32(tf.argmax(labels, 1))
-#         int_predictions = tf.to_int32(tf.argmax(self.prediction, 1))
-#         accuracy = metrics.accuracy(int_labels, int_predictions, weights=mask)
-
-#         loss = raw_loss * self.loss_weight
-
-
-#         update_ops = []
-#         update_ops.append(
-#             tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
-#         update_ops.append(
-#             tf.summary.scalar('%s/Training-accuracy' % self.name, accuracy))      
-
-#         return Trainer(loss, update_ops)
+        return {
+            'name': self.name,
+            'max_label': max_label,
+            'max_label_probability': max_probability,
+            'label_scores': full_scores
+        }
 
 
 
@@ -565,7 +317,7 @@ class FishingLocalizationObjectiveCrossEntropy(ObjectiveBase):
     def create_loss(self, dense_labels):
         return self.loss_weight * self.loss_function(dense_labels)
 
-    def create_metrics(self, dense_labels):
+    def create_raw_metrics(self, dense_labels):
         thresholded_prediction = tf.to_int32(self.prediction > 0.5)
         valid = tf.to_int32(tf.not_equal(dense_labels, -1))
         labels = tf.to_int32(dense_labels > 0.5)
@@ -581,17 +333,13 @@ class FishingLocalizationObjectiveCrossEntropy(ObjectiveBase):
             labels = labels[:, b:e]
             weights = weights[:, b:e]
 
-        raw_eval_metrics = {
+        return {
             'MSE': tf.metrics.mean_squared_error(prediction, dense_labels, weights=weights),
-            'accuracy': tf.metrics.precision(labels, thresholded_prediction, weights=weights),
+            'accuracy': tf.metrics.accuracy(labels, thresholded_prediction, weights=weights),
             'precision': tf.metrics.precision(labels, thresholded_prediction, weights=weights),
             'recall':    tf.metrics.recall(labels, thresholded_prediction, weights=weights)
         }
-        eval_metrics = {"{}/{}".format(self.name, k) : v for (k, v) in raw_eval_metrics.items()}
-        for k, v in eval_metrics.items():
-            tf.summary.scalar(k, v[1])
 
-        return eval_metrics
 
 
     def build_json_results(self, prediction, timestamps):

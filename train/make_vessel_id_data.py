@@ -55,10 +55,22 @@ def process_ranges(path, ranges):
             label = label_map.get(vid_map.get(v), '')
             f.write("{},{},,,,{}\n".format(v, label, split))
 
+def process_classes(path):
+    map_path = os.path.join(path, "temp/mmsi_to_multiple_vessel_ids.csv")
+    map_df = pd.read_csv(map_path)
+    mmsi_map = {x.mmsi : x.vessel_id for x in map_df.itertuples()}
+    label_path = os.path.join(path, "training_classes.csv")
+    label_df = pd.read_csv(label_path)
+    ids = [mmsi_map.get(x.mmsi, '') for x in label_df.itertuples()]
+    label_df['mmsi'] = ids
+    label_df = label_df[label_df.mmsi != '']
+    out_path = os.path.join(path, "training_classes_vessel_id.csv")
+    label_df.to_csv(out_path, index=False)
 
 def process(path):
     ranges = load_ranges(path)
     process_ranges(path, ranges)
+    process_classes(path)
 
 
 if __name__ == "__main__":
