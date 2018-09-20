@@ -39,13 +39,13 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
 
     initial_learning_rate = 1e-3
     learning_decay_rate = 0.5
-    decay_examples = 50000
+    decay_examples = 10000
 
     window = (256, 1024)
 
     @property
     def number_of_steps(self):
-        return 200000
+        return 50000
 
     @property
     def max_window_duration_seconds(self):
@@ -55,6 +55,12 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     @property
     def window_max_points(self):
         return 1024
+
+
+    @property
+    def batch_size(self):
+        return 64
+
 
     @property
     def max_replication_factor(self):
@@ -85,8 +91,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             metrics=metrics,
             window=self.window)
 
-        self.classification_training_objectives = []
-        self.training_objectives = [self.fishing_localisation_objective]
+        self.objectives = [self.fishing_localisation_objective]
 
     def build_training_file_list(self, base_feature_path, split):
         random_state = np.random.RandomState()
@@ -100,37 +105,30 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
     def _build_net(self, features, timestamps, mmsis, is_training):
         layers.misconception_fishing(
             features,
-            self.feature_depths,
-            self.window_size,
-            self.strides,
-            self.fishing_localisation_objective,
-            is_training,
+            filters_list=self.feature_depths,
+            kernel_size=self.window_size,
+            strides_list=self.strides,
+            objective_function=self.fishing_localisation_objective,
+            training=is_training,
             pre_filters=128,
             post_filters=128,
             post_layers=1)
 
 
-
-    # def build_inference_net(self, features, timestamps, mmsis):
-    #     self._build_net(features, timestamps, mmsis, False)
-
-    #     evaluations = [
-    #         self.fishing_localisation_objective.build_evaluation(timestamps,
-    #                                                              mmsis)
-    #     ]
-
-    #     return evaluations
-
-
-
     def make_model_fn(self):
         def _model_fn(features, labels, mode, params):
             is_train = (mode == tf.estimator.ModeKeys.TRAIN)
-            features, timestamps, time_bounds, mmsis = features
+            features, timestamps, time_ranges, mmsis = features
             self._build_net(features, timestamps, mmsis, is_train)
 
             if mode == tf.estimator.ModeKeys.PREDICT:
-                raise NotImplementedError()
+                predictions = {
+                    "mmsis" : mmsi,
+                    "time_ranges": time_ranges,
+                    "timestamps" : timestamps,
+                    self.fishing_localisation_objective.name : self.fishing_localisation_objective.prediction
+                    }
+                return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
             global_step = tf.train.get_global_step()
 
@@ -174,7 +172,7 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
             params={
             })   
 
-    def make_input_fn(self, base_feature_path, split, num_parallel_reads):
+    def make_input_fn(self, base_feature_path, split, num_parallel_reads, prefetch=1024):
         def input_fn():
             return (fishing_feature_generation.input_fn(
                         self.vessel_metadata,
@@ -183,17 +181,16 @@ class Model(abstract_models.MisconceptionWithFishingRangesModel):
                         self.max_window_duration_seconds,
                         self.window_max_points,
                         self.min_viable_timeslice_length,
-                        select_ranges=self.use_ranges_for_training,
                         num_parallel_reads=num_parallel_reads)
-                .prefetch(1024)
-                .shuffle(1024)
+                .prefetch(prefetch)
+                .shuffle(prefetch)
                 .batch(self.batch_size)
                 )
         return input_fn
 
-    def make_training_input_fn(self, base_feature_path, num_parallel_reads):
-        return self.make_input_fn(base_feature_path, utility.TRAINING_SPLIT, num_parallel_reads)
+    def make_training_input_fn(self, base_feature_path, num_parallel_reads, prefetch=1024):
+        return self.make_input_fn(base_feature_path, utility.TRAINING_SPLIT, num_parallel_reads, prefetch)
 
 
-    def make_test_input_fn(self, base_feature_path, num_parallel_reads):
-        return self.make_input_fn(base_feature_path, utility.TEST_SPLIT, num_parallel_reads)
+    def make_test_input_fn(self, base_feature_path, num_parallel_reads, prefetch=1024):
+        return self.make_input_fn(base_feature_path, utility.TEST_SPLIT, num_parallel_reads, prefetch)

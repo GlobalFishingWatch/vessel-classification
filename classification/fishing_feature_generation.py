@@ -4,16 +4,17 @@ import calendar
 from . import utility
 
 
+
+
 def input_fn(vessel_metadata,
              filenames,
             num_features,
             max_time_delta,
             window_size,
             min_timeslice_size,
-            select_ranges=False,
             num_parallel_reads=4):
     
-    def _parse_function(example_proto):
+    def parse_function(example_proto):
         context_features, sequence_features = tf.parse_single_sequence_example(
             example_proto,
             context_features={
@@ -27,30 +28,23 @@ def input_fn(vessel_metadata,
         return context_features['mmsi'], sequence_features['movement_features']
     
     random_state = np.random.RandomState()
-    vmd_mmsi_map = vessel_metadata.mmsi_map_int2str
-    vmd_fr_map = vessel_metadata.fishing_ranges_map
     num_slices_per_mmsi = 8
 
-    def replicate_extract(features, int_mmsi):
+    def _xform(features, int_mmsi):
         # Extract several random windows from each vessel track
         # TODO: Fix feature generation so it returns strings directly
-        mmsi = vmd_mmsi_map[int_mmsi]
-        
-        if mmsi in vessel_metadata.fishing_ranges_map:
-            ranges = vmd_fr_map[mmsi]
-        else:
-            ranges = {}
-
+        mmsi = vessel_metadata.mmsi_map_int2str[int_mmsi]
+        ranges = vessel_metadata.fishing_ranges_map.get(mmsi, {})
         return utility.np_array_extract_n_random_features(
-            random_state, features, num_slices_per_mmsi, max_time_delta,
-            window_size, min_timeslice_size, mmsi, ranges)
+                random_state, features, num_slices_per_mmsi, max_time_delta,
+                window_size, min_timeslice_size, mmsi, ranges)
     
         
     def xform(mmsi, movement_features):
         int_mmsi = tf.cast(mmsi, tf.int64)
         features = tf.cast(movement_features, tf.float32)
         features, timestamps, time_ranges, mmsi = tf.py_func(
-            replicate_extract, 
+            _xform, 
             [features, int_mmsi],
             [tf.float32, tf.int32, tf.int32, tf.string])
         features = tf.squeeze(features, axis=1)
@@ -95,11 +89,12 @@ def input_fn(vessel_metadata,
                     )
 
     return (tf.data.TFRecordDataset(path_ds, num_parallel_reads=num_parallel_reads)
-                .map(_parse_function)
+                .map(parse_function)
                 .flat_map(xform) # This makes multiple small slices from each file
                 .map(add_labels)
                 .map(set_shapes)
            )
+
 
 
 

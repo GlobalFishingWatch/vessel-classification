@@ -33,53 +33,56 @@ class Inferer(object):
     def __init__(self, model, model_checkpoint_path, root_feature_path):
 
         self.model = model
-        self.model_checkpoint_path = model_checkpoint_path
-        self.root_feature_path = root_feature_path
-        self.batch_size = self.model.batch_size
-        self.min_points_for_classification = model.min_viable_timeslice_length
-        self.sess = tf.Session()
-        self.objectives = self._build_objectives()
-        self._restore_graph()
-        self.deserializer = file_iterator.Deserializer(
-                num_features=model.num_feature_dimensions + 1, sess=self.sess)
-        logging.info('created Inferer with Model, %s, and dims %s', model, 
-                    model.num_feature_dimensions)
+        self.estimator = model.make_estimator(model_checkpoint_path)
 
-    def close(self):
-        self.sess.close()
+        # self.model = model
+        # self.model_checkpoint_path = model_checkpoint_path
+        # self.root_feature_path = root_feature_path
+        # self.batch_size = self.model.batch_size
+        # self.min_points_for_classification = model.min_viable_timeslice_length
+        # self.sess = tf.Session()
+        # self.objectives = self._build_objectives()
+        # self._restore_graph()
+        # self.deserializer = file_iterator.Deserializer(
+        #         num_features=model.num_feature_dimensions + 1, sess=self.sess)
+        # logging.info('created Inferer with Model, %s, and dims %s', model, 
+        #             model.num_feature_dimensions)
 
-    def _build_objectives(self):
-        # with self.sess.as_default():
-            self.features_ph = tf.placeholder(tf.float32, 
-                shape=[None, 1, self.model.window_max_points, self.model.num_feature_dimensions])
-            self.timestamps_ph = tf.placeholder(tf.int32, shape=[None, self.model.window_max_points])
-            self.time_ranges_ph = tf.placeholder(tf.int32, shape=[None, 2])
-            self.mmsis_ph = tf.placeholder(tf.int64, shape=[None])  # TODO: MMSI_CLEANUP -> tf.string
-            objectives = self.model.build_inference_net(self.features_ph, self.timestamps_ph,
-                                                        self.time_ranges_ph)
-            return objectives
+    # def close(self):
+    #     self.sess.close()
 
-    def _restore_graph(self):
-        init_op = tf.group(tf.local_variables_initializer(),
-                           tf.global_variables_initializer())
+    # def _build_objectives(self):
+    #     # with self.sess.as_default():
+    #         self.features_ph = tf.placeholder(tf.float32, 
+    #             shape=[None, 1, self.model.window_max_points, self.model.num_feature_dimensions])
+    #         self.timestamps_ph = tf.placeholder(tf.int32, shape=[None, self.model.window_max_points])
+    #         self.time_ranges_ph = tf.placeholder(tf.int32, shape=[None, 2])
+    #         self.mmsis_ph = tf.placeholder(tf.int64, shape=[None])  # TODO: MMSI_CLEANUP -> tf.string
+    #         objectives = self.model.build_inference_net(self.features_ph, self.timestamps_ph,
+    #                                                     self.time_ranges_ph)
+    #         return objectives
 
-        self.sess.run(init_op)
-        logging.info("Restoring model: %s", self.model_checkpoint_path)
-        saver = tf.train.Saver()
-        gspath = self.model_checkpoint_path.startswith('gs:')
-        # Models over a certain size don't seem to load properly from gcs(?!),
-        # so copy locally and then load
-        if gspath:
-            tempdir = tempfile.gettempdir()
-            temppath = os.path.join(tempdir, uuid.uuid4().hex)
-            subprocess.check_call(['gsutil', 'cp', self.model_checkpoint_path, temppath])
-            model_checkpoint_path = temppath
-        else:
-            model_checkpoint_path = self.model_checkpoint_path
-        try:
-            saver.restore(self.sess, model_checkpoint_path)
-        finally:
-            os.unlink(temppath)
+    # def _restore_graph(self):
+    #     init_op = tf.group(tf.local_variables_initializer(),
+    #                        tf.global_variables_initializer())
+
+    #     self.sess.run(init_op)
+    #     logging.info("Restoring model: %s", self.model_checkpoint_path)
+    #     saver = tf.train.Saver()
+    #     gspath = self.model_checkpoint_path.startswith('gs:')
+    #     # Models over a certain size don't seem to load properly from gcs(?!),
+    #     # so copy locally and then load
+    #     if gspath:
+    #         tempdir = tempfile.gettempdir()
+    #         temppath = os.path.join(tempdir, uuid.uuid4().hex)
+    #         subprocess.check_call(['gsutil', 'cp', self.model_checkpoint_path, temppath])
+    #         model_checkpoint_path = temppath
+    #     else:
+    #         model_checkpoint_path = self.model_checkpoint_path
+    #     try:
+    #         saver.restore(self.sess, model_checkpoint_path)
+    #     finally:
+    #         os.unlink(temppath)
 
     def _feature_files(self, mmsis):
         return [
@@ -107,84 +110,55 @@ class Inferer(object):
         return time_starts
 
 
-
+    # TODO factor into fishing and vessel inference
     def run_inference(self, mmsis, interval_months, start_date, end_date):
         matching_files = self._feature_files(mmsis)
-        logging.info("MATCHING:")
-        for path in matching_files:
-            logging.info("matching_files: %s", path)
-        # filename_queue = tf.train.input_producer(
-        #     matching_files, shuffle=False, num_epochs=1)
-
-
-
+     
         if self.model.max_window_duration_seconds != 0:
+            raise NotImplementError()
+            # time_starts = self._build_starts(interval_months)
 
-            time_starts = self._build_starts(interval_months)
-
-            delta = timedelta(
-                seconds=self.model.max_window_duration_seconds)
-            self.time_ranges = [(int(time.mktime(dt.timetuple())),
-                                 int(time.mktime((dt + delta).timetuple())))
-                                for dt in time_starts]
-            feature_iter = file_iterator.cropping_all_slice_feature_file_iterator(
-                matching_files, self.deserializer,
-                self.time_ranges, self.model.window_max_points,
-                self.min_points_for_classification)  # TODO: add year
+            # delta = timedelta(
+            #     seconds=self.model.max_window_duration_seconds)
+            # self.time_ranges = [(int(time.mktime(dt.timetuple())),
+            #                      int(time.mktime((dt + delta).timetuple())))
+            #                     for dt in time_starts]
+            # feature_iter = file_iterator.cropping_all_slice_feature_file_iterator(
+            #     matching_files, self.deserializer,
+            #     self.time_ranges, self.model.window_max_points,
+            #     self.min_points_for_classification)  # TODO: add year
         else:
-            if self.model.window is None:
-                shift = self.model.window_max_points
-            else:
-                b, e = self.model.window
+
+            def input_fn():
+                if self.model.window is None:
+                    b, e = 0, self.window_max_points
+                else:
+                    b, e = self.model.window
                 shift = e - b
-            logging.info("Shift %s %s %s", start_date, end_date, shift)
-            feature_iter = file_iterator.all_fixed_window_feature_file_iterator(
-                matching_files, self.deserializer,
-                self.model.window_max_points, shift, start_date, end_date, b, e)
+                feature_iter = file_iterator.all_fixed_window_feature_file_iterator(
+                                        matching_files, self.deserializer,
+                                        self.model.window_max_points, shift, start_date, end_date, b, e)
+                return tf.dataset.Dataset.from_generator(feature_iter).batch(1)
 
+        for batch_result in self.estimator.predict(input_fn=input_fn):
 
-        objectives = self.objectives
-
-        all_predictions = [o.prediction for o in objectives]
-
-        # In a loop, calculate logits and predictions and write out. Will
-        # be terminated when an EOF exception is thrown.
-        for i, queue_vals in enumerate(feature_iter):
-            logging.info("Inference step: %d", i)
-            t0 = time.clock()
-            logging.info("Type of queue_vals: %s", type(queue_vals))
-            for i, qv in enumerate(queue_vals):
-                logging.info("type(QV[%s]) = %s", i, type(qv))
-                logging.info("tf.shape(QV[%s]) = %s", i, np.shape(qv))
-            logging.info("Type of queue_vals: %s", type(queue_vals))
-
-            feed_dict = {
-                self.features_ph : queue_vals[0][np.newaxis],
-                self.timestamps_ph : queue_vals[1][np.newaxis],
-                self.time_ranges_ph : queue_vals[2][np.newaxis],
-                self.mmsis_ph : queue_vals[3][np.newaxis]
-            }
-
-            batch_result = self.sess.run([self.mmsis_ph, self.time_ranges_ph, self.timestamps_ph] 
-                                         + all_predictions, 
-                                         feed_dict=feed_dict)
 
             # Tensorflow returns some items one would expect to be shape (1,)
             # as shape (). Compensate for that here by checking for is_scalar
-            result = [(x if np.isscalar(x) else x[0]) for x in batch_result]
+            # TODO: check if this is still needed with new interface (or maybe can be moved into model_fn when it matters)
+            result = {k: (v if np.isscalar(v) else v[0]) for x in batch_result.items()}
 
-            mmsi = result[0]
             start_time, end_time = [datetime.utcfromtimestamp(x) for x in result[1]]
-            timestamps_array = result[2]
-            predictions_array = result[3:]
-
             output = {
-                'mmsi': int(mmsi),
+                'mmsi': int(result['mmsi']),
                 'start_time': start_time.isoformat(),
                 'end_time': end_time.isoformat()
             }
-            for (o, p) in zip(objectives, predictions_array):
-                output[o.metadata_label] = o.build_json_results(p, timestamps_array)
+            for k, v in result.items():
+                if k in output:
+                    continue
+                o = self.model.objectives[k]
+                output[o.metadata_label] = o.build_json_results(k, result['timestamps'])
 
             yield output
 

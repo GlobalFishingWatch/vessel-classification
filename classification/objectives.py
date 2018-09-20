@@ -68,81 +68,78 @@ class ObjectiveBase(object):
     def build(self, net):
         pass
 
-    @abc.abstractmethod
-    def build_evaluation(self, timestamps, mmsis):
-        pass
+
+# # TODO: remove
+# class EvaluationBase(object):
+#     __metaclass__ = abc.ABCMeta
+
+#     def __init__(self, metadata_label, name, prediction, timestamps, mmsis,
+#                  metrics):
+#         self.metadata_label = metadata_label
+#         self.name = name
+#         self.prediction = prediction
+#         self.timestamps = timestamps
+#         self.mmsis = mmsis
+#         self.metrics = metrics
+
+#     @abc.abstractmethod
+#     def build_test_metrics(self):
+#         pass
+
+#     @abc.abstractmethod
+#     def build_json_results(self, prediction, timestamps):
+#         pass
 
 
-class EvaluationBase(object):
-    __metaclass__ = abc.ABCMeta
+# class SummaryObjective(ObjectiveBase):
+#     def __init__(self, metadata_label, name, metrics):
+#         super(SummaryObjective, self).__init__(metadata_label, name, 0.0,
+#                                                metrics)
 
-    def __init__(self, metadata_label, name, prediction, timestamps, mmsis,
-                 metrics):
-        self.metadata_label = metadata_label
-        self.name = name
-        self.prediction = prediction
-        self.timestamps = timestamps
-        self.mmsis = mmsis
-        self.metrics = metrics
+#     def build(self, net):
+#         self.inputs = net
 
-    @abc.abstractmethod
-    def build_test_metrics(self):
-        pass
+#     def _build_summary(self):
+#         #TODO(bitsofbits): pull these names from someplace
+#         ops = {}
+#         if self.metrics == 'all':
+#             for i, name in enumerate(
+#                 ['log_timestampDeltaSeconds', 'log_distanceDeltaMeters',
+#                  'log_speedMps', 'log_integratedSpeedMps',
+#                  'cogDeltaDegrees_div_180', 'localTodFeature',
+#                  'localMonthOfYearFeature',
+#                  'integratedCogDeltaDegrees_div_180', 'log_distanceToShoreKm',
+#                  'log_distanceToBoundingAnchorageKm',
+#                  'log_timeToBoundingAnchorageS']):
+#                 ops[name] = tf.summary.histogram(
+#                     "input/{}-{}".format(name, i),
+#                     tf.reshape(self.inputs[:, :, :, i], [-1]),
+#                     #TODO(bitsofbits): may need not need all of these collection keys
+#                     collections=[tf.GraphKeys.UPDATE_OPS,
+#                                  tf.GraphKeys.SUMMARIES])
+#         return ops
 
-    @abc.abstractmethod
-    def build_json_results(self, prediction, timestamps):
-        pass
+#     def build_trainer(self, timestamps, mmsis):
+#         ops = self._build_summary()
+#         # We return a constant loss of zero here, so this doesn't effect the training,
+#         # only adds summaries to the output.
+#         return Trainer(0, ops.values())
 
+#     def build_evaluation(self, timestamps, mmsis):
 
-class SummaryObjective(ObjectiveBase):
-    def __init__(self, metadata_label, name, metrics):
-        super(SummaryObjective, self).__init__(metadata_label, name, 0.0,
-                                               metrics)
+#         build_summary = self._build_summary
 
-    def build(self, net):
-        self.inputs = net
+#         class Evaluation(EvaluationBase):
+#             def build_test_metrics(self):
+#                 ops = build_summary()
 
-    def _build_summary(self):
-        #TODO(bitsofbits): pull these names from someplace
-        ops = {}
-        if self.metrics == 'all':
-            for i, name in enumerate(
-                ['log_timestampDeltaSeconds', 'log_distanceDeltaMeters',
-                 'log_speedMps', 'log_integratedSpeedMps',
-                 'cogDeltaDegrees_div_180', 'localTodFeature',
-                 'localMonthOfYearFeature',
-                 'integratedCogDeltaDegrees_div_180', 'log_distanceToShoreKm',
-                 'log_distanceToBoundingAnchorageKm',
-                 'log_timeToBoundingAnchorageS']):
-                ops[name] = tf.summary.histogram(
-                    "input/{}-{}".format(name, i),
-                    tf.reshape(self.inputs[:, :, :, i], [-1]),
-                    #TODO(bitsofbits): may need not need all of these collection keys
-                    collections=[tf.GraphKeys.UPDATE_OPS,
-                                 tf.GraphKeys.SUMMARIES])
-        return ops
+#                 return {}, ops
 
-    def build_trainer(self, timestamps, mmsis):
-        ops = self._build_summary()
-        # We return a constant loss of zero here, so this doesn't effect the training,
-        # only adds summaries to the output.
-        return Trainer(0, ops.values())
+#             def build_json_results(self, prediction, timestamps):
+#                 return {}
 
-    def build_evaluation(self, timestamps, mmsis):
-
-        build_summary = self._build_summary
-
-        class Evaluation(EvaluationBase):
-            def build_test_metrics(self):
-                ops = build_summary()
-
-                return {}, ops
-
-            def build_json_results(self, prediction, timestamps):
-                return {}
-
-        return Evaluation(self.metadata_label, self.name, None, None, None,
-                          self.metrics)
+#         return Evaluation(self.metadata_label, self.name, None, None, None,
+#                           self.metrics)
 
 
 class RegressionObjective(ObjectiveBase):
@@ -191,41 +188,41 @@ class RegressionObjective(ObjectiveBase):
 
         return error
 
-    def build_trainer(self, timestamps, mmsis):
-        raw_loss = self._masked_mean_error(self.prediction, mmsis)
+    # def build_trainer(self, timestamps, mmsis):
+    #     raw_loss = self._masked_mean_error(self.prediction, mmsis)
 
-        update_ops = []
-        update_ops.append(
-            tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
+    #     update_ops = []
+    #     update_ops.append(
+    #         tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
 
-        loss = raw_loss * self.loss_weight
+    #     loss = raw_loss * self.loss_weight
 
-        return Trainer(loss, update_ops)
+    #     return Trainer(loss, update_ops)
 
-    def build_evaluation(self, timestamps, mmsis):
-        class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name, masked_mean_error,
-                         prediction, metrics):
-                super(Evaluation, self).__init__(metadata_label, name,
-                                                 prediction, timestamps, mmsis,
-                                                 metrics)
-                self.masked_mean_error = masked_mean_error
-                self.mmsis = mmsis
+    # def build_evaluation(self, timestamps, mmsis):
+    #     class Evaluation(EvaluationBase):
+    #         def __init__(self, metadata_label, name, masked_mean_error,
+    #                      prediction, metrics):
+    #             super(Evaluation, self).__init__(metadata_label, name,
+    #                                              prediction, timestamps, mmsis,
+    #                                              metrics)
+    #             self.masked_mean_error = masked_mean_error
+    #             self.mmsis = mmsis
 
-            def build_test_metrics(self):
-                raw_loss = self.masked_mean_error(self.prediction, self.mmsis)
+    #         def build_test_metrics(self):
+    #             raw_loss = self.masked_mean_error(self.prediction, self.mmsis)
 
-                return metrics.aggregate_metric_map({
-                    '%s/Test-error' % self.name:
-                    metrics.streaming_mean(raw_loss)
-                })
+    #             return metrics.aggregate_metric_map({
+    #                 '%s/Test-error' % self.name:
+    #                 metrics.streaming_mean(raw_loss)
+    #             })
 
-            def build_json_results(self, prediction, timestamps):
-                return {'name': self.name, 'value': float(prediction)}
+    #         def build_json_results(self, prediction, timestamps):
+    #             return {'name': self.name, 'value': float(prediction)}
 
-        return Evaluation(self.metadata_label, self.name,
-                          self._masked_mean_error, self.prediction,
-                          self.metrics)
+    #     return Evaluation(self.metadata_label, self.name,
+    #                       self._masked_mean_error, self.prediction,
+    #                       self.metrics)
 
 
 class LogRegressionObjective(ObjectiveBase):
@@ -283,57 +280,57 @@ class LogRegressionObjective(ObjectiveBase):
 
         return error
 
-    def build_trainer(self, timestamps, mmsis):
-        raw_loss = self._masked_mean_loss(self.prediction, mmsis)
+    # def build_trainer(self, timestamps, mmsis):
+    #     raw_loss = self._masked_mean_loss(self.prediction, mmsis)
 
-        update_ops = []
-        update_ops.append(
-            tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
+    #     update_ops = []
+    #     update_ops.append(
+    #         tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
 
-        loss = raw_loss * self.loss_weight
+    #     loss = raw_loss * self.loss_weight
 
-        return Trainer(loss, update_ops)
+    #     return Trainer(loss, update_ops)
 
-    def build_evaluation(self, timestamps, mmsis):
-        class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name, masked_mean_loss,
-                         masked_mean_error, prediction, metrics):
-                super(Evaluation, self).__init__(metadata_label, name,
-                                                 prediction, timestamps, mmsis,
-                                                 metrics)
-                self.masked_mean_loss = masked_mean_loss
-                self.masked_mean_error = masked_mean_error
-                self.mmsis = mmsis
+    # def build_evaluation(self, timestamps, mmsis):
+    #     class Evaluation(EvaluationBase):
+    #         def __init__(self, metadata_label, name, masked_mean_loss,
+    #                      masked_mean_error, prediction, metrics):
+    #             super(Evaluation, self).__init__(metadata_label, name,
+    #                                              prediction, timestamps, mmsis,
+    #                                              metrics)
+    #             self.masked_mean_loss = masked_mean_loss
+    #             self.masked_mean_error = masked_mean_error
+    #             self.mmsis = mmsis
 
-            def build_test_metrics(self):
-                loss = self.masked_mean_loss(self.prediction, self.mmsis)
-                error = self.masked_mean_error(self.prediction, self.mmsis)
+    #         def build_test_metrics(self):
+    #             loss = self.masked_mean_loss(self.prediction, self.mmsis)
+    #             error = self.masked_mean_error(self.prediction, self.mmsis)
 
-                return metrics.aggregate_metric_map({
-                    '%s/Test-loss' % self.name: metrics.streaming_mean(loss),
-                    '%s/Test-error' % self.name: metrics.streaming_mean(error)
-                })
+    #             return metrics.aggregate_metric_map({
+    #                 '%s/Test-loss' % self.name: metrics.streaming_mean(loss),
+    #                 '%s/Test-error' % self.name: metrics.streaming_mean(error)
+    #             })
 
-            def build_json_results(self, prediction, timestamps):
-                return {'name': self.name, 'value': np.exp(float(prediction))}
+    #         def build_json_results(self, prediction, timestamps):
+    #             return {'name': self.name, 'value': np.exp(float(prediction))}
 
-        return Evaluation(self.metadata_label, self.name,
-                          self._masked_mean_loss, self._masked_mean_error,
-                          self.prediction, self.metrics)
+    #     return Evaluation(self.metadata_label, self.name,
+    #                       self._masked_mean_loss, self._masked_mean_error,
+    #                       self.prediction, self.metrics)
 
 
 
-class LogRegressionObjectiveMAE(LogRegressionObjective):
+# class LogRegressionObjectiveMAE(LogRegressionObjective):
 
-    def _masked_mean_loss(self, predictions, mmsis):
-        expected, mask = self._expected_and_mask(mmsis)
-        count = tf.reduce_sum(mask)
-        mean_absolute_error = tf.abs(
-            (tf.log(expected + EPSILON) - predictions) * mask)
+#     def _masked_mean_loss(self, predictions, mmsis):
+#         expected, mask = self._expected_and_mask(mmsis)
+#         count = tf.reduce_sum(mask)
+#         mean_absolute_error = tf.abs(
+#             (tf.log(expected + EPSILON) - predictions) * mask)
 
-        loss = tf.reduce_sum(mean_absolute_error) / tf.maximum(count, EPSILON)
+#         loss = tf.reduce_sum(mean_absolute_error) / tf.maximum(count, EPSILON)
 
-        return loss
+#         return loss
 
 
 
@@ -484,55 +481,55 @@ class MultiClassificationObjective(ObjectiveBase):
                           self.classes, self.num_classes, logits, self.metrics)
 
 
-class MultiClassificationObjectiveSmoothed(MultiClassificationObjective):
+# class MultiClassificationObjectiveSmoothed(MultiClassificationObjective):
 
-    def __init__(self,
-                 metadata_label,
-                 name,
-                 vessel_metadata,
-                 loss_weight=1.0,
-                 metrics='all',
-                 smoothing_coefficient=0.1):
-        self.epsilon = smoothing_coefficient
-        super(MultiClassificationObjectiveSmoothed, self).__init__(metadata_label, name, vessel_metadata, loss_weight,
-                                                           metrics)
+#     def __init__(self,
+#                  metadata_label,
+#                  name,
+#                  vessel_metadata,
+#                  loss_weight=1.0,
+#                  metrics='all',
+#                  smoothing_coefficient=0.1):
+#         self.epsilon = smoothing_coefficient
+#         super(MultiClassificationObjectiveSmoothed, self).__init__(metadata_label, name, vessel_metadata, loss_weight,
+#                                                            metrics)
 
-    def build_trainer(self, timestamps, mmsis):
+#     def build_trainer(self, timestamps, mmsis):
 
-        labels = self.multihot_labels(mmsis)
+#         labels = self.multihot_labels(mmsis)
 
-        with tf.variable_scope("custom-loss"):
-            # Normal args are the totals for each correct value (as used in standard cross entropy)
-            normal_args = tf.reduce_sum(tf.to_float(labels) * self.prediction, 
-                                            reduction_indices=[1])
+#         with tf.variable_scope("custom-loss"):
+#             # Normal args are the totals for each correct value (as used in standard cross entropy)
+#             normal_args = tf.reduce_sum(tf.to_float(labels) * self.prediction, 
+#                                             reduction_indices=[1])
 
-            # To encourage self consistency in the face of noise we also use a component where the args
-            # is the largest prediction.
-            consistent_args = tf.reduce_max(self.prediction, axis=[1])
-            #
-            positives = (1 - self.epsilon) * tf.log(normal_args) + self.epsilon * tf.log(consistent_args)
+#             # To encourage self consistency in the face of noise we also use a component where the args
+#             # is the largest prediction.
+#             consistent_args = tf.reduce_max(self.prediction, axis=[1])
+#             #
+#             positives = (1 - self.epsilon) * tf.log(normal_args) + self.epsilon * tf.log(consistent_args)
 
-            raw_loss = -tf.reduce_mean(positives)
+#             raw_loss = -tf.reduce_mean(positives)
 
-        mask = tf.to_float(tf.equal(tf.reduce_sum(labels, 1), 1))
-        int_labels = tf.to_int32(tf.argmax(labels, 1))
-        int_predictions = tf.to_int32(tf.argmax(self.prediction, 1))
-        accuracy = metrics.accuracy(int_labels, int_predictions, weights=mask)
+#         mask = tf.to_float(tf.equal(tf.reduce_sum(labels, 1), 1))
+#         int_labels = tf.to_int32(tf.argmax(labels, 1))
+#         int_predictions = tf.to_int32(tf.argmax(self.prediction, 1))
+#         accuracy = metrics.accuracy(int_labels, int_predictions, weights=mask)
 
-        loss = raw_loss * self.loss_weight
-
-
-        update_ops = []
-        update_ops.append(
-            tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
-        update_ops.append(
-            tf.summary.scalar('%s/Training-accuracy' % self.name, accuracy))      
-
-        return Trainer(loss, update_ops)
+#         loss = raw_loss * self.loss_weight
 
 
+#         update_ops = []
+#         update_ops.append(
+#             tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
+#         update_ops.append(
+#             tf.summary.scalar('%s/Training-accuracy' % self.name, accuracy))      
 
-class AbstractFishingLocalizationObjective(ObjectiveBase):
+#         return Trainer(loss, update_ops)
+
+
+
+class FishingLocalizationObjectiveCrossEntropy(ObjectiveBase):
     def __init__(self,
                  metadata_label,
                  name,
@@ -544,47 +541,26 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
                                metrics)
         self.vessel_metadata = vessel_metadata
         self.window = window
+        self.pos_weight = 1.0
 
-    @abc.abstractmethod
-    def loss_function(self, logits, dense_labels):
-        loss_function = None
-        return loss_function
+    def loss_function(self, dense_labels):
+        fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
+        fishing_targets = tf.to_float(dense_labels > 0.5)
+        logits = self.logits
+        if self.window:
+            b, e = self.window
+            fishing_mask = fishing_mask[:, b:e]
+            fishing_targets = fishing_targets[:, b:e]
+            logits = logits[:, b:e]
+        return tf.reduce_sum(fishing_mask *
+                             tf.nn.weighted_cross_entropy_with_logits(
+                                 targets=fishing_targets,
+                                 logits=logits,
+                                 pos_weight=self.pos_weight))
 
     def build(self, net):
         self.logits = net
         self.prediction = tf.sigmoid(net)
-
-    # def build_trainer(self, timestamps, mmsis):
-    #     update_ops = []
-
-    #     dense_labels = self.dense_labels(
-    #         tf.shape(self.prediction), timestamps, mmsis)
-    #     thresholded_prediction = tf.to_int32(self.prediction > 0.5)
-    #     valid = tf.to_int32(tf.not_equal(dense_labels, -1))
-    #     ones = tf.to_int32(dense_labels > 0.5)
-    #     weights = tf.to_float(valid)
-
-    #     raw_loss = self.loss_function(dense_labels)
-
-    #     if self.window:
-    #         b, e = self.window
-    #         dense_labels = dense_labels[:, b:e]
-    #         thresholded_prediction = thresholded_prediction[:, b:e]
-    #         valid = valid[:, b:e]
-    #         ones = ones[:, b:e]
-    #         weights = weights[:, b:e]
-
-    #     update_ops.append(
-    #         tf.summary.scalar('%s/Training-loss' % self.name, raw_loss))
-
-    #     accuracy = slim.metrics.accuracy(
-    #         thresholded_prediction, ones, weights=weights)
-    #     update_ops.append(
-    #         tf.summary.scalar('%s/Training-accuracy' % self.name, accuracy))
-
-    #     loss = raw_loss * self.loss_weight
-
-    #     return Trainer(loss, update_ops)
 
     def create_loss(self, dense_labels):
         return self.loss_weight * self.loss_function(dense_labels)
@@ -617,201 +593,54 @@ class AbstractFishingLocalizationObjective(ObjectiveBase):
 
         return eval_metrics
 
-    # TODO: free compute json results from the rest of this!
-    def build_evaluation(self, timestamps, mmsis):
 
-        dense_labels_fn = self.dense_labels
-        eval_window = self.window
+    def build_json_results(self, prediction, timestamps):
+        InferencePoint = namedtuple('InferencePoint', ['timestamp', 'is_fishing'])
+        InferenceRange = namedtuple('InferenceRange', ['start_time', 'end_time', 'score'])
 
-        class Evaluation(EvaluationBase):
-            def __init__(self, metadata_label, name, prediction, timestamps,
-                         mmsis, metrics):
-                super(Evaluation, self).__init__(metadata_label, name,
-                                                 prediction, timestamps, mmsis,
-                                                 metrics)
+        assert (len(prediction) == len(timestamps))
+        thresholded_prediction = prediction > 0.5
+        combined = zip(timestamps, thresholded_prediction)
+        if self.eval_window:
+            b, e = self.eval_window
+            combined = combined[b:e]
 
+        last = None
+        fishing_ranges = []
+        for ts_raw, is_fishing in combined:
+            ts = datetime.datetime.utcfromtimestamp(int(ts_raw))
+            if last and last.timestamp >= ts:
+                logging.warning("last.timestamp >= timestamp")
+                break
+            if last and last.is_fishing == is_fishing:
+                if ts.date() > last.timestamp.date():
+                    # We are crossing a day boundary here, so break into two ranges
+                    end_of_day = datetime.datetime.combine(last.timestamp.date(), 
+                        datetime.time(hour=23, minute=59, second=59))
+                    # TODO: are we skipping a day here if gaps is multi day? Check
+                    start_of_day = datetime.datetime.combine(ts.date(), 
+                        datetime.time(hour=0, minute=0, second=0))
+                    fishing_ranges[-1] = fishing_ranges[-1]._replace(
+                                            end_time=end_of_day.isoformat())
+                    fishing_ranges.append(
+                        InferenceRange(start_of_day.isoformat(), None, is_fishing))
+                fishing_ranges[-1] =  fishing_ranges[-1]._replace(end_time=ts.isoformat())
+            else:
+                # TODO, append min(half the distance to previous / next point)
+                # TODO, but maybe we should drop long ranges with no points
+                fishing_ranges.append(
+                    InferenceRange(ts.isoformat(), ts.isoformat(), is_fishing))
+            last = InferencePoint(timestamp=ts, is_fishing=is_fishing)
 
-
-            def build_json_results(self, prediction, timestamps):
-                InferencePoint = namedtuple('InferencePoint', ['timestamp', 'is_fishing'])
-                InferenceRange = namedtuple('InferenceRange', ['start_time', 'end_time', 'score'])
-
-                assert (len(prediction) == len(timestamps))
-                thresholded_prediction = prediction > 0.5
-                combined = zip(timestamps, thresholded_prediction)
-                if eval_window:
-                    b, e = eval_window
-                    combined = combined[b:e]
-
-                last = None
-                fishing_ranges = []
-                for ts_raw, is_fishing in combined:
-                    ts = datetime.datetime.utcfromtimestamp(int(ts_raw))
-                    if last and last.timestamp >= ts:
-                        logging.warning("last.timestamp >= timestamp")
-                        break
-                    if last and last.is_fishing == is_fishing:
-                        if ts.date() > last.timestamp.date():
-                            # We are crossing a day boundary here, so break into two ranges
-                            end_of_day = datetime.datetime.combine(last.timestamp.date(), 
-                                datetime.time(hour=23, minute=59, second=59))
-                            # TODO: are we skipping a day here if gaps is multi day? Check
-                            start_of_day = datetime.datetime.combine(ts.date(), 
-                                datetime.time(hour=0, minute=0, second=0))
-                            fishing_ranges[-1] = fishing_ranges[-1]._replace(
-                                                    end_time=end_of_day.isoformat())
-                            fishing_ranges.append(
-                                InferenceRange(start_of_day.isoformat(), None, is_fishing))
-                        fishing_ranges[-1] =  fishing_ranges[-1]._replace(end_time=ts.isoformat())
-                    else:
-                        # TODO, append min(half the distance to previous / next point)
-                        # TODO, but maybe we should drop long ranges with no points
-                        fishing_ranges.append(
-                            InferenceRange(ts.isoformat(), ts.isoformat(), is_fishing))
-                    last = InferencePoint(timestamp=ts, is_fishing=is_fishing)
-
-                return [{'start_time': x.start_time + 'Z',
-                         'end_time': x.end_time + 'Z', 'value': float(x.score)}
-                        for x in fishing_ranges]
-
-        return Evaluation(self.metadata_label, self.name, self.prediction,
-                          timestamps, mmsis, self.metrics)
+        return [{'start_time': x.start_time + 'Z',
+                 'end_time': x.end_time + 'Z', 'value': float(x.score)}
+                for x in fishing_ranges]
 
 
-class FishingLocalizationObjectiveCrossEntropy(
-        AbstractFishingLocalizationObjective):
-    def __init__(self,
-                 metadata_label,
-                 name,
-                 vessel_metadata,
-                 loss_weight=1.0,
-                 metrics='all',
-                 pos_weight=1.0,
-                 window=None):
-        """
-
-        args:
-            metadata_label: label that we are classifying by.
-            name: name of this objective (for metrics)
-            vessel_metadata: info on classes for each mmsi loaded
-            loss_weight: weight of this objective (so that can increase decrease relative to other objectives)
-            metrics: which metrics to include. Options are currently ['all', 'minimal']
-            pos_weight: increases the weight of getting positive values right, so an increased `pos_weight`
-                        should increase recall at the expense of precision.
-
-        """
-        super(FishingLocalizationObjectiveCrossEntropy, self).__init__(
-            metadata_label, name, vessel_metadata, loss_weight, metrics,
-            window)
-        self.pos_weight = pos_weight
-
-    def loss_function(self, dense_labels):
-        fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
-        fishing_targets = tf.to_float(dense_labels > 0.5)
-        logits = self.logits
-        if self.window:
-            b, e = self.window
-            fishing_mask = fishing_mask[:, b:e]
-            fishing_targets = fishing_targets[:, b:e]
-            logits = logits[:, b:e]
-        return tf.reduce_sum(fishing_mask *
-                             tf.nn.weighted_cross_entropy_with_logits(
-                                 targets=fishing_targets,
-                                 logits=logits,
-                                 pos_weight=self.pos_weight))
 
 
-class FishingLocalizationObjectiveFishingTime(
-        AbstractFishingLocalizationObjective):
-    def __init__(self,
-                 metadata_label,
-                 name,
-                 vessel_metadata,
-                 loss_weight=1.0,
-                 metrics='all',
-                 window=None):
-        """
-
-        args:
-            metadata_label: label that we are classifying by.
-            name: name of this objective (for metrics)
-            vessel_metadata: info on classes for each mmsi loaded
-            loss_weight: weight of this objective (so that can increase decrease relative to other objectives)
-            metrics: which metrics to include. Options are currently ['all', 'minimal']
-            pos_weight: increases the weight of getting positive values right, so an increased `pos_weight`
-                        should increase recall at the expense of precision.
-
-        """
-        super(FishingLocalizationObjectiveFishingTime, self).__init__(
-            metadata_label, name, vessel_metadata, loss_weight, metrics,
-            window)
-
-    def build(self, net, dt):
-        self.logits = net
-        self.prediction = tf.sigmoid(net)
-        self.dt = dt
-
-    def loss_function(self, dense_labels):
 
 
-        # When awake: want this to be dt * self.prediction, but do something with missing values?
-        # Then compare etih dt * fishing_targets
-
-        fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
-        fishing_targets = dense_labels
-        # tf.to_float(dense_labels > 0.5)
-        logits = self.logits
-        dt = self.dt
-        if self.window:
-            b, e = self.window
-            fishing_mask = fishing_mask[:, b:e]
-            fishing_targets = fishing_targets[:, b:e]
-            logits = logits[:, b:e]
-            # dt[0] => preds[1]
-            dt = dt[:, b+1:e+1]
-            
-        return tf.reduce_sum(dt * fishing_mask *
-                             tf.nn.sigmoid_cross_entropy_with_logits(
-                                 labels=fishing_targets,
-                                 logits=logits))
 
 
-class FishingLocalizationObjectiveSquaredError(
-        AbstractFishingLocalizationObjective):
-    def __init__(self,
-                 metadata_label,
-                 name,
-                 vessel_metadata,
-                 loss_weight=1.0,
-                 metrics='all',
-                 pos_weight=1.0,
-                 window=None):
-        """
-
-        args:
-            metadata_label: label that we are classifying by.
-            name: name of this objective (for metrics)
-            vessel_metadata: info on classes for each mmsi loaded
-            loss_weight: weight of this objective (so that can increase decrease relative to other objectives)
-            metrics: which metrics to include. Options are currently ['all', 'minimal']
-            pos_weight: increases the weight of getting positive values right, so an increased `pos_weight`
-                        should increase recall at the expense of precision.
-
-        """
-        super(FishingLocalizationObjectiveSquaredError, self).__init__(
-            metadata_label, name, vessel_metadata, loss_weight, metrics,
-            window)
-        self.pos_weight = pos_weight
-
-    def loss_function(self, dense_labels):
-        fishing_mask = tf.to_float(tf.not_equal(dense_labels, -1))
-        fishing_targets = tf.to_float(dense_labels > 0.5)
-        logits = self.logits
-        if self.window:
-            b, e = self.window
-            fishing_mask = fishing_mask[:, b:e]
-            fishing_targets = fishing_targets[:, b:e]
-            logits = logits[:, b:e]
-        return tf.reduce_sum(fishing_mask *
-                             (fishing_targets - tf.sigmoid(logits))**2)
 
