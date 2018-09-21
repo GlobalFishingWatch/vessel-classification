@@ -95,12 +95,12 @@ class Model(abstract_models.MisconceptionModel):
                 XOrNone('engine_power'),
                 metrics=metrics,
                 loss_weight=0.1),
-            LogRegressionObjectiveMAE(
-                'crew_size',
-                'Vessel-Crew-Size',
-                XOrNone('crew_size'),
-                metrics=metrics,
-                loss_weight=0.1),
+            # LogRegressionObjectiveMAE(
+            #     'crew_size',
+            #     'Vessel-Crew-Size',
+            #     XOrNone('crew_size'),
+            #     metrics=metrics,
+            #     loss_weight=0.1),
             MultiClassificationObjectiveSmoothed(
                 "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics, loss_weight=1,
                 smoothing_coefficient=0.01)
