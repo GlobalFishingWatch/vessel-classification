@@ -3,6 +3,10 @@ import numpy as np
 from classification import utility
 
 
+def filename_generator(filenames):
+    while True:
+        yield np.random.choice(filenames)
+
 
 def input_fn(vessel_metadata,
              filenames,
@@ -58,10 +62,7 @@ def input_fn(vessel_metadata,
         labels = set_labels_shape_fn(labels)
         return ((features, timestamps, time_ranges, mmsi), labels)
 
-    path_ds = (tf.data.Dataset.from_tensor_slices(filenames)
-                    .repeat()
-                    .shuffle(len(filenames))
-                    )
+    path_ds = tf.data.Dataset.from_generator(filename_generator(filenames))
 
     return (tf.data.TFRecordDataset(path_ds, num_parallel_reads=num_parallel_reads)
                 .map(parse_function)

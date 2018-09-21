@@ -243,7 +243,7 @@ class MultiClassificationObjective(ObjectiveBase):
 
     def create_loss(self, labels):
         with tf.variable_scope("custom-loss"):
-            mask = tf.to_float(tf.equal(tf.reduce_sum(labels, axis=1), 1))
+            mask = tf.to_float(tf.greater_equal(tf.reduce_sum(labels, axis=1), 1))
             positives = tf.reduce_sum(
                 tf.to_float(labels) * self.prediction, reduction_indices=[1])
             raw_loss = -tf.reduce_mean(mask * tf.log(positives + EPSILON))
