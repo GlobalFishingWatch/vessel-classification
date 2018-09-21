@@ -58,16 +58,16 @@ def misconception_layer(inputs,
         p1 = extra - p0
         padded = tf.pad(inputs, [[0, 0], [p0, p1], [0, 0]])
         stage_conv = ly.conv1d(
-            padded, filters, kernel_size, strides=strides, padding="valid", activation=tf.nn.relu)
-        stage_conv = ly.batch_normalization(stage_conv, 
-                        training=training, center=False, scale=False, renorm=False)
+            padded, filters, kernel_size, strides=strides, padding="valid", activation=None, bias=False)
+        stage_conv = ly.batch_normalization(stage_conv, training=training)
+        stage_conv = tf.nn.relu(stage_conv)
         stage_max_pool_reduce = tf.layers.max_pooling1d(
             padded, kernel_size, strides=strides, padding="valid")
         concat = tf.concat([stage_conv, stage_max_pool_reduce], 2)
 
-        total = ly.conv1d(concat, filters, 1, activation=tf.nn.relu)
-        total = ly.batch_normalization(total, 
-                        training=training, center=False, scale=False)
+        total = ly.conv1d(concat, filters, 1, activation=None, bias=False)
+        total = ly.batch_normalization(total, training=training)
+        total = tf.nn.relu
         return total
 
 
@@ -120,9 +120,9 @@ def misconception_model(inputs,
     for ofunc in objective_functions:
         onet = net
         for _ in range(sub_layers - 1):
-            onet = ly.conv1d(onet, sub_filters, 1, activation=tf.nn.relu)
-            onet = ly.batch_normalization(onet, 
-                        training=training, center=False, scale=False)
+            onet = ly.conv1d(onet, sub_filters, 1, activation=None, bias=False)
+            onet = ly.batch_normalization(onet, training=training)
+            onet = tf.nn.relu(onet)
         onet = ly.conv1d(onet, sub_filters, 1, activation=tf.nn.relu)
 
         n = int(onet.get_shape().dims[1])
@@ -161,15 +161,17 @@ def misconception_fishing(inputs,
 
     expanded_layers = []
     for i, lyr in enumerate(layers):
-        lyr = ly.conv1d(lyr, pre_filters, 1, activation=tf.nn.relu)
-        lyr = ly.batch_normalization(lyr, training=training, center=False, scale=False)
+        lyr = ly.conv1d(lyr, pre_filters, 1, activation=None)
+        lyr = ly.batch_normalization(lyr, training=training)
+        lyr = tf.nn.relu(lyr)
         expanded_layers.append(repeat_tensor(lyr, 2**i))
 
     embedding = tf.add_n(expanded_layers)
 
     for _ in range(post_layers - 1):
-        embedding = ly.conv1d(lyr, post_filters, 1, activation=tf.nn.relu)
-        lyr = ly.batch_normalization(embedding, training=training, center=False, scale=False)
+        embedding = ly.conv1d(embedding, post_filters, 1, activation=None, bias=False)
+        embedding = ly.batch_normalization(embedding, training=training)
+        embedding = tf.nn.relu(embedding)
 
     embedding = ly.conv1d(embedding, post_filters, 1, activation=tf.nn.relu)
     embedding = ly.dropout(embedding, training=training, rate=dropout_rate)
