@@ -14,7 +14,7 @@
 
 import abc
 import numpy as np
-from classification import utility
+from classification import metadata
 
 
 class ModelBase(object):
@@ -66,7 +66,7 @@ class ModelBase(object):
         self.training_objectives = None
 
     def build_training_file_list(self, base_feature_path, split):
-        boundary = 1 if (split == utility.TRAINING_SPLIT) else self.batch_size
+        boundary = 1 if (split == metadata.TRAINING_SPLIT) else self.batch_size
         random_state = np.random.RandomState()
         training_mmsis = self.vessel_metadata.weighted_training_list(
             random_state,
@@ -83,7 +83,7 @@ class ModelBase(object):
                       metadata_file,
                       fishing_ranges,
                       fishing_upweight=1.0):
-        return utility.read_vessel_multiclass_metadata(
+        return metadata.read_vessel_multiclass_metadata(
             all_available_mmsis, metadata_file, fishing_ranges,
             fishing_upweight)
 

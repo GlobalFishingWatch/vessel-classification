@@ -20,7 +20,7 @@ import logging
 import numpy as np
 import tensorflow as tf
 import tensorflow.metrics as metrics
-from classification import utility
+from classification import metadata
 import pytz
 """ Terminology in the context of objectives.
     
@@ -121,7 +121,7 @@ class RegressionObjective(ObjectiveBase):
         error = self.masked_mean_error(labels)
         loss = self.masked_mean_loss(self.prediction)
         return {
-            'loss' : (loss, loss),
+            'loss' : tf.metrics.mean(loss),
         }
 
    
@@ -177,8 +177,8 @@ class LogRegressionObjective(ObjectiveBase):
         loss = self.masked_mean_loss(labels)
         error = self.masked_mean_error(labels)
         return {
-            'loss': (loss, loss),
-            'error': (error, error)
+            'loss': tf.metrics.mean(loss),
+            'error': tf.metrics.mean(error)
         }
 
     def build_json_results(self, prediction, timestamps):
@@ -221,9 +221,9 @@ class MultiClassificationObjective(ObjectiveBase):
         super(MultiClassificationObjective, self).__init__(
             metadata_label, name, loss_weight, metrics)
         self.vessel_metadata = vessel_metadata
-        self.classes = utility.VESSEL_CLASS_DETAILED_NAMES
-        self.num_classes = utility.multihot_lookup_table.shape[-1]
-        self.class_indices = {k[0]: i for (i, k) in enumerate(utility.VESSEL_CATEGORIES)}
+        self.classes = metadata.VESSEL_CLASS_DETAILED_NAMES
+        self.num_classes = metadata.multihot_lookup_table.shape[-1]
+        self.class_indices = {k[0]: i for (i, k) in enumerate(metadata.VESSEL_CATEGORIES)}
 
 
     def build(self, net):
@@ -238,7 +238,7 @@ class MultiClassificationObjective(ObjectiveBase):
             for lbl in lbl_str.split('|'):
                 j = self.class_indices[lbl]
                 # Use '|' rather than '+' since classes might not be disjoint
-                encoded |= utility.multihot_lookup_table[j]
+                encoded |= metadata.multihot_lookup_table[j]
         return encoded.astype(np.float32)
 
     def create_loss(self, labels):
@@ -256,7 +256,7 @@ class MultiClassificationObjective(ObjectiveBase):
         loss = self.create_loss(labels)
         return {
             'accuracy' : metrics.accuracy(predictions, encoded_labels, weights=mask),
-            'loss' : (loss, loss)
+            'loss' : tf.metrics.mean(loss)
                 }
 
     def build_json_results(self, class_probabilities, timestamps):

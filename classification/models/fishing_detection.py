@@ -17,7 +17,7 @@ import argparse
 import json
 from .model import ModelBase
 from . import layers
-from classification import utility
+from classification import metadata
 from .objectives import (
     FishingLocalizationObjectiveCrossEntropy, TrainNetInfo)
 from classification.feature_generation import fishing_feature_generation
@@ -71,7 +71,7 @@ class Model(ModelBase):
                       metadata_file,
                       fishing_ranges,
                       fishing_upweight=1.0):
-        return utility.read_vessel_time_weighted_metadata(
+        return metadata.read_vessel_time_weighted_metadata(
             all_available_mmsis, metadata_file, fishing_ranges)
 
     def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
@@ -189,7 +189,7 @@ class Model(ModelBase):
         return input_fn
 
     def make_training_input_fn(self, base_feature_path, num_parallel_reads, prefetch=1024):
-        return self.make_input_fn(base_feature_path, utility.TRAINING_SPLIT, num_parallel_reads, prefetch)
+        return self.make_input_fn(base_feature_path, metadata.TRAINING_SPLIT, num_parallel_reads, prefetch)
 
     def make_test_input_fn(self, base_feature_path, num_parallel_reads, prefetch=1024):
-        return self.make_input_fn(base_feature_path, utility.TEST_SPLIT, num_parallel_reads, prefetch)
+        return self.make_input_fn(base_feature_path, metadata.TEST_SPLIT, num_parallel_reads, prefetch)

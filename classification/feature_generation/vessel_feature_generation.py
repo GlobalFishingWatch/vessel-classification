@@ -2,7 +2,7 @@ import tensorflow as tf
 import feature_generation
 # TODO: rather than importing this, hang the shape off of the objective
 from classification.models.objectives import MultiClassificationObjective
-from classification import utility
+from classification import metadata
 from . import feature_generation
 
 
@@ -27,7 +27,7 @@ def input_fn(vessel_metadata,
             [tf.float32] * len(objectives))
         return ((features, timestamps, time_bounds, mmsi), tuple(labels))
 
-    class_count = len(utility.VESSEL_CLASS_DETAILED_NAMES)
+    class_count = len(metadata.VESSEL_CLASS_DETAILED_NAMES)
 
     def set_label_shape(labels):
         results = []

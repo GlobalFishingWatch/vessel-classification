@@ -10,9 +10,9 @@ import time
 
 import tensorflow as tf
 
-from classification.utility import np_array_extract_all_fixed_slices
-from classification.utility import np_array_extract_slices_for_time_ranges
-from classification.utility import np_pad_repeat_slice
+from .feature_utilities import np_array_extract_all_fixed_slices
+from .feature_utilities import np_array_extract_slices_for_time_ranges
+from .feature_utilities import np_pad_repeat_slice
 
 
 class GCSFile(object):
@@ -73,10 +73,6 @@ class Deserializer(object):
         return sess.run([self.context_features, self.sequence_features], 
                 feed_dict={self.serialized_example: serialized_example})
 
-
-
-
-# Can we unify this with the version in utility?
 
 def process_fixed_window_features(context_features, sequence_features, 
         num_features, window_size, shift, start_date, end_date, win_start, win_end):

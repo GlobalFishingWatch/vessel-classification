@@ -38,7 +38,7 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.utility import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT, schema, atomic
+from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT, schema, atomic
 import gzip
 import dateutil.parser
 import datetime

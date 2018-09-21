@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from classification import utility
+from . import feature_utilities
 
 
 def filename_generator(filenames):
@@ -39,7 +39,7 @@ def input_fn(vessel_metadata,
         # TODO: Fix feature generation so it returns strings directly
         mmsi = vessel_metadata.mmsi_map_int2str[int_mmsi]
         ranges = vessel_metadata.fishing_ranges_map.get(mmsi, {})
-        return utility.np_array_extract_n_random_features(
+        return feature_utilities.np_array_extract_n_random_features(
                 random_state, features, num_slices_per_mmsi, max_time_delta,
                 window_size, min_timeslice_size, mmsi, ranges)
     
