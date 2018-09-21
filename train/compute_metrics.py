@@ -37,8 +37,8 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification import utility
-from classification.utility import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT, schema, atomic
+from classification import metadata
+from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT, schema, atomic
 import gzip
 import dateutil.parser
 import datetime
@@ -52,8 +52,8 @@ coarse_categories = [
     ]
 
 
-all_classes = set(utility.VESSEL_CLASS_DETAILED_NAMES)
-categories = dict(utility.VESSEL_CATEGORIES)
+all_classes = set(metadata.VESSEL_CLASS_DETAILED_NAMES)
+categories = dict(metadata.VESSEL_CATEGORIES)
 is_fishing = set(categories['fishing'])
 not_fishing = set(categories['non_fishing'])
 

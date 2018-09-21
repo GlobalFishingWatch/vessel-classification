@@ -20,7 +20,7 @@ import sys
 import importlib
 import tensorflow as tf
 from pkg_resources import resource_filename
-from . import utility
+from . import metadata
 
 def main(args):
     logging.getLogger().setLevel(logging.DEBUG)
@@ -50,9 +50,9 @@ def main(args):
                       fishing_range_file)
         sys.exit(-1)
 
-    fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
+    fishing_ranges = metadata.read_fishing_ranges(fishing_range_file)
 
-    all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
+    all_available_mmsis = metadata.find_available_mmsis(args.root_feature_path)
 
     vessel_metadata = Model.read_metadata(
         all_available_mmsis, metadata_file,
