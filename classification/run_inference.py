@@ -66,18 +66,19 @@ class Inferer(object):
         matching_files = self._feature_files(mmsis)
      
         if self.model.max_window_duration_seconds != 0:
-            raise NotImplementError()
-            # time_starts = self._build_starts(interval_months)
+            def input_fn():
+                time_starts = self._build_starts(interval_months)
 
-            # delta = timedelta(
-            #     seconds=self.model.max_window_duration_seconds)
-            # self.time_ranges = [(int(time.mktime(dt.timetuple())),
-            #                      int(time.mktime((dt + delta).timetuple())))
-            #                     for dt in time_starts]
-            # feature_iter = file_iterator.cropping_all_slice_feature_file_iterator(
-            #     matching_files, self.deserializer,
-            #     self.time_ranges, self.model.window_max_points,
-            #     self.min_points_for_classification)  # TODO: add year
+                delta = timedelta(
+                    seconds=self.model.max_window_duration_seconds)
+                self.time_ranges = [(int(time.mktime(dt.timetuple())),
+                                     int(time.mktime((dt + delta).timetuple())))
+                                    for dt in time_starts]
+                feature_iter = file_iterator.cropping_all_slice_feature_file_iterator(
+                                    matching_files, self.deserializer,
+                                    self.time_ranges, self.model.window_max_points,
+                                    self.min_points_for_classification)  # TODO: add year
+                return tf.dataset.from_generator(feature_iter).batch(1)
         else:
 
             def input_fn():
