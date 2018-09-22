@@ -66,7 +66,8 @@ def main(args):
     estimator = chosen_model.make_estimator(args.training_output_path)
     train_spec = tf.estimator.TrainSpec(
                     input_fn=train_input_fn, 
-                    max_steps=chosen_model.number_of_steps)
+                    max_steps=chosen_model.number_of_steps
+                    )
     eval_spec = tf.estimator.EvalSpec(
                     input_fn=test_input_fn,
                     start_delay_secs=120,

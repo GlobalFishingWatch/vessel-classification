@@ -15,14 +15,13 @@ def input_fn(vessel_metadata,
         dense_labels = np.zeros_like(timestamps, dtype=np.float32)
         dense_labels.fill(-1.0)
         if mmsi in vessel_metadata.fishing_ranges_map:
-            for (start_time, end_time, is_fishing
-                 ) in vessel_metadata.fishing_ranges_map[mmsi]:
-                start_range = calendar.timegm(start_time.utctimetuple(
+            for sel_range in vessel_metadata.fishing_ranges_map[mmsi]:
+                start_range = calendar.timegm(sel_range.start_time.utctimetuple(
                 ))
-                end_range = calendar.timegm(end_time.utctimetuple())
+                end_range = calendar.timegm(sel_range.end_time.utctimetuple())
                 mask = (timestamps >= start_range) & (
                     timestamps <= end_range)
-                dense_labels[mask] = is_fishing
+                dense_labels[mask] = sel_range.is_fishing
         return dense_labels
 
     def add_labels(features, timestamps, time_bounds, mmsi):

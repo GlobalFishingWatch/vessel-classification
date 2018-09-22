@@ -33,15 +33,14 @@ class Model(ModelBase):
 
     window_size = 3
     stride = 2
-    feature_depths = [48, 64, 96, 128, 192, 256]
-    strides = [2] * 9
-    assert len(strides) == len(feature_depths)
+    feature_depths = [48, 64, 96, 128, 192, 256, 384, 512, 768]
+    strides = [2] * len(feature_depths)
 
     initial_learning_rate = 1e-3
     learning_decay_rate = 0.5
     decay_examples = 10000
 
-    window = (64, 256)
+    window = (256, 1024)
 
     @property
     def number_of_steps(self):
@@ -54,7 +53,7 @@ class Model(ModelBase):
 
     @property
     def window_max_points(self):
-        return 256
+        return 1024
 
 
     @property
