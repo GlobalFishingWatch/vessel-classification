@@ -51,6 +51,9 @@ def input_fn(vessel_metadata,
             [features, int_mmsi],
             [tf.float32, tf.int32, tf.int32, tf.string])
         features = tf.squeeze(features, axis=1)
+        return (features, timestamps, time_ranges, mmsi)
+
+    def flatten(features, timestamps, time_ranges, mmsi):
         return tf.data.Dataset.from_tensor_slices((features, timestamps, time_ranges, mmsi))
 
     def set_shapes(all_features, labels):
@@ -65,9 +68,10 @@ def input_fn(vessel_metadata,
     path_ds = tf.data.Dataset.from_generator(lambda:filename_generator(filenames), tf.string)
 
     return (tf.data.TFRecordDataset(path_ds, num_parallel_reads=num_parallel_reads)
-                .map(parse_function)
-                .flat_map(xform) # This makes multiple small slices from each file
-                .map(add_labels_fn)
-                .map(set_shapes)
+                .map(parse_function, num_parallel_calls=num_parallel_reads)
+                .map(xform, num_parallel_calls=num_parallel_reads)
+                .flat_map(flatten)
+                .map(add_labels_fn, num_parallel_calls=num_parallel_reads)
+                .map(set_shapes, num_parallel_calls=num_parallel_reads)
            )
 
