@@ -5,6 +5,8 @@ import numpy as np
 import os
 from collections import defaultdict
 import pandas as pd
+import assemble_data
+from glob import glob
 
 
 query = """
@@ -17,8 +19,8 @@ FROM (
 SELECT * FROM 
 `machine_learning_dev_ttl_120d.combined_fishing_ranges_by_mmsi` a
 JOIN
-`world-fishing-827.pipe_staging_a.position_messages_*` b
-ON a.mmsi = b.ssvid
+`world-fishing-827.pipe_production_b.position_messages_*` b
+ON cast(a.mmsi as string) = b.ssvid
 WHERE b.timestamp BETWEEN a.start_time AND a.end_time
 )
 GROUP BY mmsi, start_time, end_time, is_fishing
@@ -39,10 +41,22 @@ def load_ranges(path):
     return df
 
 
-def process_ranges(path, ranges):
-    map_path = os.path.join(path, "temp/mmsi_to_multiple_vessel_ids.csv")
+map_rel_path = "temp/ssvid_to_multiple_vessel_ids.csv"
+
+
+def read_ssvid_map(path):
+    map_path = os.path.join(path, map_rel_path)
     map_df = pd.read_csv(map_path)
-    vid_map = {x.vessel_id: x.mmsi for x in map_df.itertuples()}
+    ssivd_map = {x.ssvid: [] for x in map_df.itertuples()}
+    for x in map_df.itertuples():
+        ssivd_map[x.ssvid].append(x.vessel_id)
+    return ssivd_map
+
+
+def process_ranges(path, ranges):
+    map_path = os.path.join(path, map_rel_path)
+    map_df = pd.read_csv(map_path)
+    vid_map = {x.vessel_id: x.ssvid for x in map_df.itertuples()}
     label_path = os.path.join(path, "training_classes.csv")
     label_df = pd.read_csv(label_path)
     label_map = {x.mmsi : x.label for x in label_df.itertuples()}
@@ -56,21 +70,53 @@ def process_ranges(path, ranges):
             f.write("{},{},,,,{}\n".format(v, label, split))
 
 def process_classes(path):
-    map_path = os.path.join(path, "temp/mmsi_to_multiple_vessel_ids.csv")
-    map_df = pd.read_csv(map_path)
-    mmsi_map = {x.mmsi : x.vessel_id for x in map_df.itertuples()}
+    ssvid_map = read_ssvid_map(path)
     label_path = os.path.join(path, "training_classes.csv")
     label_df = pd.read_csv(label_path)
-    ids = [mmsi_map.get(x.mmsi, '') for x in label_df.itertuples()]
-    label_df['mmsi'] = ids
-    label_df = label_df[label_df.mmsi != '']
+    relabelled = []
+    for x in label_df.itertuples():
+        for vid in ssvid_map.get(x.mmsi, []):
+            relabelled.append(x._replace(mmsi=vid))
+    relabelled_df = pd.DataFrame(relabelled)
+    # Creating as above adds an extra index column, which break the input, so remove it now.
+    del relabelled_df['Index']
     out_path = os.path.join(path, "training_classes_vessel_id.csv")
-    label_df.to_csv(out_path, index=False)
+    relabelled_df.to_csv(out_path, index=False)
+
+
+def create_fishing_ranges(path):
+    ssvid_map = read_ssvid_map(path)
+    in_path = os.path.abspath(os.path.join(path, 'combined_fishing_ranges.csv'))
+    out_path = os.path.abspath(os.path.join(path, 'combined_fishing_ranges_vessel_id.csv'))
+    print("{} -> {}".format(in_path, out_path))
+    df = pd.read_csv(in_path)
+    ssvid_map = read_ssvid_map(path)
+    relabelled = []
+    for x in df.itertuples():
+        for vid in ssvid_map.get(x.mmsi, []):
+            relabelled.append(x._replace(mmsi=vid))    
+    relabelled_df = pd.DataFrame(relabelled)
+    # Creating as above adds an extra index column, which break the input, so remove it now.
+    del relabelled_df['Index']
+    relabelled_df.to_csv(out_path, index=False)
+
+
+def augment_classes(path):
+    input_path = os.path.abspath(os.path.join(path, 'training_classes_vessel_id.csv'))
+    output_path = os.path.abspath(os.path.join(path, 'fishing_classes_vessel_id.csv'))
+    fishing_range_dir = os.path.join(this_dir, "../../data/time-ranges")
+    fishing_range_path = os.path.abspath(os.path.join(base_dir, 'combined_fishing_ranges_vessel_id.csv'))
+    false_positive_paths = [x for x in glob(os.path.join(fishing_range_dir, '*.csv')) if os.path.basename(x).startswith('false_')]
+    assemble_data.augment_training_list(input_path, output_path, fishing_range_path, false_positive_paths)
+
+
 
 def process(path):
     ranges = load_ranges(path)
     process_ranges(path, ranges)
     process_classes(path)
+    create_fishing_ranges(path)
+    augment_classes(path)
 
 
 if __name__ == "__main__":

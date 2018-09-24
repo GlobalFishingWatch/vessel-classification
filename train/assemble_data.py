@@ -16,7 +16,7 @@ from glob import glob
 import pandas as pd
 import logging
 import argparse
-from classification.utility import VESSEL_CATEGORIES, TRAINING_SPLIT, TEST_SPLIT
+from classification.metadata import VESSEL_CATEGORIES, TRAINING_SPLIT, TEST_SPLIT
 
 
 def assemble_fishing_data(src_dir, output_path):
