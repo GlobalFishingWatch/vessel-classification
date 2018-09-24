@@ -171,7 +171,7 @@ class Model(ModelBase):
             params={
             })   
 
-    def make_input_fn(self, base_feature_path, split, num_parallel_reads, prefetch):
+    def make_input_fn(self, base_feature_path, split, parallelism, prefetch):
         def input_fn():
             return (fishing_feature_generation.input_fn(
                         self.vessel_metadata,
@@ -180,7 +180,7 @@ class Model(ModelBase):
                         self.max_window_duration_seconds,
                         self.window_max_points,
                         self.min_viable_timeslice_length,
-                        num_parallel_reads=num_parallel_reads)
+                        parallelism=parallelism)
                 .prefetch(prefetch)
                 .shuffle(prefetch)
                 .batch(self.batch_size)

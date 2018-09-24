@@ -57,8 +57,10 @@ def empty_data(window_size, series):
 
 
 def cook_features(features, mmsi):
-    start_time = int(features[0][0])
-    end_time = int(features[-1][0])
+    # We use min and max here to account for possible rolling / replicating
+    # that goes on elsewhere.
+    start_time = int(features[:, 0].min())
+    end_time = int(features[:, 0].max())
 
     # Drop the first (timestamp) column.
     timestamps = features[:, 0].astype(np.int32)
@@ -98,7 +100,6 @@ def extract_n_random_fixed_points(random_state, input_series, n,
         the fixed points slice.   
     """
     input_length = len(input_series)
-    num_features_inc_timestamp = input_series.shape[1]
     if input_length < output_length:
         return empty_data(output_length, input_series)
 
@@ -130,10 +131,9 @@ def extract_n_random_fixed_points(random_state, input_series, n,
     return zip(*samples)
 
 
-
-def np_array_random_fixed_time_extract(random_state, input_series,
+def extract_n_random_fixed_times(random_state, input_series, n,
                                        max_time_delta, output_length,
-                                       min_timeslice_size):
+                                       mmsi, min_timeslice_size):
     """ Extracts a random fixed-time slice from a 2d numpy array.
     
     The input array must be 2d, representing a time series, with the first    
@@ -144,6 +144,7 @@ def np_array_random_fixed_time_extract(random_state, input_series,
         random_state: a numpy randomstate object.
         input_series: the input series. A 2d array first column representing an
             ascending time.   
+        n: the number of series to extract
         max_time_delta: the maximum duration of the returned timeseries in seconds.
         output_length: the number of points in the output series. Input series    
             shorter than this will be repeated into the output series.   
@@ -155,121 +156,30 @@ def np_array_random_fixed_time_extract(random_state, input_series,
         the fixed time slice.   
     """
     assert max_time_delta != 0, 'max_time_delta must be non zero for time based windows'
+    input_length = len(input_series)
+    if input_length < min_timeslice_size:
+        return empty_data(output_length, input_series)
 
-    # We want to include min_timeslice_size points in our data if we can, so we try picking
-    # slices `TRIALS` time.
-    TRIALS = 128
+    min_time = input_series[0, 0] - (output_length - min_timeslice_size)
+    max_ndx = input_length - min_timeslice_size
+    max_time_due_to_ndx = input_series[max_ndx, 0]
+    max_time_due_to_time = input_series[-1, 0] - max_time_delta
+    max_time = min(max_time_due_to_ndx, max_time_due_to_time)
 
-    # TODO: Just figure out the max / min points that are acceptable and pull the random
-    # points from there. If none available, return None.
-    for _ in range(TRIALS):
-        input_length = len(input_series)
-
-        start_time = input_series[0][0]
-        end_time = input_series[-1][0]
-        max_time_offset = max((end_time - start_time) - max_time_delta, 0)
-        time_offset = random_state.randint(0, max_time_offset + 1)
-
-        start_index = np.searchsorted(
-            input_series[:, 0], start_time + time_offset, side='left')
-
-        # Should not start closer than min_timeslice_size points from the end lest the 
-        # series have too few points to be meaningful.
-        start_index = min(start_index, max(0,
-                                           input_length - min_timeslice_size))
-        crop_end_time = min(input_series[start_index][0] + max_time_delta,
-                            end_time)
-
-        end_index = min(start_index + output_length,
-                        np.searchsorted(
-                            input_series[:, 0], crop_end_time, side='right'))
-
-        cropped = input_series[start_index:end_index]
-
-        if len(cropped) >= min_timeslice_size:
-            # Use this try
-            break
-
-        # Otherwise try again unless we are out of trials.
-
-    return np_pad_repeat_slice(cropped, output_length)
-
-
-def np_array_extract_features(random_state, input, max_time_delta, window_size,
-                              min_timeslice_size, selection_ranges, mmsi):
-    """ Extract and process a random timeslice from vessel movement features.
-
-  Removes the timestamp column from the features, and applies a random roll to
-  the chosen timeslice to further augment the training data.
-
-  Args:
-    random_state: a numpy RandomState object.
-    input: the input data as a 2d numpy array.
-    max_time_delta: the maximum duration of the returned timeseries in seconds.
-    window_size: the number of points in the window
-    min_timeslice_size: the minimum number of points in a timeslice for the
-                        series to be considered meaningful.
-    selection_ranges: Either a list of timeranges that should be preferentially selected 
-                      from (we try to get at least on point from one of the ranges), or None if
-                      to disable this behaviour. 
-
-    Note that if max_time_delta must be zero, or selection_ranges must be None, but not
-    both.
-
-  Returns:
-    A tuple comprising:
-      1. The extracted feature timeslice.
-      2. The timestamps of each feature point.
-      3. The start and end time of the timeslice (in int32 seconds since epoch).
-  """
-
-    assert max_time_delta != 0
-
-    features = np_array_random_fixed_time_extract(
-        random_state, input, max_time_delta, window_size,
-        min_timeslice_size)
-
-    if features is None:
-        num_features_inc_timestamp = input.shape[1]
-        return empty_data(window_size, input)
-
-    return cook_features(features)
-
-
-
-def np_array_extract_n_random_features(random_state, input, n, max_time_delta,
-                                       window_size, min_timeslice_size, mmsi,
-                                       selection_ranges):
-    """ Extract and process multiple random timeslices from a vessel movement feature.
-
-  Args:
-    input: the input data as a 2d numpy array.
-    training_labels: the label for the vessel which made this series.
-    n: the number of times to extract a feature timeslice from
-       this series.
-
-  Returns:
-    A tuple comprising:
-      1. N extracted feature timeslices.
-      2. N lists of timestamps for each feature point.
-      3. N start and end times for each the timeslice.
-      4. N mmsis, one per feature slice.
-  """
+    if max_time < min_time:
+        return empty_data(output_length, input_series)
 
     samples = []
-
-    if max_time_delta == 0:
-        return extract_n_random_fixed_points(random_state, input, n,
-                                       window_size, mmsi,
-                                       selection_ranges)
-
     for _ in range(n):
-        x = np_array_extract_features(
-            random_state, input, max_time_delta, window_size,
-            min_timeslice_size, selection_ranges, mmsi)
-        samples.append(x)
+        start_time = random_state.randint(min_time, max_time + 1)
+        start_index = np.searchsorted(input_series[:, 0], start_time, side='left')
+        end_index = start_index + output_length
+        cropped = input_series[start_index:end_index] # Might only have min_timeslice_size points
+        padded = np_pad_repeat_slice(cropped, output_length)
+        samples.append(cook_features(padded, mmsi))
 
     return zip(*samples)
+
 
 
 
@@ -317,7 +227,7 @@ def np_array_extract_slices_for_time_ranges(
 
         if len(cropped) >= min_points_for_classification:
             output_slice = np_pad_repeat_slice(cropped, window_size)
-
+            slices.append(cook_features(output_slice))
             time_bounds = np.array([start_time, end_time], dtype=np.int32)
 
             without_timestamp = output_slice[:, 1:]
@@ -329,6 +239,10 @@ def np_array_extract_slices_for_time_ranges(
 
 
 
+# TODO: 
+# 1. call directly from feature generation
+#       - Pass in xform from fishing generation / vessel generation
+# 2. Clone instance and start running today.
 
 
 def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,

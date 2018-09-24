@@ -90,6 +90,7 @@ class RegressionObjective(ObjectiveBase):
         super(RegressionObjective, self).__init__(metadata_label, name,
                                                   loss_weight, metrics)
         self.value_from_mmsi = value_from_mmsi
+        self.output_shape = []
 
     def create_label(self, mmsi, timestamps):
         self.value_from_mmsi(mmsi)
@@ -136,6 +137,7 @@ class LogRegressionObjective(ObjectiveBase):
         super(LogRegressionObjective, self).__init__(metadata_label, name,
                                                      loss_weight, metrics)
         self.value_from_mmsi = value_from_mmsi
+        self.output_shape = []
 
     def create_label(self, mmsi, timestamps):
         return self.value_from_mmsi(mmsi)
@@ -224,6 +226,7 @@ class MultiClassificationObjective(ObjectiveBase):
         self.classes = metadata.VESSEL_CLASS_DETAILED_NAMES
         self.num_classes = metadata.multihot_lookup_table.shape[-1]
         self.class_indices = {k[0]: i for (i, k) in enumerate(metadata.VESSEL_CATEGORIES)}
+        self.output_shape = [self.num_classes]
 
 
     def build(self, net):
