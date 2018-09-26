@@ -116,10 +116,7 @@ TEST_SPLIT = 'Test'
 TRAINING_SPLIT = 'Training'
 
 FishingRange = namedtuple('FishingRange',
-                          ['start_time', 'end_time', 'is_fishing', 'start_time_dt', 'end_time_dt'])
-
-EPOCH_DT = datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)
-
+                          ['start_time', 'end_time', 'is_fishing'])
 
 
 def int_or_hash(x):
@@ -427,10 +424,8 @@ def read_fishing_ranges(fishing_range_file):
             start_time = parse_date(els[1])
             end_time = parse_date(els[2])
             is_fishing = float(els[3])
-            start_time_dt = (start_time - EPOCH_DT).total_seconds()
-            end_time_dt = (end_time - EPOCH_DT).total_seconds()
             fishing_range_dict[mmsi].append(
-                FishingRange(start_time, end_time, is_fishing, start_time_dt, end_time_dt))
+                FishingRange(start_time, end_time, is_fishing))
 
     return dict(fishing_range_dict)
 

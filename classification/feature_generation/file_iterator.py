@@ -177,20 +177,7 @@ def all_fixed_window_feature_file_iterator(filenames, deserializer,
 
 
 
-def process_all_slice_features(context_features, sequence_features, 
-        time_ranges, window_size, min_points_for_classification, num_features):
 
-    movement_features = sequence_features['movement_features']
-    mmsi = context_features['mmsi']
-
-    random_state = np.random.RandomState()
-
-    def replicate_extract(input, mmsi):
-        return np_array_extract_slices_for_time_ranges(
-            random_state, input, num_features, mmsi, time_ranges, window_size,
-            min_points_for_classification)
-
-    return replicate_extract(movement_features, mmsi)
 
 
 

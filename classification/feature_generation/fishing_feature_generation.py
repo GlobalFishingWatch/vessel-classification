@@ -63,8 +63,7 @@ def input_fn(vessel_metadata,
         labels.set_shape([window_size])
         return all_features, labels
 
-    raw_data = feature_generation.read_input_fn(
-                    vessel_metadata,
+    raw_data = feature_generation.read_input_fn_infinite(
                     filenames,
                     num_features,
                     num_parallel_reads=parallelism,
@@ -76,3 +75,5 @@ def input_fn(vessel_metadata,
                 .map(add_labels, num_parallel_calls=parallelism)
                 .map(set_shapes)
            )
+
+

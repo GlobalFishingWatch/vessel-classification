@@ -19,6 +19,9 @@ import numpy as np
 import time
 
 
+EPOCH_DT = datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)
+
+
 def np_pad_repeat_slice(slice, window_size):
     """ Pads slice to the specified window size.
 
@@ -106,10 +109,10 @@ def extract_n_random_fixed_points(random_state, input_series, n,
     # Set of points where it would make sense to start a range.
     candidate_set = set()
 
-    starts = [x.start_time_dt for x in selection_ranges]
+    starts = [(x.start_time - EPOCH_DT).total_seconds() for x in selection_ranges]
     starts_ndxs = np.searchsorted(input_series[:, 0], starts, side='left')
 
-    ends = [x.end_time_dt for x in selection_ranges]
+    ends = [(x.end_time - EPOCH_DT).total_seconds() for x in selection_ranges]
     end_ndxs = np.searchsorted(input_series[:, 0], ends, side='right')
 
     for start_ndx, end_ndx in zip(starts_ndxs, end_ndxs):
@@ -184,7 +187,7 @@ def extract_n_random_fixed_times(random_state, input_series, n,
 
 
 def np_array_extract_slices_for_time_ranges(
-        random_state, input_series, num_features_inc_timestamp, mmsi,
+        random_state, input_series, mmsi,
         time_ranges, window_size, min_points_for_classification):
     """ Extract and process a set of specified time slices from a vessel
         movement feature.
@@ -227,22 +230,19 @@ def np_array_extract_slices_for_time_ranges(
 
         if len(cropped) >= min_points_for_classification:
             output_slice = np_pad_repeat_slice(cropped, window_size)
-            slices.append(cook_features(output_slice))
+            slices.append(cook_features(output_slice, mmsi))
             time_bounds = np.array([start_time, end_time], dtype=np.int32)
 
             without_timestamp = output_slice[:, 1:]
             timeseries = output_slice[:, 0].astype(np.int32)
             slices.append(
                 (np.stack([without_timestamp]), timeseries, time_bounds, mmsi))
+    # TODO: factor out this logic
+    if slices == []:
+        return empty_data(window_size, input_series)
+
 
     return zip(*slices)
-
-
-
-# TODO: 
-# 1. call directly from feature generation
-#       - Pass in xform from fishing generation / vessel generation
-# 2. Clone instance and start running today.
 
 
 def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
@@ -264,6 +264,8 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
 
 
     return zip(*slices)
+
+
 
 
 

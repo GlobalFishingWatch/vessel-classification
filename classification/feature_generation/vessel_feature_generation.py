@@ -8,13 +8,13 @@ from . import feature_utilities
 
 def input_fn(vessel_metadata,
              filenames,
-            num_features,
-            max_time_delta,
-            window_size,
-            min_timeslice_size,
-            objectives,
-            parallelism=4,
-            num_slices_per_mmsi=8):
+             num_features,
+             max_time_delta,
+             window_size,
+             min_timeslice_size,
+             objectives,
+             parallelism=4,
+             num_slices_per_mmsi=8):
 
     random_state = np.random.RandomState()
 
@@ -59,8 +59,12 @@ def input_fn(vessel_metadata,
         d = {obj.name : labels[i] for (i, obj) in enumerate(objectives)}
         return features, d
 
-    raw_data = feature_generation.read_input_fn(
-                    vessel_metadata,
+    def features_as_dict(features, labels):
+        features, timestamps, time_bounds, mmsi = features
+        d = {'features' : features, 'timestamps' : timestamps, 'time_bounds' : time_bounds, 'mmsi' : mmsi}
+        return d, labels
+
+    raw_data = feature_generation.read_input_fn_infinite(
                     filenames,
                     num_features,
                     num_parallel_reads=parallelism,
@@ -72,5 +76,64 @@ def input_fn(vessel_metadata,
                 .map(add_labels, num_parallel_calls=parallelism)
                 .map(set_shapes)
                 .map(lbls_as_dict)
+                .map(features_as_dict)
            )
 
+
+def predict_input_fn(paths,
+                   num_features,
+                   time_ranges,
+                   window_size,
+                   min_timeslice_size,
+                   parallelism=4):
+
+    random_state = np.random.RandomState()
+
+    def xform(mmsi, movement_features):
+
+        def _xform(features, int_mmsi):
+            mmsi = str(int_mmsi)
+            return feature_utilities.np_array_extract_slices_for_time_ranges(
+                    random_state, features, mmsi, time_ranges,
+                    window_size, min_timeslice_size)
+
+        int_mmsi = tf.cast(mmsi, tf.int64)
+        features = tf.cast(movement_features, tf.float32)
+        features, timestamps, time_ranges_tensor, mmsi = tf.py_func(
+            _xform, 
+            [features, int_mmsi],
+            [tf.float32, tf.int32, tf.int32, tf.string])
+        features = tf.squeeze(features, axis=1)
+        return (features, timestamps, time_ranges_tensor, mmsi)
+
+    def add_labels(features, timestamps, time_bounds, mmsi):
+
+        def _add_labels(mmsi, timestamps):
+            return np.int32(0)
+
+        labels =  tf.py_func(
+            _add_labels, 
+            [mmsi, timestamps],
+            [tf.int32])
+        return ((features, timestamps, time_bounds, mmsi), labels)
+
+    def set_shapes(all_features, labels):
+        features, timestamps, time_ranges, mmsi = all_features
+        feature_generation.set_feature_shapes(all_features, num_features, window_size)
+        labels.set_shape([])
+        return all_features, labels
+
+    def features_as_dict(features, labels):
+        features, timestamps, time_bounds, mmsi = features
+        d = {'features' : features, 'timestamps' : timestamps, 'time_ranges' : time_bounds, 'mmsi' : mmsi}
+        return d#, labels
+
+    raw_data = feature_generation.read_input_fn_one_shot(paths, num_features, num_parallel_reads=parallelism)
+
+    return (raw_data
+                .map(xform, num_parallel_calls=parallelism)
+                .flat_map(feature_generation.flatten_features)
+                .map(add_labels)
+                .map(set_shapes)
+                .map(features_as_dict)
+           )

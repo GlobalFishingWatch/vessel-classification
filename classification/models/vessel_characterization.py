@@ -98,6 +98,8 @@ class Model(ModelBase):
                 "Multiclass", "Vessel-class", vessel_metadata, metrics=metrics, loss_weight=1)
         ]
 
+        self.objective_map = {obj.name : obj for obj in self.training_objectives}
+
     def _build_net(self, features, timestamps, mmsis, is_training):
         outputs, _ = layers.misconception_model(
             features,
@@ -114,18 +116,22 @@ class Model(ModelBase):
     def make_model_fn(self):
         def _model_fn(features, labels, mode, params):
             is_train = (mode == tf.estimator.ModeKeys.TRAIN)
-            features, timestamps, time_ranges, mmsis = features
+            mmsis = features['mmsi']
+            time_ranges = features['time_ranges']
+            timestamps = features['timestamps']
+            features = features['features']
+            print(mmsis.shape, time_ranges.shape, timestamps.shape, features.shape)
             self._build_net(features, timestamps, mmsis, is_train)
 
             if mode == tf.estimator.ModeKeys.PREDICT:
-                raise NotImplementedError()
-                # predictions = {
-                #     "mmsis" : mmsi,
-                #     "time_ranges": time_ranges,
-                #     "timestamps" : timestamps,
-                #     self.fishing_localisation_objective.name : self.fishing_localisation_objective.prediction
-                #     }
-                # return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+                predictions = {
+                    "mmsi" : mmsis,
+                    "time_ranges" : time_ranges,
+                    "timestamps" : timestamps
+                    }
+                for obj in self.training_objectives:
+                    predictions[obj.name] = obj.prediction
+                return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
             global_step = tf.train.get_global_step()
 
@@ -190,8 +196,21 @@ class Model(ModelBase):
                 )
         return input_fn
 
-    def make_training_input_fn(self, base_feature_path, num_parallel_reads, prefetch=1024):
-        return self.make_input_fn(base_feature_path, metadata.TRAINING_SPLIT, num_parallel_reads, prefetch)
+    def make_training_input_fn(self, base_feature_path, parallelism, prefetch=1024):
+        return self.make_input_fn(base_feature_path, metadata.TRAINING_SPLIT, parallelism, prefetch)
 
-    def make_test_input_fn(self, base_feature_path, num_parallel_reads, prefetch=1024):
-        return self.make_input_fn(base_feature_path, metadata.TEST_SPLIT, num_parallel_reads, prefetch)
+    def make_test_input_fn(self, base_feature_path, parallelism, prefetch=1024):
+        return self.make_input_fn(base_feature_path, metadata.TEST_SPLIT, parallelism, prefetch)
+
+    def make_prediction_input_fn(self, paths, time_ranges, parallelism):
+        def input_fn():
+            return vessel_feature_generation.predict_input_fn(
+                            paths,
+                            self.num_feature_dimensions + 1,
+                            time_ranges,
+                            self.window_max_points,
+                            self.min_viable_timeslice_length,
+                            parallelism=parallelism
+                    ).batch(1)
+        return input_fn
+

@@ -7,5 +7,3 @@ export TF_CPP_MIN_LOG_LEVEL=2
 python -m train.compute_metrics_test
 python -m classification.metadata_test
 python -m classification.models.models_test
-python -m classification.feature_generation.feature_utilities_test
-python -m classification.feature_generation.file_iterator_test
