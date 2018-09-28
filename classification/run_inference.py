@@ -74,8 +74,6 @@ class Inferer(object):
 
     def run_inference(self, mmsis, interval_months, start_date, end_date):
         paths = self._feature_files(mmsis)
-        for i in range(10):
-            logging.info("Path example: {}".format(paths[i]))
         if self.model.max_window_duration_seconds != 0:
             time_ranges = self._build_time_ranges(interval_months, start_date, end_date)
             logging.info("Time ranges: {}".format(time_ranges))
