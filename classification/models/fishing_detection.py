@@ -117,12 +117,15 @@ class Model(ModelBase):
     def make_model_fn(self):
         def _model_fn(features, labels, mode, params):
             is_train = (mode == tf.estimator.ModeKeys.TRAIN)
-            features, timestamps, time_ranges, mmsis = features
+            mmsis = features['mmsi']
+            time_ranges = features['time_ranges']
+            timestamps = features['timestamps']
+            features = features['features']
             self._build_net(features, timestamps, mmsis, is_train)
 
             if mode == tf.estimator.ModeKeys.PREDICT:
                 predictions = {
-                    "mmsis" : mmsi,
+                    "mmsis" : mmsis,
                     "time_ranges": time_ranges,
                     "timestamps" : timestamps,
                     self.fishing_localisation_objective.name : self.fishing_localisation_objective.prediction
@@ -192,3 +195,18 @@ class Model(ModelBase):
 
     def make_test_input_fn(self, base_feature_path, num_parallel_reads, prefetch=1024):
         return self.make_input_fn(base_feature_path, metadata.TEST_SPLIT, num_parallel_reads, prefetch)
+
+    def make_prediction_input_fn(self, paths, range_info, parallelism):
+        start_date, end_date = range_info
+        def input_fn():
+            return fishing_feature_generation.predict_input_fn(
+                            paths,
+                            self.num_feature_dimensions + 1,
+                            self.window_max_points,
+                            start_date,
+                            end_date,
+                            self.window,
+                            parallelism=parallelism
+                    ).batch(1)
+        return input_fn
+

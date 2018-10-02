@@ -54,7 +54,7 @@ class Inferer(object):
             pytz.utc) - timedelta(seconds=window_dur_seconds)
         time_starts = []
         start_year = start_date.year
-        month_count = start_date.month
+        month_count = start_date.month - 1
         if start_date.day != 1:
             raise ValueError('start_date must fall on the 1st of the month')
         dt = start_date
@@ -74,25 +74,14 @@ class Inferer(object):
 
     def run_inference(self, mmsis, interval_months, start_date, end_date):
         paths = self._feature_files(mmsis)
+
         if self.model.max_window_duration_seconds != 0:
             time_ranges = self._build_time_ranges(interval_months, start_date, end_date)
-            logging.info("Time ranges: {}".format(time_ranges))
             input_fn = self.model.make_prediction_input_fn(paths, time_ranges, self.parallelism)
         else:
-            1 / 0
-            def input_fn():
-                if self.model.window is None:
-                    b, e = 0, self.window_max_points
-                else:
-                    b, e = self.model.window
-                shift = e - b
-                feature_iter = file_iterator.all_fixed_window_feature_file_iterator(
-                                        matching_files, deserializer,
-                                        self.model.window_max_points, shift, start_date, end_date, b, e)
-                return tf.dataset.Dataset.from_generator(feature_iter).batch(1)
+            input_fn = self.model.make_prediction_input_fn(paths, (start_date, end_date), parallelism)
 
         for batch_result in self.estimator.predict(input_fn=input_fn, yield_single_examples=False):
-
 
             # Tensorflow returns some items one would expect to be shape (1,)
             # as shape (). Compensate for that here by checking for is_scalar

@@ -120,7 +120,6 @@ class Model(ModelBase):
             time_ranges = features['time_ranges']
             timestamps = features['timestamps']
             features = features['features']
-            print(mmsis.shape, time_ranges.shape, timestamps.shape, features.shape)
             self._build_net(features, timestamps, mmsis, is_train)
 
             if mode == tf.estimator.ModeKeys.PREDICT:
@@ -202,7 +201,8 @@ class Model(ModelBase):
     def make_test_input_fn(self, base_feature_path, parallelism, prefetch=1024):
         return self.make_input_fn(base_feature_path, metadata.TEST_SPLIT, parallelism, prefetch)
 
-    def make_prediction_input_fn(self, paths, time_ranges, parallelism):
+    def make_prediction_input_fn(self, paths, range_info, parallelism):
+        time_ranges = range_info
         def input_fn():
             return vessel_feature_generation.predict_input_fn(
                             paths,

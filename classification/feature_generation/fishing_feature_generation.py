@@ -77,3 +77,56 @@ def input_fn(vessel_metadata,
            )
 
 
+
+def predict_input_fn(paths,
+                   num_features,
+                   window_size,
+                   start_date,
+                   end_date,
+                   window,
+                   parallelism=4):
+
+    if window is None:
+        b, e = 0, window_size
+    else:
+        b, e = window
+    shift = e - b
+
+    random_state = np.random.RandomState()
+
+    def xform(mmsi, movement_features):
+
+        def _xform(features, int_mmsi):
+            mmsi = str(int_mmsi)
+            return feature_utilities.process_fixed_window_features(
+                    random_state, features, mmsi, num_features, 
+                    window_size, shift, start_date, end_date, b, e)
+
+        int_mmsi = tf.cast(mmsi, tf.int64)
+        features = tf.cast(movement_features, tf.float32)
+        features, timestamps, time_ranges_tensor, mmsi = tf.py_func(
+            _xform, 
+            [features, int_mmsi],
+            [tf.float32, tf.int32, tf.int32, tf.string])
+        features = tf.squeeze(features, axis=1)
+        return (features, timestamps, time_ranges_tensor, mmsi)
+
+    def set_shapes(features, timestamps, time_bounds, mmsi):
+        all_features = features, timestamps, time_bounds, mmsi
+        feature_generation.set_feature_shapes(all_features, num_features, window_size)
+        return all_features
+
+    def features_as_dict(features, timestamps, time_bounds, mmsi):
+        d = {'features' : features, 'timestamps' : timestamps, 'time_ranges' : time_bounds, 'mmsi' : mmsi}
+        return d
+
+    raw_data = feature_generation.read_input_fn_one_shot(paths, num_features, num_parallel_reads=parallelism)
+
+    return (raw_data
+                .map(xform, num_parallel_calls=parallelism)
+                .flat_map(feature_generation.flatten_features)
+                .map(set_shapes)
+                .map(features_as_dict)
+           )
+
+

@@ -277,7 +277,6 @@ class MultiClassificationObjective(ObjectiveBase):
         }
 
 
-
 class FishingLocalizationObjectiveCrossEntropy(ObjectiveBase):
     def __init__(self,
                  metadata_label,
@@ -285,8 +284,8 @@ class FishingLocalizationObjectiveCrossEntropy(ObjectiveBase):
                  vessel_metadata,
                  loss_weight=1.0,
                  metrics='all',
-                 window=None, ):
-        ObjectiveBase.__init__(self, metadata_label, name, loss_weight,
+                 window=None):
+        super(FishingLocalizationObjectiveCrossEntropy, self).__init__(metadata_label, name, loss_weight,
                                metrics)
         self.vessel_metadata = vessel_metadata
         self.window = window

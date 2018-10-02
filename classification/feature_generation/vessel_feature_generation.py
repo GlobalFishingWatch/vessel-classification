@@ -89,6 +89,7 @@ def predict_input_fn(paths,
 
     random_state = np.random.RandomState()
 
+    print("YYY", time_ranges)
     def xform(mmsi, movement_features):
 
         def _xform(features, int_mmsi):
@@ -106,34 +107,20 @@ def predict_input_fn(paths,
         features = tf.squeeze(features, axis=1)
         return (features, timestamps, time_ranges_tensor, mmsi)
 
-    def add_labels(features, timestamps, time_bounds, mmsi):
-
-        def _add_labels(mmsi, timestamps):
-            return np.int32(0)
-
-        labels =  tf.py_func(
-            _add_labels, 
-            [mmsi, timestamps],
-            [tf.int32])
-        return ((features, timestamps, time_bounds, mmsi), labels)
-
-    def set_shapes(all_features, labels):
-        features, timestamps, time_ranges, mmsi = all_features
+    def set_shapes(features, timestamps, time_bounds, mmsi):
+        all_features = features, timestamps, time_bounds, mmsi
         feature_generation.set_feature_shapes(all_features, num_features, window_size)
-        labels.set_shape([])
-        return all_features, labels
+        return all_features
 
-    def features_as_dict(features, labels):
-        features, timestamps, time_bounds, mmsi = features
+    def features_as_dict(features, timestamps, time_bounds, mmsi):
         d = {'features' : features, 'timestamps' : timestamps, 'time_ranges' : time_bounds, 'mmsi' : mmsi}
-        return d#, labels
+        return d
 
     raw_data = feature_generation.read_input_fn_one_shot(paths, num_features, num_parallel_reads=parallelism)
 
     return (raw_data
                 .map(xform, num_parallel_calls=parallelism)
                 .flat_map(feature_generation.flatten_features)
-                .map(add_labels)
                 .map(set_shapes)
                 .map(features_as_dict)
            )
