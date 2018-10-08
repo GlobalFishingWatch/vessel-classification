@@ -61,7 +61,7 @@ def input_fn(vessel_metadata,
 
     def features_as_dict(features, labels):
         features, timestamps, time_bounds, mmsi = features
-        d = {'features' : features, 'timestamps' : timestamps, 'time_bounds' : time_bounds, 'mmsi' : mmsi}
+        d = {'features' : features, 'timestamps' : timestamps, 'time_ranges' : time_bounds, 'mmsi' : mmsi}
         return d, labels
 
     raw_data = feature_generation.read_input_fn_infinite(

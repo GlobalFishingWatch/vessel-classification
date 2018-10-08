@@ -79,7 +79,7 @@ class Inferer(object):
             time_ranges = self._build_time_ranges(interval_months, start_date, end_date)
             input_fn = self.model.make_prediction_input_fn(paths, time_ranges, self.parallelism)
         else:
-            input_fn = self.model.make_prediction_input_fn(paths, (start_date, end_date), parallelism)
+            input_fn = self.model.make_prediction_input_fn(paths, (start_date, end_date), self.parallelism)
 
         for batch_result in self.estimator.predict(input_fn=input_fn, yield_single_examples=False):
 

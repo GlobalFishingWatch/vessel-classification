@@ -97,7 +97,7 @@ class Model(ModelBase):
             LogRegressionObjectiveMAE(
                 'crew_size',
                 'Vessel-Crew-Size',
-                XOrNone('crew_size'),
+                XOrNan('crew_size'),
                 metrics=metrics,
                 loss_weight=0.1),
             MultiClassificationObjective(
