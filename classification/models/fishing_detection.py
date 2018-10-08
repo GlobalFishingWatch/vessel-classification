@@ -125,7 +125,7 @@ class Model(ModelBase):
 
             if mode == tf.estimator.ModeKeys.PREDICT:
                 predictions = {
-                    "mmsis" : mmsis,
+                    "mmsi" : mmsis,
                     "time_ranges": time_ranges,
                     "timestamps" : timestamps,
                     self.fishing_localisation_objective.name : self.fishing_localisation_objective.prediction
