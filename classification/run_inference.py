@@ -81,12 +81,7 @@ class Inferer(object):
         else:
             input_fn = self.model.make_prediction_input_fn(paths, (start_date, end_date), self.parallelism)
 
-        for batch_result in self.estimator.predict(input_fn=input_fn, yield_single_examples=False):
-
-            # Tensorflow returns some items one would expect to be shape (1,)
-            # as shape (). Compensate for that here by checking for is_scalar
-            # TODO: check if this is still needed with new interface (or maybe can be moved into model_fn when it matters)
-            result = {k: (v if np.isscalar(v) else v[0]) for (k, v) in batch_result.items()}
+        for result in self.estimator.predict(input_fn=input_fn, yield_single_examples=False):
 
             start_time, end_time = [datetime.utcfromtimestamp(x) for x in result['time_ranges']]
             output = {
