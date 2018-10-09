@@ -176,8 +176,7 @@ def misconception_fishing(inputs,
     embedding = ly.conv1d(embedding, post_filters, 1, activation=tf.nn.relu)
     embedding = ly.dropout(embedding, training=training, rate=dropout_rate)
 
-    fishing_outputs = tf.squeeze(
-        ly.conv1d(embedding, 1, 1, activation=None))
+    fishing_outputs = ly.conv1d(embedding, 1, 1, activation=None)
 
     return objective_function.build(fishing_outputs)
 
