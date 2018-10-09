@@ -345,8 +345,8 @@ class FishingLocalizationObjectiveCrossEntropy(ObjectiveBase):
         assert (len(prediction) == len(timestamps))
         thresholded_prediction = prediction > 0.5
         combined = zip(timestamps, thresholded_prediction)
-        if self.eval_window:
-            b, e = self.eval_window
+        if self.window:
+            b, e = self.window
             combined = combined[b:e]
 
         last = None
