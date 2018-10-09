@@ -81,7 +81,7 @@ class Inferer(object):
         else:
             input_fn = self.model.make_prediction_input_fn(paths, (start_date, end_date), self.parallelism)
 
-        for result in self.estimator.predict(input_fn=input_fn, yield_single_examples=False):
+        for result in self.estimator.predict(input_fn=input_fn):
 
             start_time, end_time = [datetime.utcfromtimestamp(x) for x in result['time_ranges']]
             output = {
