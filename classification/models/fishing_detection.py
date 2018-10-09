@@ -91,6 +91,8 @@ class Model(ModelBase):
             window=self.window)
 
         self.objectives = [self.fishing_localisation_objective]
+        self.objective_map = {obj.name : obj for obj in self.objectives}
+
 
     def build_training_file_list(self, base_feature_path, split):
         random_state = np.random.RandomState()
