@@ -89,7 +89,6 @@ def predict_input_fn(paths,
 
     random_state = np.random.RandomState()
 
-    print("YYY", time_ranges)
     def xform(mmsi, movement_features):
 
         def _xform(features, int_mmsi):

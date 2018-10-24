@@ -44,19 +44,18 @@ def load_ranges(path):
 map_rel_path = "temp/ssvid_to_multiple_vessel_ids.csv"
 
 
-def read_ssvid_map(path):
-    map_path = os.path.join(path, map_rel_path)
+def read_ssvid_map():
+    map_path = os.path.join(this_dir, map_rel_path)
     map_df = pd.read_csv(map_path)
+    vid_map = {x.vessel_id: x.ssvid for x in map_df.itertuples()}
     ssivd_map = {x.ssvid: [] for x in map_df.itertuples()}
     for x in map_df.itertuples():
         ssivd_map[x.ssvid].append(x.vessel_id)
-    return ssivd_map
+    return vid_map, ssivd_map
 
 
 def process_ranges(path, ranges):
-    map_path = os.path.join(path, map_rel_path)
-    map_df = pd.read_csv(map_path)
-    vid_map = {x.vessel_id: x.ssvid for x in map_df.itertuples()}
+    vid_map, ssvid_map = read_ssvid_map()
     label_path = os.path.join(path, "training_classes.csv")
     label_df = pd.read_csv(label_path)
     label_map = {x.mmsi : x.label for x in label_df.itertuples()}
@@ -70,7 +69,7 @@ def process_ranges(path, ranges):
             f.write("{},{},,,,{}\n".format(v, label, split))
 
 def process_classes(path):
-    ssvid_map = read_ssvid_map(path)
+    vid_map, ssvid_map = read_ssvid_map()
     label_path = os.path.join(path, "training_classes.csv")
     label_df = pd.read_csv(label_path)
     relabelled = []
@@ -85,12 +84,11 @@ def process_classes(path):
 
 
 def create_fishing_ranges(path):
-    ssvid_map = read_ssvid_map(path)
+    vid_map, ssvid_map = read_ssvid_map()
     in_path = os.path.abspath(os.path.join(path, 'combined_fishing_ranges.csv'))
     out_path = os.path.abspath(os.path.join(path, 'combined_fishing_ranges_vessel_id.csv'))
     print("{} -> {}".format(in_path, out_path))
     df = pd.read_csv(in_path)
-    ssvid_map = read_ssvid_map(path)
     relabelled = []
     for x in df.itertuples():
         for vid in ssvid_map.get(x.mmsi, []):
