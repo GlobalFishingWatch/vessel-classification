@@ -305,8 +305,8 @@ class FishingLocalizationObjectiveCrossEntropy(ObjectiveBase):
                                  pos_weight=self.pos_weight))
 
     def build(self, net):
-        self.logits = net
-        self.prediction = tf.sigmoid(net)
+        self.logits = net[:, :, 0]
+        self.prediction = tf.sigmoid(self.logits)
 
     def create_loss(self, dense_labels):
         return self.loss_weight * self.loss_function(dense_labels)

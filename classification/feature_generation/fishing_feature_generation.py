@@ -63,6 +63,11 @@ def input_fn(vessel_metadata,
         labels.set_shape([window_size])
         return all_features, labels
 
+    def features_as_dict(features, labels):
+        features, timestamps, time_bounds, mmsi = features
+        d = {'features' : features, 'timestamps' : timestamps, 'time_ranges' : time_bounds, 'mmsi' : mmsi}
+        return d, labels
+
     raw_data = feature_generation.read_input_fn_infinite(
                     filenames,
                     num_features,
@@ -74,6 +79,7 @@ def input_fn(vessel_metadata,
                 .flat_map(feature_generation.flatten_features)
                 .map(add_labels, num_parallel_calls=parallelism)
                 .map(set_shapes)
+                .map(features_as_dict)
            )
 
 
