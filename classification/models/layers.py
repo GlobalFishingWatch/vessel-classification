@@ -125,6 +125,64 @@ def misconception_model(inputs,
             onet = tf.nn.relu(onet)
         onet = ly.conv1d(onet, sub_filters, 1, activation=tf.nn.relu)
 
+        # n = int(onet.get_shape().dims[1])
+        # onet = ly.average_pooling1d(onet, n, n)
+        onet = ly.flatten(onet)
+        #
+        onet = ly.dropout(onet, training=training, rate=dropout_rate)
+        outputs.append(ofunc.build(onet))
+
+    return outputs, layers
+
+
+def misconception_model_2(inputs,
+                        filters_list,
+                        kernel_size,
+                        strides_list,
+                        training,
+                        objective_functions,
+                        sub_filters=128,
+                        sub_layers=2,
+                        dropout_rate=0.5):
+    """ A misconception tower.
+
+  Args:
+    input: a tensor of size [batch_size, 1, width, depth].
+    window_size: the width of the conv and pooling filters to apply.
+    depth: the depth of the output tensor.
+    levels: the height of the tower in misconception layers.
+    objective_functions: a list of objective functions to add to the top of
+                         the network.
+    is_training: whether the network is training.
+
+  Returns:
+    a tensor of size [batch_size, num_classes].
+  """
+    layers = []
+    net = inputs
+    layers.append(net)
+    for filters, strides in zip(filters_list, strides_list):
+        net = misconception_with_bypass(net, filters, kernel_size, strides, training)
+        layers.append(net)
+    onet = net
+    for _ in range(sub_layers - 1):
+        onet = ly.conv1d(onet, sub_filters, 1, activation=None, use_bias=False)
+        onet = ly.batch_normalization(onet, training=training)
+        onet = tf.nn.relu(onet)
+    onet = ly.conv1d(onet, sub_filters, 1, activation=tf.nn.relu)
+    snet = ly.conv1d(onet, 1, 1, activation=tf.nn.relu)[:, :, 0]
+    selector = tf.expand_dims(tf.nn.softmax(snet), 2)
+
+    outputs = []
+    for ofunc in objective_functions:
+        onet = net
+        for _ in range(sub_layers - 1):
+            onet = ly.conv1d(onet, sub_filters, 1, activation=None, use_bias=False)
+            onet = ly.batch_normalization(onet, training=training)
+            onet = tf.nn.relu(onet)
+        onet = ly.conv1d(onet, sub_filters, 1, activation=tf.nn.relu)
+
+        onet = onet * selector
         n = int(onet.get_shape().dims[1])
         onet = ly.average_pooling1d(onet, n, n)
         onet = ly.flatten(onet)

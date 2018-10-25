@@ -96,7 +96,7 @@ class RegressionObjective(ObjectiveBase):
         self.value_from_mmsi(mmsi)
 
     def build(self, net):
-        self.prediction = tf.layers.dense(net, 1, activation=None)
+        self.prediction = tf.layers.dense(net, 1, activation=None)[:, 0]
 
     def expected_and_mask(self, labels):
         mask = ~tf.is_nan(labels)
@@ -142,7 +142,7 @@ class LogRegressionObjective(ObjectiveBase):
         return self.value_from_mmsi(mmsi)
 
     def build(self, net):
-        self.prediction = tf.layers.dense(net, 1, activation=None)
+        self.prediction = tf.layers.dense(net, 1, activation=None)[:, 0]
 
     def expected_and_mask(self, labels):
         mask = ~tf.is_nan(labels)
