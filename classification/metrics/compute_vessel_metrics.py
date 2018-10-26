@@ -42,82 +42,30 @@ import gzip
 import dateutil.parser
 import datetime
 import pytz
-
-'''
-unknown:
-    fishing:
-      other_not_fishing:
-      passenger:
-      gear:
-      seismic_vessel:
-      helicopter:
-      cargo_or_tanker:
-        bunker_or_tanker:
-          bunker:
-          tanker:
-        cargo_or_reefer:
-          cargo:
-          reefer:
-      patrol_vessel:
-      research:
-      dive_vessel:
-      submarine:
-      dredge:
-      supply_vessel:
-      fish_factory:
-      tug:
-
-    non_fishing:
-      squid_jigger:
-      drifting_longlines:
-      pole_and_line:
-      other_fishing:
-      trollers:
-      fixed_gear:
-        pots_and_traps:
-        set_longlines:
-        set_gillnets:
-      trawlers:
-      purse_seines:
-      driftnets:
-      unknown_fishing:
-'''
-
-
-# coarse_mapping = [
-#     ['cargo_or_tanker', {'tanker', 'cargo', 'bunker', 'reefer'}],
-#     ['passenger', {'passenger'}],
-#     ['helicopter', {'helicopter'}]
-#     ['seismic_vessel', ['seismic_vessel'}],
-#     ['patrol_vessel', {'patrol_vessel'}],
-#     ['research', {'research'}],
-#     ['']
-#     ['tug', {'tug'}],
-#     ['other_not_fishing', {'other_not_fishing'}],  
-#     ['drifting_longlines', {'drifting_longlines'}],
-#     ['purse_seines', {'purse_seines'}],
-#     ['fixed_gear', {'pots_and_traps', 'set_gillnets', 'set_longlines'}],
-#     ['squid_jigger', ['squid_jigger']],
-#     ['gear', ['gear']],
-#     ['trawlers', {'trawlers'}],
-#     ['other_fishing', {'pole_and_line', 'trollers', 'other_fishing', 'drift_nets'}]
-# ]
-
+import pandas as pd
 
 coarse_categories = [
-    'cargo_or_tanker', 'passenger', 'seismic_vessel', 'tug', 'other_fishing', 
-    'drifting_longlines', 'purse_seines', 'fixed_gear', 'squid_jigger', 'trawlers', 
-    'other_not_fishing']
+    'cargo_or_tanker', 'passenger', 'tug',  'seismic_vessel','other_not_fishing', 
+    'drifting_longlines', 'gear', 'purse_seines', 'set_gillnets', 'set_longlines', 'pots_and_traps',
+     'trawlers', 'squid_jigger','other_fishing', 
+    ]
+
+
+all_classes = set(VESSEL_CLASS_DETAILED_NAMES)
+categories = dict(VESSEL_CATEGORIES)
+is_fishing = set(categories['fishing'])
+not_fishing = set(categories['non_fishing'])
 
 coarse_mapping = defaultdict(set)
-for k0, extra in [('fishing', 'other_fishing'), 
-                  ('non_fishing', 'other_not_fishing')]:
-    for k1, v1 in schema['unknown'][k0].items():
-        key = k1 if (k1 in coarse_categories) else extra
-        if v1 is None:
-            coarse_mapping[key] |= {k1}
-        else:
-            coarse_mapping[key] |= set(atomic(v1))
+used = set()
+for cat in coarse_categories:
+    atomic_cats = set(categories[cat])
+    assert not atomic_cats & used
+    used |= atomic_cats
+    coarse_mapping[cat] = atomic_cats
+unused = all_classes - used
+coarse_mapping['other_fishing'] |= (is_fishing & unused)
+coarse_mapping['other_not_fishing'] |= (not_fishing & unused)
 
 coarse_mapping = [(k, coarse_mapping[k]) for k in coarse_categories]
 
@@ -769,21 +717,24 @@ def confusion_matrix(results):
     return ConfusionMatrix(cm_raw, cm_normalized)
 
 
-def load_inferred(inference_path, extractors, whitelist):
+def load_inferred(inference_table, label_table, extractors, whitelist):
     """Load inferred data and generate comparison data
 
     """
-    with gzip.GzipFile(inference_path) as f:
-        with nlj.open(f, json_lib='ujson') as src:
-            for row in src:
-                if whitelist is not None and row['mmsi'] not in whitelist:
-                    continue
-                # Parsing dates is expensive and all extractors use dates, so parse them
-                # once up front
-                row['start_time'] = _parse(row['start_time'])
-                #dateutil.parser.parse(row['start_time'])
-                for ext in extractors:
-                    ext.extract(row)
+    query = """
+    SELECT a.* FROM 
+    `{}*` a
+    JOIN
+    `{}` b
+    ON a.vessel_id = b.mmsi 
+    """.format(inference_table, label_table)
+    df = pd.read_gbq(query, project_id='world-fishing-827', dialect='standard')
+
+    for row in df.itertuples():
+        if whitelist is not None and row.mmsi not in whitelist:
+            continue
+        for ext in extractors:
+            ext.extract(row)
     for ext in extractors:
         ext.finalize()
 
@@ -791,8 +742,7 @@ def load_inferred(inference_path, extractors, whitelist):
 class ClassificationExtractor(InferenceResults):
     # Conceptually an InferenceResult
     # TODO: fix to make true subclass or return true inference result at finalization time or something.
-    def __init__(self, field, label_map):
-        self.field = field
+    def __init__(self, label_map):
         self.label_map = label_map
         #
         self.all_mmsi = []
@@ -810,17 +760,16 @@ class ClassificationExtractor(InferenceResults):
         self.all_labels = set(label_map.values())
 
     def extract(self, row):
-        mmsi = row['mmsi']
+        mmsi = row.vessel_id
         lbl = self.label_map.get(mmsi)
-        if self.field not in row:
-            return
-        label_scores = row[self.field]['label_scores']
+        raw_label_scores = row.label_scores
+        label_scores = {x['label'] : x['score'] for x in raw_label_scores}
         self.all_labels |= set(label_scores.keys())
-        start_date = row['start_time']
+        start_date = row.start_time
         # TODO: write out TZINFO in inference
         if start_date.tzinfo is None:
             start_date = start_date.replace(tzinfo=pytz.utc)
-        inferred = row[self.field]['max_label']
+        inferred = row.max_label
         # Every row that has inference values get stored in all_
         self.all_mmsi.append(mmsi)
         self.all_start_dates.append(start_date)
@@ -828,7 +777,7 @@ class ClassificationExtractor(InferenceResults):
         self.all_inferred_labels.append(inferred)
         self.all_scores.append(label_scores)
         # Only values that have a known component get stored in the not all_ arrays
-        if lbl is not None:
+        if lbl is not None and not (isinstance(lbl, float) and np.isnan(lbl)):
             self.mmsi.append(mmsi)
             self.start_dates.append(start_date)
             self.true_labels.append(lbl)
@@ -865,15 +814,15 @@ class AttributeExtractor(object):
         self.start_dates = []
 
     def extract(self, row):
-        mmsi = row['mmsi']
-        if self.key not in row:
+        mmsi = row.vessel_id
+        if getattr(row, self.key) is None:
             return
         self.mmsi.append(mmsi)
-        self.start_dates.append(row['start_time'])
+        self.start_dates.append(row.start_time)
         self.true_attrs.append(
             float(self.attr_map[mmsi]) if (mmsi in self.attr_map) else np.nan)
         self.true_labels.append(self.label_map.get(mmsi, 'Unknown'))
-        self.inferred_attrs.append(row[self.key]['value'])
+        self.inferred_attrs.append(getattr(row, self.key))
 
     def finalize(self):
         self.inferred_attrs = np.array(self.inferred_attrs)
@@ -951,23 +900,22 @@ def datetime_to_minute(dt):
 
 
 def compute_results(args):
-    inference_path = get_local_inference_path(args)
-
     logging.info('Loading label maps')
     maps = defaultdict(dict)
-    with open(args.label_path) as f:
-        for row in csv.DictReader(f):
-            mmsi = int(row['mmsi'].strip())
-            if not row['split'] == TEST_SPLIT:
-                continue
-            for field in ['label', 'length', 'tonnage', 'engine_power', 'crew_size', 'split'
-                          ]:
-                if row[field]:
-                    if field == 'label':
-                        if row[field].strip(
-                        ) not in VESSEL_CLASS_DETAILED_NAMES:
-                            continue
-                    maps[field][mmsi] = row[field]
+    label_df = pd.read_gbq("select * from `{}`".format(args.label_table), project_id='world-fishing-827', dialect='standard')
+    for row in label_df.itertuples():
+        mmsi = row.mmsi
+        if not row.split == TEST_SPLIT:
+            continue
+        for field in ['label', 'length', 'tonnage', 'engine_power', 'crew_size', 'split']:
+            val = getattr(row, field)
+            if val is not None and val != '' and not (isinstance(val, float) and np.isnan(val)):
+                if field == 'label':
+                    if row.label.strip(
+                    ) not in VESSEL_CLASS_DETAILED_NAMES:
+                        print("SHOULDNT HAPPEN!", field)
+                        continue
+                maps[field][mmsi] = getattr(row, field)
     results = {}
 
     # Sanity check the attribute mappings
@@ -975,60 +923,38 @@ def compute_results(args):
         for mmsi, value in maps[field].items():
             assert float(value) > 0, (mmsi, value)
 
-    if not args.skip_localisation_metrics:
-        ext = FishingRangeExtractor()
-        results['fishing_ranges'] = ext
+    results['fine'] = ClassificationExtractor(maps['label'])
 
-    if (not args.skip_class_metrics) or args.dump_labels_to:
-        results['fine'] = ClassificationExtractor('Multiclass', maps['label'])
-
-    if not args.skip_attribute_metrics:  # TODO: change to skip_attribute_metrics
-        ext = AttributeExtractor('length', maps['length'], maps['label'])
-        results['length'] = ext
-        ext = AttributeExtractor('tonnage', maps['tonnage'], maps['label'])
-        results['tonnage'] = ext
-        ext = AttributeExtractor('engine_power', maps['engine_power'],
-                                 maps['label'])
-        results['engine_power'] = ext
-        ext = AttributeExtractor('crew_size', maps['crew_size'],
-                                 maps['label']) 
-        results['crew_size'] = ext       
+    ext = AttributeExtractor('length', maps['length'], maps['label'])
+    results['length'] = ext
+    ext = AttributeExtractor('tonnage', maps['tonnage'], maps['label'])
+    results['tonnage'] = ext
+    ext = AttributeExtractor('engine_power', maps['engine_power'],
+                             maps['label'])
+    results['engine_power'] = ext
+    ext = AttributeExtractor('crew_size', maps['crew_size'],
+                             maps['label']) 
+    results['crew_size'] = ext       
 
     logging.info('Loading inference data')
-    if args.test_only:
-        whitelist = set([x for x in maps['split'] if maps['split'][x] == TEST_SPLIT]) 
-    else:
-        whitelist = None
-    load_inferred(inference_path, results.values(), whitelist)
+    whitelist = None
+    load_inferred(args.inference_table, args.label_table, results.values(), whitelist)
 
-    if not args.skip_class_metrics:
-        # Sanity check attribute values after loading
-        for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
-            if not all(results[field].inferred_attrs >= 0):
-                logging.warning(
-                    'Inferred values less than zero for %s (%s, %s / %s)',
-                    field, min(results[field].inferred_attrs),
-                    (results[field].inferred_attrs < 0).sum(),
-                    len(results[field].inferred_attrs))
+    # Sanity check attribute values after loading
+    for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
+        if not all(results[field].inferred_attrs >= 0):
+            logging.warning(
+                'Inferred values less than zero for %s (%s, %s / %s)',
+                field, min(results[field].inferred_attrs),
+                (results[field].inferred_attrs < 0).sum(),
+                len(results[field].inferred_attrs))
 
-        # Assemble coarse and is_fishing scores:
-        logging.info('Assembling coarse data')
-        results['coarse'] = assemble_composite(results['fine'], coarse_mapping)
-        logging.info('Assembling fishing data')
-        results['fishing'] = assemble_composite(results['fine'],
-                                                fishing_mapping)
-
-    if not args.skip_localisation_metrics:
-        logging.info('Comparing localisation')
-        results['localisation'] = compare_fishing_localisation(
-            results['fishing_ranges'], args.fishing_ranges, maps['label'],
-            maps['split'])
-
-    if args.agreement_ranges_path:
-        compute_fishing_range_agreement(results['fishing_ranges'],
-                                        args.agreement_ranges_path,
-                                        maps['label'], maps['split'])
-
+    # Assemble coarse and is_fishing scores:
+    logging.info('Assembling coarse data')
+    results['coarse'] = assemble_composite(results['fine'], coarse_mapping)
+    logging.info('Assembling fishing data')
+    results['fishing'] = assemble_composite(results['fine'],
+                                            fishing_mapping)
     return results
 
 
@@ -1079,9 +1005,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Test inference results and output metrics.\n')
     parser.add_argument(
-        '--inference-table', help='path to inference results', required=True)
+        '--inference-table', help='table of inference results', required=True)
     parser.add_argument(
-        '--label-path', help='path to test data', required=True)
+        '--label-table', help='table of test data', required=True)
     parser.add_argument(
         '--dest-path', help='path to write results to', required=True)
 
