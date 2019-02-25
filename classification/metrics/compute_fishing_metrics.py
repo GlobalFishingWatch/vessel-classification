@@ -241,7 +241,8 @@ def load_true_fishing_ranges_by_mmsi(fishing_range_path,
             val = float(row['is_fishing'])
             if threshold:
                 val = val > 0.5
-            rng = (val, parse(row['start_time']), parse(row['end_time']))
+            rng = (val, parse(row['start_time']).replace(tzinfo=pytz.UTC), 
+                        parse(row['end_time']).replace(tzinfo=pytz.UTC))
             ranges_by_mmsi[mmsi].append(rng)
     return ranges_by_mmsi
 
@@ -389,7 +390,7 @@ if __name__ == '__main__':
         '--project-id', help='Google Cloud project id', required=True)
     parser.add_argument(
         '--label-path', help='path to test data', required=True)
-    parser.add_argument('--fishing-ranges', help='path to fishing range data')
+    parser.add_argument('--fishing-ranges', help='path to fishing range data', required=True)
     parser.add_argument(
         '--dest-path', help='path to write results to', required=True)
 

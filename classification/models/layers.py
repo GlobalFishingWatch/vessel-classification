@@ -40,7 +40,8 @@ def misconception_layer(inputs,
                         kernel_size,
                         strides,
                         training,
-                        scope=None):
+                        scope=None,
+                        virtual_batch_size=None):
     """ A single layer of the misconception convolutional network.
 
   Args:
@@ -59,14 +60,14 @@ def misconception_layer(inputs,
         padded = tf.pad(inputs, [[0, 0], [p0, p1], [0, 0]])
         stage_conv = ly.conv1d(
             padded, filters, kernel_size, strides=strides, padding="valid", activation=None, use_bias=False)
-        stage_conv = ly.batch_normalization(stage_conv, training=training)
+        stage_conv = ly.batch_normalization(stage_conv, training=training, virtual_batch_size=virtual_batch_size)
         stage_conv = tf.nn.relu(stage_conv)
         stage_max_pool_reduce = tf.layers.max_pooling1d(
             padded, kernel_size, strides=strides, padding="valid")
         concat = tf.concat([stage_conv, stage_max_pool_reduce], 2)
 
         total = ly.conv1d(concat, filters, 1, activation=None, use_bias=False)
-        total = ly.batch_normalization(total, training=training)
+        total = ly.batch_normalization(total, training=training, virtual_batch_size=virtual_batch_size)
         total = tf.nn.relu(total)
         return total
 
@@ -77,9 +78,10 @@ def misconception_with_bypass(inputs,
                               kernel_size,
                               strides,
                               training,
-                              scope=None):
+                              scope=None,
+                              virtual_batch_size=None):
     with tf.name_scope(scope):
-        residual = misconception_layer(inputs, filters, kernel_size, strides, training, scope)
+        residual = misconception_layer(inputs, filters, kernel_size, strides, training, scope, virtual_batch_size)
         if strides > 1:
             inputs = tf.layers.max_pooling1d(
                 inputs, strides, strides=strides, padding="valid")
@@ -95,7 +97,8 @@ def misconception_model(inputs,
                         objective_functions,
                         sub_filters=128,
                         sub_layers=2,
-                        dropout_rate=0.5):
+                        dropout_rate=0.5,
+                        virtual_batch_size=None):
     """ A misconception tower.
 
   Args:
@@ -114,14 +117,14 @@ def misconception_model(inputs,
     net = inputs
     layers.append(net)
     for filters, strides in zip(filters_list, strides_list):
-        net = misconception_with_bypass(net, filters, kernel_size, strides, training)
+        net = misconception_with_bypass(net, filters, kernel_size, strides, training, virtual_batch_size=virtual_batch_size)
         layers.append(net)
     outputs = []
     for ofunc in objective_functions:
         onet = net
         for _ in range(sub_layers - 1):
             onet = ly.conv1d(onet, sub_filters, 1, activation=None, use_bias=False)
-            onet = ly.batch_normalization(onet, training=training)
+            onet = ly.batch_normalization(onet, training=training, virtual_batch_size=virtual_batch_size)
             onet = tf.nn.relu(onet)
         onet = ly.conv1d(onet, sub_filters, 1, activation=tf.nn.relu)
 

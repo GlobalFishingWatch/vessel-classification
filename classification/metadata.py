@@ -23,6 +23,7 @@ import sys
 import tensorflow as tf
 import yaml
 import numpy as np
+from feature_generation.file_iterator import GCSFile
 
 # Upweight false positives to strongly discourage transits
 FALSE_POSITIVE_UPWEIGHT = 1
@@ -119,12 +120,6 @@ FishingRange = namedtuple('FishingRange',
                           ['start_time', 'end_time', 'is_fishing'])
 
 
-def int_or_hash(x):
-    try:
-        return int(x)
-    except:
-        return hash(x)
-
 class VesselMetadata(object):
     def __init__(self,
                  metadata_dict,
@@ -137,7 +132,14 @@ class VesselMetadata(object):
         for split, vessels in metadata_dict.iteritems():
             for mmsi, data in vessels.iteritems():
                 self.metadata_by_mmsi[mmsi] = data
-        self.mmsi_map_int2str = {int_or_hash(k) : k for k in self.metadata_by_mmsi}
+        self.mmsi_map_int2str = {}
+        # Put both hash and in in mapping to catch either case.
+        for k in self.metadata_by_mmsi:
+            try:
+                self.mmsi_map_int2str[int(k)] = k
+            except ValueError:
+                pass
+            self.mmsi_map_int2str[hash(k)] = k
 
 
         intersection_mmsis = set(self.metadata_by_mmsi.keys()).intersection(
@@ -387,12 +389,13 @@ def read_vessel_multiclass_metadata(available_mmsis,
 def find_available_mmsis(feature_path):
     with tf.Session() as sess:
         logging.info('Reading mmsi list file.')
-        root_output_path, _ = os.path.split(feature_path)
+        root_output_path = os.path.dirname(feature_path)
         # The feature pipeline stage that outputs the MMSI list is sharded to only
         # produce a single file, so no need to glob or loop here.
-        mmsi_list_tensor = tf.read_file(root_output_path +
-                                        '/mmsis/part-00000-of-00001.txt')
-        els = sess.run(mmsi_list_tensor).split('\n')
+        mmsi_path = os.path.join(root_output_path, 'mmsis/part-00000-of-00001.txt')
+        logging.info('Reading mmsi list file from {}'.format(mmsi_path))
+        with GCSFile(mmsi_path) as f:
+            els = f.read().split('\n')
         mmsi_list = [mmsi.strip() for mmsi in els if mmsi.strip() != '']
 
         logging.info('Found %d mmsis.', len(mmsi_list))
@@ -421,8 +424,8 @@ def read_fishing_ranges(fishing_range_file):
         for l in f.readlines()[1:]:
             els = l.split(',')
             mmsi = els[0].strip()
-            start_time = parse_date(els[1])
-            end_time = parse_date(els[2])
+            start_time = parse_date(els[1]).replace(tzinfo=pytz.utc)
+            end_time = parse_date(els[2]).replace(tzinfo=pytz.utc)
             is_fishing = float(els[3])
             fishing_range_dict[mmsi].append(
                 FishingRange(start_time, end_time, is_fishing))

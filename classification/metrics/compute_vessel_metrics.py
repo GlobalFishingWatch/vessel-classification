@@ -902,7 +902,7 @@ def datetime_to_minute(dt):
 def compute_results(args):
     logging.info('Loading label maps')
     maps = defaultdict(dict)
-    label_df = pd.read_gbq("select * from `{}`".format(args.label_table), project_id='world-fishing-827', dialect='standard')
+    label_df = pd.read_gbq("select * from `{}`".format(training_data_table), project_id='world-fishing-827', dialect='standard')
     for row in label_df.itertuples():
         mmsi = row.mmsi
         if not row.split == TEST_SPLIT:
@@ -938,7 +938,7 @@ def compute_results(args):
 
     logging.info('Loading inference data')
     whitelist = None
-    load_inferred(args.inference_table, args.label_table, results.values(), whitelist)
+    load_inferred(args.inference_table, training_data_table, results.values(), whitelist)
 
     # Sanity check attribute values after loading
     for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
@@ -998,6 +998,19 @@ def dump_html(args, results):
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 temp_dir = os.path.join(this_dir, 'temp')
+training_data_table = 'machine_learning_dev_ttl120d.temp_training_data_table'
+
+def create_label_table(label_path):
+    raw = pd.read_csv(label_path)
+    filtered = raw[['mmsi',
+                     'length',
+                     'tonnage',
+                     'engine_power',
+                     'crew_size',
+                     'label',
+                     'split']]
+    filtered.to_gbq(training_data_table, if_exists='replace',  project_id='world-fishing-827')
+
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG)
@@ -1007,12 +1020,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--inference-table', help='table of inference results', required=True)
     parser.add_argument(
-        '--label-table', help='table of test data', required=True)
+        '--label-path', help='path to test labels', required=True)
     parser.add_argument(
         '--dest-path', help='path to write results to', required=True)
 
     args = parser.parse_args()
 
+    create_label_table(args.label_path)
     results = compute_results(args)
 
     dump_html(args, results)

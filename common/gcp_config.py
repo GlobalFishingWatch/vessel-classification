@@ -35,14 +35,14 @@ class GcpConfig(object):
         now = datetime.datetime.utcnow()
         project_id = "world-fishing-827"
         if environment == 'prod':
-            root_path = 'gs://world-fishing-827/data-production/classification/%s' % job_id
+            root_path = 'gs://machine-learning/data-production/classification/%s' % job_id
         elif environment == 'dev':
             user_name = os.environ['USER']
             if not user_name:
                 logging.fatal(
                     'USER environment variable cannot be empty for dev runs.')
                 sys.exit(-1)
-            root_path = 'gs://world-fishing-827-dev-ttl30d/data-production/classification/%s/%s' % (
+            root_path = 'gs://machine-learning-dev-ttl-120d/data-production/classification/%s/%s' % (
                 user_name, job_id)
         else:
             logging.fatal('Invalid environment: %s', env)
