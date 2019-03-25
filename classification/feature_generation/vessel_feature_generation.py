@@ -72,11 +72,11 @@ def input_fn(vessel_metadata,
 
     return (raw_data
                 .map(xform, num_parallel_calls=parallelism)
-                .flat_map(feature_generation.flatten_features)
+                .interleave(feature_generation.flatten_features, cycle_length=parallelism)
                 .map(add_labels, num_parallel_calls=parallelism)
-                .map(set_shapes)
-                .map(lbls_as_dict)
-                .map(features_as_dict)
+                .map(set_shapes, num_parallel_calls=parallelism)
+                .map(lbls_as_dict, num_parallel_calls=parallelism)
+                .map(features_as_dict, num_parallel_calls=parallelism)
            )
 
 
