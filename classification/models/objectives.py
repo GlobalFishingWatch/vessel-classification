@@ -98,6 +98,10 @@ class RegressionObjective(ObjectiveBase):
     def build(self, net):
         self.prediction = tf.layers.dense(net, 1, activation=None)[:, 0]
 
+    def build_vector(self, net, weights):
+        self.prediction = tf.reduce_sum(tf.layers.conv1d(net, 1, 1, activation=None)[:, :, 0] * 
+                           weights[:, :, 0], axis=1)
+
     def expected_and_mask(self, labels):
         mask = ~tf.is_nan(labels)
         valid = tf.boolean_mask(labels, mask)
@@ -124,7 +128,7 @@ class RegressionObjective(ObjectiveBase):
             'loss' : tf.metrics.mean(loss),
         }
 
-   
+
 
 class LogRegressionObjective(ObjectiveBase):
     def __init__(self,
@@ -143,6 +147,11 @@ class LogRegressionObjective(ObjectiveBase):
 
     def build(self, net):
         self.prediction = tf.layers.dense(net, 1, activation=None)[:, 0]
+
+    def build_vector(self, net, weights):
+        self.prediction = tf.reduce_sum(tf.layers.conv1d(net, 1, 1, activation=None)[:, :, 0] * 
+                           weights[:, :, 0], axis=1)
+
 
     def expected_and_mask(self, labels):
         mask = ~tf.is_nan(labels)
@@ -228,9 +237,16 @@ class MultiClassificationObjective(ObjectiveBase):
 
 
     def build(self, net):
-        self.logits = tf.layers.dense(
-            net, self.num_classes, activation=None)
+        self.logits = tf.layers.dense(net, self.num_classes, activation=None)
         self.prediction = tf.nn.softmax(self.logits)
+
+
+    def build_vector(self, net, weights):
+        self.logits = tf.reduce_sum(
+                          tf.layers.conv1d(net, self.num_classes, 1, activation=None) * 
+                           weights, axis=1)
+        self.prediction = tf.nn.softmax(self.logits)
+
 
     def create_label(self, mmsi, timestamps):
         encoded = np.zeros([self.num_classes], dtype=np.int32)
