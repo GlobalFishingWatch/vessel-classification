@@ -1,1 +1,0 @@
-https://api.github.com/repos/GlobalFishingWatch/pipe-tools/tarball/master
