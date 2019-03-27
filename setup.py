@@ -20,6 +20,7 @@ import os
 DEPENDENCIES = [
     "ujson",
     "NewlineJSON",
+    "tensorflow==1.12"
 ]
 
 
