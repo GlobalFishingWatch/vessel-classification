@@ -28,7 +28,7 @@ data_files = [os.path.basename(x)
 
 setuptools.setup(
     name='vessel_inference',
-    version='0.1.4',
+    version='0.1.3',
     author='Tim Hochberg',
     author_email='tim@globalfishingwatch.com',
     package_data={
