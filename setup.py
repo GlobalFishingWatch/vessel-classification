@@ -20,7 +20,7 @@ import os
 DEPENDENCIES = [
     "ujson",
     "NewlineJSON",
-    "tensorflow==1.12"
+    "google-api-python-client"
 ]
 
 
