@@ -40,13 +40,57 @@ def np_pad_repeat_slice(slice, window_size):
     reps = int(np.ceil(window_size / float(slice_length)))
     return np.concatenate([slice] * reps, axis=0)[:window_size]
 
+def np_zero_pad_slice(slice, window_size, random_state):
+    """ Pads slice to the specified window size.
+
+  Series that are shorter than window_size are repeated into unfilled space.
+
+  Args:
+    slice: a numpy array.
+    window_size: the size the array must be padded to.
+
+  Returns:
+    a numpy array of length window_size in the first dimension.
+  """
+
+    slice_length = len(slice)
+    delta = window_size - slice_length
+    assert delta >= 0
+    _, n_feat = slice.shape
+    padded = np.zeros([window_size, n_feat], dtype=slice.dtype)
+    offset = random_state.randint(0, delta + 1)
+    return np.concatenate([slice] * reps, axis=0)[offset:offset+window_size]
+
+def np_pad_repeat_slice_2(slice, window_size, random_state):
+    """ Pads slice to the specified window size.
+
+  Series that are shorter than window_size are repeated into unfilled space.
+
+  Args:
+    slice: a numpy array.
+    window_size: the size the array must be padded to.
+
+  Returns:
+    a numpy array of length window_size in the first dimension.
+  """
+
+    slice_length = len(slice)
+    delta = window_size - slice_length
+    assert delta >= 0
+    slice = slice.copy()
+    GAP_LOGDT = 100
+    slice[0, 1] = GAP_LOGDT
+    reps = int(np.ceil(window_size / float(slice_length)))
+    repeated = np.concatenate([slice] * reps, axis=0)
+    offset = random_state.randint(0, window_size)
+    return np.roll(repeated, offset, axis=0)[:window_size]
 
 def np_array_random_fixed_length_extract(random_state, input_series,
                                          output_length):
 
     cropped = input_series[start_offset:end_offset]
 
-    return np_pad_repeat_slice(cropped, output_length)
+    return np_pad_repeat_slice_2(cropped, output_length, random_state)
 
 
 def empty_data(window_size, series):
