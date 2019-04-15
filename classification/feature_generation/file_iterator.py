@@ -181,36 +181,5 @@ def all_fixed_window_feature_file_iterator(filenames, deserializer,
 
 
 
-def cropping_all_slice_feature_file_iterator(filenames, deserializer,
-                                           time_ranges, window_size,
-                                           min_points_for_classification):
-    """ Set up a file reader and inference feature extractor for the files in a
-        queue.
-
-    An inference feature extractor, pulling all sequential fixed-time slices
-    from a vessel movement series.
-
-    Args:
-        filename_queue: a queue of filenames for feature files to read.
-        num_features: the dimensionality of the features.
-
-    Returns:
-        A tuple comprising, for the n slices comprising each vessel:
-          1. A tensor of the feature timeslices drawn, of dimension
-             [n, 1, window_size, num_features].
-          2. A tensor of the timestamps for each feature point of dimension
-             [n, window_size].
-          3. A tensor of the timebounds for the timeslices, of dimension [n, 2].
-          4. A tensor of the mmsis of each vessel of dimension [n].
-
-    """
-    for path in filenames:
-        with GCSExampleIter(path) as exmpliter:
-            for exmp in exmpliter:
-                context_features, sequence_features = deserializer(exmp) 
-                for values in zip(*process_all_slice_features(
-                        context_features, sequence_features, time_ranges, 
-                        window_size, min_points_for_classification, deserializer.num_features)):
-                    yield values
 
 

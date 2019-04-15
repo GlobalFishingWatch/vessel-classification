@@ -321,36 +321,64 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
     dataset_kind_counts = defaultdict(lambda: defaultdict(lambda: 0))
     vessel_types = []
 
+    cat_map = {k: v for (k, v) in VESSEL_CATEGORIES}
+
     available_mmsis = set(available_mmsis)
     # Build a list of vessels + split + and vessel type. Calculate the split on
     # the fly, but deterministically. Count the occurrence of each vessel type
     # per split.
     for row in lines:
         mmsi = row['mmsi'].strip()
-        coarse_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
-        if mmsi in available_mmsis and coarse_vessel_type:
-            split = row['split'].strip()
-            assert split in ('Training', 'Test'), repr(split)
-            vessel_types.append((mmsi, split, coarse_vessel_type, row))
-            dataset_kind_counts[split][coarse_vessel_type] += 1
-            vessel_type_set.add(coarse_vessel_type)
+        if mmsi not in available_mmsis:
+            continue
+        raw_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
+        if not raw_vessel_type:
+            continue
+        atomic_types = set()
+        for kind in raw_vessel_type.split('|'):
+            try:
+                for atm in cat_map[kind]:
+                    atomic_types.add(atm)
+            except StandardError as err:
+                logging.warning('unknown vessel type: {}\n{}'.format(kind, err))
+        if not atomic_types:
+            continue
+        scale = 1.0 / len(atomic_types)
+        split = row['split'].strip()
+        assert split in ('Training', 'Test'), repr(split)
+        vessel_types.append((mmsi, split, raw_vessel_type, row))
+        for atm in atomic_types:
+            dataset_kind_counts[split][atm] += scale
+        vessel_type_set |= atomic_types
         # else:
         #     logging.warning('No training data for %s, (%s) %s %s', mmsi, sorted(available_mmsis)[:10], 
         #         type(mmsi), type(sorted(available_mmsis)[0]))
 
-    # Calculate weights for each vessel type per split, for
-    # now use weights of sqrt(max_count / count), but eventually weight by prevalance
-    # in AIS (as best as we can figure) <== TODO
+    # # Calculate weights for each vessel type per split, for
+    # # now use weights of sqrt(max_count / count), but eventually weight by prevalance
+    # # in AIS (as best as we can figure) <== TODO
     dataset_kind_weights = defaultdict(lambda: {})
     for split, counts in dataset_kind_counts.iteritems():
         max_count = max(counts.values())
-        for coarse_vessel_type, count in counts.iteritems():
-            dataset_kind_weights[split][coarse_vessel_type] = np.sqrt(max_count / float(count))
+        for atomic_vessel_type, count in counts.iteritems():
+            dataset_kind_weights[split][atomic_vessel_type] = np.sqrt(max_count / float(count))
+    # dataset_kind_weights = defaultdict(lambda: {})
+    # for split, counts in dataset_kind_counts.iteritems():
+    #     for coarse_vessel_type, count in counts.iteritems():
+    #         dataset_kind_weights[split][coarse_vessel_type] = 1
 
     metadata_dict = defaultdict(lambda: {})
-    for mmsi, split, coarse_vessel_type, row in vessel_types:
-        metadata_dict[split][mmsi] = (
-            row, dataset_kind_weights[split][coarse_vessel_type])
+    for mmsi, split, raw_vessel_type, row in vessel_types:
+        if split == 'Training':
+            weights = []
+            for kind in raw_vessel_type.split('|'):
+                for atm in cat_map.get(kind, 'unknown'):
+                    weights.append(dataset_kind_weights[split][atm])
+            metadata_dict[split][mmsi] = (row, np.mean(weights))
+        elif split == "Test":
+            metadata_dict[split][mmsi] = (row, 1.0)
+        else:
+            logging.warning("unknown split {}".format(split))
 
     if len(vessel_type_set) == 0:
         logging.fatal('No vessel types found for training.')

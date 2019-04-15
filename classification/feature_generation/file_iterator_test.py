@@ -2,6 +2,7 @@
 import gc
 import posixpath as pp
 from file_iterator import *
+import pytest
 
 def test_file_iterator():
     path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/251822362.tfrecord"
@@ -16,25 +17,6 @@ def test_file_iterator():
 epoch = datetime.datetime(1970,1,1)
 def to_stamp(x):
     return (x - epoch).total_seconds()
-
-
-def test_file_iterator_2():
-    path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/251822362.tfrecord"
-    with tf.Session() as sess:
-        deserializer = Deserializer(num_features=13)
-        for i, val in enumerate(cropping_all_slice_feature_file_iterator([path], deserializer,
-                        [(to_stamp(datetime.datetime(2012,1,1)), to_stamp(datetime.datetime(2017,6,30)))] * 3, 256, 64)):
-            assert (val[0].shape, val[1].shape, val[2].shape, val[3].shape) == ((1, 256, 12), (256,), (2,), ())
-        assert i == 2, i
-
-def test_file_iterator_3():
-    path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/251822362.tfrecord"
-    with tf.Session() as sess:
-        deserializer = Deserializer(num_features=13)
-        for i, val in enumerate(cropping_all_slice_feature_file_iterator([path], deserializer,
-                        [(to_stamp(datetime.datetime(2014,4,1)), to_stamp(datetime.datetime(2014,6,1)))] * 3, 256, 64)):
-            assert (val[0].shape, val[1].shape, val[2].shape, val[3].shape) == ((1, 256, 12), (256,), (2,), ())
-        assert i == 2, i
 
 
 def test_deserialize_file():
@@ -64,11 +46,13 @@ def log_mem():
 
 
 def test_read_files_from_gcs():
-    path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/mmsis/part-00000-of-00001.txt"
+    path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/mmsis/part-00000-of-00001.txt"
     with GCSFile(path) as fp:
-        assert fp.read().split()[::20000][:10] == ['1', '200009595', '211516550', '225023360', '235003666', '240552000', '244780789', '255805905', '265725430', '304010593']
+        read_mmsi = fp.read().split()[::20000][:10]
+        print(read_mmsi)
+        assert read_mmsi == ['1', '200002405', '211151080', '220529000', '229268000', '235108004', '244650777', '246065069', '257222040', '269105470']
 
-
+@pytest.mark.skip(reason="debug only")
 def test_iterator_leak():
     path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/251822362.tfrecord"
     with tf.Session() as sess:
@@ -81,7 +65,7 @@ def test_iterator_leak():
                 pass   
 
 
-
+@pytest.mark.skip(reason="debug only")
 def test_deserialize_leak():
     path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/251822362.tfrecord"
     with tf.Session() as sess:
@@ -94,7 +78,7 @@ def test_deserialize_leak():
                     context_features, sequence_features = deserializer(exmp)
 
 
-
+@pytest.mark.skip(reason="debug only")
 def test_read_leak():
     path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/251822362.tfrecord"
     with tf.Session() as sess:
@@ -105,7 +89,7 @@ def test_read_leak():
                 for x in exmpliter:
                     pass
 
-
+@pytest.mark.skip(reason="debug only")
 def test_coverage(base_path, mmsi_list, num_features, year):
     start = datetime.date(year, 1, 1)
     end = datetime.date(year, 12, 31)
@@ -130,31 +114,14 @@ def test_coverage(base_path, mmsi_list, num_features, year):
     return dates
 
 
-
-
-
-logging.basicConfig(level=logging.INFO)
-if True:
-    test_deserialize_file()
-    test_file_iterator() 
-    test_file_iterator_2()
-    test_file_iterator_3() 
-
-
 def read_mmsi(base_path):
     path = pp.join(base_path, "mmsis/part-00000-of-00001.txt")
     with GCSFile(path) as fp:
         return fp.read().strip().split()
 
 
-# base = 'gs://machine-learning-dev-ttl-30d/classification/timothyhochberg/features-through-2017/pipeline/output/'
-
-
-# mmsi_list = read_mmsi(base)[::1000][:100]
-# print mmsi_list
-
-# test_coverage(base, mmsi_list, 15, year=2018)
-# test_coverage(base, mmsi_list, 15, year=2017)
+if __name__ == '__main__':
+    tf.test.main()
 
 
 
