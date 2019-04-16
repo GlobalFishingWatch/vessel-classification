@@ -716,18 +716,35 @@ def confusion_matrix(results):
 
     return ConfusionMatrix(cm_raw, cm_normalized)
 
+# query to rebuild mmsi_to_vessel_id
+"""
+ranked as (
+  select ssvid, vessel_id,
+         row_number() over(partition by ssvid order by pair_count desc) as rank
+  from pairs
+)
+
+select ssvid, vessel_id
+from ranked
+where rank = 1
+"""
 
 def load_inferred(inference_table, label_table, extractors, whitelist):
     """Load inferred data and generate comparison data
 
     """
     query = """
-    SELECT a.* FROM 
-    `{}*` a
+
+    SELECT c.* except(vessel_id), b.mmsi as vessel_id FROM 
+    `machine_learning_dev_ttl_120d.mmsi_to_vessel_id` a
     JOIN
     `{}` b
-    ON a.vessel_id = b.mmsi 
-    """.format(inference_table, label_table)
+    ON a.ssvid = cast(b.mmsi as string)
+    JOIN
+   `{}*` c
+    USING (vessel_id)
+    """.format(label_table, inference_table)
+    print(query)
     df = pd.read_gbq(query, project_id='world-fishing-827', dialect='standard')
 
     for row in df.itertuples():
@@ -791,6 +808,8 @@ class ClassificationExtractor(InferenceResults):
         self.scores = np.array(self.scores)
         self.label_list = sorted(
             self.all_labels, key=VESSEL_CLASS_DETAILED_NAMES.index)
+        if len(self.true_labels) == 0:
+            raise ValueError('no true labels')
         self.mmsi = np.array(self.mmsi)
         for lbl in self.label_list:
             true_count = (self.true_labels == lbl).sum()
@@ -998,7 +1017,7 @@ def dump_html(args, results):
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 temp_dir = os.path.join(this_dir, 'temp')
-training_data_table = 'machine_learning_dev_ttl120d.temp_training_data_table'
+training_data_table = 'machine_learning_dev_ttl_120d.temp_training_data_table'
 
 def create_label_table(label_path):
     raw = pd.read_csv(label_path)
