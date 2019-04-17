@@ -15,12 +15,12 @@
 
 Example:
 
+    python -m classification.metrics.compute_vessel_metrics \
+        --inference-table machine_learning_dev_ttl_120d.mmsi_vessel_char_V20190411_  \
+        --label-path classification/data/training_classes.csv \
+        --dest-path ./test_inference.html
 
-python compute_metrics.py     --inference-path classification_results.json.gz     \
-                              --label-path classification/data/net_training_20161115.csv   \
-                              --dest-path fltest.html --fishing-ranges classification/data/combined_fishing_ranges.csv  \
-                              --dump-labels-to . \
-                              --skip-localisation-metrics
+*Note: despite the table, name this table is in terms of vessel_id*
 
 """
 from __future__ import division
@@ -718,6 +718,12 @@ def confusion_matrix(results):
 
 # query to rebuild mmsi_to_vessel_id
 """
+with pairs as (
+  select ssvid, vessel_id, count(*) pair_count
+  from `pipe_production_b.position_messages_*`
+  group by ssvid, vessel_id
+),
+
 ranked as (
   select ssvid, vessel_id,
          row_number() over(partition by ssvid order by pair_count desc) as rank

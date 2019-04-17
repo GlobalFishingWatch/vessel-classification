@@ -13,14 +13,18 @@
 # limitations under the License.
 """
 
+# TODO: This example works if features are computed with respect to mmsi.
+# If they are instead computed with respect to vessel_id, you'll need to
+# borrow the code from vessel_metrics.
+
 Example:
 
-
-python compute_metrics.py     --inference-path classification_results.json.gz     \
-                              --label-path classification/data/net_training_20161115.csv   \
-                              --dest-path fltest.html --fishing-ranges classification/data/combined_fishing_ranges.csv  \
-                              --dump-labels-to . \
-                              --skip-localisation-metrics
+    python -m classification.metrics.compute_fishing_metrics \
+                --inference-table machine_learning_dev_ttl_120d.fishing_detection_V20190411_  \
+                --label-path classification/data/fishing_classes.csv \
+                --dest-path ./test_fishing_inference.html \
+                --project-id world-fishing-827 \
+                --fishing-ranges classification/data/combined_fishing_ranges.csv
 
 """
 from __future__ import division
