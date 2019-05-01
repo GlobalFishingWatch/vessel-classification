@@ -41,10 +41,10 @@ class Inferer(object):
         self.sess.close()
 
 
-    def _feature_files(self, mmsis):
+    def _feature_files(self, ids):
         return [
-            '%s/%s.tfrecord' % (self.root_feature_path, mmsi)
-            for mmsi in mmsis
+            '%s/%s.tfrecord' % (self.root_feature_path, x)
+            for x in ids
         ]
 
     def _build_time_ranges(self, interval_months, start_date, end_date):
@@ -72,8 +72,8 @@ class Inferer(object):
                             for dt in time_starts]
         return time_ranges
 
-    def run_inference(self, mmsis, interval_months, start_date, end_date):
-        paths = self._feature_files(mmsis)
+    def run_inference(self, ids, interval_months, start_date, end_date):
+        paths = self._feature_files(ids)
 
         if self.model.max_window_duration_seconds != 0:
             time_ranges = self._build_time_ranges(interval_months, start_date, end_date)
@@ -85,7 +85,7 @@ class Inferer(object):
 
             start_time, end_time = [datetime.utcfromtimestamp(x) for x in result['time_ranges']]
             output = {
-                'mmsi': int(result['mmsi']),
+                'id': int(result['id']),
                 'start_time': start_time.isoformat(),
                 'end_time': end_time.isoformat()
             }
