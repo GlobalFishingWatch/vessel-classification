@@ -108,19 +108,19 @@ class InferenceResults(object):
     _indexed_scores = None
 
     def __init__(self, # TODO: Consider reordering args so that label_list is first
-        mmsi, inferred_labels, true_labels, start_dates, scores,
+        ids, inferred_labels, true_labels, start_dates, scores,
         label_list,
-        all_mmsi=None, all_inferred_labels=None, all_true_labels=None, all_start_dates=None, all_scores=None):
+        all_ids=None, all_inferred_labels=None, all_true_labels=None, all_start_dates=None, all_scores=None):
 
         self.label_list = label_list
         #
-        self.all_mmsi = all_mmsi
+        self.all_ids = all_ids
         self.all_inferred_labels = all_inferred_labels
         self.all_true_labels = all_true_labels
         self.all_start_dates = np.asarray(all_start_dates)
         self.all_scores = all_scores
         #
-        self.mmsi = mmsi
+        self.ids = ids
         self.inferred_labels = inferred_labels
         self.true_labels = true_labels
         self.start_dates = np.asarray(start_dates)
@@ -128,7 +128,7 @@ class InferenceResults(object):
         #
 
     def all_results(self):
-        return InferenceResults(self.all_mmsi, self.all_inferred_labels,
+        return InferenceResults(self.all_ids, self.all_inferred_labels,
                                 self.all_true_labels, self.all_start_dates,
                                 self.all_scores, self.label_list)
 
@@ -136,8 +136,8 @@ class InferenceResults(object):
     def indexed_scores(self):
         if self._indexed_scores is None:
             logging.debug('create index_scores')
-            iscores = np.zeros([len(self.mmsi), len(self.label_list)])
-            for i, mmsi in enumerate(self.mmsi):
+            iscores = np.zeros([len(self.ids), len(self.label_list)])
+            for i, id_ in enumerate(self.ids):
                 for j, lbl in enumerate(self.label_list):
                     iscores[i, j] = self.scores[i][lbl]
             self._indexed_scores = iscores
@@ -147,11 +147,11 @@ class InferenceResults(object):
 
 AttributeResults = namedtuple(
     'AttributeResults',
-    ['mmsi', 'inferred_attrs', 'true_attrs', 'true_labels', 'start_dates'])
+    ['id', 'inferred_attrs', 'true_attrs', 'true_labels', 'start_dates'])
 
 LocalisationResults = namedtuple('LocalisationResults',
-                                 ['true_fishing_by_mmsi',
-                                  'pred_fishing_by_mmsi', 'label_map'])
+                                 ['true_fishing_by_id',
+                                  'pred_fishing_by_id', 'label_map'])
 
 ConfusionMatrix = namedtuple('ConfusionMatrix', ['raw', 'scaled'])
 
@@ -473,7 +473,7 @@ def ydump_metrics(doc, results):
         row_vals = precision_recall_f1(consolidated.label_list,
                                        consolidated.true_labels,
                                        consolidated.inferred_labels)
-        ydump_table(doc, ['Label (mmsi:true/total)', 'Precision', 'Recall', 'F1-Score'], [
+        ydump_table(doc, ['Label (id:true/total)', 'Precision', 'Recall', 'F1-Score'], [
             (a, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
             for (a, b, c, d) in row_vals
         ])
@@ -498,10 +498,10 @@ fishing_category_map = {
 def ydump_fishing_localisation(doc, results):
     doc, tag, text, line = doc.ttl()
 
-    y_true = np.concatenate(results.true_fishing_by_mmsi.values())
-    y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
+    y_true = np.concatenate(results.true_fishing_by_id.values())
+    y_pred = np.concatenate(results.pred_fishing_by_id.values())
 
-    header = ['Gear Type (mmsi:true/total)', 'Precision', 'Recall', 'Accuracy', 'F1-Score']
+    header = ['Gear Type (id:true/total)', 'Precision', 'Recall', 'Accuracy', 'F1-Score']
     rows = []
     logging.info('Overall localisation accuracy %s',
                  accuracy_score(y_true, y_pred))
@@ -513,17 +513,17 @@ def ydump_fishing_localisation(doc, results):
     for cls in sorted(set(fishing_category_map.values())) + ['other'] :
         true_chunks = []
         pred_chunks = []
-        mmsi_list = []
-        for mmsi in results.label_map:
-            if mmsi not in results.true_fishing_by_mmsi:
+        id_list = []
+        for id_ in results.label_map:
+            if id_ not in results.true_fishing_by_id:
                 continue
-            if fishing_category_map.get(results.label_map[mmsi], 'other') != cls:
+            if fishing_category_map.get(results.label_map[id_], 'other') != cls:
                 continue
-            mmsi_list.append(mmsi)
-            true_chunks.append(results.true_fishing_by_mmsi[mmsi])
-            pred_chunks.append(results.pred_fishing_by_mmsi[mmsi])
+            id_list.append(id_)
+            true_chunks.append(results.true_fishing_by_id[id_])
+            pred_chunks.append(results.pred_fishing_by_id[id_])
         if len(true_chunks):
-            logging.info('MMSI for {}: {}'.format(cls, mmsi_list))
+            logging.info('ID for {}: {}'.format(cls, id_list))
             y_true = np.concatenate(true_chunks)
             y_pred = np.concatenate(pred_chunks)
             rows.append(['{} ({}:{}/{})'.format(cls, len(true_chunks), sum(y_true), len(y_true)),
@@ -534,8 +534,8 @@ def ydump_fishing_localisation(doc, results):
 
     rows.append(['', '', '', '', ''])
 
-    y_true = np.concatenate(results.true_fishing_by_mmsi.values())
-    y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
+    y_true = np.concatenate(results.true_fishing_by_id.values())
+    y_pred = np.concatenate(results.pred_fishing_by_id.values())
 
     rows.append(['Overall',
                  precision_score(y_true, y_pred),
@@ -573,45 +573,45 @@ def precision_recall_f1(labels, y_true, y_pred):
 
 
 def consolidate_across_dates(results, date_range=None):
-    """Consolidate scores for each MMSI across available dates.
+    """Consolidate scores for each ID across available dates.
 
-    For each mmsi, we take the scores at all available dates, sum
+    For each id, we take the scores at all available dates, sum
     them and use argmax to find the predicted results.
 
     Optionally accepts a date range, which specifies half open ranges
     for the dates.
     """
-    inferred_mmsi = []
+    inferred_ids = []
     inferred_labels = []
     true_labels = []
 
     if date_range is None:
-        valid_date_mask = np.ones([len(results.mmsi)], dtype=bool)
+        valid_date_mask = np.ones([len(results.id)], dtype=bool)
     else:
         # TODO: write out end date as well, so that we avoid this hackery
         end_dates = results.start_dates + datetime.timedelta(days=180)
         valid_date_mask = (results.start_dates >= date_range[0]) & (
             results.start_dates < date_range[1])
 
-    mmsi_map = {}
-    mmsi_indices = []
-    for i, m in enumerate(results.mmsi):
+    id_map = {}
+    id_indices = []
+    for i, m in enumerate(results.id):
         if valid_date_mask[i]:
-            if m not in mmsi_map:
-                mmsi_map[m] = len(inferred_mmsi)
-                inferred_mmsi.append(m)
+            if m not in id_map:
+                id_map[m] = len(inferred_id)
+                inferred_id.append(m)
                 true_labels.append(results.true_labels[i])
-            mmsi_indices.append(mmsi_map[m])
+            id_indices.append(id_map[m])
         else:
-            mmsi_indices.append(-1)
-    mmsi_indices = np.array(mmsi_indices)
+            id_indices.append(-1)
+    id_indices = np.array(id_indices)
 
-    scores = np.zeros([len(inferred_mmsi), len(results.label_list)])
-    counts = np.zeros([len(inferred_mmsi)])
+    scores = np.zeros([len(inferred_ids), len(results.label_list)])
+    counts = np.zeros([len(inferred_ids)])
     for i, valid in enumerate(valid_date_mask):
         if valid:
-            scores[mmsi_indices[i]] += results.indexed_scores[i]
-            counts[mmsi_indices[i]] += 1
+            scores[id_indices[i]] += results.indexed_scores[i]
+            counts[id_indices[i]] += 1
 
     inferred_labels = []
     for i, s in enumerate(scores):
@@ -620,35 +620,35 @@ def consolidate_across_dates(results, date_range=None):
             scores[i] /= counts[i]
 
     return InferenceResults(
-        np.array(inferred_mmsi), np.array(inferred_labels),
+        np.array(inferred_ids), np.array(inferred_labels),
         np.array(true_labels), None, scores, results.label_list)
 
 
 def consolidate_attribute_across_dates(results, date_range=None):
-    """Consolidate scores for each MMSI across available dates.
+    """Consolidate scores for each ID across available dates.
 
-    For each mmsi, we average the attribute across all available dates
+    For each ID, we average the attribute across all available dates
 
     """
     inferred_attributes = []
     true_attributes = []
     true_labels = []
-    indices = np.argsort(results.mmsi)
-    mmsi = np.unique(results.mmsi)
+    indices = np.argsort(results.id)
+    ids = np.unique(results.id)
 
-    for m in np.unique(results.mmsi):
-        start = np.searchsorted(results.mmsi, m, side='left', sorter=indices)
-        stop = np.searchsorted(results.mmsi, m, side='right', sorter=indices)
+    for m in np.unique(results.id):
+        start = np.searchsorted(results.id, m, side='left', sorter=indices)
+        stop = np.searchsorted(results.id, m, side='right', sorter=indices)
 
-        attrs_for_mmsi = results.inferred_attrs[indices[start:stop]]
+        attrs_for_id = results.inferred_attrs[indices[start:stop]]
 
         if date_range:
             start_dates = results.start_dates[indices[start:stop]]
             # TODO: This is kind of messy need to verify that date ranges and output ranges line up
             valid_date_mask = (start_dates >= date_range[0]) & (start_dates < date_range[1])
-            attrs = attrs_for_mmsi[valid_date_mask]
+            attrs = attrs_for_id[valid_date_mask]
         else:
-            attrs = attrs_for_mmsi
+            attrs = attrs_for_id
 
         if len(attrs):
             inferred_attributes.append(attrs.mean())
@@ -670,7 +670,7 @@ def consolidate_attribute_across_dates(results, date_range=None):
             true_labels.append("Unknown")
 
     return AttributeResults(
-        mmsi, np.array(inferred_attributes), np.array(true_attributes),
+        ids, np.array(inferred_attributes), np.array(true_attributes),
         np.array(true_labels), None)
 
 

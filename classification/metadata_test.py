@@ -22,7 +22,7 @@ from datetime import datetime
 
 class VesselMetadataFileReaderTest(tf.test.TestCase):
     raw_lines = [
-        'mmsi,label,length,split\n',
+        'id,label,length,split\n',
         '100001,drifting_longlines,10.0,Test\n',
         '100002,drifting_longlines,24.0,Training\n',
         '100003,drifting_longlines,7.0,Training\n',
@@ -103,22 +103,22 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
         self.assertEquals(result.metadata_by_split['Test']['100001'][0],
                           {'label': 'drifting_longlines',
                            'length': '10.0',
-                           'mmsi': '100001',
+                           'id': '100001',
                            'split': 'Test'})
         self.assertEquals(result.metadata_by_split['Test']['100005'][0],
                           {'label': 'trawlers',
                            'length': '10.0',
-                           'mmsi': '100005',
+                           'id': '100005',
                            'split': 'Test'})
         self.assertEquals(result.metadata_by_split['Training']['100002'][0],
                           {'label': 'drifting_longlines',
                            'length': '24.0',
-                           'mmsi': '100002',
+                           'id': '100002',
                            'split': 'Training'})
         self.assertEquals(result.metadata_by_split['Training']['100003'][0],
                           {'label': 'drifting_longlines',
                            'length': '7.0',
-                           'mmsi': '100003',
+                           'id': '100003',
                            'split': 'Training'})
 
 

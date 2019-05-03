@@ -52,10 +52,10 @@ def main(args):
 
     fishing_ranges = metadata.read_fishing_ranges(fishing_range_file)
 
-    all_available_mmsis = metadata.find_available_mmsis(args.root_feature_path)
+    all_available_ids = metadata.find_available_ids(args.root_feature_path)
 
     vessel_metadata = Model.read_metadata(
-        all_available_mmsis, metadata_file,
+        all_available_ids, metadata_file,
         fishing_ranges, int(args.fishing_range_training_upweight))
 
     feature_dimensions = int(args.feature_dimensions)

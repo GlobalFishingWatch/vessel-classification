@@ -126,45 +126,45 @@ class VesselMetadata(object):
                  fishing_ranges_map,
                  fishing_range_training_upweight=1.0):
         self.metadata_by_split = metadata_dict
-        self.metadata_by_mmsi = {}
+        self.metadata_by_id = {}
         self.fishing_ranges_map = fishing_ranges_map
         self.fishing_range_training_upweight = fishing_range_training_upweight
         for split, vessels in metadata_dict.iteritems():
-            for mmsi, data in vessels.iteritems():
-                self.metadata_by_mmsi[mmsi] = data
-        self.mmsi_map_int2str = {}
+            for id_, data in vessels.iteritems():
+                self.metadata_by_id[id_] = data
+        self.id_map_int2str = {}
         # Put both hash and in in mapping to catch either case.
-        for k in self.metadata_by_mmsi:
+        for k in self.metadata_by_id:
             try:
-                self.mmsi_map_int2str[int(k)] = k
+                self.id_map_int2str[int(k)] = k
             except ValueError:
                 pass
-            self.mmsi_map_int2str[hash(k)] = k
+            self.id_map_int2str[hash(k)] = k
 
 
-        intersection_mmsis = set(self.metadata_by_mmsi.keys()).intersection(
+        intersection_ids = set(self.metadata_by_id.keys()).intersection(
             set(fishing_ranges_map.keys()))
-        logging.info("Metadata for %d mmsis.", len(self.metadata_by_mmsi))
-        logging.info("Fishing ranges for %d mmsis.", len(fishing_ranges_map))
+        logging.info("Metadata for %d ids.", len(self.metadata_by_id))
+        logging.info("Fishing ranges for %d ids.", len(fishing_ranges_map))
         logging.info("Vessels with both types of data: %d",
-                     len(intersection_mmsis))
+                     len(intersection_ids))
 
-    def vessel_weight(self, mmsi):
-        if mmsi in self.fishing_ranges_map:
+    def vessel_weight(self, id_):
+        if id_ in self.fishing_ranges_map:
             fishing_range_multiplier = self.fishing_range_training_upweight
         else:
             fishing_range_multiplier = 1.0
-        return self.metadata_by_mmsi[mmsi][1] * fishing_range_multiplier
+        return self.metadata_by_id[id_][1] * fishing_range_multiplier
 
-    def vessel_label(self, label_name, mmsi):
-        return self.metadata_by_mmsi[mmsi][0][label_name]
+    def vessel_label(self, label_name, id_):
+        return self.metadata_by_id[id_][0][label_name]
 
-    def mmsis_for_split(self, split):
+    def ids_for_split(self, split):
         assert split in [TRAINING_SPLIT, TEST_SPLIT]
         # Check to make sure we don't have leakage
         assert not (set(self.metadata_by_split[TRAINING_SPLIT].keys()) &
                     set(self.metadata_by_split[TEST_SPLIT].keys())
-                    ), 'mmsi in both training and test split'
+                    ), 'id in both training and test split'
         return self.metadata_by_split[split].keys()
 
     def weighted_training_list(self,
@@ -173,76 +173,76 @@ class VesselMetadata(object):
                                max_replication_factor,
                                row_filter=lambda row: True,
                                boundary=1):
-        replicated_mmsis = []
-        logging.info("Training mmsis: %d", len(self.mmsis_for_split(split)))
-        fishing_ranges_mmsis = []
-        for mmsi, (row, weight) in self.metadata_by_split[split].iteritems():
+        replicated_ids = []
+        logging.info("Training ids: %d", len(self.ids_for_split(split)))
+        fishing_ranges_ids = []
+        for id_, (row, weight) in self.metadata_by_split[split].iteritems():
             if row_filter(row):
-                if mmsi in self.fishing_ranges_map:
-                    fishing_ranges_mmsis.append(mmsi)
+                if id_ in self.fishing_ranges_map:
+                    fishing_ranges_ids.append(id_)
                     weight = weight * self.fishing_range_training_upweight  # TODO: rip this out.
 
                 weight = min(weight, max_replication_factor)
 
                 int_n = int(weight)
-                replicated_mmsis += ([mmsi] * int_n)
+                replicated_ids += ([id_] * int_n)
                 frac_n = weight - float(int_n)
                 if (random_state.uniform(0.0, 1.0) <= frac_n):
-                    replicated_mmsis.append(mmsi)
-        missing = (-len(replicated_mmsis)) % boundary
+                    replicated_ids.append(id_)
+        missing = (-len(replicated_ids)) % boundary
         if missing:
-            replicated_mmsis = np.concatenate(
-                [replicated_mmsis,
-                 np.random.choice(replicated_mmsis, missing)])
-        random_state.shuffle(replicated_mmsis)
-        logging.info("Replicated training mmsis: %d", len(replicated_mmsis))
-        logging.info("Fishing range mmsis: %d", len(fishing_ranges_mmsis))
+            replicated_ids = np.concatenate(
+                [replicated_ids,
+                 np.random.choice(replicated_ids, missing)])
+        random_state.shuffle(replicated_ids)
+        logging.info("Replicated training ids: %d", len(replicated_ids))
+        logging.info("Fishing range ids: %d", len(fishing_ranges_ids))
 
-        return replicated_mmsis
+        return replicated_ids
 
     def fishing_range_only_list(self, random_state, split,
                                 max_replication_factor):
-        replicated_mmsis = []
-        fishing_mmsi_set = set(
+        replicated_ids = []
+        fishing_id_set = set(
             [k for (k, v) in self.fishing_ranges_map.items() if v])
-        fishing_range_only_mmsis = [mmsi
-                                    for mmsi in self.mmsis_for_split(split)
-                                    if mmsi in fishing_mmsi_set]
-        logging.info("Fishing range training mmsis: %d / %d",
-                     len(fishing_range_only_mmsis),
-                     len(self.mmsis_for_split(split)))
-        for mmsi in fishing_range_only_mmsis:
-            weight = min(self.vessel_weight(mmsi), max_replication_factor)
-            assert mmsi in self.fishing_ranges_map
+        fishing_range_only_ids = [id_
+                                    for id_ in self.ids_for_split(split)
+                                    if id_ in fishing_id_set]
+        logging.info("Fishing range training ids: %d / %d",
+                     len(fishing_range_only_ids),
+                     len(self.ids_for_split(split)))
+        for id_ in fishing_range_only_ids:
+            weight = min(self.vessel_weight(id_), max_replication_factor)
+            assert id_ in self.fishing_ranges_map
             if weight == 0:
-                logging.info('skipping %s due to zero weight', mmsi)
+                logging.info('skipping %s due to zero weight', id_)
                 continue
             int_n = int(weight)
             logging.info(
-                "mmis: %s, max_repl_factor: %s, weight: %s, int_n: %s", mmsi,
-                max_replication_factor, self.vessel_weight(mmsi), int_n)
-            replicated_mmsis += ([mmsi] * int_n)
+                "mmis: %s, max_repl_factor: %s, weight: %s, int_n: %s", id_,
+                max_replication_factor, self.vessel_weight(id_), int_n)
+            replicated_ids += ([id_] * int_n)
             frac_n = weight - float(int_n)
             if (random_state.uniform(0.0, 1.0) <= frac_n):
-                replicated_mmsis.append(mmsi)
+                replicated_ids.append(id_)
 
-        random_state.shuffle(replicated_mmsis)
-        logging.info("Replicated training mmsis: %d", len(replicated_mmsis))
+        random_state.shuffle(replicated_ids)
+        logging.info("Replicated training ids: %d", len(replicated_ids))
 
-        return replicated_mmsis
+        return replicated_ids
 
 
-def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
+def read_vessel_time_weighted_metadata_lines(available_ids, lines,
                                              fishing_range_dict):
     """ For a set of vessels, read metadata; use flat weights
 
     Args:
-        available_mmsis: a set of all mmsis for which we have feature data.
+        available_ids: a set of all ids for which we have feature data.
         lines: a list of comma-separated vessel metadata lines. Columns are
-            the mmsi and a set of vessel type columns, containing at least one
+            the id and a set of vessel type columns, containing at least one
             called 'label' being the primary/coarse type of the vessel e.g.
             (Longliner/Passenger etc.).
-        fishing_range_dict: dictionary of mapping mmsi to lists of fishing ranges
+        fishing_range_dict: dictionary of mapping id to lists of fishing ranges
 
     Returns:
         A VesselMetadata object with weights and labels for each vessel.
@@ -252,66 +252,66 @@ def read_vessel_time_weighted_metadata_lines(available_mmsis, lines,
 
     # Build a list of vessels + split + and vessel type. Calculate the split on
     # the fly, but deterministically.
-    min_time_per_mmsi = np.inf
+    min_time_per_id = np.inf
 
     for row in lines:
-        mmsi = row['mmsi'].strip()
-        if mmsi in available_mmsis:
-            if mmsi not in fishing_range_dict:
+        id_ = row['id'].strip()
+        if id_ in available_ids:
+            if id_ not in fishing_range_dict:
                 continue
-            # Is this mmsi included only to supress false positives
-            # Symptoms; fishing score for this MMSI never different from 0
+            # Is this id included only to supress false positives
+            # Symptoms; fishing score for this id never different from 0
             is_false_positive = True
             split = row['split']
             if split not in ('Training', 'Test'):
                 logging.warning(
-                    'MMSI %s has no valid split assigned (%s); using for Training',
-                    mmsi, split)
+                    'id %s has no valid split assigned (%s); using for Training',
+                    id_, split)
                 split = 'Training'
-            time_for_this_mmsi = 0
-            for rng in fishing_range_dict[mmsi]:
-                time_for_this_mmsi += (
+            time_for_this_id = 0
+            for rng in fishing_range_dict[id_]:
+                time_for_this_id += (
                     rng.end_time - rng.start_time).total_seconds()
                 if rng.is_fishing > 0:
                     is_false_positive = False
-            if time_for_this_mmsi and is_false_positive:
-                logging.info('upweighting MMSI %s by %s as a false positive',
-                             mmsi, FALSE_POSITIVE_UPWEIGHT)
-                time_for_this_mmsi *= FALSE_POSITIVE_UPWEIGHT
-            metadata_dict[split][mmsi] = (row, time_for_this_mmsi)
-            if time_for_this_mmsi:
-                min_time_per_mmsi = min(min_time_per_mmsi, time_for_this_mmsi)
+            if time_for_this_id and is_false_positive:
+                logging.info('upweighting id %s by %s as a false positive',
+                             id_, FALSE_POSITIVE_UPWEIGHT)
+                time_for_this_id *= FALSE_POSITIVE_UPWEIGHT
+            metadata_dict[split][id_] = (row, time_for_this_id)
+            if time_for_this_id:
+                min_time_per_id = min(min_time_per_id, time_for_this_id)
 
     for split_dict in metadata_dict.values():
-        for mmsi in split_dict:
-            row, time = split_dict[mmsi]
-            split_dict[mmsi] = (row, min(time / min_time_per_mmsi, MAX_UPWEIGHT))
+        for id_ in split_dict:
+            row, time = split_dict[id_]
+            split_dict[id_] = (row, min(time / min_time_per_id, MAX_UPWEIGHT))
 
     return VesselMetadata(dict(metadata_dict), fishing_range_dict, 1.0)
 
 
-def read_vessel_time_weighted_metadata(available_mmsis,
+def read_vessel_time_weighted_metadata(available_ids,
                                        metadata_file,
                                        fishing_range_dict={}):
     reader = metadata_file_reader(metadata_file)
 
-    return read_vessel_time_weighted_metadata_lines(available_mmsis, reader,
+    return read_vessel_time_weighted_metadata_lines(available_ids, reader,
                                                     fishing_range_dict)
 
 
-def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
+def read_vessel_multiclass_metadata_lines(available_ids, lines,
                                           fishing_range_dict,
                                           fishing_range_training_upweight):
     """ For a set of vessels, read metadata and calculate class weights.
 
     Args:
-        available_mmsis: a set of all mmsis for which we have feature data.
+        available_ids: a set of all ids for which we have feature data.
         lines: a list of comma-separated vessel metadata lines. Columns are
-            the mmsi and a set of vessel type columns, containing at least one
+            the id and a set of vessel type columns, containing at least one
             called 'label' being the primary/coarse type of the vessel e.g.
             (Longliner/Passenger etc.).
-        fishing_range_dict: dictionary of mapping mmsi to lists of fishing ranges
-        fishing_range_training_upweight: amount to upweight mmsi with fishing
+        fishing_range_dict: dictionary of mapping id to lists of fishing ranges
+        fishing_range_training_upweight: amount to upweight id with fishing
            ranges to assure adequate coverage.
     Returns:
         A VesselMetadata object with weights and labels for each vessel.
@@ -323,13 +323,13 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
 
     cat_map = {k: v for (k, v) in VESSEL_CATEGORIES}
 
-    available_mmsis = set(available_mmsis)
+    available_ids = set(available_ids)
     # Build a list of vessels + split + and vessel type. Calculate the split on
     # the fly, but deterministically. Count the occurrence of each vessel type
     # per split.
     for row in lines:
-        mmsi = row['mmsi'].strip()
-        if mmsi not in available_mmsis:
+        id_ = row['id'].strip()
+        if id_ not in available_ids:
             continue
         raw_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
         if not raw_vessel_type:
@@ -346,13 +346,13 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
         scale = 1.0 / len(atomic_types)
         split = row['split'].strip()
         assert split in ('Training', 'Test'), repr(split)
-        vessel_types.append((mmsi, split, raw_vessel_type, row))
+        vessel_types.append((id_, split, raw_vessel_type, row))
         for atm in atomic_types:
             dataset_kind_counts[split][atm] += scale
         vessel_type_set |= atomic_types
         # else:
-        #     logging.warning('No training data for %s, (%s) %s %s', mmsi, sorted(available_mmsis)[:10], 
-        #         type(mmsi), type(sorted(available_mmsis)[0]))
+        #     logging.warning('No training data for %s, (%s) %s %s', id_, sorted(available_ids)[:10], 
+        #         type(id_), type(sorted(available_ids)[0]))
 
     # # Calculate weights for each vessel type per split, for
     # # now use weights of sqrt(max_count / count), but eventually weight by prevalance
@@ -368,15 +368,15 @@ def read_vessel_multiclass_metadata_lines(available_mmsis, lines,
     #         dataset_kind_weights[split][coarse_vessel_type] = 1
 
     metadata_dict = defaultdict(lambda: {})
-    for mmsi, split, raw_vessel_type, row in vessel_types:
+    for id_, split, raw_vessel_type, row in vessel_types:
         if split == 'Training':
             weights = []
             for kind in raw_vessel_type.split('|'):
                 for atm in cat_map.get(kind, 'unknown'):
                     weights.append(dataset_kind_weights[split][atm])
-            metadata_dict[split][mmsi] = (row, np.mean(weights))
+            metadata_dict[split][id_] = (row, np.mean(weights))
         elif split == "Test":
-            metadata_dict[split][mmsi] = (row, 1.0)
+            metadata_dict[split][id_] = (row, 1.0)
         else:
             logging.warning("unknown split {}".format(split))
 
@@ -403,31 +403,31 @@ def metadata_file_reader(metadata_file):
             yield row
 
 
-def read_vessel_multiclass_metadata(available_mmsis,
+def read_vessel_multiclass_metadata(available_ids,
                                     metadata_file,
                                     fishing_range_dict={},
                                     fishing_range_training_upweight=1.0):
     reader = metadata_file_reader(metadata_file)
 
     return read_vessel_multiclass_metadata_lines(
-        available_mmsis, reader, fishing_range_dict,
+        available_ids, reader, fishing_range_dict,
         fishing_range_training_upweight)
 
 
-def find_available_mmsis(feature_path):
+def find_available_ids(feature_path):
     with tf.Session() as sess:
-        logging.info('Reading mmsi list file.')
+        logging.info('Reading id list file.')
         root_output_path = os.path.dirname(feature_path)
-        # The feature pipeline stage that outputs the MMSI list is sharded to only
+        # The feature pipeline stage that outputs the id list is sharded to only
         # produce a single file, so no need to glob or loop here.
-        mmsi_path = os.path.join(root_output_path, 'mmsis/part-00000-of-00001.txt')
-        logging.info('Reading mmsi list file from {}'.format(mmsi_path))
-        with GCSFile(mmsi_path) as f:
+        id_path = os.path.join(root_output_path, 'ids/part-00000-of-00001.txt')
+        logging.info('Reading id list file from {}'.format(id_path))
+        with GCSFile(id_path) as f:
             els = f.read().split('\n')
-        mmsi_list = [mmsi.strip() for mmsi in els if mmsi.strip() != '']
+        id_list = [id_.strip() for id_ in els if id_.strip() != '']
 
-        logging.info('Found %d mmsis.', len(mmsi_list))
-        return set(mmsi_list)
+        logging.info('Found %d ids.', len(id_list))
+        return set(id_list)
 
 
 def parse_date(date):
@@ -444,18 +444,18 @@ def parse_date(date):
 
 
 def read_fishing_ranges(fishing_range_file):
-    """ Read vessel fishing ranges, return a dict of mmsi to classified fishing
+    """ Read vessel fishing ranges, return a dict of id to classified fishing
         or non-fishing ranges for that vessel.
     """
     fishing_range_dict = defaultdict(lambda: [])
     with open(fishing_range_file, 'r') as f:
         for l in f.readlines()[1:]:
             els = l.split(',')
-            mmsi = els[0].strip()
+            id_ = els[0].strip()
             start_time = parse_date(els[1]).replace(tzinfo=pytz.utc)
             end_time = parse_date(els[2]).replace(tzinfo=pytz.utc)
             is_fishing = float(els[3])
-            fishing_range_dict[mmsi].append(
+            fishing_range_dict[id_].append(
                 FishingRange(start_time, end_time, is_fishing))
 
     return dict(fishing_range_dict)

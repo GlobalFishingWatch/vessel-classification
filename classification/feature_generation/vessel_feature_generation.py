@@ -14,38 +14,38 @@ def input_fn(vessel_metadata,
              min_timeslice_size,
              objectives,
              parallelism=4,
-             num_slices_per_mmsi=8):
+             num_slices_per_id=8):
 
     random_state = np.random.RandomState()
 
-    def xform(mmsi, movement_features):
+    def xform(id_, movement_features):
 
-        def _xform(features, int_mmsi):
-            mmsi = vessel_metadata.mmsi_map_int2str[int_mmsi]
+        def _xform(features, int_id):
+            id_ = vessel_metadata.id_map_int2str[int_id]
             return feature_utilities.extract_n_random_fixed_times(
-                    random_state, features, num_slices_per_mmsi, max_time_delta,
-                    window_size, mmsi, min_timeslice_size)
+                    random_state, features, num_slices_per_id, max_time_delta,
+                    window_size, id_, min_timeslice_size)
 
-        int_mmsi = tf.cast(mmsi, tf.int64)
+        int_id = tf.cast(id, tf.int64)
         features = tf.cast(movement_features, tf.float32)
-        features, timestamps, time_ranges, mmsi = tf.py_func(
+        features, timestamps, time_ranges, id_ = tf.py_func(
             _xform, 
-            [features, int_mmsi],
+            [features, int_id],
             [tf.float32, tf.int32, tf.int32, tf.string])
         features = tf.squeeze(features, axis=1)
-        return (features, timestamps, time_ranges, mmsi)
+        return (features, timestamps, time_ranges, id_)
 
-    def add_labels(features, timestamps, time_bounds, mmsi):
+    def add_labels(features, timestamps, time_bounds, id_):
 
-        def _add_labels(mmsi, timestamps):
-            labels = [o.create_label(mmsi, timestamps) for o in objectives]
+        def _add_labels(id_, timestamps):
+            labels = [o.create_label(id_, timestamps) for o in objectives]
             return labels
 
         labels =  tf.py_func(
             _add_labels, 
-            [mmsi, timestamps],
+            [id_, timestamps],
             [tf.float32] * len(objectives))
-        return ((features, timestamps, time_bounds, mmsi), tuple(labels))
+        return ((features, timestamps, time_bounds, id_), tuple(labels))
 
     def set_shapes(all_features, labels):
         class_count = len(metadata.VESSEL_CLASS_DETAILED_NAMES)
@@ -60,8 +60,8 @@ def input_fn(vessel_metadata,
         return features, d
 
     def features_as_dict(features, labels):
-        features, timestamps, time_bounds, mmsi = features
-        d = {'features' : features, 'timestamps' : timestamps, 'time_ranges' : time_bounds, 'mmsi' : mmsi}
+        features, timestamps, time_bounds, id_ = features
+        d = {'features' : features, 'timestamps' : timestamps, 'time_ranges' : time_bounds, 'id' : id_}
         return d, labels
 
     raw_data = feature_generation.read_input_fn_infinite(
@@ -89,30 +89,30 @@ def predict_input_fn(paths,
 
     random_state = np.random.RandomState()
 
-    def xform(mmsi, movement_features):
+    def xform(id_, movement_features):
 
-        def _xform(features, int_mmsi):
-            mmsi = str(int_mmsi)
+        def _xform(features, int_id):
+            id_ = str(int_id)
             return feature_utilities.np_array_extract_slices_for_time_ranges(
-                    random_state, features, mmsi, time_ranges,
+                    random_state, features, id_, time_ranges,
                     window_size, min_timeslice_size)
 
-        int_mmsi = tf.cast(mmsi, tf.int64)
+        int_id = tf.cast(id_, tf.int64)
         features = tf.cast(movement_features, tf.float32)
-        features, timestamps, time_ranges_tensor, mmsi = tf.py_func(
+        features, timestamps, time_ranges_tensor, id_ = tf.py_func(
             _xform, 
-            [features, int_mmsi],
+            [features, int_id],
             [tf.float32, tf.int32, tf.int32, tf.string])
         features = tf.squeeze(features, axis=1)
-        return (features, timestamps, time_ranges_tensor, mmsi)
+        return (features, timestamps, time_ranges_tensor, id_)
 
-    def set_shapes(features, timestamps, time_bounds, mmsi):
-        all_features = features, timestamps, time_bounds, mmsi
+    def set_shapes(features, timestamps, time_bounds, id_):
+        all_features = features, timestamps, time_bounds, id_
         feature_generation.set_feature_shapes(all_features, num_features, window_size)
         return all_features
 
-    def features_as_dict(features, timestamps, time_bounds, mmsi):
-        d = {'features' : features, 'timestamps' : timestamps, 'time_ranges' : time_bounds, 'mmsi' : mmsi}
+    def features_as_dict(features, timestamps, time_bounds, id_):
+        d = {'features' : features, 'timestamps' : timestamps, 'time_ranges' : time_bounds, 'id' : id_}
         return d
 
     raw_data = feature_generation.read_input_fn_one_shot(paths, num_features, num_parallel_reads=parallelism)

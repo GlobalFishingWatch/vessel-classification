@@ -84,16 +84,16 @@ class RegressionObjective(ObjectiveBase):
     def __init__(self,
                  metadata_label,
                  name,
-                 value_from_mmsi,
+                 value_from_id,
                  loss_weight=1.0,
                  metrics='all'):
         super(RegressionObjective, self).__init__(metadata_label, name,
                                                   loss_weight, metrics)
-        self.value_from_mmsi = value_from_mmsi
+        self.value_from_id = value_from_id
         self.output_shape = []
 
-    def create_label(self, mmsi, timestamps):
-        self.value_from_mmsi(mmsi)
+    def create_label(self, id_, timestamps):
+        self.value_from_id(id)
 
     def build(self, net):
         self.prediction = tf.layers.dense(net, 1, activation=None)[:, 0]
@@ -114,7 +114,7 @@ class RegressionObjective(ObjectiveBase):
         return error
 
     def create_loss(self, labels):
-        raw_loss = self._masked_mean_error(self.prediction, mmsis)
+        raw_loss = self._masked_mean_error(self.prediction, ids)
         return raw_loss * self.loss_weight
 
     def create_raw_metrics(self, labels):
@@ -130,16 +130,16 @@ class LogRegressionObjective(ObjectiveBase):
     def __init__(self,
                  metadata_label,
                  name,
-                 value_from_mmsi,
+                 value_from_id,
                  loss_weight=1.0,
                  metrics='all'):
         super(LogRegressionObjective, self).__init__(metadata_label, name,
                                                      loss_weight, metrics)
-        self.value_from_mmsi = value_from_mmsi
+        self.value_from_id = value_from_id
         self.output_shape = []
 
-    def create_label(self, mmsi, timestamps):
-        return self.value_from_mmsi(mmsi)
+    def create_label(self, id_, timestamps):
+        return self.value_from_id(id_)
 
     def build(self, net):
         self.prediction = tf.layers.dense(net, 1, activation=None)[:, 0]
@@ -191,14 +191,14 @@ class LogRegressionObjectiveMAE(LogRegressionObjective):
     def __init__(self,
                  metadata_label,
                  name,
-                 value_from_mmsi,
+                 value_from_id,
                  loss_weight=1.0,
                  metrics='all'):
-        super(LogRegressionObjectiveMAE, self).__init__(metadata_label, name, value_from_mmsi,
+        super(LogRegressionObjectiveMAE, self).__init__(metadata_label, name, value_from_id,
                                                      loss_weight, metrics)
 
-    def create_label(self, mmsi, timestamps):
-        return self.value_from_mmsi(mmsi)
+    def create_label(self, id_, timestamps):
+        return self.value_from_id(id_)
 
     def masked_mean_loss(self, labels):
         expected, mask = self.expected_and_mask(labels)
@@ -232,9 +232,9 @@ class MultiClassificationObjective(ObjectiveBase):
             net, self.num_classes, activation=None)
         self.prediction = tf.nn.softmax(self.logits)
 
-    def create_label(self, mmsi, timestamps):
+    def create_label(self, id_, timestamps):
         encoded = np.zeros([self.num_classes], dtype=np.int32)
-        lbl_str = self.vessel_metadata.vessel_label('label', mmsi).strip()
+        lbl_str = self.vessel_metadata.vessel_label('label', id_).strip()
         if lbl_str:
             for lbl in lbl_str.split('|'):
                 j = self.class_indices[lbl]

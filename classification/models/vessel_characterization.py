@@ -69,8 +69,8 @@ class Model(ModelBase):
             def __init__(self, key):
                 self.key = key
 
-            def __call__(self, mmsi):
-                x = vessel_metadata.vessel_label(self.key, mmsi)
+            def __call__(self, id_):
+                x = vessel_metadata.vessel_label(self.key, id_)
                 if x == '':
                     x = np.nan
                 return np.float32(x)
@@ -106,7 +106,7 @@ class Model(ModelBase):
 
         self.objective_map = {obj.name : obj for obj in self.training_objectives}
 
-    def _build_net(self, features, timestamps, mmsis, is_training):
+    def _build_net(self, features, timestamps, ids, is_training):
         outputs, _ = layers.misconception_model(
             features,
             filters_list=self.feature_depths,
@@ -122,15 +122,15 @@ class Model(ModelBase):
     def make_model_fn(self):
         def _model_fn(features, labels, mode, params):
             is_train = (mode == tf.estimator.ModeKeys.TRAIN)
-            mmsis = features['mmsi']
+            ids = features['id']
             time_ranges = features['time_ranges']
             timestamps = features['timestamps']
             features = features['features']
-            self._build_net(features, timestamps, mmsis, is_train)
+            self._build_net(features, timestamps, ids, is_train)
 
             if mode == tf.estimator.ModeKeys.PREDICT:
                 predictions = {
-                    "mmsi" : mmsis,
+                    "id" : ids,
                     "time_ranges" : time_ranges,
                     "timestamps" : timestamps
                     }

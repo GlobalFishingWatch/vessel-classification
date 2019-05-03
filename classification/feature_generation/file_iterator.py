@@ -56,7 +56,7 @@ class Deserializer(object):
         context_features, sequence_features = tf.parse_single_sequence_example(
             self.serialized_example,
             # Defaults are not specified since both keys are required.
-            context_features={'mmsi': tf.FixedLenFeature([], tf.int64), },
+            context_features={'id': tf.FixedLenFeature([], tf.int64), },
             sequence_features={
                 'movement_features': tf.FixedLenSequenceFeature(
                     shape=(num_features, ), dtype=tf.float32)
@@ -78,7 +78,7 @@ def process_fixed_window_features(context_features, sequence_features,
         num_features, window_size, shift, start_date, end_date, win_start, win_end):
     
     features = sequence_features['movement_features']
-    mmsi = context_features['mmsi']
+    id_ = context_features['id']
 
     assert win_end - win_start == shift, (win_end, win_start, shift)
     pad_end = window_size - win_end
@@ -139,7 +139,7 @@ def process_fixed_window_features(context_features, sequence_features,
     features = features[start_i:end_i]
 
     return np_array_extract_all_fixed_slices(features, num_features,
-                                             mmsi, window_size, shift)
+                                             id_, window_size, shift)
 
 
 
@@ -163,7 +163,7 @@ def all_fixed_window_feature_file_iterator(filenames, deserializer,
           2. A tensor of the timestamps for each feature point of dimension
              [n, window_size].
           3. A tensor of the timebounds for the slices, of dimension [n, 2].
-          4. A tensor of the mmsis of each vessel of dimension [n].
+          4. A tensor of the ids of each vessel of dimension [n].
 
     """
     for path in filenames:

@@ -68,23 +68,23 @@ class ModelBase(object):
     def build_training_file_list(self, base_feature_path, split):
         boundary = 1 if (split == metadata.TRAINING_SPLIT) else self.batch_size
         random_state = np.random.RandomState()
-        training_mmsis = self.vessel_metadata.weighted_training_list(
+        training_ids = self.vessel_metadata.weighted_training_list(
             random_state,
             split,
             self.max_replication_factor,
             boundary=boundary)
         return [
-            '%s/%s.tfrecord' % (base_feature_path, mmsi)
-            for mmsi in training_mmsis
+            '%s/%s.tfrecord' % (base_feature_path, id_)
+            for id_ in training_ids
         ]
 
     @staticmethod
-    def read_metadata(all_available_mmsis,
+    def read_metadata(all_available_ids,
                       metadata_file,
                       fishing_ranges,
                       fishing_upweight=1.0):
         return metadata.read_vessel_multiclass_metadata(
-            all_available_mmsis, metadata_file, fishing_ranges,
+            all_available_ids, metadata_file, fishing_ranges,
             fishing_upweight)
 
     def zero_pad_features(self, features):

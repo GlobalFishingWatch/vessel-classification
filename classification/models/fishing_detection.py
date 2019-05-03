@@ -66,18 +66,18 @@ class Model(ModelBase):
         return 10000.0
 
     @staticmethod
-    def read_metadata(all_available_mmsis,
+    def read_metadata(all_available_ids,
                       metadata_file,
                       fishing_ranges,
                       fishing_upweight=1.0):
         return metadata.read_vessel_time_weighted_metadata(
-            all_available_mmsis, metadata_file, fishing_ranges)
+            all_available_ids, metadata_file, fishing_ranges)
 
     def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
 
-        def length_or_none(mmsi):
-            length = vessel_metadata.vessel_label('length', mmsi)
+        def length_or_none(id_):
+            length = vessel_metadata.vessel_label('length', id_)
             if length == '':
                 return None
 
@@ -96,14 +96,14 @@ class Model(ModelBase):
 
     def build_training_file_list(self, base_feature_path, split):
         random_state = np.random.RandomState()
-        training_mmsis = self.vessel_metadata.fishing_range_only_list(
+        training_ids = self.vessel_metadata.fishing_range_only_list(
             random_state, split, self.max_replication_factor)
         return [
-            '%s/%s.tfrecord' % (base_feature_path, mmsi)
-            for mmsi in training_mmsis
+            '%s/%s.tfrecord' % (base_feature_path, id_)
+            for id_ in training_ids
         ]
 
-    def _build_net(self, features, timestamps, mmsis, is_training):
+    def _build_net(self, features, timestamps, ids, is_training):
         layers.misconception_fishing(
             features,
             filters_list=self.feature_depths,
@@ -119,15 +119,15 @@ class Model(ModelBase):
     def make_model_fn(self):
         def _model_fn(features, labels, mode, params):
             is_train = (mode == tf.estimator.ModeKeys.TRAIN)
-            mmsis = features['mmsi']
+            ids = features['id']
             time_ranges = features['time_ranges']
             timestamps = features['timestamps']
             features = features['features']
-            self._build_net(features, timestamps, mmsis, is_train)
+            self._build_net(features, timestamps, ids, is_train)
 
             if mode == tf.estimator.ModeKeys.PREDICT:
                 predictions = {
-                    "mmsi" : mmsis,
+                    "id" : ids,
                     "time_ranges": time_ranges,
                     "timestamps" : timestamps,
                     self.fishing_localisation_objective.name : self.fishing_localisation_objective.prediction

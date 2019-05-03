@@ -103,7 +103,7 @@ def empty_data(window_size, series):
                     shape=[0], dtype=str))     
 
 
-def cook_features(features, mmsi):
+def cook_features(features, id_):
     # We use min and max here to account for possible rolling / replicating
     # that goes on elsewhere.
     start_time = int(features[:, 0].min())
@@ -119,11 +119,11 @@ def cook_features(features, mmsi):
     return (np.stack([features]), 
             timestamps, 
             np.array([start_time, end_time], dtype=np.int32), 
-            mmsi)
+            id_)
 
 
 def extract_n_random_fixed_points(random_state, input_series, n,
-                                       output_length, mmsi,
+                                       output_length, id_,
                                        selection_ranges):
     """ Extracts a n, random fixed-points slice from a 2d numpy array.
     
@@ -137,7 +137,7 @@ def extract_n_random_fixed_points(random_state, input_series, n,
         n: the number of series to extract
         output_length: the number of points in the output series. Input series    
             shorter than this will be repeated into the output series.   
-        mmsi: the mmsi, or vessel_id of the vessel
+        id_: the id of the vessel
         selection_ranges: Either a list of time ranges that should be preferentially 
             selected from (we try to get at least on point from one of the ranges), or 
             None if to disable this behaviour. 
@@ -173,14 +173,14 @@ def extract_n_random_fixed_points(random_state, input_series, n,
     for _ in range(n):
         start_index = random_state.choice(candidates)
         end_index = start_index + output_length
-        samples.append(cook_features(input_series[start_index:end_index], mmsi))
+        samples.append(cook_features(input_series[start_index:end_index], id_))
 
     return zip(*samples)
 
 
 def extract_n_random_fixed_times(random_state, input_series, n,
                                        max_time_delta, output_length,
-                                       mmsi, min_timeslice_size):
+                                       id_, min_timeslice_size):
     """ Extracts a random fixed-time slice from a 2d numpy array.
     
     The input array must be 2d, representing a time series, with the first    
@@ -223,7 +223,7 @@ def extract_n_random_fixed_times(random_state, input_series, n,
         end_index = start_index + output_length
         cropped = input_series[start_index:end_index] # Might only have min_timeslice_size points
         padded = np_pad_repeat_slice(cropped, output_length)
-        samples.append(cook_features(padded, mmsi))
+        samples.append(cook_features(padded, id_))
 
     return zip(*samples)
 
@@ -231,7 +231,7 @@ def extract_n_random_fixed_times(random_state, input_series, n,
 
 
 def np_array_extract_slices_for_time_ranges(
-        random_state, input_series, mmsi,
+        random_state, input_series, id_,
         time_ranges, window_size, min_points_for_classification):
     """ Extract and process a set of specified time slices from a vessel
         movement feature.
@@ -239,7 +239,7 @@ def np_array_extract_slices_for_time_ranges(
     Args:
         random_state: a numpy randomstate object.
         input: the input data as a 2d numpy array.
-        mmsi: the id of the vessel which made this series.
+        id_: the id of the vessel which made this series.
         max_time_delta: the maximum time contained in each window.
         window_size: the size of the window.
         min_points_for_classification: the minumum number of points in a window for
@@ -253,7 +253,7 @@ def np_array_extract_slices_for_time_ranges(
            dimension [n, window_size].
         3. A numpy array comprising timebounds for each slice, of dimension
             [n, 2].
-        4. A numpy array with an int64 mmsi for each slice, of dimension [n].
+        4. A numpy array with an int64 id for each slice, of dimension [n].
 
     """
     slices = []
@@ -278,14 +278,14 @@ def np_array_extract_slices_for_time_ranges(
             without_timestamp = output_slice[:, 1:]
             timeseries = output_slice[:, 0].astype(np.int32)
             slices.append(
-                (np.stack([without_timestamp]), timeseries, time_bounds, mmsi))
+                (np.stack([without_timestamp]), timeseries, time_bounds, id_))
     # TODO: factor out this logic
     if slices == []:
         return empty_data(window_size, input_series)
     return zip(*slices)
 
 
-def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
+def np_array_extract_all_fixed_slices(input_series, num_features, id_,
                                       window_size, shift):
     slices = []
     input_length = len(input_series)
@@ -298,14 +298,14 @@ def np_array_extract_all_fixed_slices(input_series, num_features, mmsi,
         end_time = int(cropped[-1][0])
         time_bounds = np.array([start_time, end_time], dtype=np.int32)
         assert len(cropped) == window_size
-        slices.append(cook_features(cropped, mmsi))
+        slices.append(cook_features(cropped, id_))
     if slices == []:
         return empty_data(window_size, input_series)
     return zip(*slices)
 
 
 
-def process_fixed_window_features(random_state, features, mmsi, 
+def process_fixed_window_features(random_state, features, id_, 
         num_features, window_size, shift, start_date, end_date, win_start, win_end):
 
     assert win_end - win_start == shift, (win_end, win_start, shift)
@@ -367,7 +367,7 @@ def process_fixed_window_features(random_state, features, mmsi,
     features = features[start_i:end_i]
 
     return np_array_extract_all_fixed_slices(features, num_features,
-                                             mmsi, window_size, shift)
+                                             id_, window_size, shift)
 
 
 

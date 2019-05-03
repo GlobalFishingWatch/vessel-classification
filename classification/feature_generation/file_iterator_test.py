@@ -26,10 +26,10 @@ def test_deserialize_file():
         with GCSExampleIter(path) as exmpliter:
             for i, exmp in enumerate(exmpliter):
                 context_features, sequence_features = deserializer(exmp)
-                mmsi = context_features['mmsi']
+                id_ = context_features['id']
                 movement_features = sequence_features['movement_features']
 
-    assert mmsi == 251822362
+    assert id_ == 251822362
     assert i == 0
     assert np.allclose(movement_features[0], [  
        1.38347622e+09,   1.61996498e+01,   4.07687426e-02,   0.00000000e+00,
@@ -46,11 +46,11 @@ def log_mem():
 
 
 def test_read_files_from_gcs():
-    path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/mmsis/part-00000-of-00001.txt"
+    path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/ids/part-00000-of-00001.txt"
     with GCSFile(path) as fp:
-        read_mmsi = fp.read().split()[::20000][:10]
-        print(read_mmsi)
-        assert read_mmsi == ['1', '200002405', '211151080', '220529000', '229268000', '235108004', '244650777', '246065069', '257222040', '269105470']
+        read_id = fp.read().split()[::20000][:10]
+        print(read_id)
+        assert read_id == ['1', '200002405', '211151080', '220529000', '229268000', '235108004', '244650777', '246065069', '257222040', '269105470']
 
 @pytest.mark.skip(reason="debug only")
 def test_iterator_leak():
@@ -90,14 +90,14 @@ def test_read_leak():
                     pass
 
 @pytest.mark.skip(reason="debug only")
-def test_coverage(base_path, mmsi_list, num_features, year):
+def test_coverage(base_path, id_list, num_features, year):
     start = datetime.date(year, 1, 1)
     end = datetime.date(year, 12, 31)
     dates = set()
     with tf.Session() as sess:
         deserializer = Deserializer(num_features=num_features)
-        for mmsi in mmsi_list:
-            path = pp.join(base_path, 'features', str(mmsi) + '.tfrecord')
+        for id_ in id_list:
+            path = pp.join(base_path, 'features', str(id_) + '.tfrecord')
             counter = 0
             with GCSExampleIter(path) as exmpliter:
                 for exmp in exmpliter:
@@ -114,8 +114,8 @@ def test_coverage(base_path, mmsi_list, num_features, year):
     return dates
 
 
-def read_mmsi(base_path):
-    path = pp.join(base_path, "mmsis/part-00000-of-00001.txt")
+def read_id(base_path):
+    path = pp.join(base_path, "ids/part-00000-of-00001.txt")
     with GCSFile(path) as fp:
         return fp.read().strip().split()
 
