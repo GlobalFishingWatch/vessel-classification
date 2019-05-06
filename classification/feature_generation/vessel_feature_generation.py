@@ -26,7 +26,7 @@ def input_fn(vessel_metadata,
                     random_state, features, num_slices_per_id, max_time_delta,
                     window_size, id_, min_timeslice_size)
 
-        int_id = tf.cast(id, tf.int64)
+        int_id = tf.cast(id_, tf.int64)
         features = tf.cast(movement_features, tf.float32)
         features, timestamps, time_ranges, id_ = tf.py_func(
             _xform, 

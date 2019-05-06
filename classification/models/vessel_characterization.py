@@ -28,6 +28,13 @@ import os
 
 import tensorflow as tf
 
+approx_means = [ 6.9139094e+00,  4.3506036e+00,  6.1346573e-01,  5.7922113e-01,
+                -1.0719098e-03, -3.7928432e-02,  6.0396111e-03, -2.2346964e-01,
+                -1.9947174e-01, -8.9961719e-03,  1.5873306e+00,  0.0000000e+00,
+                 0.0000000e+00,  0.0000000e+00]
+approx_stds =  [0.8707472 , 3.2674177 , 0.7677098 , 0.80428886, 0.3563173 ,
+                0.7140226 , 0.6984951 , 0.68056667, 0.6656215 , 0.54217416,
+                1.8521472 , 0.        , 0.        , 0.        ]
 
 class Model(ModelBase):
 
@@ -37,7 +44,7 @@ class Model(ModelBase):
     assert len(strides) == len(feature_depths)
     feature_sub_depths = 1024
 
-    initial_learning_rate = 10e-5
+    initial_learning_rate = 100e-5
     learning_decay_rate = 0.5
     decay_examples = 100000
 
@@ -115,7 +122,9 @@ class Model(ModelBase):
             objective_functions=self.training_objectives,
             training=is_training,
             sub_filters=self.feature_sub_depths,
-            sub_layers=2
+            sub_layers=2,
+            feature_means=approx_means,
+            feature_stds=approx_stds
             )
         return outputs
 

@@ -98,7 +98,9 @@ def misconception_model(inputs,
                         sub_filters=128,
                         sub_layers=2,
                         dropout_rate=0.5,
-                        virtual_batch_size=None):
+                        virtual_batch_size=None,
+                        feature_means=None,
+                        feature_stds=None):
     """ A misconception tower.
 
   Args:
@@ -115,6 +117,10 @@ def misconception_model(inputs,
   """
     layers = []
     net = inputs
+    if feature_means is not None:
+        net = net - tf.constant(feature_means)[None, None, :]
+    if feature_stds is not None:
+        net = net / (tf.constant(feature_stds) + 1e-6)
     layers.append(net)
     for filters, strides in zip(filters_list, strides_list):
         net = misconception_with_bypass(net, filters, kernel_size, strides, training, virtual_batch_size=virtual_batch_size)
