@@ -18,9 +18,27 @@ import logging
 import os
 import sys
 import importlib
+import numpy as np
 import tensorflow as tf
 from pkg_resources import resource_filename
 from . import metadata
+
+def compute_approx_norms(model_fn, count=100):
+    dataset = model_fn()
+    print(dataset)
+    iter = model_fn().make_initializable_iterator()
+    print(iter)
+    el = iter.get_next()
+    means = []
+    vars = []
+    with tf.Session() as sess:
+        sess.run(iter.initializer)
+        for _ in range(count):
+            x = sess.run(el)[0]['features']
+            means.append(x.mean(axis=(0, 1)))
+            vars.append(x.var(axis=(0, 1)))
+    return np.mean(means, axis=0), np.sqrt(np.mean(vars, axis=0))
+
 
 def main(args):
     logging.getLogger().setLevel(logging.DEBUG)
@@ -62,6 +80,9 @@ def main(args):
     chosen_model = Model(feature_dimensions, vessel_metadata, args.metrics)
 
     train_input_fn = chosen_model.make_training_input_fn(args.root_feature_path, args.num_parallel_readers)
+
+    # print(compute_approx_norms(train_input_fn))
+
     test_input_fn = chosen_model.make_test_input_fn(args.root_feature_path, args.num_parallel_readers)
     estimator = chosen_model.make_estimator(args.training_output_path)
     train_spec = tf.estimator.TrainSpec(
