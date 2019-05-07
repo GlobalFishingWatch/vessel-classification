@@ -213,7 +213,9 @@ def misconception_fishing(inputs,
                           post_layers=1,
                           dropout_rate=0.5,
                           internal_dropout_rate=0.5,
-                          other_objectives=()):
+                          other_objectives=(),
+                          feature_means=None,
+                          feature_stds=None):
 
     _, layers = misconception_model(
         inputs,
@@ -224,7 +226,10 @@ def misconception_fishing(inputs,
         other_objectives,
         sub_filters=post_filters,
         sub_layers=2,
-        dropout_rate=internal_dropout_rate)
+        dropout_rate=internal_dropout_rate,
+        feature_means=feature_means,
+        feature_stds=feature_stds
+        )
 
     expanded_layers = []
     for i, lyr in enumerate(layers):
