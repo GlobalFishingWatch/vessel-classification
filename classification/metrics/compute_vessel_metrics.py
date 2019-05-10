@@ -16,9 +16,9 @@
 Example:
 
     python -m classification.metrics.compute_vessel_metrics \
-        --inference-table machine_learning_dev_ttl_120d.mmsi_vessel_char_V20190411_  \
-        --label-path classification/data/training_classes.csv \
-        --dest-path ./test_inference.html
+        --inference-table machine_learning_dev_ttl_120d.vessel_char_vid_oldwts_features_v20190503b_  \
+        --label-table machine_learning_dev_ttl_120d.char_info_v20190508 \
+        --dest-path ./test_inference_metrics_0508.html
 
 *Note: despite the table, name this table is in terms of vessel_id*
 
@@ -384,8 +384,6 @@ def ydump_attrs(doc, results):
 
     logging.info('    Consolidating attributes')
     consolidated = consolidate_attribute_across_dates(results)
-    # true_mask = np.array([(x is not None) for x in consolidated.true_attrs])
-    # infer_mask = np.array([(x is not None) for x in consolidated.inferred_attrs])
     true_mask = ~np.isnan(consolidated.true_attrs)
     infer_mask = ~np.isnan(consolidated.inferred_attrs)
 
@@ -407,7 +405,8 @@ def ydump_attrs(doc, results):
         results = []
         labels = sorted(set(true_labels))
         for lbl in labels:
-            mask = true_mask & infer_mask & (lbl == true_labels)
+            lbl_mask = np.array([(lbl == x) for x in true_labels])
+            mask = true_mask & infer_mask & lbl_mask
             if mask.sum():
                 err = RMS(true_attrs[mask], pred_attrs[mask])
                 abs_err = MAE(true_attrs[mask], pred_attrs[mask])
@@ -586,7 +585,7 @@ def consolidate_across_dates(results, date_range=None):
     true_labels = []
 
     if date_range is None:
-        valid_date_mask = np.ones([len(results.id)], dtype=bool)
+        valid_date_mask = np.ones([len(results.ids)], dtype=bool)
     else:
         # TODO: write out end date as well, so that we avoid this hackery
         end_dates = results.start_dates + datetime.timedelta(days=180)
@@ -595,11 +594,11 @@ def consolidate_across_dates(results, date_range=None):
 
     id_map = {}
     id_indices = []
-    for i, m in enumerate(results.id):
+    for i, m in enumerate(results.ids):
         if valid_date_mask[i]:
             if m not in id_map:
-                id_map[m] = len(inferred_id)
-                inferred_id.append(m)
+                id_map[m] = len(inferred_ids)
+                inferred_ids.append(m)
                 true_labels.append(results.true_labels[i])
             id_indices.append(id_map[m])
         else:
@@ -624,7 +623,7 @@ def consolidate_across_dates(results, date_range=None):
         np.array(true_labels), None, scores, results.label_list)
 
 
-def consolidate_attribute_across_dates(results, date_range=None):
+def consolidate_attribute_across_dates(results):
     """Consolidate scores for each ID across available dates.
 
     For each ID, we average the attribute across all available dates
@@ -633,22 +632,14 @@ def consolidate_attribute_across_dates(results, date_range=None):
     inferred_attributes = []
     true_attributes = []
     true_labels = []
-    indices = np.argsort(results.id)
-    ids = np.unique(results.id)
+    indices = np.argsort(results.ids)
+    ids = np.unique(results.ids)
 
-    for m in np.unique(results.id):
-        start = np.searchsorted(results.id, m, side='left', sorter=indices)
-        stop = np.searchsorted(results.id, m, side='right', sorter=indices)
+    for id_ in np.unique(results.ids):
+        start = np.searchsorted(results.ids, id_, side='left', sorter=indices)
+        stop = np.searchsorted(results.ids, id_, side='right', sorter=indices)
 
-        attrs_for_id = results.inferred_attrs[indices[start:stop]]
-
-        if date_range:
-            start_dates = results.start_dates[indices[start:stop]]
-            # TODO: This is kind of messy need to verify that date ranges and output ranges line up
-            valid_date_mask = (start_dates >= date_range[0]) & (start_dates < date_range[1])
-            attrs = attrs_for_id[valid_date_mask]
-        else:
-            attrs = attrs_for_id
+        attrs = results.inferred_attrs[indices[start:stop]]
 
         if len(attrs):
             inferred_attributes.append(attrs.mean())
@@ -716,46 +707,24 @@ def confusion_matrix(results):
 
     return ConfusionMatrix(cm_raw, cm_normalized)
 
-# query to rebuild mmsi_to_vessel_id
-"""
-with pairs as (
-  select ssvid, vessel_id, count(*) pair_count
-  from `pipe_production_b.position_messages_*`
-  group by ssvid, vessel_id
-),
 
-ranked as (
-  select ssvid, vessel_id,
-         row_number() over(partition by ssvid order by pair_count desc) as rank
-  from pairs
-)
 
-select ssvid, vessel_id
-from ranked
-where rank = 1
-"""
-
-def load_inferred(inference_table, label_table, extractors, whitelist):
+def load_inferred(inference_table, label_table, extractors):
     """Load inferred data and generate comparison data
 
     """
     query = """
 
-    SELECT c.* except(vessel_id), b.mmsi as vessel_id FROM 
-    `machine_learning_dev_ttl_120d.mmsi_to_vessel_id` a
-    JOIN
+    SELECT c.* except (vessel_id), vessel_id as id FROM 
     `{}` b
-    ON a.ssvid = cast(b.mmsi as string)
     JOIN
    `{}*` c
-    USING (vessel_id)
+    ON (b.id = c.vessel_id)
     """.format(label_table, inference_table)
     print(query)
     df = pd.read_gbq(query, project_id='world-fishing-827', dialect='standard')
 
     for row in df.itertuples():
-        if whitelist is not None and row.mmsi not in whitelist:
-            continue
         for ext in extractors:
             ext.extract(row)
     for ext in extractors:
@@ -768,13 +737,13 @@ class ClassificationExtractor(InferenceResults):
     def __init__(self, label_map):
         self.label_map = label_map
         #
-        self.all_mmsi = []
+        self.all_ids = []
         self.all_inferred_labels = []
         self.all_true_labels = []
         self.all_start_dates = []
         self.all_scores = []
         #
-        self.mmsi = []
+        self.ids = []
         self.inferred_labels = []
         self.true_labels = []
         self.start_dates = []
@@ -783,8 +752,8 @@ class ClassificationExtractor(InferenceResults):
         self.all_labels = set(label_map.values())
 
     def extract(self, row):
-        mmsi = row.vessel_id
-        lbl = self.label_map.get(mmsi)
+        id_ = row.id
+        lbl = self.label_map.get(id_)
         raw_label_scores = row.label_scores
         label_scores = {x['label'] : x['score'] for x in raw_label_scores}
         self.all_labels |= set(label_scores.keys())
@@ -794,14 +763,14 @@ class ClassificationExtractor(InferenceResults):
             start_date = start_date.replace(tzinfo=pytz.utc)
         inferred = row.max_label
         # Every row that has inference values get stored in all_
-        self.all_mmsi.append(mmsi)
+        self.all_ids.append(id_)
         self.all_start_dates.append(start_date)
         self.all_true_labels.append(lbl)
         self.all_inferred_labels.append(inferred)
         self.all_scores.append(label_scores)
         # Only values that have a known component get stored in the not all_ arrays
         if lbl is not None and not (isinstance(lbl, float) and np.isnan(lbl)):
-            self.mmsi.append(mmsi)
+            self.ids.append(id_)
             self.start_dates.append(start_date)
             self.true_labels.append(lbl)
             self.inferred_labels.append(inferred)
@@ -816,7 +785,7 @@ class ClassificationExtractor(InferenceResults):
             self.all_labels, key=VESSEL_CLASS_DETAILED_NAMES.index)
         if len(self.true_labels) == 0:
             raise ValueError('no true labels')
-        self.mmsi = np.array(self.mmsi)
+        self.ids = np.array(self.ids)
         for lbl in self.label_list:
             true_count = (self.true_labels == lbl).sum()
             inf_count = (self.inferred_labels == lbl).sum()
@@ -824,7 +793,7 @@ class ClassificationExtractor(InferenceResults):
                          inf_count, lbl)
 
     def __nonzero__(self):
-        return len(self.mmsi) > 0
+        return len(self.ids) > 0
 
 
 class AttributeExtractor(object):
@@ -832,32 +801,32 @@ class AttributeExtractor(object):
         self.key = key
         self.attr_map = attr_map
         self.label_map = label_map
-        self.mmsi = []
+        self.ids = []
         self.inferred_attrs = []
         self.true_attrs = []
         self.true_labels = []
         self.start_dates = []
 
     def extract(self, row):
-        mmsi = row.vessel_id
+        id_ = row.id
         if getattr(row, self.key) is None:
             return
-        self.mmsi.append(mmsi)
+        self.ids.append(id_)
         self.start_dates.append(row.start_time)
         self.true_attrs.append(
-            float(self.attr_map[mmsi]) if (mmsi in self.attr_map) else np.nan)
-        self.true_labels.append(self.label_map.get(mmsi, 'Unknown'))
+            float(self.attr_map[id_]) if (id_ in self.attr_map) else np.nan)
+        self.true_labels.append(self.label_map.get(id_, 'Unknown'))
         self.inferred_attrs.append(getattr(row, self.key))
 
     def finalize(self):
         self.inferred_attrs = np.array(self.inferred_attrs)
         self.true_attrs = np.array(self.true_attrs)
         self.start_dates = np.array(self.start_dates)
-        self.mmsi = np.array(self.mmsi)
+        self.ids = np.array(self.ids)
         self.true_labels = np.array(self.true_labels)
 
     def __nonzero__(self):
-        return len(self.mmsi) > 0
+        return len(self.ids) > 0
 
 
 
@@ -889,7 +858,7 @@ def assemble_composite(results, mapping):
             inverse_mapping[lbl] = new_label
     base_label_map = {x: i for (i, x) in enumerate(results.label_list)}
 
-    for i, mmsi in enumerate(results.all_mmsi):
+    for i, id_ in enumerate(results.all_ids):
         scores = {}
         for (new_label, base_labels) in mapping:
             scores[new_label] = 0
@@ -906,9 +875,9 @@ def assemble_composite(results, mapping):
         return np.array([x for (i, x) in enumerate(seq) if true_labels[i]])
 
     return InferenceResults(
-        trim(results.all_mmsi), trim(inferred_labels), trim(true_labels),
+        trim(results.all_ids), trim(inferred_labels), trim(true_labels),
         trim(start_dates), trim(inferred_scores), label_list,
-        np.array(results.all_mmsi), np.array(inferred_labels),
+        np.array(results.all_ids), np.array(inferred_labels),
         np.array(true_labels), np.array(start_dates),
         np.array(inferred_scores))
 
@@ -927,9 +896,10 @@ def datetime_to_minute(dt):
 def compute_results(args):
     logging.info('Loading label maps')
     maps = defaultdict(dict)
-    label_df = pd.read_gbq("select * from `{}`".format(training_data_table), project_id='world-fishing-827', dialect='standard')
+    label_df = pd.read_gbq("select * from `{}`".format(args.label_table), 
+                   project_id='world-fishing-827', dialect='standard')
     for row in label_df.itertuples():
-        mmsi = row.mmsi
+        id_ = row.id
         if not row.split == TEST_SPLIT:
             continue
         for field in ['label', 'length', 'tonnage', 'engine_power', 'crew_size', 'split']:
@@ -940,13 +910,13 @@ def compute_results(args):
                     ) not in VESSEL_CLASS_DETAILED_NAMES:
                         print("SHOULDNT HAPPEN!", field)
                         continue
-                maps[field][mmsi] = getattr(row, field)
+                maps[field][id_] = getattr(row, field)
     results = {}
 
     # Sanity check the attribute mappings
     for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
-        for mmsi, value in maps[field].items():
-            assert float(value) > 0, (mmsi, value)
+        for id_, value in maps[field].items():
+            assert float(value) > 0, (id_, value)
 
     results['fine'] = ClassificationExtractor(maps['label'])
 
@@ -962,8 +932,7 @@ def compute_results(args):
     results['crew_size'] = ext       
 
     logging.info('Loading inference data')
-    whitelist = None
-    load_inferred(args.inference_table, training_data_table, results.values(), whitelist)
+    load_inferred(args.inference_table, args.label_table, results.values())
 
     # Sanity check attribute values after loading
     for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
@@ -1023,18 +992,6 @@ def dump_html(args, results):
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 temp_dir = os.path.join(this_dir, 'temp')
-training_data_table = 'machine_learning_dev_ttl_120d.temp_training_data_table'
-
-def create_label_table(label_path):
-    raw = pd.read_csv(label_path)
-    filtered = raw[['mmsi',
-                     'length',
-                     'tonnage',
-                     'engine_power',
-                     'crew_size',
-                     'label',
-                     'split']]
-    filtered.to_gbq(training_data_table, if_exists='replace',  project_id='world-fishing-827')
 
 
 if __name__ == '__main__':
@@ -1045,13 +1002,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--inference-table', help='table of inference results', required=True)
     parser.add_argument(
-        '--label-path', help='path to test labels', required=True)
+        '--label-table', help='path to test labels', required=True)
     parser.add_argument(
         '--dest-path', help='path to write results to', required=True)
 
     args = parser.parse_args()
 
-    create_label_table(args.label_path)
+    # create_label_table(args.label_path)
     results = compute_results(args)
 
     dump_html(args, results)
