@@ -16,9 +16,9 @@
 Example:
 
     python -m classification.metrics.compute_vessel_metrics \
-        --inference-table machine_learning_dev_ttl_120d.vessel_char_vid_oldwts_features_v20190503b_  \
-        --label-table machine_learning_dev_ttl_120d.char_info_v20190508 \
-        --dest-path ./test_inference_metrics_0508.html
+        --inference-table machine_learning_dev_ttl_120d.vessel_char_vid_features_v20190509  \
+        --label-table machine_learning_dev_ttl_120d.char_info_v20190509 \
+        --dest-path ./test_inference_metrics_0509.html
 
 *Note: despite the table, name this table is in terms of vessel_id*
 
@@ -74,14 +74,6 @@ fishing_mapping = [
     ['non_fishing', set(atomic(schema['unknown']['non_fishing']))],
 ]
 
-
-# for k, v in coarse_mapping:
-#     print(k, v)
-# print()
-# for k, v in fishing_mapping:
-#     print(k, v)
-
-# raise SystemExit
 
 # Faster than using dateutil
 def _parse(x):
@@ -208,43 +200,49 @@ table {
 # basic metrics
 
 
-def precision_score(y_true, y_pred):
-    y_true = np.asarray(y_true, dtype=bool)
-    y_pred = np.asarray(y_pred, dtype=bool)
+def precision_score(y_true, y_pred, sample_weights=None):
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
 
-    true_pos = y_true & y_pred
-    all_pos = y_pred
+    true_pos = np.array([(x == y and x != 0) for (x, y) in zip(y_true, y_pred)], dtype=float)
+    all_pos = np.array([(x != 0) for x in y_pred], dtype=float)
+    if sample_weights is not None:
+        true_pos *= sample_weights
+        all_pos *= sample_weights
 
     return true_pos.sum() / all_pos.sum()
 
 
-def recall_score(y_true, y_pred):
-    y_true = np.asarray(y_true, dtype=bool)
-    y_pred = np.asarray(y_pred, dtype=bool)
+def recall_score(y_true, y_pred, sample_weights=None):
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
 
-    true_pos = y_true & y_pred
-    all_true = y_true
+    true_pos = np.array([(x == y and x != 0) for (x, y) in zip(y_true, y_pred)], dtype=float)
+    all_true = np.array([(x != 0) for x in y_true], dtype=float)
+    if sample_weights is not None:
+        true_pos *= sample_weights
+        all_true *= sample_weights
 
     return true_pos.sum() / all_true.sum()
 
 
-def f1_score(y_true, y_pred):
-    prec = precision_score(y_true, y_pred)
-    recall = recall_score(y_true, y_pred)
+def f1_score(y_true, y_pred, sample_weights=None):
+    prec = precision_score(y_true, y_pred, sample_weights)
+    recall = recall_score(y_true, y_pred, sample_weights)
 
     return 2 / (1 / prec + 1 / recall)
 
 
-def accuracy_score(y_true, y_pred, weights=None):
+def accuracy_score(y_true, y_pred, sample_weights=None):
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
-    if weights is None:
-        weights = np.ones_like(y_pred).astype(float)
-    weights = np.asarray(weights)
+    if sample_weights is None:
+        sample_weights = np.ones_like(y_pred).astype(float)
+    weights = np.asarray(sample_weights)
 
     correct = (y_true == y_pred)
 
-    return (weights * correct).sum() / weights.sum()
+    return (sample_weights * correct).sum() / sample_weights.sum()
 
 
 def weights(labels, y_true, y_pred, max_weight=200):
@@ -258,6 +256,16 @@ def weights(labels, y_true, y_pred, max_weight=200):
             wt = min(len(trues) / trues.sum(), max_weight)
             weights += trues * wt
 
+    return weights / weights.sum()
+
+
+def weights_by_class(label_weights, y_true, y_pred):
+    y_true = np.asarray(y_true)
+    weights = np.zeros([len(y_true)])
+    for lbl, wt  in labels:
+        trues = (y_true == lbl)
+        if trues.sum():
+            weights[trues] = wt
     return weights / weights.sum()
 
 
@@ -432,7 +440,7 @@ def ydump_attrs(doc, results):
             ])
 
 
-def ydump_metrics(doc, results):
+def ydump_metrics(doc, results, weights_map):
     """dump metrics for `results` to html using yatag
 
     Args:
@@ -469,84 +477,16 @@ def ydump_metrics(doc, results):
 
     with tag('div', klass='unbreakable'):
         line('h3', 'Metrics by Label')
+        weights = composite_weights(weights_map, results.mapping, consolidated.true_labels)
         row_vals = precision_recall_f1(consolidated.label_list,
                                        consolidated.true_labels,
-                                       consolidated.inferred_labels)
+                                       consolidated.inferred_labels,
+                                       weights)
         ydump_table(doc, ['Label (id:true/total)', 'Precision', 'Recall', 'F1-Score'], [
             (a, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
             for (a, b, c, d) in row_vals
         ])
-        wts = weights(consolidated.label_list, consolidated.true_labels,
-                      consolidated.inferred_labels)
-        line('h4', 'Accuracy with equal class weight')
-        text(
-            str(
-                accuracy_score(consolidated.true_labels,
-                               consolidated.inferred_labels, wts)))
 
-fishing_category_map = {
-    'drifting_longlines' : 'drifting_longlines',
-    'trawlers' : 'trawlers',
-    'purse_seines' : 'purse_seines',
-    'pots_and_traps' : 'stationary_gear',
-    'set_gillnets' : 'stationary_gear',
-    'set_longlines' : 'stationary_gear'
-}
-
-
-def ydump_fishing_localisation(doc, results):
-    doc, tag, text, line = doc.ttl()
-
-    y_true = np.concatenate(results.true_fishing_by_id.values())
-    y_pred = np.concatenate(results.pred_fishing_by_id.values())
-
-    header = ['Gear Type (id:true/total)', 'Precision', 'Recall', 'Accuracy', 'F1-Score']
-    rows = []
-    logging.info('Overall localisation accuracy %s',
-                 accuracy_score(y_true, y_pred))
-    logging.info('Overall localisation precision %s',
-                 precision_score(y_true, y_pred))
-    logging.info('Overall localisation recall %s',
-                 recall_score(y_true, y_pred))
-
-    for cls in sorted(set(fishing_category_map.values())) + ['other'] :
-        true_chunks = []
-        pred_chunks = []
-        id_list = []
-        for id_ in results.label_map:
-            if id_ not in results.true_fishing_by_id:
-                continue
-            if fishing_category_map.get(results.label_map[id_], 'other') != cls:
-                continue
-            id_list.append(id_)
-            true_chunks.append(results.true_fishing_by_id[id_])
-            pred_chunks.append(results.pred_fishing_by_id[id_])
-        if len(true_chunks):
-            logging.info('ID for {}: {}'.format(cls, id_list))
-            y_true = np.concatenate(true_chunks)
-            y_pred = np.concatenate(pred_chunks)
-            rows.append(['{} ({}:{}/{})'.format(cls, len(true_chunks), sum(y_true), len(y_true)),
-                         precision_score(y_true, y_pred),
-                         recall_score(y_true, y_pred),
-                         accuracy_score(y_true, y_pred),
-                         f1_score(y_true, y_pred), ])
-
-    rows.append(['', '', '', '', ''])
-
-    y_true = np.concatenate(results.true_fishing_by_id.values())
-    y_pred = np.concatenate(results.pred_fishing_by_id.values())
-
-    rows.append(['Overall',
-                 precision_score(y_true, y_pred),
-                 recall_score(y_true, y_pred),
-                 accuracy_score(y_true, y_pred),
-                 f1_score(y_true, y_pred), ])
-
-    with tag('div', klass='unbreakable'):
-        ydump_table(
-            doc, header,
-            [[('{:.2f}'.format(x) if isinstance(x, float) else x) for x in row]
-             for row in rows])
 
 # Helper functions for computing metrics
 
@@ -556,7 +496,7 @@ def clean_label(x):
     return x.replace('_', ' ')
 
 
-def precision_recall_f1(labels, y_true, y_pred):
+def precision_recall_f1(labels, y_true, y_pred, weights):
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
     results = []
@@ -567,7 +507,18 @@ def precision_recall_f1(labels, y_true, y_pred):
             # Only return cases where there are least one vessel present in both cases
             results.append(
                 (lbl, precision_score(trues, positives),
-                 recall_score(trues, positives), f1_score(trues, positives)))
+                 recall_score(trues, positives), 
+                 f1_score(trues, positives)))
+    # Note that the micro-avereage precision/recall/F1 are the same
+    # as the accuracy for the vanilla case we have here. (Predictions
+    # in all cases, on prediction per case.)
+    results.append(('ALL (unweighted)', precision_score(y_true, y_pred),
+                            recall_score(y_true, y_pred),
+                            f1_score(y_true, y_pred)))
+    results.append(('ALL (by prevalence)', precision_score(y_true, y_pred, sample_weights=weights),
+                        recall_score(y_true, y_pred, sample_weights=weights),
+                            f1_score(y_true, y_pred, sample_weights=weights))
+        )
     return results
 
 
@@ -708,7 +659,6 @@ def confusion_matrix(results):
     return ConfusionMatrix(cm_raw, cm_normalized)
 
 
-
 def load_inferred(inference_table, label_table, extractors):
     """Load inferred data and generate comparison data
 
@@ -729,6 +679,45 @@ def load_inferred(inference_table, label_table, extractors):
             ext.extract(row)
     for ext in extractors:
         ext.finalize()
+
+
+def load_class_weights(inference_table):
+    query = '''
+        with
+
+        core as (
+        select * from `{}*`
+        where max_label is not null
+        ),
+
+        count as (
+        select count(*) as total from core
+        )
+        select max_label as label, count(*) / total as fraction
+        from core
+        cross join count
+        group by label, total
+        order by fraction desc
+    '''.format(inference_table)
+    df = pd.read_gbq(query, project_id='world-fishing-827', dialect='standard')
+    wt_map = {x.label : x.fraction for x in df.itertuples()}
+    return wt_map
+
+
+def composite_weights(weight_map, class_map, y_true):
+    y_true = np.asarray(y_true)
+    new_weight_map = {}
+    for k, atomic_set in class_map.items():
+        new_weight_map[k] = sum([weight_map[atm] for atm in atomic_set])
+
+    weights = np.zeros([len(y_true)])
+    for lbl, wt in new_weight_map.items():
+        trues = (y_true == lbl)
+        if trues.sum():
+            weights[trues] = wt / trues.sum()
+
+    return weights / weights.sum()
+
 
 
 class ClassificationExtractor(InferenceResults):
@@ -919,6 +908,7 @@ def compute_results(args):
             assert float(value) > 0, (id_, value)
 
     results['fine'] = ClassificationExtractor(maps['label'])
+    results['fine'].mapping = {x : set([x]) for x in all_classes}
 
     ext = AttributeExtractor('length', maps['length'], maps['label'])
     results['length'] = ext
@@ -933,6 +923,9 @@ def compute_results(args):
 
     logging.info('Loading inference data')
     load_inferred(args.inference_table, args.label_table, results.values())
+    class_weights = load_class_weights(args.inference_table)
+    results['class_weights'] = class_weights
+
 
     # Sanity check attribute values after loading
     for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
@@ -946,9 +939,10 @@ def compute_results(args):
     # Assemble coarse and is_fishing scores:
     logging.info('Assembling coarse data')
     results['coarse'] = assemble_composite(results['fine'], coarse_mapping)
+    results['coarse'].mapping = {k : v for (k, v) in coarse_mapping}
     logging.info('Assembling fishing data')
-    results['fishing'] = assemble_composite(results['fine'],
-                                            fishing_mapping)
+    results['fishing'] = assemble_composite(results['fine'],fishing_mapping)
+    results['fishing'].mapping = {k : v for (k, v) in fishing_mapping}
     return results
 
 
@@ -963,7 +957,8 @@ def dump_html(args, results):
         if results[key]:
             logging.info('Dumping "{}"'.format(heading))
             doc.line('h2', heading)
-            ydump_metrics(doc, results[key])
+            wts = results['class_weights'] if (key=='fine') else None
+            ydump_metrics(doc, results[key], results['class_weights'])
             doc.stag('hr')
 
     logging.info('Dumping Length')
@@ -993,6 +988,27 @@ def dump_html(args, results):
 this_dir = os.path.dirname(os.path.abspath(__file__))
 temp_dir = os.path.join(this_dir, 'temp')
 
+# TODO: compute the fraction of each vessel type, then compute
+# the weights for precision recall, accuracy with weighted
+# values rather than equal values.
+# Query for weights looks like:
+'''
+with
+
+core as (
+select * from `machine_learning_dev_ttl_120d.vessel_char_vid_features_v20190509*`
+where max_label is not null
+),
+
+count as (
+select count(*) as total from core
+)
+select max_label as label, count(*) / total as fraction
+from core
+cross join count
+group by label, total
+order by fraction desc
+'''
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG)
@@ -1008,7 +1024,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # create_label_table(args.label_path)
     results = compute_results(args)
 
     dump_html(args, results)
