@@ -8,38 +8,16 @@ from classification import metadata
 def fishing_range_mmsi(fishdbname):
     return '''
         (
-            select mmsi, first_timestamp, last_timestamp from (
+            select mmsi, first_timestamp, last_timestamp, transit_only from (
                select
                mmsi, 
                first_value(start_time) over(partition by mmsi order by start_time) as first_timestamp, 
-               last_value(end_time) over(partition by mmsi order by end_time) as last_timestamp
+               last_value(end_time) over(partition by mmsi order by end_time) as last_timestamp,
+               last_value(is_fishing) over(partition by mmsi order by is_fishing) as transit_only
                from `{fishdbname}`
-               ) group by mmsi, first_timestamp, last_timestamp
+               ) group by mmsi, first_timestamp, last_timestamp, transit_only
         )
     '''.format(fishdbname=fishdbname)
-
-
-# # TODO: check this one
-# def read_vessel_database_ssvid(dbname, fishdbname):
-#     query = '''
-#         with
-
-#         fishing_range_mmsi as {fishing_range_mmsi}
-
-
-#         select mmsi as id, length_m as length, tonnage_gt as tonnage, 
-#                engine_power_kw as engine_power, crew as crew_size,
-#                geartype as label,
-#                confidence -- 1==low, 2==typical, 3==high
-#         from {dbname}
-#         join {fishing_range_mmsi}
-#         using mmsi
-#         where (length_m is not null or tonnage_gt is not null or 
-#                 engine_power_kw is not null or geartype is not null)
-#             ) or (not (a.last_timestamp <  c.first_timestamp or 
-#                      a.first_timestamp > c.last_timestamp)    '''.format(dbname=dbname, 
-#               fishing_range_mmsi=fishing_range_mmsi(fishdbname))
-#     return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
 
 
 def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
@@ -66,6 +44,7 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
                 or crew is not null)
         )
         '''.format(dbname=dbname, dataset=dataset)
+        extra_group = ''
     else:
         fishing_subquery = '''
         fishing_range_mmsi as {fishing_range_mmsi},
@@ -77,7 +56,7 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
                  engine_power_kw as engine_power, 
                  geartype as label, crew as crew_size,
                  confidence, -- 1==low, 2==typical, 3==high
-                 pos_count
+                 pos_count, transit_only
           from {dbname} a
           join `{dataset}.segment_identity_2*` b
           on (a.mmsi = cast(ssvid as int64))
@@ -95,7 +74,7 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
                   a.first_timestamp > c.last_timestamp))) 
         )
         '''.format(dbname=dbname, dataset=dataset)
-
+        extra_group = ', transit_only'
     query = '''
         with 
 
@@ -108,7 +87,7 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
           from core 
           group by ssvid, id, length, tonnage, 
                  engine_power, label, crew_size,
-                 confidence
+                 confidence {extra_group}
         ),
             
         ordered as (
@@ -175,13 +154,16 @@ def read_fishing_ranges_vessel_id(fishdbname, dataset):
         raise
 
 
-def assign_split(df, seed=888):
+def assign_split(df, seed=888, check_fishing=False):
     rnd = np.random.RandomState(seed)
     atomic = metadata.VESSEL_CLASS_DETAILED_NAMES
     all_args = np.argsort(df.id.values)
     is_test = np.zeros([len(df)], dtype=bool)
     for atm in atomic:
-        candidates = all_args[(df.label == atm)]
+        mask = (df.label == atm)
+        if check_fishing:
+            mask &= (df.transit_only == 0)
+        candidates = all_args[mask]
         rnd.shuffle(candidates)
         test_ndxs = candidates[:len(candidates)//2]
         is_test[test_ndxs] = True
@@ -251,7 +233,7 @@ if __name__ == '__main__':
 
 
     assign_split(charinfo_df)
-    assign_split(detinfo_df)
+    assign_split(detinfo_df, check_fishing=True)
 
     if args.charinfo_file:
         charinfo_df.to_csv(args.charinfo_file, index=False)
@@ -277,10 +259,10 @@ python -m train.create_train_info \
             --fishing-table machine_learning_production.fishing_ranges_by_mmsi_v20190506 \
             --id-type vessel-id \
             --dataset pipe_production_b \
-            --charinfo-file classification/data/char_info_v20190509.csv \
-            --detinfo-file classification/data/det_info_v20190509.csv \
-            --detranges-file classification/data/det_ranges_v20190509.csv \
-            --charinfo-table machine_learning_dev_ttl_120d.char_info_v20190509 \
-            --detinfo-table machine_learning_dev_ttl_120d.det_info_v20190509 \
-            --detranges-table machine_learning_dev_ttl_120d.det_ranges_v20190509
+            --charinfo-file classification/data/char_info_v20190510.csv \
+            --detinfo-file classification/data/det_info_v20190510.csv \
+            --detranges-file classification/data/det_ranges_v20190510.csv \
+            --charinfo-table machine_learning_dev_ttl_120d.char_info_v20190510 \
+            --detinfo-table machine_learning_dev_ttl_120d.det_info_v20190510 \
+            --detranges-table machine_learning_dev_ttl_120d.det_ranges_v20190510
 '''
