@@ -61,14 +61,14 @@ def main(args):
         logging.fatal("Could not find metadata file: %s.", metadata_file)
         sys.exit(-1)
 
-    if args.fishing_range_file:
-        fishing_range_file = os.path.abspath(
+    if args.fishing_ranges_file:
+        fishing_ranges_file = os.path.abspath(
             resource_filename('classification.data', args.fishing_ranges_file))
-        if not os.path.exists(fishing_range_file):
+        if not os.path.exists(fishing_ranges_file):
             logging.fatal("Could not find fishing range file: %s.",
-                          fishing_range_file)
+                          fishing_ranges_file)
             sys.exit(-1)
-        fishing_ranges = metadata.read_fishing_ranges(fishing_range_file)
+        fishing_ranges = metadata.read_fishing_ranges(fishing_ranges_file)
     else:
         fishing_ranges = {}
 
