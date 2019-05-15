@@ -5,20 +5,26 @@ import argparse
 from classification import metadata
 
 
+def read_ids(gcs_path):
+    id_text = subprocess.check_output(['gsutil', 'cat', gcs_path])
+    return set(id_text.strip().split())
+
 def fishing_range_mmsi(fishdbname):
     return '''
         (
-            select mmsi, first_timestamp, last_timestamp, transit_only from (
-               select
-               mmsi, 
-               first_value(start_time) over(partition by mmsi order by start_time) as first_timestamp, 
-               last_value(end_time) over(partition by mmsi order by end_time) as last_timestamp,
-               last_value(is_fishing) over(partition by mmsi order by is_fishing) as transit_only
-               from `{fishdbname}`
-               ) group by mmsi, first_timestamp, last_timestamp, transit_only
+            select mmsi, 
+                min(start_time) as first_timestamp,
+                max(end_time) as last_timestamp,
+                sum(is_fishing) = 0 as transit_only
+            from `{fishdbname}` 
+            group by mmsi
         )
     '''.format(fishdbname=fishdbname)
 
+# TODO: pass in path to features/ids and only use 
+# vessel_ids that are in the features list. This
+# makes sure splits don't get broken by using the
+# wrong vessel ids.
 
 def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
     if fishdbname is None:
@@ -156,11 +162,17 @@ def read_fishing_ranges_vessel_id(fishdbname, dataset):
 
 def assign_split(df, seed=888, check_fishing=False):
     rnd = np.random.RandomState(seed)
-    atomic = metadata.VESSEL_CLASS_DETAILED_NAMES
+    if check_fishing:
+        # If we are looking at fishing any vessel can be
+        # be fishing, but stratify by all listed types
+        labels = sorted(set(df.label))
+    else:
+        # Otherwise, only allow atomic classes into test
+        labels = metadata.VESSEL_CLASS_DETAILED_NAMES
     all_args = np.argsort(df.id.values)
     is_test = np.zeros([len(df)], dtype=bool)
-    for atm in atomic:
-        mask = (df.label == atm)
+    for lbl in labels:
+        mask = (df.label == lbl)
         if check_fishing:
             mask &= (df.transit_only == 0)
         candidates = all_args[mask]
@@ -188,6 +200,11 @@ if __name__ == '__main__':
         '--id-type',
         choices=['vessel-id'],
         required=True
+        )
+
+    parser.add_argument(
+        '--id-list',
+        help="GCS location of ids present in features"
         )
 
     parser.add_argument(
@@ -221,16 +238,25 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    available_ids = read_ids(args.id_list)
+
     if args.id_type == 'vessel-id':
         charinfo_df = read_vessel_database_vessel_id(args.vessel_database, 
                                                  None, args.dataset)
         detinfo_df = read_vessel_database_vessel_id(args.vessel_database, 
                                                  args.fishing_table, args.dataset)
         det_df = read_fishing_ranges_vessel_id(args.fishing_table, args.dataset)
-        # Make ordering consistent across runs
-        charinfo_df, detinfo_df, det_df = [x.sort_values(by=list(x.columns)) 
-                                    for x in (charinfo_df, detinfo_df, det_df)]
 
+    # Make ordering consistent across runs
+    charinfo_df, detinfo_df, det_df = [x.sort_values(by=list(x.columns)) 
+                                for x in (charinfo_df, detinfo_df, det_df)]
+
+    # Remove unavailable ids
+    def filter(df):
+        mask = [(x in available_ids) for x in df.id]
+        return df[mask]
+    charinfo_df, detinfo_df, det_df = [filter(x) 
+                                for x in (charinfo_df, detinfo_df, det_df)]
 
     assign_split(charinfo_df)
     assign_split(detinfo_df, check_fishing=True)
@@ -255,14 +281,15 @@ if __name__ == '__main__':
                           'world-fishing-827', if_exists='fail')
 r'''
 python -m train.create_train_info \
-            --vessel-database vessel_database.all_vessels_20190102 \
-            --fishing-table machine_learning_production.fishing_ranges_by_mmsi_v20190506 \
-            --id-type vessel-id \
-            --dataset pipe_production_b \
-            --charinfo-file classification/data/char_info_v20190510.csv \
-            --detinfo-file classification/data/det_info_v20190510.csv \
-            --detranges-file classification/data/det_ranges_v20190510.csv \
-            --charinfo-table machine_learning_dev_ttl_120d.char_info_v20190510 \
-            --detinfo-table machine_learning_dev_ttl_120d.det_info_v20190510 \
-            --detranges-table machine_learning_dev_ttl_120d.det_ranges_v20190510
+    --vessel-database vessel_database.all_vessels_20190102 \
+    --fishing-table machine_learning_production.fishing_ranges_by_mmsi_v20190506 \
+    --id-type vessel-id \
+    --id-list gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190503b/ids/part-00000-of-00001.txt \
+    --dataset pipe_production_b \
+    --charinfo-file classification/data/char_info_v20190515.csv \
+    --detinfo-file classification/data/det_info_v20190515.csv \
+    --detranges-file classification/data/det_ranges_v20190515.csv \
+    --charinfo-table machine_learning_dev_ttl_120d.char_info_v20190515 \
+    --detinfo-table machine_learning_dev_ttl_120d.det_info_v20190515 \
+    --detranges-table machine_learning_dev_ttl_120d.det_ranges_v20190515
 '''
