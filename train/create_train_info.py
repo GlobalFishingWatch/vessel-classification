@@ -9,17 +9,19 @@ def read_ids(gcs_path):
     id_text = subprocess.check_output(['gsutil', 'cat', gcs_path])
     return set(id_text.strip().split())
 
-def fishing_range_mmsi(fishdbname):
+def fishing_range_mmsi(fishdbname, dataset):
     return '''
         (
-            select mmsi, 
+            select vessel_id, 
                 min(start_time) as first_timestamp,
                 max(end_time) as last_timestamp,
                 sum(is_fishing) = 0 as transit_only
-            from `{fishdbname}` 
-            group by mmsi
+            from `{fishdbname}` a
+            join `{dataset}.vessel_info` b
+            on (a.mmsi = cast(ssvid as int64))
+            group by vessel_id
         )
-    '''.format(fishdbname=fishdbname)
+    '''.format(fishdbname=fishdbname, dataset=dataset)
 
 # TODO: pass in path to features/ids and only use 
 # vessel_ids that are in the features list. This
@@ -32,13 +34,13 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
 
         core = '''
         (
-          select ssvid, vessel_id as id, length_m as length, tonnage_gt as tonnage, 
+          select vessel_id as id, length_m as length, tonnage_gt as tonnage, 
                  engine_power_kw as engine_power, 
                  geartype as label, crew as crew_size,
                  confidence, -- 1==low, 2==typical, 3==high
                  pos_count
           from {dbname} a
-          join `{dataset}.segment_identity_2*` b
+          join `{dataset}.vessel_info` b
           on (a.mmsi = cast(ssvid as int64))
           where 
            (not ((a.last_timestamp is not null and 
@@ -50,24 +52,33 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
                 or crew is not null)
         )
         '''.format(dbname=dbname, dataset=dataset)
-        extra_group = ''
+        count_selector = 'where rk = 1'
+        counted = '''
+        counted as (
+          select * except(pos_count), sum(pos_count) as count
+          from core 
+          group by id, length, tonnage, 
+                 engine_power, label, crew_size,
+                 confidence
+        ),
+        '''
     else:
         fishing_subquery = '''
         fishing_range_mmsi as {fishing_range_mmsi},
-        '''.format(fishing_range_mmsi=fishing_range_mmsi(fishdbname))
+        '''.format(fishing_range_mmsi=fishing_range_mmsi(fishdbname, dataset))
 
         core = '''
         (
-          select ssvid, vessel_id as id, length_m as length, tonnage_gt as tonnage, 
+          select vessel_id as id, length_m as length, tonnage_gt as tonnage, 
                  engine_power_kw as engine_power, 
                  geartype as label, crew as crew_size,
                  confidence, -- 1==low, 2==typical, 3==high
                  pos_count, transit_only
           from {dbname} a
-          join `{dataset}.segment_identity_2*` b
-          on (a.mmsi = cast(ssvid as int64))
+          join `{dataset}.vessel_info` b
+          on (a.mmsi = cast(b.ssvid as int64))
           join `fishing_range_mmsi` c
-          using (mmsi)
+          using (vessel_id)
           where -- valid times overlap with segments
            (not ((a.last_timestamp is not null and 
                  a.last_timestamp < b.first_timestamp) or 
@@ -80,7 +91,19 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
                   a.first_timestamp > c.last_timestamp))) 
         )
         '''.format(dbname=dbname, dataset=dataset)
-        extra_group = ', transit_only'
+        # Don't restrict by count, want any vessel_ids that overlap
+        count_selector = ''
+        counted = '''
+                counted as (
+          select * except(pos_count, confidence, transit_only, length, tonnage, engine_power,
+                          label, crew_size), 
+                    sum(pos_count) as count,
+                   avg(confidence) as confidence, min(transit_only) as transit_only,
+                   avg(length) as length, avg(tonnage) as tonnage, avg(engine_power) as engine_power,
+                   any_value(label) as label, avg(crew_size) as crew_size
+          from core 
+          group by id
+        ),'''
     query = '''
         with 
 
@@ -88,25 +111,19 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
 
         core as {core},
 
-        counted as (
-          select * except(pos_count), sum(pos_count) as count
-          from core 
-          group by ssvid, id, length, tonnage, 
-                 engine_power, label, crew_size,
-                 confidence {extra_group}
-        ),
+        {counted}
             
         ordered as (
           select *, 
-                 row_number() over (partition by ssvid 
-                        order by count, id desc, label,
+                 row_number() over (partition by id 
+                        order by count desc, label,
                         length, tonnage, engine_power, 
                         crew_size, confidence) as rk
           from counted
         )
             
-        select * except(rk, ssvid, count) from ordered
-        where rk = 1
+        select * except(rk, count) from ordered
+        {count_selector}
     '''.format(**locals())
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
@@ -126,33 +143,33 @@ def read_fishing_ranges_vessel_id(fishdbname, dataset):
           from
           `{fishdbname}` a
           join
-          `{dataset}.segment_identity_2*` b
+          `{dataset}.vessel_info` b
           on (a.mmsi = cast(ssvid as int64))
           join `fishing_range_mmsi` c
-          using (mmsi)
+          using (vessel_id)
           where 
             (not (b.last_timestamp <  c.first_timestamp or 
                   b.first_timestamp > c.last_timestamp))
         ),
 
         counted as (
-          select ssvid, id, start_time, end_time, is_fishing, sum(pos_count) as count
+          select id, start_time, end_time, is_fishing, sum(pos_count) as count
           from core 
-          group by ssvid, id, start_time, end_time, is_fishing
+          group by id, start_time, end_time, is_fishing
         ),
             
         ordered as (
           select *, 
-                 row_number() over (partition by ssvid, start_time, end_time
+                 row_number() over (partition by id, start_time, end_time
                                      order by count desc) as rk
           from counted
         )
             
-        select * except(rk, ssvid, count) from ordered
+        select * except(rk, count) from ordered
         where rk = 1
     '''.format(fishdbname=fishdbname,
                dataset=dataset, 
-               fishing_range_mmsi=fishing_range_mmsi(fishdbname))
+               fishing_range_mmsi=fishing_range_mmsi(fishdbname, dataset))
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
@@ -286,9 +303,9 @@ python -m train.create_train_info \
     --id-type vessel-id \
     --id-list gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190503b/ids/part-00000-of-00001.txt \
     --dataset pipe_production_b \
-    --charinfo-file classification/data/char_info_v20190515.csv \
-    --detinfo-file classification/data/det_info_v20190515.csv \
-    --detranges-file classification/data/det_ranges_v20190515.csv \
+    --charinfo-file classification/data/char_info_v20190520.csv \
+    --detinfo-file classification/data/det_info_v20190520.csv \
+    --detranges-file classification/data/det_ranges_v20190520.csv \
     --charinfo-table machine_learning_dev_ttl_120d.char_info_v20190515 \
     --detinfo-table machine_learning_dev_ttl_120d.det_info_v20190515 \
     --detranges-table machine_learning_dev_ttl_120d.det_ranges_v20190515
