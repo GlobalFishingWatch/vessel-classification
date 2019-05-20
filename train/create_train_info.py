@@ -23,17 +23,11 @@ def fishing_range_mmsi(fishdbname, dataset):
         )
     '''.format(fishdbname=fishdbname, dataset=dataset)
 
-# TODO: pass in path to features/ids and only use 
-# vessel_ids that are in the features list. This
-# makes sure splits don't get broken by using the
-# wrong vessel ids.
+def read_vessel_database_for_char_vessel_id(dbname, dataset):
+    query = '''
+        with 
 
-def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
-    if fishdbname is None:
-        fishing_subquery = ''
-
-        core = '''
-        (
+        core as (
           select vessel_id as id, length_m as length, tonnage_gt as tonnage, 
                  engine_power_kw as engine_power, 
                  geartype as label, crew as crew_size,
@@ -50,10 +44,8 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
             and (length_m is not null or tonnage_gt is not null or 
                 engine_power_kw is not null or geartype is not null
                 or crew is not null)
-        )
-        '''.format(dbname=dbname, dataset=dataset)
-        count_selector = 'where rk = 1'
-        counted = '''
+        ),
+
         counted as (
           select * except(pos_count), sum(pos_count) as count
           from core 
@@ -61,14 +53,33 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
                  engine_power, label, crew_size,
                  confidence
         ),
-        '''
-    else:
-        fishing_subquery = '''
-        fishing_range_mmsi as {fishing_range_mmsi},
-        '''.format(fishing_range_mmsi=fishing_range_mmsi(fishdbname, dataset))
 
-        core = '''
-        (
+        ordered as (
+          select *, 
+                 row_number() over (partition by id 
+                        order by count desc, label,
+                        length, tonnage, engine_power, 
+                        crew_size, confidence) as rk
+          from counted
+        )
+            
+        select * except(rk, count) from ordered
+        where rk = 1
+    '''.format(**locals())
+    try:
+        return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
+    except:
+        print query
+        raise
+
+def read_vessel_database_for_detect_vessel_id(dbname, fishdbname, dataset):
+    fishing_range_query=fishing_range_mmsi(fishdbname, dataset)
+    query = '''
+        with 
+
+        fishing_range_mmsi as {fishing_range_query},
+
+        core as (
           select vessel_id as id, length_m as length, tonnage_gt as tonnage, 
                  engine_power_kw as engine_power, 
                  geartype as label, crew as crew_size,
@@ -89,12 +100,9 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
                   a.last_timestamp < c.first_timestamp) or 
                  (a.first_timestamp is not null and 
                   a.first_timestamp > c.last_timestamp))) 
-        )
-        '''.format(dbname=dbname, dataset=dataset)
-        # Don't restrict by count, want any vessel_ids that overlap
-        count_selector = ''
-        counted = '''
-                counted as (
+        ),
+
+        counted as (
           select * except(pos_count, confidence, transit_only, length, tonnage, engine_power,
                           label, crew_size), 
                     sum(pos_count) as count,
@@ -103,16 +111,8 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
                    any_value(label) as label, avg(crew_size) as crew_size
           from core 
           group by id
-        ),'''
-    query = '''
-        with 
+        ),     
 
-        {fishing_subquery}
-
-        core as {core},
-
-        {counted}
-            
         ordered as (
           select *, 
                  row_number() over (partition by id 
@@ -123,13 +123,13 @@ def read_vessel_database_vessel_id(dbname, fishdbname, dataset):
         )
             
         select * except(rk, count) from ordered
-        {count_selector}
     '''.format(**locals())
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
         print query
         raise
+
 
 def read_fishing_ranges_vessel_id(fishdbname, dataset):
     query = '''
@@ -258,9 +258,9 @@ if __name__ == '__main__':
     available_ids = read_ids(args.id_list)
 
     if args.id_type == 'vessel-id':
-        charinfo_df = read_vessel_database_vessel_id(args.vessel_database, 
-                                                 None, args.dataset)
-        detinfo_df = read_vessel_database_vessel_id(args.vessel_database, 
+        charinfo_df = read_vessel_database_for_char_vessel_id(args.vessel_database, 
+                                                              args.dataset)
+        detinfo_df = read_vessel_database_for_detect_vessel_id(args.vessel_database, 
                                                  args.fishing_table, args.dataset)
         det_df = read_fishing_ranges_vessel_id(args.fishing_table, args.dataset)
 
@@ -303,9 +303,9 @@ python -m train.create_train_info \
     --id-type vessel-id \
     --id-list gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190503b/ids/part-00000-of-00001.txt \
     --dataset pipe_production_b \
-    --charinfo-file classification/data/char_info_v20190520.csv \
-    --detinfo-file classification/data/det_info_v20190520.csv \
-    --detranges-file classification/data/det_ranges_v20190520.csv \
+    --charinfo-file classification/data/char_info_v20190520b.csv \
+    --detinfo-file classification/data/det_info_v20190520b.csv \
+    --detranges-file classification/data/det_ranges_v20190520b.csv \
     --charinfo-table machine_learning_dev_ttl_120d.char_info_v20190515 \
     --detinfo-table machine_learning_dev_ttl_120d.det_info_v20190515 \
     --detranges-table machine_learning_dev_ttl_120d.det_ranges_v20190515
