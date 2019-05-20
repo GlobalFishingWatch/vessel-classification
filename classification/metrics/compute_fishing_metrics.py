@@ -345,11 +345,8 @@ def compute_results(args):
 
     logging.info('Loading inference data')
     ids = set([x for x in maps['split'] if maps['split'][x] == TEST_SPLIT])
-    print("XXX", len(ids))
 
     fishing_ranges = load_inferred_fishing(args.inference_table, ids, args.project_id)
-    print("YYY", len(fishing_ranges))
-    
     logging.info('Comparing localisation')
     results = {}
     results['localisation'] = compare_fishing_localisation(
