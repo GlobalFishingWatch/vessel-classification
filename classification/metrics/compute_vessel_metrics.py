@@ -15,6 +15,11 @@
 
 Example:
 
+This compute metrics for the table `vessel_char_vid_features_v20190509`, comparing
+results with the known values in the table `char_info_v20190509`. This second table
+is typically derived from the vessel database using train/create_train_info.py.
+The results, and html file, are written to dest path.
+
     python -m classification.metrics.compute_vessel_metrics \
         --inference-table machine_learning_dev_ttl_120d.vessel_char_vid_features_v20190509  \
         --label-table machine_learning_dev_ttl_120d.char_info_v20190509 \
@@ -665,11 +670,11 @@ def load_inferred(inference_table, label_table, extractors):
     """
     query = """
 
-    SELECT c.* except (vessel_id), vessel_id as id FROM 
-    `{}` b
+    SELECT inference_table.* except (vessel_id), vessel_id as id FROM 
+    `{}` label_table
     JOIN
-   `{}*` c
-    ON (b.id = c.vessel_id)
+   `{}*` inference_table
+    ON (label_table.id = inference_table.vessel_id)
     """.format(label_table, inference_table)
     print(query)
     df = pd.read_gbq(query, project_id='world-fishing-827', dialect='standard')
@@ -988,39 +993,19 @@ def dump_html(args, results):
 this_dir = os.path.dirname(os.path.abspath(__file__))
 temp_dir = os.path.join(this_dir, 'temp')
 
-# TODO: compute the fraction of each vessel type, then compute
-# the weights for precision recall, accuracy with weighted
-# values rather than equal values.
-# Query for weights looks like:
-'''
-with
-
-core as (
-select * from `machine_learning_dev_ttl_120d.vessel_char_vid_features_v20190509*`
-where max_label is not null
-),
-
-count as (
-select count(*) as total from core
-)
-select max_label as label, count(*) / total as fraction
-from core
-cross join count
-group by label, total
-order by fraction desc
-'''
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG)
 
     parser = argparse.ArgumentParser(
         description='Test inference results and output metrics.\n')
-    parser.add_argument(
-        '--inference-table', help='table of inference results', required=True)
-    parser.add_argument(
-        '--label-table', help='path to test labels', required=True)
-    parser.add_argument(
-        '--dest-path', help='path to write results to', required=True)
+    parser.add_argument('--inference-table', required=True, 
+        help='table of inference results to compute metrics for')
+    parser.add_argument('--label-table', required=True, 
+        help='path to test table of labels to compare results with')
+    parser.add_argument('--dest-path', required=True, 
+        help='output path to write results to')
+
 
     args = parser.parse_args()
 
