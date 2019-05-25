@@ -359,7 +359,7 @@ def process_fixed_window_features(random_state, features, id_,
         features = features[start_i:]
     assert len(features) == end_i - start_i
 
-    assert (end_i - start_i - window) % shift == 0
+    assert (end_i - start_i - window_size) % shift == 0
 
     return np_array_extract_all_fixed_slices(features, num_features,
                                              id_, window_size, shift)
