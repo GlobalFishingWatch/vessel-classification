@@ -69,7 +69,7 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
         parsed_lines = csv.DictReader(self.raw_lines)
         available_vessels = set(str(x) for x in range(100001, 100014))
         result = metadata.read_vessel_multiclass_metadata_lines(
-            available_vessels, parsed_lines, {}, 1)
+            available_vessels, parsed_lines, {})
 
         # First one is test so weighted as 1 for now
         self.assertEquals(1.0, result.vessel_weight('100001'))
@@ -85,7 +85,8 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
         parsed_lines = csv.DictReader(self.raw_lines)
         available_vessels = set(str(x) for x in range(100001, 100014))
         result = metadata.read_vessel_time_weighted_metadata_lines(
-            available_vessels, parsed_lines, self.fishing_range_dict)
+            available_vessels, parsed_lines, self.fishing_range_dict,
+            'Test')
 
         self.assertEquals(1.0, result.vessel_weight('100001'))
         self.assertEquals(1.0, result.vessel_weight('100002'))

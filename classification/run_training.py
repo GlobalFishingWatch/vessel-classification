@@ -74,14 +74,19 @@ def main(args):
 
     all_available_ids = metadata.find_available_ids(args.root_feature_path)
 
+    split = None if (args.split == -1) else args.split
+    logging.info("Using split: %s", split)
+
     vessel_metadata = Model.read_metadata(
         all_available_ids, metadata_file,
-        fishing_ranges, int(args.fishing_range_training_upweight))
+        fishing_ranges, split=split)
+
 
     feature_dimensions = int(args.feature_dimensions)
     chosen_model = Model(feature_dimensions, vessel_metadata, args.metrics)
 
-    train_input_fn = chosen_model.make_training_input_fn(args.root_feature_path, args.num_parallel_readers)
+    train_input_fn = chosen_model.make_training_input_fn(args.root_feature_path, 
+                                                         args.num_parallel_readers)
 
     # print(compute_approx_norms(train_input_fn))
 
@@ -122,11 +127,6 @@ def parse_args():
         required=True,
         help='The number of dimensions of a classification feature.')
 
-    argparser.add_argument(
-        '--fishing_range_training_upweight',
-        default=1.0,
-        help='The amount to upweight vessels that have fishing ranges when training.')
-
     argparser.add_argument('--metadata_file', help='Path to metadata.')
 
     argparser.add_argument(
@@ -139,8 +139,13 @@ def parse_args():
 
     argparser.add_argument(
         '--num_parallel_readers',
-        default=32, type=int,
+        default=1, type=int,
         help='How many parallel readers to employ reading data')
+
+    argparser.add_argument(
+        '--split',
+        default=0, type=int,
+        help='Which split to train/test on')
 
     return argparser.parse_args()
 

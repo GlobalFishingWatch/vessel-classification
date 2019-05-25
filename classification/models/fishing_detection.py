@@ -67,18 +67,14 @@ class Model(ModelBase):
     def batch_size(self):
         return 64
 
-
-    @property
-    def max_replication_factor(self):
-        return 10000.0
-
     @staticmethod
     def read_metadata(all_available_ids,
                       metadata_file,
                       fishing_ranges,
-                      fishing_upweight=1.0):
+                      split):
         return metadata.read_vessel_time_weighted_metadata(
-            all_available_ids, metadata_file, fishing_ranges)
+            all_available_ids, metadata_file, fishing_ranges,
+            split=split)
 
     def __init__(self, num_feature_dimensions, vessel_metadata, metrics):
         super(Model, self).__init__(num_feature_dimensions, vessel_metadata)
@@ -104,7 +100,7 @@ class Model(ModelBase):
     def build_training_file_list(self, base_feature_path, split):
         random_state = np.random.RandomState()
         training_ids = self.vessel_metadata.fishing_range_only_list(
-            random_state, split, self.max_replication_factor)
+            random_state, split)
         return [
             '%s/%s.tfrecord' % (base_feature_path, id_)
             for id_ in training_ids

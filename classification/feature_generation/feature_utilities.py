@@ -292,6 +292,7 @@ def np_array_extract_all_fixed_slices(input_series, num_features, id_,
     for end_index in range(input_length, 0, -shift):
         start_index = end_index - window_size
         if start_index < 0:
+            logging.warn('input not correctly padded, dropping start')
             continue
         cropped = input_series[start_index:end_index]
         start_time = int(cropped[0][0])
@@ -322,10 +323,13 @@ def process_fixed_window_features(random_state, features, id_,
 
     if end_date is not None:
         raw_end_i = np.searchsorted(features[:, 0], end_stamp, side='right')
-        # If possible go to pad after end so that we have good data starting at end
-        end_i = min(raw_end_i + pad_end, len(features))
+        # How much padding do we need:
+        n_pad_end = (len(features) - raw_end_i) - pad_end
     else:
-        end_i = len(features)
+        raw_end_i = len(features)
+        n_pad_end = pad_end
+        
+    end_i = len(features) + n_pad_end
 
     #    \/ raw_start_i
     #              ppBBBBpp<--- shift
@@ -334,37 +338,28 @@ def process_fixed_window_features(random_state, features, id_,
 
     if start_date is not None:
         # If possible go to shift before pad so we have good data for whole length
-        raw_start_i = np.searchsorted(features[:, 0], start_stamp, side='left') - pad_start
+        raw_start_i = np.searchsorted(features[:, 0], start_stamp, side='left')
     else:
         raw_start_i = 0
 
-    if end_i < window_size:
-        # There aren't enough points to classify, so pad by replicating the first point.
-        # Do this here so raw_start_i is calculated on actual features
-        count = window_size - end_i
-        extra = [features[0]] * count
-        features = np.concatenate([extra, features], axis=0)
-        end_i += count
-        raw_start_i += count
+    start_i = raw_start_i - pad_start
 
-    # Now clean up raw_start. 
-    #   First add enough points that we are at the beginning of a shift.
-    delta = ((end_i - window_size) - raw_start_i) % shift
+    while (end_i - start_i - window_size) % shift:
+        start_i -= 1
 
-    if delta == 0:
-        start_i = raw_start_i
+    if n_pad_end > 0:
+        features = np.concatenate([features, n_pad_end * [features[-1]]], axis=0)
     else:
-        start_i = raw_start_i + delta - shift
+        features = features[:end_i]
+    assert len(features) == end_i
 
-    # Shift backwards till we can hold at least one window
-    while end_i - start_i < window_size:
-        start_i -= shift
+    if start_i < 0:
+        features = np.concatenate([features, (-start_i) * [features[0]]], axis=0)
+    else:
+        features = features[start_i:]
+    assert len(features) == end_i - start_i
 
-    # Now shift forward till we are nonnegative:
-    while start_i < 0:
-        start_i += shift
-
-    features = features[start_i:end_i]
+    assert (end_i - start_i - window) % shift == 0
 
     return np_array_extract_all_fixed_slices(features, num_features,
                                              id_, window_size, shift)

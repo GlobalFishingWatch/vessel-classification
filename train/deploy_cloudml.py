@@ -56,7 +56,7 @@ def launch(args):
         # It seems that we currently need to pass args as both 'args' in the
         # config file and as args after the '--'?!
         args = [
-            'gcloud', 'ml-engine', 
+            'gcloud', 'ai-platform', 
             'jobs', 'submit', 'training', job_id,
             '--config', temp.name, '--module-name',
             'classification.run_training', '--staging-bucket',
@@ -89,7 +89,8 @@ if __name__ == "__main__":
                         help='optional local path fishing ranges')
     parser.add_argument('--config_file', default='deploy_cloudml.yaml',
                         help='configuration file path.')
-
+    parser.add_argument('--split', default=0, type=int,
+                        help='Split to use (-1) for all')
     args = parser.parse_args()
 
     launch(args)

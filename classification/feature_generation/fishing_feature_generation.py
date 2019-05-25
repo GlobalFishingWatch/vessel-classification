@@ -1,5 +1,6 @@
 import calendar
 import numpy as np
+import os
 import tensorflow as tf
 from . import feature_generation
 from . import feature_utilities
@@ -11,10 +12,15 @@ def input_fn(vessel_metadata,
             window_size,
             min_timeslice_size,
             parallelism=4,
-            num_slices_per_id=8):
+            num_slices_per_id=8,
+            num_parallel_reads=1):
 
     random_state = np.random.RandomState()
 
+    weights = []
+    for p in filenames:
+        id_, _ = os.path.splitext(os.path.basename(p))
+        weights.append(vessel_metadata.vessel_weight(id_))
     
     def xform(id_, movement_features):
 
@@ -36,20 +42,24 @@ def input_fn(vessel_metadata,
         features = tf.squeeze(features, axis=1)
         return (features, timestamps, time_ranges, id_)
 
+    fishing_ranges_map = {}
+    for k, v in vessel_metadata.fishing_ranges_map.items():
+        fishing_ranges_map[k] = []
+        for sel_range in v:
+            start_range = calendar.timegm(sel_range.start_time.utctimetuple())
+            end_range = calendar.timegm(sel_range.end_time.utctimetuple())
+            fishing_ranges_map[k].append((start_range, end_range, sel_range.is_fishing))
 
     def add_labels(features, timestamps, time_bounds, id_):
 
         def _add_labels(id_, timestamps):
-            dense_labels = np.zeros_like(timestamps, dtype=np.float32)
+            dense_labels = np.empty_like(timestamps, dtype=np.float32)
             dense_labels.fill(-1.0)
-            if id_ in vessel_metadata.fishing_ranges_map:
-                for sel_range in vessel_metadata.fishing_ranges_map[id_]:
-                    start_range = calendar.timegm(sel_range.start_time.utctimetuple(
-                    ))
-                    end_range = calendar.timegm(sel_range.end_time.utctimetuple())
-                    mask = (timestamps >= start_range) & (
-                        timestamps <= end_range)
-                    dense_labels[mask] = sel_range.is_fishing
+            if id_ in fishing_ranges_map:
+                for start_range, end_range, is_fishing in fishing_ranges_map[id_]:
+                    start_ndx = np.searchsorted(timestamps, start_range, side='left')
+                    end_ndx = np.searchsorted(timestamps, end_range, side='right')
+                    dense_labels[start_ndx:end_ndx] = is_fishing
             return dense_labels
 
         [labels] =  tf.py_func(
@@ -71,8 +81,9 @@ def input_fn(vessel_metadata,
     raw_data = feature_generation.read_input_fn_infinite(
                     filenames,
                     num_features,
-                    num_parallel_reads=parallelism,
-                    random_state=random_state)
+                    num_parallel_reads=num_parallel_reads,
+                    random_state=random_state,
+                    weights=weights)
 
     return (raw_data
                 .map(xform, num_parallel_calls=parallelism)
@@ -96,7 +107,7 @@ def predict_input_fn(paths,
         b, e = 0, window_size
     else:
         b, e = window
-    shift = e - b
+    shift = e - b - 1
 
     random_state = np.random.RandomState()
 

@@ -187,16 +187,17 @@ def assign_split(df, seed=888, check_fishing=False):
         # Otherwise, only allow atomic classes into test
         labels = metadata.VESSEL_CLASS_DETAILED_NAMES
     all_args = np.argsort(df.id.values)
-    is_test = np.zeros([len(df)], dtype=bool)
+    split = ['Training'] * len(df)
     for lbl in labels:
         mask = (df.label == lbl)
         if check_fishing:
             mask &= (df.transit_only == 0)
         candidates = all_args[mask]
         rnd.shuffle(candidates)
-        test_ndxs = candidates[:len(candidates)//2]
-        is_test[test_ndxs] = True
-    split = ['Test' if x else 'Training' for x in is_test]
+        for i in  candidates[:len(candidates)//2]:
+          split[i] = '0'
+        for i in candidates[len(candidates)//2:]:
+          split[i] = '1'
     df['split'] = split
 
 

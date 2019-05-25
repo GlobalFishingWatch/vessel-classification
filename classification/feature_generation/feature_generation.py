@@ -2,9 +2,12 @@ import tensorflow as tf
 import numpy as np
 
 
-def filename_generator(filenames, random_state):
+def filename_generator(filenames, random_state, weights):
+    if weights is not None:
+        weights = np.array(weights)
+        weights /= weights.sum()
     while True:
-        yield random_state.choice(filenames)
+        yield random_state.choice(filenames, p=weights)
 
 
 def flatten_features(features, timestamps, time_ranges, id_):
@@ -33,7 +36,8 @@ def parse_function_core(example_proto, num_features):
     return context_features['id'], sequence_features['movement_features']
 
 
-def read_input_fn_infinite(paths, num_features, num_parallel_reads=4, random_state=None):
+def read_input_fn_infinite(paths, num_features, num_parallel_reads=4, 
+    random_state=None, weights=None):
     
     def parse_function(example_proto):
         return parse_function_core(example_proto, num_features)
@@ -41,10 +45,10 @@ def read_input_fn_infinite(paths, num_features, num_parallel_reads=4, random_sta
     if random_state is None:
         random_state = np.random.RandomState()
 
-    path_ds = tf.data.Dataset.from_generator(lambda:filename_generator(paths, random_state), tf.string)
+    path_ds = tf.data.Dataset.from_generator(lambda:filename_generator(paths, random_state, weights), 
+                    tf.string)
 
     return (tf.data.TFRecordDataset(path_ds, num_parallel_reads=num_parallel_reads)
-                .prefetch(num_parallel_reads)     
                 .map(parse_function, num_parallel_calls=num_parallel_reads)
            )
 

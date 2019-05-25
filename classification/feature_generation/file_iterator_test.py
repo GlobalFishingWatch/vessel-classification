@@ -4,6 +4,7 @@ import posixpath as pp
 from file_iterator import *
 import pytest
 
+@pytest.mark.skip(reason="needs updating")
 def test_file_iterator():
     path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/251822362.tfrecord"
     with tf.Session() as sess:
@@ -18,7 +19,7 @@ epoch = datetime.datetime(1970,1,1)
 def to_stamp(x):
     return (x - epoch).total_seconds()
 
-
+@pytest.mark.skip(reason="needs updating")
 def test_deserialize_file():
     path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/features/251822362.tfrecord"
     with tf.Session() as sess:
@@ -44,7 +45,7 @@ def log_mem():
     mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     logging.info("Mem Usage: %s", mem)
 
-
+@pytest.mark.skip(reason="needs updating")
 def test_read_files_from_gcs():
     path = "gs://world-fishing-827/data-production/classification/release-0.1.2/pipeline/output/ids/part-00000-of-00001.txt"
     with GCSFile(path) as fp:

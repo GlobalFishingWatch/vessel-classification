@@ -82,10 +82,10 @@ class ModelBase(object):
     def read_metadata(all_available_ids,
                       metadata_file,
                       fishing_ranges,
-                      fishing_upweight=1.0):
+                      split):
+        # Ignore split for the time being
         return metadata.read_vessel_multiclass_metadata(
-            all_available_ids, metadata_file, fishing_ranges,
-            fishing_upweight)
+            all_available_ids, metadata_file, fishing_ranges)
 
     def zero_pad_features(self, features):
         """ Zero-pad features in the depth dimension to match requested feature depth. """
