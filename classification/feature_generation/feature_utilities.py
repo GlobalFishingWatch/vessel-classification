@@ -309,7 +309,7 @@ def np_array_extract_all_fixed_slices(input_series, num_features, id_,
 def process_fixed_window_features(random_state, features, id_, 
         num_features, window_size, shift, start_date, end_date, win_start, win_end):
 
-    assert win_end - win_start == shift, (win_end, win_start, shift)
+    assert win_end - win_start == shift - 1, (win_end, win_start, shift)
     pad_end = window_size - win_end
     pad_start = win_start
 
