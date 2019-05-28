@@ -65,7 +65,7 @@ class Model(ModelBase):
 
     @property
     def batch_size(self):
-        return 64
+        return 16
 
     @staticmethod
     def read_metadata(all_available_ids,

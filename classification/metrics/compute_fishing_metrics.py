@@ -39,7 +39,7 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT, schema, atomic
+from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, schema, atomic
 import gzip
 import dateutil.parser
 import datetime
@@ -223,6 +223,7 @@ def load_inferred_fishing(table, id_list, project_id, threshold=True):
                 print('skipping', year)
                 continue
             else:
+                print(query)
                 raise
         for x in df.itertuples():
             score = x.nnet_score
@@ -235,13 +236,14 @@ def load_inferred_fishing(table, id_list, project_id, threshold=True):
 
 def load_true_fishing_ranges_by_id(fishing_range_path,
                                      split_map,
+                                     split,
                                      threshold=True):
     ranges_by_id = defaultdict(list)
     parse = dateutil.parser.parse
     with open(fishing_range_path) as f:
         for row in csv.DictReader(f):
             id_ = row['id'].strip()
-            if not split_map.get(id_) == TEST_SPLIT:
+            if not split_map.get(id_) == str(split):
                 continue
             val = float(row['is_fishing'])
             if threshold:
@@ -259,11 +261,11 @@ def datetime_to_minute(dt):
 
 
 def compare_fishing_localisation(inferred_ranges, fishing_range_path,
-                                 label_map, split_map):
+                                 label_map, split_map, split):
 
     logging.debug('loading fishing ranges')
     true_ranges_by_id = load_true_fishing_ranges_by_id(fishing_range_path,
-                                                           split_map)
+                                                           split_map, split)
     print("TRUE", sorted(true_ranges_by_id.keys())[:10])
     print("INF", sorted(inferred_ranges.keys())[:10])
     print(repr(sorted(true_ranges_by_id.keys())[0]))
@@ -328,7 +330,7 @@ def compute_results(args):
     with open(args.label_path) as f:
         for row in csv.DictReader(f):
             id_ = row['id'].strip()
-            if not row['split'] == TEST_SPLIT:
+            if not row['split'] == str(args.split):
                 continue
             for field in ['label', 'split']:
                 if row[field]:
@@ -344,14 +346,14 @@ def compute_results(args):
             assert float(value) > 0, (id_, value)
 
     logging.info('Loading inference data')
-    ids = set([x for x in maps['split'] if maps['split'][x] == TEST_SPLIT])
+    ids = set([x for x in maps['split'] if maps['split'][x] == str(args.split)])
 
     fishing_ranges = load_inferred_fishing(args.inference_table, ids, args.project_id)
     logging.info('Comparing localisation')
     results = {}
     results['localisation'] = compare_fishing_localisation(
         fishing_ranges, args.fishing_ranges, maps['label'],
-        maps['split'])
+        maps['split'], args.split)
 
 
     return results
@@ -401,6 +403,7 @@ if __name__ == '__main__':
     parser.add_argument('--fishing-ranges', help='path to fishing range data', required=True)
     parser.add_argument(
         '--dest-path', help='path to write results to', required=True)
+    parser.add_argument('--split', type=int, default=0)
 
 
     args = parser.parse_args()
