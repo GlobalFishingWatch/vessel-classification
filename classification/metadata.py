@@ -254,11 +254,13 @@ def read_vessel_time_weighted_metadata_lines(available_ids, lines,
             if time_for_this_id:
                 min_time_per_id = min(min_time_per_id, time_for_this_id)
 
-
+    # This weighting is fiddly. We are keeping it for now to match up
+    # with older data, but should replace when we move to sets, etc.
+    MAX_WEIGHT = 100.0
     for split_dict in metadata_dict.values():
         for id_ in split_dict:
             row, time = split_dict[id_]
-            split_dict[id_] = (row, np.sqrt(time / min_time_per_id))
+            split_dict[id_] = (row, min(MAX_WEIGHT, time / min_time_per_id))
 
     return VesselMetadata(metadata_dict, fishing_range_dict)
 
