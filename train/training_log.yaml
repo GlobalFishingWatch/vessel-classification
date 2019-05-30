@@ -1,6 +1,7 @@
 - date: 2019-5-27
   notes: |
-    Redo everything with features sharded with only 100 vessels needed
+    Redo everything with features sharded with only 100 vessels needed. Also
+    change to weighting to more closely match old runs.
   commit: d549bd2d143e82c0cf710c0f7aa6adbac6b37f41
   data_creation_command: |
     python -m train.create_train_info \
@@ -20,7 +21,7 @@
       python -m train.deploy_cloudml \
         --env dev \
         --model_name fishing_detection \
-        --job_name pv3_0527_0 \
+        --job_name pv3_0527_0_lin100 \
         --config train/deploy_v.yaml \
         --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/features \
         --vessel_info det_info_v20190527.csv \
@@ -29,7 +30,7 @@
       python -m train.deploy_cloudml \
         --env dev \
         --model_name fishing_detection \
-        --job_name pv3_0527_1 \
+        --job_name pv3_0527_1_lin100 \
         --config train/deploy_v.yaml \
         --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/features \
         --vessel_info det_info_v20190527.csv \
@@ -39,7 +40,7 @@
       python -m train.deploy_cloudml \
       --env dev \
       --model_name fishing_detection \
-      --job_name pv3_0527_all \
+      --job_name pv3_0527_all_lin100 \
       --config train/deploy_v.yaml \
       --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/features \
       --vessel_info det_info_v20190527.csv \
@@ -49,8 +50,8 @@
     - |
       python -m pipe_features.fishing_inference \
         --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/features \
-        --checkpoint_path gs://machine-learning-dev-ttl-120d/data-production/classification/timothyhochberg/pv3_0527_0/models/fishing_detection \
-        --results_table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_0_ \
+        --checkpoint_path gs://machine-learning-dev-ttl-120d/data-production/classification/timothyhochberg/pv3_0527_0_lin100/models/fishing_detection \
+        --results_table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_0_lin100_ \
         --start_date 2012-01-01 \
         --end_date 2018-12-31 \
         --feature_dimensions 14 \
@@ -66,8 +67,25 @@
     - |
       python -m pipe_features.fishing_inference \
         --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/features \
-        --checkpoint_path gs://machine-learning-dev-ttl-120d/data-production/classification/timothyhochberg/pv3_0527_all/models/fishing_detection \
-        --results_table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_all_ \
+        --checkpoint_path gs://machine-learning-dev-ttl-120d/data-production/classification/timothyhochberg/pv3_0527_1_lin100/models/fishing_detection \
+        --results_table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_1_lin100_ \
+        --start_date 2012-01-01 \
+        --end_date 2018-12-31 \
+        --feature_dimensions 14 \
+        --temp_location=gs://machine-learning-dev-ttl-30d/scratch/nnet-char \
+        --runner DataflowRunner \
+        --project=world-fishing-827 \
+        --job_name=fishing-test-1 \
+        --max_num_workers 100 \
+        --requirements_file=./requirements.txt \
+        --setup_file=./setup.py \
+        --worker_machine_type=custom-1-13312-ext \
+        --id_field_name vessel_id
+    - |
+      python -m pipe_features.fishing_inference \
+        --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/features \
+        --checkpoint_path gs://machine-learning-dev-ttl-120d/data-production/classification/timothyhochberg/pv3_0527_all_lin100/models/fishing_detection \
+        --results_table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_all_lin100_ \
         --start_date 2012-01-01 \
         --end_date 2018-12-31 \
         --feature_dimensions 14 \
@@ -82,8 +100,8 @@
         --id_field_name vessel_id
   detection_metrics_command: |
     python -m classification.metrics.compute_fishing_metrics \
-      --inference-table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_0_ \
-      --dest-path ./test_fishing_inference_0527_0.html \
+      --inference-table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_0_lin100_ \
+      --dest-path ./test_fishing_inference_0527_0_lin100.html \
       --label-path classification/data/det_info_v20190527.csv \
       --fishing-ranges classification/data/det_ranges_v20190527.csv
 
