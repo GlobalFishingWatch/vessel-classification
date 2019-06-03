@@ -98,12 +98,22 @@
         --setup_file=./setup.py \
         --worker_machine_type=custom-1-13312-ext \
         --id_field_name vessel_id
-  detection_metrics_command: |
-    python -m classification.metrics.compute_fishing_metrics \
-      --inference-table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_0_lin100_ \
-      --dest-path ./test_fishing_inference_0527_0_lin100.html \
-      --label-path classification/data/det_info_v20190527.csv \
-      --fishing-ranges classification/data/det_ranges_v20190527.csv
+  detection_metrics_commands: 
+    - |
+      python -m classification.metrics.compute_fishing_metrics \
+        --inference-table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_0_lin100_ \
+        --dest-path ./test_fishing_inference_0527_0_lin100.html \
+        --label-path classification/data/det_info_v20190527.csv \
+        --fishing-ranges classification/data/det_ranges_v20190527.csv \
+        --split 0
+    - |
+      python -m classification.metrics.compute_fishing_metrics \
+        --inference-table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_1_lin100_ \
+        --dest-path ./test_fishing_inference_0527_1_lin100.html \
+        --label-path classification/data/det_info_v20190527.csv \
+        --fishing-ranges classification/data/det_ranges_v20190527.csv \
+        --split 1
+
 
 
 - date: 2019-5-20
@@ -200,10 +210,10 @@
       --worker_machine_type=custom-1-13312-ext \
       --id_field_name vessel_id
   characterization_metrics_command: 
-        python -m classification.metrics.compute_vessel_metrics \
-                --inference-table machine_learning_dev_ttl_120d.vessel_char_vid_features_v20190520 \
-                --label-table machine_learning_dev_ttl_120d.char_info_v20190516 \
-                --dest-path ./untracked/metric_results/test_inference_metrics_0516.html
+    python -m classification.metrics.compute_vessel_metrics \
+      --inference-table machine_learning_dev_ttl_120d.vessel_char_vid_features_v20190520 \
+      --label-table machine_learning_dev_ttl_120d.char_info_v20190516 \
+      --dest-path ./untracked/metric_results/test_inference_metrics_0516.html
   detection_training_command: ~
   detection_inference_command: ~
   detection_metrics_command: ~
