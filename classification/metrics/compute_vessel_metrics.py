@@ -713,7 +713,7 @@ def composite_weights(weight_map, class_map, y_true):
     y_true = np.asarray(y_true)
     new_weight_map = {}
     for k, atomic_set in class_map.items():
-        new_weight_map[k] = sum([weight_map[atm] for atm in atomic_set])
+        new_weight_map[k] = sum([weight_map.get(atm, 0) for atm in atomic_set])
 
     weights = np.zeros([len(y_true)])
     for lbl, wt in new_weight_map.items():
