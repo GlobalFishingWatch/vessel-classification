@@ -15,12 +15,17 @@
 
 Example:
 
+This compute metrics for the table `vessel_char_vid_features_v20190509`, comparing
+results with the known values in the table `char_info_v20190509`. This second table
+is typically derived from the vessel database using train/create_train_info.py.
+The results, and html file, are written to dest path.
 
-python compute_metrics.py     --inference-path classification_results.json.gz     \
-                              --label-path classification/data/net_training_20161115.csv   \
-                              --dest-path fltest.html --fishing-ranges classification/data/combined_fishing_ranges.csv  \
-                              --dump-labels-to . \
-                              --skip-localisation-metrics
+    python -m classification.metrics.compute_vessel_metrics \
+        --inference-table machine_learning_dev_ttl_120d.vessel_char_vid_features_v20190509  \
+        --label-table machine_learning_dev_ttl_120d.char_info_v20190509 \
+        --dest-path ./test_inference_metrics_0509.html
+
+*Note: despite the table, name this table is in terms of vessel_id*
 
 """
 from __future__ import division
@@ -37,87 +42,35 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.utility import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT, schema, atomic
+from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT, schema, atomic
 import gzip
 import dateutil.parser
 import datetime
 import pytz
-
-'''
-unknown:
-    fishing:
-      other_not_fishing:
-      passenger:
-      gear:
-      seismic_vessel:
-      helicopter:
-      cargo_or_tanker:
-        bunker_or_tanker:
-          bunker:
-          tanker:
-        cargo_or_reefer:
-          cargo:
-          reefer:
-      patrol_vessel:
-      research:
-      dive_vessel:
-      submarine:
-      dredge:
-      supply_vessel:
-      fish_factory:
-      tug:
-
-    non_fishing:
-      squid_jigger:
-      drifting_longlines:
-      pole_and_line:
-      other_fishing:
-      trollers:
-      fixed_gear:
-        pots_and_traps:
-        set_longlines:
-        set_gillnets:
-      trawlers:
-      purse_seines:
-      driftnets:
-      unknown_fishing:
-'''
-
-
-# coarse_mapping = [
-#     ['cargo_or_tanker', {'tanker', 'cargo', 'bunker', 'reefer'}],
-#     ['passenger', {'passenger'}],
-#     ['helicopter', {'helicopter'}]
-#     ['seismic_vessel', ['seismic_vessel'}],
-#     ['patrol_vessel', {'patrol_vessel'}],
-#     ['research', {'research'}],
-#     ['']
-#     ['tug', {'tug'}],
-#     ['other_not_fishing', {'other_not_fishing'}],  
-#     ['drifting_longlines', {'drifting_longlines'}],
-#     ['purse_seines', {'purse_seines'}],
-#     ['fixed_gear', {'pots_and_traps', 'set_gillnets', 'set_longlines'}],
-#     ['squid_jigger', ['squid_jigger']],
-#     ['gear', ['gear']],
-#     ['trawlers', {'trawlers'}],
-#     ['other_fishing', {'pole_and_line', 'trollers', 'other_fishing', 'drift_nets'}]
-# ]
-
+import pandas as pd
 
 coarse_categories = [
-    'cargo_or_tanker', 'passenger', 'seismic_vessel', 'tug', 'other_fishing', 
-    'drifting_longlines', 'purse_seines', 'fixed_gear', 'squid_jigger', 'trawlers', 
-    'other_not_fishing']
+    'cargo_or_tanker', 'passenger', 'tug',  'seismic_vessel','other_not_fishing', 
+    'drifting_longlines', 'gear', 'purse_seines', 'set_gillnets', 'set_longlines', 'pots_and_traps',
+     'trawlers', 'squid_jigger','other_fishing', 
+    ]
+
+
+all_classes = set(VESSEL_CLASS_DETAILED_NAMES)
+categories = dict(VESSEL_CATEGORIES)
+is_fishing = set(categories['fishing'])
+not_fishing = set(categories['non_fishing'])
 
 coarse_mapping = defaultdict(set)
-for k0, extra in [('fishing', 'other_fishing'), 
-                  ('non_fishing', 'other_not_fishing')]:
-    for k1, v1 in schema['unknown'][k0].items():
-        key = k1 if (k1 in coarse_categories) else extra
-        if v1 is None:
-            coarse_mapping[key] |= {k1}
-        else:
-            coarse_mapping[key] |= set(atomic(v1))
+used = set()
+for cat in coarse_categories:
+    atomic_cats = set(categories[cat])
+    assert not atomic_cats & used
+    used |= atomic_cats
+    coarse_mapping[cat] = atomic_cats
+unused = all_classes - used
+coarse_mapping['other_fishing'] |= (is_fishing & unused)
+coarse_mapping['other_not_fishing'] |= (not_fishing & unused)
 
 coarse_mapping = [(k, coarse_mapping[k]) for k in coarse_categories]
 
@@ -126,14 +79,6 @@ fishing_mapping = [
     ['non_fishing', set(atomic(schema['unknown']['non_fishing']))],
 ]
 
-
-# for k, v in coarse_mapping:
-#     print(k, v)
-# print()
-# for k, v in fishing_mapping:
-#     print(k, v)
-
-# raise SystemExit
 
 # Faster than using dateutil
 def _parse(x):
@@ -160,19 +105,19 @@ class InferenceResults(object):
     _indexed_scores = None
 
     def __init__(self, # TODO: Consider reordering args so that label_list is first
-        mmsi, inferred_labels, true_labels, start_dates, scores,
+        ids, inferred_labels, true_labels, start_dates, scores,
         label_list,
-        all_mmsi=None, all_inferred_labels=None, all_true_labels=None, all_start_dates=None, all_scores=None):
+        all_ids=None, all_inferred_labels=None, all_true_labels=None, all_start_dates=None, all_scores=None):
 
         self.label_list = label_list
         #
-        self.all_mmsi = all_mmsi
+        self.all_ids = all_ids
         self.all_inferred_labels = all_inferred_labels
         self.all_true_labels = all_true_labels
         self.all_start_dates = np.asarray(all_start_dates)
         self.all_scores = all_scores
         #
-        self.mmsi = mmsi
+        self.ids = ids
         self.inferred_labels = inferred_labels
         self.true_labels = true_labels
         self.start_dates = np.asarray(start_dates)
@@ -180,7 +125,7 @@ class InferenceResults(object):
         #
 
     def all_results(self):
-        return InferenceResults(self.all_mmsi, self.all_inferred_labels,
+        return InferenceResults(self.all_ids, self.all_inferred_labels,
                                 self.all_true_labels, self.all_start_dates,
                                 self.all_scores, self.label_list)
 
@@ -188,8 +133,8 @@ class InferenceResults(object):
     def indexed_scores(self):
         if self._indexed_scores is None:
             logging.debug('create index_scores')
-            iscores = np.zeros([len(self.mmsi), len(self.label_list)])
-            for i, mmsi in enumerate(self.mmsi):
+            iscores = np.zeros([len(self.ids), len(self.label_list)])
+            for i, id_ in enumerate(self.ids):
                 for j, lbl in enumerate(self.label_list):
                     iscores[i, j] = self.scores[i][lbl]
             self._indexed_scores = iscores
@@ -199,11 +144,11 @@ class InferenceResults(object):
 
 AttributeResults = namedtuple(
     'AttributeResults',
-    ['mmsi', 'inferred_attrs', 'true_attrs', 'true_labels', 'start_dates'])
+    ['id', 'inferred_attrs', 'true_attrs', 'true_labels', 'start_dates'])
 
 LocalisationResults = namedtuple('LocalisationResults',
-                                 ['true_fishing_by_mmsi',
-                                  'pred_fishing_by_mmsi', 'label_map'])
+                                 ['true_fishing_by_id',
+                                  'pred_fishing_by_id', 'label_map'])
 
 ConfusionMatrix = namedtuple('ConfusionMatrix', ['raw', 'scaled'])
 
@@ -260,43 +205,49 @@ table {
 # basic metrics
 
 
-def precision_score(y_true, y_pred):
-    y_true = np.asarray(y_true, dtype=bool)
-    y_pred = np.asarray(y_pred, dtype=bool)
+def precision_score(y_true, y_pred, sample_weights=None):
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
 
-    true_pos = y_true & y_pred
-    all_pos = y_pred
+    true_pos = np.array([(x == y and x != 0) for (x, y) in zip(y_true, y_pred)], dtype=float)
+    all_pos = np.array([(x != 0) for x in y_pred], dtype=float)
+    if sample_weights is not None:
+        true_pos *= sample_weights
+        all_pos *= sample_weights
 
     return true_pos.sum() / all_pos.sum()
 
 
-def recall_score(y_true, y_pred):
-    y_true = np.asarray(y_true, dtype=bool)
-    y_pred = np.asarray(y_pred, dtype=bool)
+def recall_score(y_true, y_pred, sample_weights=None):
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
 
-    true_pos = y_true & y_pred
-    all_true = y_true
+    true_pos = np.array([(x == y and x != 0) for (x, y) in zip(y_true, y_pred)], dtype=float)
+    all_true = np.array([(x != 0) for x in y_true], dtype=float)
+    if sample_weights is not None:
+        true_pos *= sample_weights
+        all_true *= sample_weights
 
     return true_pos.sum() / all_true.sum()
 
 
-def f1_score(y_true, y_pred):
-    prec = precision_score(y_true, y_pred)
-    recall = recall_score(y_true, y_pred)
+def f1_score(y_true, y_pred, sample_weights=None):
+    prec = precision_score(y_true, y_pred, sample_weights)
+    recall = recall_score(y_true, y_pred, sample_weights)
 
     return 2 / (1 / prec + 1 / recall)
 
 
-def accuracy_score(y_true, y_pred, weights=None):
+def accuracy_score(y_true, y_pred, sample_weights=None):
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
-    if weights is None:
-        weights = np.ones_like(y_pred).astype(float)
-    weights = np.asarray(weights)
+    if sample_weights is None:
+        sample_weights = np.ones_like(y_pred).astype(float)
+    weights = np.asarray(sample_weights)
 
     correct = (y_true == y_pred)
 
-    return (weights * correct).sum() / weights.sum()
+    return (sample_weights * correct).sum() / sample_weights.sum()
 
 
 def weights(labels, y_true, y_pred, max_weight=200):
@@ -310,6 +261,16 @@ def weights(labels, y_true, y_pred, max_weight=200):
             wt = min(len(trues) / trues.sum(), max_weight)
             weights += trues * wt
 
+    return weights / weights.sum()
+
+
+def weights_by_class(label_weights, y_true, y_pred):
+    y_true = np.asarray(y_true)
+    weights = np.zeros([len(y_true)])
+    for lbl, wt  in labels:
+        trues = (y_true == lbl)
+        if trues.sum():
+            weights[trues] = wt
     return weights / weights.sum()
 
 
@@ -436,8 +397,6 @@ def ydump_attrs(doc, results):
 
     logging.info('    Consolidating attributes')
     consolidated = consolidate_attribute_across_dates(results)
-    # true_mask = np.array([(x is not None) for x in consolidated.true_attrs])
-    # infer_mask = np.array([(x is not None) for x in consolidated.inferred_attrs])
     true_mask = ~np.isnan(consolidated.true_attrs)
     infer_mask = ~np.isnan(consolidated.inferred_attrs)
 
@@ -459,7 +418,8 @@ def ydump_attrs(doc, results):
         results = []
         labels = sorted(set(true_labels))
         for lbl in labels:
-            mask = true_mask & infer_mask & (lbl == true_labels)
+            lbl_mask = np.array([(lbl == x) for x in true_labels])
+            mask = true_mask & infer_mask & lbl_mask
             if mask.sum():
                 err = RMS(true_attrs[mask], pred_attrs[mask])
                 abs_err = MAE(true_attrs[mask], pred_attrs[mask])
@@ -485,7 +445,7 @@ def ydump_attrs(doc, results):
             ])
 
 
-def ydump_metrics(doc, results):
+def ydump_metrics(doc, results, weights_map):
     """dump metrics for `results` to html using yatag
 
     Args:
@@ -522,84 +482,16 @@ def ydump_metrics(doc, results):
 
     with tag('div', klass='unbreakable'):
         line('h3', 'Metrics by Label')
+        weights = composite_weights(weights_map, results.mapping, consolidated.true_labels)
         row_vals = precision_recall_f1(consolidated.label_list,
                                        consolidated.true_labels,
-                                       consolidated.inferred_labels)
-        ydump_table(doc, ['Label (mmsi:true/total)', 'Precision', 'Recall', 'F1-Score'], [
+                                       consolidated.inferred_labels,
+                                       weights)
+        ydump_table(doc, ['Label (id:true/total)', 'Precision', 'Recall', 'F1-Score'], [
             (a, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
             for (a, b, c, d) in row_vals
         ])
-        wts = weights(consolidated.label_list, consolidated.true_labels,
-                      consolidated.inferred_labels)
-        line('h4', 'Accuracy with equal class weight')
-        text(
-            str(
-                accuracy_score(consolidated.true_labels,
-                               consolidated.inferred_labels, wts)))
 
-fishing_category_map = {
-    'drifting_longlines' : 'drifting_longlines',
-    'trawlers' : 'trawlers',
-    'purse_seines' : 'purse_seines',
-    'pots_and_traps' : 'stationary_gear',
-    'set_gillnets' : 'stationary_gear',
-    'set_longlines' : 'stationary_gear'
-}
-
-
-def ydump_fishing_localisation(doc, results):
-    doc, tag, text, line = doc.ttl()
-
-    y_true = np.concatenate(results.true_fishing_by_mmsi.values())
-    y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
-
-    header = ['Gear Type (mmsi:true/total)', 'Precision', 'Recall', 'Accuracy', 'F1-Score']
-    rows = []
-    logging.info('Overall localisation accuracy %s',
-                 accuracy_score(y_true, y_pred))
-    logging.info('Overall localisation precision %s',
-                 precision_score(y_true, y_pred))
-    logging.info('Overall localisation recall %s',
-                 recall_score(y_true, y_pred))
-
-    for cls in sorted(set(fishing_category_map.values())) + ['other'] :
-        true_chunks = []
-        pred_chunks = []
-        mmsi_list = []
-        for mmsi in results.label_map:
-            if mmsi not in results.true_fishing_by_mmsi:
-                continue
-            if fishing_category_map.get(results.label_map[mmsi], 'other') != cls:
-                continue
-            mmsi_list.append(mmsi)
-            true_chunks.append(results.true_fishing_by_mmsi[mmsi])
-            pred_chunks.append(results.pred_fishing_by_mmsi[mmsi])
-        if len(true_chunks):
-            logging.info('MMSI for {}: {}'.format(cls, mmsi_list))
-            y_true = np.concatenate(true_chunks)
-            y_pred = np.concatenate(pred_chunks)
-            rows.append(['{} ({}:{}/{})'.format(cls, len(true_chunks), sum(y_true), len(y_true)),
-                         precision_score(y_true, y_pred),
-                         recall_score(y_true, y_pred),
-                         accuracy_score(y_true, y_pred),
-                         f1_score(y_true, y_pred), ])
-
-    rows.append(['', '', '', '', ''])
-
-    y_true = np.concatenate(results.true_fishing_by_mmsi.values())
-    y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
-
-    rows.append(['Overall',
-                 precision_score(y_true, y_pred),
-                 recall_score(y_true, y_pred),
-                 accuracy_score(y_true, y_pred),
-                 f1_score(y_true, y_pred), ])
-
-    with tag('div', klass='unbreakable'):
-        ydump_table(
-            doc, header,
-            [[('{:.2f}'.format(x) if isinstance(x, float) else x) for x in row]
-             for row in rows])
 
 # Helper functions for computing metrics
 
@@ -609,7 +501,7 @@ def clean_label(x):
     return x.replace('_', ' ')
 
 
-def precision_recall_f1(labels, y_true, y_pred):
+def precision_recall_f1(labels, y_true, y_pred, weights):
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
     results = []
@@ -620,50 +512,61 @@ def precision_recall_f1(labels, y_true, y_pred):
             # Only return cases where there are least one vessel present in both cases
             results.append(
                 (lbl, precision_score(trues, positives),
-                 recall_score(trues, positives), f1_score(trues, positives)))
+                 recall_score(trues, positives), 
+                 f1_score(trues, positives)))
+    # Note that the micro-avereage precision/recall/F1 are the same
+    # as the accuracy for the vanilla case we have here. (Predictions
+    # in all cases, on prediction per case.)
+    results.append(('ALL (unweighted)', precision_score(y_true, y_pred),
+                            recall_score(y_true, y_pred),
+                            f1_score(y_true, y_pred)))
+    results.append(('ALL (by prevalence)', precision_score(y_true, y_pred, sample_weights=weights),
+                        recall_score(y_true, y_pred, sample_weights=weights),
+                            f1_score(y_true, y_pred, sample_weights=weights))
+        )
     return results
 
 
 def consolidate_across_dates(results, date_range=None):
-    """Consolidate scores for each MMSI across available dates.
+    """Consolidate scores for each ID across available dates.
 
-    For each mmsi, we take the scores at all available dates, sum
+    For each id, we take the scores at all available dates, sum
     them and use argmax to find the predicted results.
 
     Optionally accepts a date range, which specifies half open ranges
     for the dates.
     """
-    inferred_mmsi = []
+    inferred_ids = []
     inferred_labels = []
     true_labels = []
 
     if date_range is None:
-        valid_date_mask = np.ones([len(results.mmsi)], dtype=bool)
+        valid_date_mask = np.ones([len(results.ids)], dtype=bool)
     else:
         # TODO: write out end date as well, so that we avoid this hackery
         end_dates = results.start_dates + datetime.timedelta(days=180)
         valid_date_mask = (results.start_dates >= date_range[0]) & (
             results.start_dates < date_range[1])
 
-    mmsi_map = {}
-    mmsi_indices = []
-    for i, m in enumerate(results.mmsi):
+    id_map = {}
+    id_indices = []
+    for i, m in enumerate(results.ids):
         if valid_date_mask[i]:
-            if m not in mmsi_map:
-                mmsi_map[m] = len(inferred_mmsi)
-                inferred_mmsi.append(m)
+            if m not in id_map:
+                id_map[m] = len(inferred_ids)
+                inferred_ids.append(m)
                 true_labels.append(results.true_labels[i])
-            mmsi_indices.append(mmsi_map[m])
+            id_indices.append(id_map[m])
         else:
-            mmsi_indices.append(-1)
-    mmsi_indices = np.array(mmsi_indices)
+            id_indices.append(-1)
+    id_indices = np.array(id_indices)
 
-    scores = np.zeros([len(inferred_mmsi), len(results.label_list)])
-    counts = np.zeros([len(inferred_mmsi)])
+    scores = np.zeros([len(inferred_ids), len(results.label_list)])
+    counts = np.zeros([len(inferred_ids)])
     for i, valid in enumerate(valid_date_mask):
         if valid:
-            scores[mmsi_indices[i]] += results.indexed_scores[i]
-            counts[mmsi_indices[i]] += 1
+            scores[id_indices[i]] += results.indexed_scores[i]
+            counts[id_indices[i]] += 1
 
     inferred_labels = []
     for i, s in enumerate(scores):
@@ -672,35 +575,27 @@ def consolidate_across_dates(results, date_range=None):
             scores[i] /= counts[i]
 
     return InferenceResults(
-        np.array(inferred_mmsi), np.array(inferred_labels),
+        np.array(inferred_ids), np.array(inferred_labels),
         np.array(true_labels), None, scores, results.label_list)
 
 
-def consolidate_attribute_across_dates(results, date_range=None):
-    """Consolidate scores for each MMSI across available dates.
+def consolidate_attribute_across_dates(results):
+    """Consolidate scores for each ID across available dates.
 
-    For each mmsi, we average the attribute across all available dates
+    For each ID, we average the attribute across all available dates
 
     """
     inferred_attributes = []
     true_attributes = []
     true_labels = []
-    indices = np.argsort(results.mmsi)
-    mmsi = np.unique(results.mmsi)
+    indices = np.argsort(results.ids)
+    ids = np.unique(results.ids)
 
-    for m in np.unique(results.mmsi):
-        start = np.searchsorted(results.mmsi, m, side='left', sorter=indices)
-        stop = np.searchsorted(results.mmsi, m, side='right', sorter=indices)
+    for id_ in np.unique(results.ids):
+        start = np.searchsorted(results.ids, id_, side='left', sorter=indices)
+        stop = np.searchsorted(results.ids, id_, side='right', sorter=indices)
 
-        attrs_for_mmsi = results.inferred_attrs[indices[start:stop]]
-
-        if date_range:
-            start_dates = results.start_dates[indices[start:stop]]
-            # TODO: This is kind of messy need to verify that date ranges and output ranges line up
-            valid_date_mask = (start_dates >= date_range[0]) & (start_dates < date_range[1])
-            attrs = attrs_for_mmsi[valid_date_mask]
-        else:
-            attrs = attrs_for_mmsi
+        attrs = results.inferred_attrs[indices[start:stop]]
 
         if len(attrs):
             inferred_attributes.append(attrs.mean())
@@ -722,7 +617,7 @@ def consolidate_attribute_across_dates(results, date_range=None):
             true_labels.append("Unknown")
 
     return AttributeResults(
-        mmsi, np.array(inferred_attributes), np.array(true_attributes),
+        ids, np.array(inferred_attributes), np.array(true_attributes),
         np.array(true_labels), None)
 
 
@@ -769,39 +664,80 @@ def confusion_matrix(results):
     return ConfusionMatrix(cm_raw, cm_normalized)
 
 
-def load_inferred(inference_path, extractors, whitelist):
+def load_inferred(inference_table, label_table, extractors):
     """Load inferred data and generate comparison data
 
     """
-    with gzip.GzipFile(inference_path) as f:
-        with nlj.open(f, json_lib='ujson') as src:
-            for row in src:
-                if whitelist is not None and row['mmsi'] not in whitelist:
-                    continue
-                # Parsing dates is expensive and all extractors use dates, so parse them
-                # once up front
-                row['start_time'] = _parse(row['start_time'])
-                #dateutil.parser.parse(row['start_time'])
-                for ext in extractors:
-                    ext.extract(row)
+    query = """
+
+    SELECT inference_table.* except (vessel_id), vessel_id as id FROM 
+    `{}` label_table
+    JOIN
+   `{}*` inference_table
+    ON (label_table.id = inference_table.vessel_id)
+    """.format(label_table, inference_table)
+    print(query)
+    df = pd.read_gbq(query, project_id='world-fishing-827', dialect='standard')
+
+    for row in df.itertuples():
+        for ext in extractors:
+            ext.extract(row)
     for ext in extractors:
         ext.finalize()
+
+
+def load_class_weights(inference_table):
+    query = '''
+        with
+
+        core as (
+        select * from `{}*`
+        where max_label is not null
+        ),
+
+        count as (
+        select count(*) as total from core
+        )
+        select max_label as label, count(*) / total as fraction
+        from core
+        cross join count
+        group by label, total
+        order by fraction desc
+    '''.format(inference_table)
+    df = pd.read_gbq(query, project_id='world-fishing-827', dialect='standard')
+    wt_map = {x.label : x.fraction for x in df.itertuples()}
+    return wt_map
+
+
+def composite_weights(weight_map, class_map, y_true):
+    y_true = np.asarray(y_true)
+    new_weight_map = {}
+    for k, atomic_set in class_map.items():
+        new_weight_map[k] = sum([weight_map.get(atm, 0) for atm in atomic_set])
+
+    weights = np.zeros([len(y_true)])
+    for lbl, wt in new_weight_map.items():
+        trues = (y_true == lbl)
+        if trues.sum():
+            weights[trues] = wt / trues.sum()
+
+    return weights / weights.sum()
+
 
 
 class ClassificationExtractor(InferenceResults):
     # Conceptually an InferenceResult
     # TODO: fix to make true subclass or return true inference result at finalization time or something.
-    def __init__(self, field, label_map):
-        self.field = field
+    def __init__(self, label_map):
         self.label_map = label_map
         #
-        self.all_mmsi = []
+        self.all_ids = []
         self.all_inferred_labels = []
         self.all_true_labels = []
         self.all_start_dates = []
         self.all_scores = []
         #
-        self.mmsi = []
+        self.ids = []
         self.inferred_labels = []
         self.true_labels = []
         self.start_dates = []
@@ -810,26 +746,25 @@ class ClassificationExtractor(InferenceResults):
         self.all_labels = set(label_map.values())
 
     def extract(self, row):
-        mmsi = row['mmsi']
-        lbl = self.label_map.get(mmsi)
-        if self.field not in row:
-            return
-        label_scores = row[self.field]['label_scores']
+        id_ = row.id
+        lbl = self.label_map.get(id_)
+        raw_label_scores = row.label_scores
+        label_scores = {x['label'] : x['score'] for x in raw_label_scores}
         self.all_labels |= set(label_scores.keys())
-        start_date = row['start_time']
+        start_date = row.start_time
         # TODO: write out TZINFO in inference
         if start_date.tzinfo is None:
             start_date = start_date.replace(tzinfo=pytz.utc)
-        inferred = row[self.field]['max_label']
+        inferred = row.max_label
         # Every row that has inference values get stored in all_
-        self.all_mmsi.append(mmsi)
+        self.all_ids.append(id_)
         self.all_start_dates.append(start_date)
         self.all_true_labels.append(lbl)
         self.all_inferred_labels.append(inferred)
         self.all_scores.append(label_scores)
         # Only values that have a known component get stored in the not all_ arrays
-        if lbl is not None:
-            self.mmsi.append(mmsi)
+        if lbl is not None and not (isinstance(lbl, float) and np.isnan(lbl)):
+            self.ids.append(id_)
             self.start_dates.append(start_date)
             self.true_labels.append(lbl)
             self.inferred_labels.append(inferred)
@@ -842,7 +777,9 @@ class ClassificationExtractor(InferenceResults):
         self.scores = np.array(self.scores)
         self.label_list = sorted(
             self.all_labels, key=VESSEL_CLASS_DETAILED_NAMES.index)
-        self.mmsi = np.array(self.mmsi)
+        if len(self.true_labels) == 0:
+            raise ValueError('no true labels')
+        self.ids = np.array(self.ids)
         for lbl in self.label_list:
             true_count = (self.true_labels == lbl).sum()
             inf_count = (self.inferred_labels == lbl).sum()
@@ -850,7 +787,7 @@ class ClassificationExtractor(InferenceResults):
                          inf_count, lbl)
 
     def __nonzero__(self):
-        return len(self.mmsi) > 0
+        return len(self.ids) > 0
 
 
 class AttributeExtractor(object):
@@ -858,32 +795,32 @@ class AttributeExtractor(object):
         self.key = key
         self.attr_map = attr_map
         self.label_map = label_map
-        self.mmsi = []
+        self.ids = []
         self.inferred_attrs = []
         self.true_attrs = []
         self.true_labels = []
         self.start_dates = []
 
     def extract(self, row):
-        mmsi = row['mmsi']
-        if self.key not in row:
+        id_ = row.id
+        if getattr(row, self.key) is None:
             return
-        self.mmsi.append(mmsi)
-        self.start_dates.append(row['start_time'])
+        self.ids.append(id_)
+        self.start_dates.append(row.start_time)
         self.true_attrs.append(
-            float(self.attr_map[mmsi]) if (mmsi in self.attr_map) else np.nan)
-        self.true_labels.append(self.label_map.get(mmsi, 'Unknown'))
-        self.inferred_attrs.append(row[self.key]['value'])
+            float(self.attr_map[id_]) if (id_ in self.attr_map) else np.nan)
+        self.true_labels.append(self.label_map.get(id_, 'Unknown'))
+        self.inferred_attrs.append(getattr(row, self.key))
 
     def finalize(self):
         self.inferred_attrs = np.array(self.inferred_attrs)
         self.true_attrs = np.array(self.true_attrs)
         self.start_dates = np.array(self.start_dates)
-        self.mmsi = np.array(self.mmsi)
+        self.ids = np.array(self.ids)
         self.true_labels = np.array(self.true_labels)
 
     def __nonzero__(self):
-        return len(self.mmsi) > 0
+        return len(self.ids) > 0
 
 
 
@@ -915,7 +852,7 @@ def assemble_composite(results, mapping):
             inverse_mapping[lbl] = new_label
     base_label_map = {x: i for (i, x) in enumerate(results.label_list)}
 
-    for i, mmsi in enumerate(results.all_mmsi):
+    for i, id_ in enumerate(results.all_ids):
         scores = {}
         for (new_label, base_labels) in mapping:
             scores[new_label] = 0
@@ -932,9 +869,9 @@ def assemble_composite(results, mapping):
         return np.array([x for (i, x) in enumerate(seq) if true_labels[i]])
 
     return InferenceResults(
-        trim(results.all_mmsi), trim(inferred_labels), trim(true_labels),
+        trim(results.all_ids), trim(inferred_labels), trim(true_labels),
         trim(start_dates), trim(inferred_scores), label_list,
-        np.array(results.all_mmsi), np.array(inferred_labels),
+        np.array(results.all_ids), np.array(inferred_labels),
         np.array(true_labels), np.array(start_dates),
         np.array(inferred_scores))
 
@@ -951,84 +888,66 @@ def datetime_to_minute(dt):
 
 
 def compute_results(args):
-    inference_path = get_local_inference_path(args)
-
     logging.info('Loading label maps')
     maps = defaultdict(dict)
-    with open(args.label_path) as f:
-        for row in csv.DictReader(f):
-            mmsi = int(row['mmsi'].strip())
-            if not row['split'] == TEST_SPLIT:
-                continue
-            for field in ['label', 'length', 'tonnage', 'engine_power', 'crew_size', 'split'
-                          ]:
-                if row[field]:
-                    if field == 'label':
-                        if row[field].strip(
-                        ) not in VESSEL_CLASS_DETAILED_NAMES:
-                            continue
-                    maps[field][mmsi] = row[field]
+    label_df = pd.read_gbq("select * from `{}`".format(args.label_table), 
+                   project_id='world-fishing-827', dialect='standard')
+    for row in label_df.itertuples():
+        id_ = row.id
+        if not row.split == TEST_SPLIT:
+            continue
+        for field in ['label', 'length', 'tonnage', 'engine_power', 'crew_size', 'split']:
+            val = getattr(row, field)
+            if val is not None and val != '' and not (isinstance(val, float) and np.isnan(val)):
+                if field == 'label':
+                    if row.label.strip(
+                    ) not in VESSEL_CLASS_DETAILED_NAMES:
+                        print("SHOULDNT HAPPEN!", field)
+                        continue
+                maps[field][id_] = getattr(row, field)
     results = {}
 
     # Sanity check the attribute mappings
     for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
-        for mmsi, value in maps[field].items():
-            assert float(value) > 0, (mmsi, value)
+        for id_, value in maps[field].items():
+            assert float(value) > 0, (id_, value)
 
-    if not args.skip_localisation_metrics:
-        ext = FishingRangeExtractor()
-        results['fishing_ranges'] = ext
+    results['fine'] = ClassificationExtractor(maps['label'])
+    results['fine'].mapping = {x : set([x]) for x in all_classes}
 
-    if (not args.skip_class_metrics) or args.dump_labels_to:
-        results['fine'] = ClassificationExtractor('Multiclass', maps['label'])
-
-    if not args.skip_attribute_metrics:  # TODO: change to skip_attribute_metrics
-        ext = AttributeExtractor('length', maps['length'], maps['label'])
-        results['length'] = ext
-        ext = AttributeExtractor('tonnage', maps['tonnage'], maps['label'])
-        results['tonnage'] = ext
-        ext = AttributeExtractor('engine_power', maps['engine_power'],
-                                 maps['label'])
-        results['engine_power'] = ext
-        ext = AttributeExtractor('crew_size', maps['crew_size'],
-                                 maps['label']) 
-        results['crew_size'] = ext       
+    ext = AttributeExtractor('length', maps['length'], maps['label'])
+    results['length'] = ext
+    ext = AttributeExtractor('tonnage', maps['tonnage'], maps['label'])
+    results['tonnage'] = ext
+    ext = AttributeExtractor('engine_power', maps['engine_power'],
+                             maps['label'])
+    results['engine_power'] = ext
+    ext = AttributeExtractor('crew_size', maps['crew_size'],
+                             maps['label']) 
+    results['crew_size'] = ext       
 
     logging.info('Loading inference data')
-    if args.test_only:
-        whitelist = set([x for x in maps['split'] if maps['split'][x] == TEST_SPLIT]) 
-    else:
-        whitelist = None
-    load_inferred(inference_path, results.values(), whitelist)
+    load_inferred(args.inference_table, args.label_table, results.values())
+    class_weights = load_class_weights(args.inference_table)
+    results['class_weights'] = class_weights
 
-    if not args.skip_class_metrics:
-        # Sanity check attribute values after loading
-        for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
-            if not all(results[field].inferred_attrs >= 0):
-                logging.warning(
-                    'Inferred values less than zero for %s (%s, %s / %s)',
-                    field, min(results[field].inferred_attrs),
-                    (results[field].inferred_attrs < 0).sum(),
-                    len(results[field].inferred_attrs))
 
-        # Assemble coarse and is_fishing scores:
-        logging.info('Assembling coarse data')
-        results['coarse'] = assemble_composite(results['fine'], coarse_mapping)
-        logging.info('Assembling fishing data')
-        results['fishing'] = assemble_composite(results['fine'],
-                                                fishing_mapping)
+    # Sanity check attribute values after loading
+    for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
+        if not all(results[field].inferred_attrs >= 0):
+            logging.warning(
+                'Inferred values less than zero for %s (%s, %s / %s)',
+                field, min(results[field].inferred_attrs),
+                (results[field].inferred_attrs < 0).sum(),
+                len(results[field].inferred_attrs))
 
-    if not args.skip_localisation_metrics:
-        logging.info('Comparing localisation')
-        results['localisation'] = compare_fishing_localisation(
-            results['fishing_ranges'], args.fishing_ranges, maps['label'],
-            maps['split'])
-
-    if args.agreement_ranges_path:
-        compute_fishing_range_agreement(results['fishing_ranges'],
-                                        args.agreement_ranges_path,
-                                        maps['label'], maps['split'])
-
+    # Assemble coarse and is_fishing scores:
+    logging.info('Assembling coarse data')
+    results['coarse'] = assemble_composite(results['fine'], coarse_mapping)
+    results['coarse'].mapping = {k : v for (k, v) in coarse_mapping}
+    logging.info('Assembling fishing data')
+    results['fishing'] = assemble_composite(results['fine'],fishing_mapping)
+    results['fishing'].mapping = {k : v for (k, v) in fishing_mapping}
     return results
 
 
@@ -1043,7 +962,8 @@ def dump_html(args, results):
         if results[key]:
             logging.info('Dumping "{}"'.format(heading))
             doc.line('h2', heading)
-            ydump_metrics(doc, results[key])
+            wts = results['class_weights'] if (key=='fine') else None
+            ydump_metrics(doc, results[key], results['class_weights'])
             doc.stag('hr')
 
     logging.info('Dumping Length')
@@ -1073,17 +993,19 @@ def dump_html(args, results):
 this_dir = os.path.dirname(os.path.abspath(__file__))
 temp_dir = os.path.join(this_dir, 'temp')
 
+
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG)
 
     parser = argparse.ArgumentParser(
         description='Test inference results and output metrics.\n')
-    parser.add_argument(
-        '--inference-table', help='path to inference results', required=True)
-    parser.add_argument(
-        '--label-path', help='path to test data', required=True)
-    parser.add_argument(
-        '--dest-path', help='path to write results to', required=True)
+    parser.add_argument('--inference-table', required=True, 
+        help='table of inference results to compute metrics for')
+    parser.add_argument('--label-table', required=True, 
+        help='path to test table of labels to compare results with')
+    parser.add_argument('--dest-path', required=True, 
+        help='output path to write results to')
+
 
     args = parser.parse_args()
 

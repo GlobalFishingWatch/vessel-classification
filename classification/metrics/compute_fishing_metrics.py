@@ -13,14 +13,14 @@
 # limitations under the License.
 """
 
+
 Example:
 
-
-python compute_metrics.py     --inference-path classification_results.json.gz     \
-                              --label-path classification/data/net_training_20161115.csv   \
-                              --dest-path fltest.html --fishing-ranges classification/data/combined_fishing_ranges.csv  \
-                              --dump-labels-to . \
-                              --skip-localisation-metrics
+    python -m classification.metrics.compute_fishing_metrics \
+                --inference-table machine_learning_dev_ttl_120d.fishing_detection_vid_features_v20190509_  \
+                --label-path classification/data/det_info_v20190507.csv \
+                --dest-path ./test_fishing_inference_0509.html \
+                --fishing-ranges classification/data/det_ranges_v20190507.csv
 
 """
 from __future__ import division
@@ -31,6 +31,7 @@ import csv
 import subprocess
 import numpy as np
 import pandas as pd
+import pandas_gbq
 import dateutil.parser
 import logging
 import argparse
@@ -38,7 +39,7 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.utility import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT, schema, atomic
+from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, schema, atomic
 import gzip
 import dateutil.parser
 import datetime
@@ -77,8 +78,6 @@ for coarse, fine in coarse_mapping:
         if atomic in atomic_fishing:
             fishing_category_map[atomic] = coarse
 
-print(fishing_category_map )
-
 
 # Faster than using dateutil
 def _parse(x):
@@ -101,8 +100,8 @@ def _parse(x):
 
 
 LocalisationResults = namedtuple('LocalisationResults',
-                                 ['true_fishing_by_mmsi',
-                                  'pred_fishing_by_mmsi', 'label_map'])
+                                 ['true_fishing_by_id',
+                                  'pred_fishing_by_id', 'label_map'])
 
 FishingRange = namedtuple('FishingRange',
     ['is_fishing', 'start_time', 'end_time'])
@@ -111,10 +110,10 @@ FishingRange = namedtuple('FishingRange',
 def ydump_fishing_localisation(doc, results):
     doc, tag, text, line = doc.ttl()
 
-    y_true = np.concatenate(results.true_fishing_by_mmsi.values())
-    y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
+    y_true = np.concatenate(results.true_fishing_by_id.values())
+    y_pred = np.concatenate(results.pred_fishing_by_id.values())
 
-    header = ['Gear Type (mmsi:true/total)', 'Precision', 'Recall', 'Accuracy', 'F1-Score']
+    header = ['Gear Type (id:true/total)', 'Precision', 'Recall', 'Accuracy', 'F1-Score']
     rows = []
     logging.info('Overall localisation accuracy %s',
                  accuracy_score(y_true, y_pred))
@@ -126,17 +125,17 @@ def ydump_fishing_localisation(doc, results):
     for cls in sorted(set(fishing_category_map.values())) + ['other'] :
         true_chunks = []
         pred_chunks = []
-        mmsi_list = []
-        for mmsi in results.label_map:
-            if mmsi not in results.true_fishing_by_mmsi:
+        id_list = []
+        for id_ in results.label_map:
+            if id_ not in results.true_fishing_by_id:
                 continue
-            if fishing_category_map.get(results.label_map[mmsi], 'other') != cls:
+            if fishing_category_map.get(results.label_map[id_], 'other') != cls:
                 continue
-            mmsi_list.append(mmsi)
-            true_chunks.append(results.true_fishing_by_mmsi[mmsi])
-            pred_chunks.append(results.pred_fishing_by_mmsi[mmsi])
+            id_list.append(id_)
+            true_chunks.append(results.true_fishing_by_id[id_])
+            pred_chunks.append(results.pred_fishing_by_id[id_])
         if len(true_chunks):
-            logging.info('MMSI for {}: {}'.format(cls, mmsi_list))
+            logging.info('ID for {}: {}'.format(cls, id_list))
             y_true = np.concatenate(true_chunks)
             y_pred = np.concatenate(pred_chunks)
             rows.append(['{} ({}:{}/{})'.format(cls, len(true_chunks), sum(y_true), len(y_true)),
@@ -147,8 +146,8 @@ def ydump_fishing_localisation(doc, results):
 
     rows.append(['', '', '', '', ''])
 
-    y_true = np.concatenate(results.true_fishing_by_mmsi.values())
-    y_pred = np.concatenate(results.pred_fishing_by_mmsi.values())
+    y_true = np.concatenate(results.true_fishing_by_id.values())
+    y_pred = np.concatenate(results.pred_fishing_by_id.values())
 
     rows.append(['Overall',
                  precision_score(y_true, y_pred),
@@ -208,42 +207,51 @@ def load_inferred_fishing(table, id_list, project_id, threshold=True):
 
     """
     query_template = """
-    SELECT vessel_id, start_time, end_time, nnet_score FROM 
+    SELECT vessel_id as id, start_time, end_time, nnet_score FROM 
         TABLE_DATE_RANGE([{table}],
             TIMESTAMP('{year}-01-01'), TIMESTAMP('{year}-12-31'))
         WHERE vessel_id in ({ids})
     """
     ids = ','.join('"{}"'.format(x) for x in id_list)
     ranges = defaultdict(list)
-    for year in range(2012, 2018):
+    for year in range(2012, 2019):
         query = query_template.format(table=table, year=year, ids=ids)
-        print(query)
-        for x in pd.read_gbq(query, project_id=project_id).itertuples():
+        try:
+            df = pd.read_gbq(query, project_id=project_id)
+        except pandas_gbq.gbq.GenericGBQException as err:
+            if 'matches no table' in err.message:
+                print('skipping', year)
+                continue
+            else:
+                print(query)
+                raise
+        for x in df.itertuples():
             score = x.nnet_score
             if threshold:
                 score = score > 0.5
             start = x.start_time.replace(tzinfo=pytz.utc)
             end = x.end_time.replace(tzinfo=pytz.utc)
-            ranges[x.vessel_id].append(FishingRange(score, start, end))
-    print([(key, len(val)) for (key, val) in ranges.items()])
+            ranges[x.id].append(FishingRange(score, start, end))
     return ranges
 
-def load_true_fishing_ranges_by_mmsi(fishing_range_path,
+def load_true_fishing_ranges_by_id(fishing_range_path,
                                      split_map,
+                                     split,
                                      threshold=True):
-    ranges_by_mmsi = defaultdict(list)
+    ranges_by_id = defaultdict(list)
     parse = dateutil.parser.parse
     with open(fishing_range_path) as f:
         for row in csv.DictReader(f):
-            mmsi = row['mmsi'].strip()
-            if not split_map.get(mmsi) == TEST_SPLIT:
+            id_ = row['id'].strip()
+            if not split_map.get(id_) == str(split):
                 continue
             val = float(row['is_fishing'])
             if threshold:
                 val = val > 0.5
-            rng = (val, parse(row['start_time']), parse(row['end_time']))
-            ranges_by_mmsi[mmsi].append(rng)
-    return ranges_by_mmsi
+            rng = (val, parse(row['start_time']).replace(tzinfo=pytz.UTC), 
+                        parse(row['end_time']).replace(tzinfo=pytz.UTC))
+            ranges_by_id[id_].append(rng)
+    return ranges_by_id
 
 
 def datetime_to_minute(dt):
@@ -253,23 +261,28 @@ def datetime_to_minute(dt):
 
 
 def compare_fishing_localisation(inferred_ranges, fishing_range_path,
-                                 label_map, split_map):
+                                 label_map, split_map, split):
 
     logging.debug('loading fishing ranges')
-    true_ranges_by_mmsi = load_true_fishing_ranges_by_mmsi(fishing_range_path,
-                                                           split_map)
-    true_by_mmsi = {}
-    pred_by_mmsi = {}
+    true_ranges_by_id = load_true_fishing_ranges_by_id(fishing_range_path,
+                                                           split_map, split)
+    print("TRUE", sorted(true_ranges_by_id.keys())[:10])
+    print("INF", sorted(inferred_ranges.keys())[:10])
+    print(repr(sorted(true_ranges_by_id.keys())[0]))
+    print(repr(sorted(inferred_ranges.keys())[0]))
+    true_by_id = {}
+    pred_by_id = {}
 
-    for mmsi in sorted(true_ranges_by_mmsi.keys()):
-        logging.debug('processing %s', mmsi)
-        if str(mmsi) not in inferred_ranges:
+    for id_ in sorted(true_ranges_by_id.keys()):
+        id_ = unicode(id_)
+        logging.debug('processing %s', id_)
+        if id_ not in inferred_ranges:
             continue
-        true_ranges = true_ranges_by_mmsi[mmsi]
+        true_ranges = true_ranges_by_id[id_]
         if not true_ranges:
             continue
 
-        # Determine minutes from start to finish of this mmsi, create an array to
+        # Determine minutes from start to finish of this id, create an array to
         # hold results and fill with -1 (unknown)
         logging.debug('processing %s true ranges', len(true_ranges))
         logging.debug('finding overall range')
@@ -292,7 +305,7 @@ def compare_fishing_localisation(inferred_ranges, fishing_range_path,
 
         # fill in minutes[:, 1] with inferred true / false values
         logging.debug('filling 1s')
-        for (is_fishing, s, e) in inferred_ranges[str(mmsi)]:
+        for (is_fishing, s, e) in inferred_ranges[str(id_)]:
             s_min = datetime_to_minute(s)
             e_min = datetime_to_minute(e)
             for m in range(s_min - start_min, e_min - start_min + 1):
@@ -300,16 +313,15 @@ def compare_fishing_localisation(inferred_ranges, fishing_range_path,
                     minutes[m, 1] = is_fishing
 
         mask = ((minutes[:, 0] != -1) & (minutes[:, 1] != -1))
-
         if mask.sum():
             accuracy = (
                 (minutes[:, 0] == minutes[:, 1]) * mask).sum() / mask.sum()
-            logging.debug('Accuracy for MMSI %s: %s', mmsi, accuracy)
+            logging.debug('Accuracy for ID %s: %s', id_, accuracy)
 
-            true_by_mmsi[mmsi] = minutes[mask, 0]
-            pred_by_mmsi[mmsi] = minutes[mask, 1]
+            true_by_id[id_] = minutes[mask, 0]
+            pred_by_id[id_] = minutes[mask, 1]
 
-    return LocalisationResults(true_by_mmsi, pred_by_mmsi, label_map)
+    return LocalisationResults(true_by_id, pred_by_id, label_map)
 
 
 def compute_results(args):
@@ -317,8 +329,8 @@ def compute_results(args):
     maps = defaultdict(dict)
     with open(args.label_path) as f:
         for row in csv.DictReader(f):
-            mmsi = row['mmsi'].strip()
-            if not row['split'] == TEST_SPLIT:
+            id_ = row['id'].strip()
+            if not row['split'] == str(args.split):
                 continue
             for field in ['label', 'split']:
                 if row[field]:
@@ -326,23 +338,22 @@ def compute_results(args):
                         if row[field].strip(
                         ) not in VESSEL_CLASS_DETAILED_NAMES:
                             continue
-                    maps[field][mmsi] = row[field]
+                    maps[field][id_] = row[field]
 
     # Sanity check the attribute mappings
     for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
-        for mmsi, value in maps[field].items():
-            assert float(value) > 0, (mmsi, value)
+        for id_, value in maps[field].items():
+            assert float(value) > 0, (id_, value)
 
     logging.info('Loading inference data')
-    vessel_ids = set([x for x in maps['split'] if maps['split'][x] == TEST_SPLIT]) \
+    ids = set([x for x in maps['split'] if maps['split'][x] == str(args.split)])
 
-    fishing_ranges = load_inferred_fishing(args.inference_table, vessel_ids, args.project_id)
-
+    fishing_ranges = load_inferred_fishing(args.inference_table, ids, args.project_id)
     logging.info('Comparing localisation')
     results = {}
     results['localisation'] = compare_fishing_localisation(
         fishing_ranges, args.fishing_ranges, maps['label'],
-        maps['split'])
+        maps['split'], args.split)
 
 
     return results
@@ -368,11 +379,10 @@ def dump_html(args, results):
 """
 
 python -m classification.metrics.compute_fishing_metrics \
---inference-table world-fishing-827:machine_learning_dev_ttl_30d.test_dataflow_2016_ \
+--inference-table machine_learning_dev_ttl_120d.test_dataflow_2016_ \
 --label-path classification/data/fishing_classes.csv \
 --dest-path test_fishing.html \
 --fishing-ranges classification/data/combined_fishing_ranges.csv \
- --project-id world-fishing-827
 
 
 """
@@ -386,14 +396,15 @@ if __name__ == '__main__':
     parser.add_argument(
         '--inference-table', help='table of inference results', required=True)
     parser.add_argument(
-        '--project-id', help='Google Cloud project id', required=True)
+        '--project-id', help='Google Cloud project id', 
+        default='world-fishing-827')
     parser.add_argument(
         '--label-path', help='path to test data', required=True)
-    parser.add_argument('--fishing-ranges', help='path to fishing range data')
+    parser.add_argument('--fishing-ranges', help='path to fishing range data', required=True)
     parser.add_argument(
         '--dest-path', help='path to write results to', required=True)
+    parser.add_argument('--split', type=int, default=0)
 
-    parser.add_argument('--test-only', action='store_true')
 
     args = parser.parse_args()
 

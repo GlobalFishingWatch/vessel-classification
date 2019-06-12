@@ -103,7 +103,9 @@ In order to support the above layout, all our programs need the following common
 - `python -m train.compute_metrics` -- evaluate restults and dump vessel lists. Use `--help` to see options
 
 
-- *running inference* -- Unless you have local access to a heavy duty machine, you should
+* Inference is now run solely through dataflow. See README in pipe-features for details
+
+<!-- - *running inference* -- Unless you have local access to a heavy duty machine, you should
   probably run this on the dataflow pipeline in `pipe-features`
 
    - Copy a model checkpoint locally:
@@ -136,7 +138,7 @@ In order to support the above layout, all our programs need the following common
                 --model_checkpoint_path ./model.ckpt \
                 --metadata_file training_classes.csv \
                 --fishing_ranges_file combined_fishing_ranges.csv
-
+ -->
 
 ## Local Environment Setup
 

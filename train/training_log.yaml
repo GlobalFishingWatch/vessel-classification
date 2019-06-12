@@ -1,0 +1,221 @@
+- date: 2019-5-27
+  notes: |
+    Redo everything with features sharded with only 100 vessels needed. Also
+    change to weighting to more closely match old runs.
+  commit: d549bd2d143e82c0cf710c0f7aa6adbac6b37f41
+  data_creation_command: |
+    python -m train.create_train_info \
+      --vessel-database vessel_database.all_vessels_20190102 \
+      --fishing-table machine_learning_production.fishing_ranges_by_mmsi_v20190506 \
+      --id-type vessel-id \
+      --id-list gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/ids/part-00000-of-00001.txt \
+      --dataset pipe_production_b \
+      --charinfo-file classification/data/char_info_v20190527.csv \
+      --detinfo-file classification/data/det_info_v20190527.csv \
+      --detranges-file classification/data/det_ranges_v20190527.csv \
+      --charinfo-table machine_learning_dev_ttl_120d.char_info_v20190527 \
+      --detinfo-table machine_learning_dev_ttl_120d.det_info_v20190527 \
+      --detranges-table machine_learning_dev_ttl_120d.det_ranges_v20190527
+  detection_training_commands: 
+    - |
+      python -m train.deploy_cloudml \
+        --env dev \
+        --model_name fishing_detection \
+        --job_name pv3_0527_0_lin100 \
+        --config train/deploy_v.yaml \
+        --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/features \
+        --vessel_info det_info_v20190527.csv \
+        --fishing_ranges det_ranges_v20190527.csv
+    - |
+      python -m train.deploy_cloudml \
+        --env dev \
+        --model_name fishing_detection \
+        --job_name pv3_0527_1_lin100 \
+        --config train/deploy_v.yaml \
+        --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/features \
+        --vessel_info det_info_v20190527.csv \
+        --fishing_ranges det_ranges_v20190527.csv \
+        --split 1
+    - |
+      python -m train.deploy_cloudml \
+      --env dev \
+      --model_name fishing_detection \
+      --job_name pv3_0527_all_lin100 \
+      --config train/deploy_v.yaml \
+      --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/features \
+      --vessel_info det_info_v20190527.csv \
+      --fishing_ranges det_ranges_v20190527.csv \
+      --split -1
+  detection_inference_commands:
+    - |
+      python -m pipe_features.fishing_inference \
+        --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/features \
+        --checkpoint_path gs://machine-learning-dev-ttl-120d/data-production/classification/timothyhochberg/pv3_0527_0_lin100/models/fishing_detection \
+        --results_table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_0_lin100_ \
+        --start_date 2012-01-01 \
+        --end_date 2018-12-31 \
+        --feature_dimensions 14 \
+        --temp_location=gs://machine-learning-dev-ttl-30d/scratch/nnet-char \
+        --runner DataflowRunner \
+        --project=world-fishing-827 \
+        --job_name=fishing-test \
+        --max_num_workers 100 \
+        --requirements_file=./requirements.txt \
+        --setup_file=./setup.py \
+        --worker_machine_type=custom-1-13312-ext \
+        --id_field_name vessel_id
+    - |
+      python -m pipe_features.fishing_inference \
+        --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/features \
+        --checkpoint_path gs://machine-learning-dev-ttl-120d/data-production/classification/timothyhochberg/pv3_0527_1_lin100/models/fishing_detection \
+        --results_table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_1_lin100_ \
+        --start_date 2012-01-01 \
+        --end_date 2018-12-31 \
+        --feature_dimensions 14 \
+        --temp_location=gs://machine-learning-dev-ttl-30d/scratch/nnet-char \
+        --runner DataflowRunner \
+        --project=world-fishing-827 \
+        --job_name=fishing-test-1 \
+        --max_num_workers 100 \
+        --requirements_file=./requirements.txt \
+        --setup_file=./setup.py \
+        --worker_machine_type=custom-1-13312-ext \
+        --id_field_name vessel_id
+    - |
+      python -m pipe_features.fishing_inference \
+        --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190523/features \
+        --checkpoint_path gs://machine-learning-dev-ttl-120d/data-production/classification/timothyhochberg/pv3_0527_all_lin100/models/fishing_detection \
+        --results_table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_all_lin100_ \
+        --start_date 2012-01-01 \
+        --end_date 2018-12-31 \
+        --feature_dimensions 14 \
+        --temp_location=gs://machine-learning-dev-ttl-30d/scratch/nnet-char \
+        --runner DataflowRunner \
+        --project=world-fishing-827 \
+        --job_name=fishing-test-all \
+        --max_num_workers 100 \
+        --requirements_file=./requirements.txt \
+        --setup_file=./setup.py \
+        --worker_machine_type=custom-1-13312-ext \
+        --id_field_name vessel_id
+  detection_metrics_commands: 
+    - |
+      python -m classification.metrics.compute_fishing_metrics \
+        --inference-table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_0_lin100_ \
+        --dest-path ./test_fishing_inference_0527_0_lin100.html \
+        --label-path classification/data/det_info_v20190527.csv \
+        --fishing-ranges classification/data/det_ranges_v20190527.csv \
+        --split 0
+    - |
+      python -m classification.metrics.compute_fishing_metrics \
+        --inference-table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190527_1_lin100_ \
+        --dest-path ./test_fishing_inference_0527_1_lin100.html \
+        --label-path classification/data/det_info_v20190527.csv \
+        --fishing-ranges classification/data/det_ranges_v20190527.csv \
+        --split 1
+
+
+
+- date: 2019-5-20
+  notes: |
+     Previous run was missing fishing vessels from training set
+     because `create_train_info.py` was too picky.
+  commit: 9bec5ef08fb1eea032ebb30bee8e86cd818289f5
+  data_creation_command: |
+    python -m train.create_train_info \
+      --vessel-database vessel_database.all_vessels_20190102 \
+      --fishing-table machine_learning_production.fishing_ranges_by_mmsi_v20190506 \
+      --id-type vessel-id \
+      --id-list gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190503b/ids/part-00000-of-00001.txt \
+      --dataset pipe_production_b \
+      --charinfo-file classification/data/char_info_v20190520.csv \
+      --detinfo-file classification/data/det_info_v20190520.csv \
+      --detranges-file classification/data/det_ranges_v20190520.csv
+  characterization_training_command: ~
+  characterization_inference_command: ~
+  characterization_metrics_command: ~
+  detection_training_command: |
+    python -m train.deploy_cloudml \
+      --env dev \
+      --model_name fishing_detection \
+      --job_name pv3_0520 \
+      --config train/deploy_v.yaml \
+      --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190515/features \
+      --vessel_info det_info_v20190520.csv \
+      --fishing_ranges det_ranges_v20190520.csv
+  detection_inference_command: |
+    python -m pipe_features.fishing_inference \
+      --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190515/features \
+      --checkpoint_path gs://machine-learning-dev-ttl-120d/data-production/classification/timothyhochberg/pv3_0520/models/fishing_detection \
+      --results_table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190521B_ \
+      --start_date 2012-01-01 \
+      --end_date 2018-12-31 \
+      --feature_dimensions 14 \
+      --temp_location=gs://machine-learning-dev-ttl-30d/scratch/nnet-char \
+      --runner DataflowRunner \
+      --project=world-fishing-827 \
+      --job_name=fishing-test \
+      --max_num_workers 100 \
+      --requirements_file=./requirements.txt \
+      --setup_file=./setup.py \
+      --worker_machine_type=custom-1-13312-ext \
+      --id_field_name vessel_id
+  detection_metrics_command: |
+    python -m classification.metrics.compute_fishing_metrics \
+      --inference-table machine_learning_dev_ttl_120d.fishing_detection_fishing_inference_v20190521_ \
+      --dest-path ./test_fishing_inference_0520.html \
+      --label-path classification/data/det_info_v20190520.csv \
+      --fishing-ranges classification/data/det_ranges_v20190520.csv
+
+
+- date: 2019-5-16
+  notes: Previous run didn't have full date range sharded
+  commit: e9a1023d032b7d1d7dd7aade6558a5ee2ebcf7a1
+  data_creation_command: |
+    python -m train.create_train_info \
+      --vessel-database vessel_database.all_vessels_20190102 \
+      --fishing-table machine_learning_production.fishing_ranges_by_mmsi_v20190506 \
+      --id-type vessel-id \
+      --dataset pipe_production_b \
+      --id-list gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190515/ids/part-00000-of-00001.txt \
+      --charinfo-file classification/data/char_info_v20190516.csv \
+      --detinfo-file classification/data/det_info_v20190516.csv \
+      --detranges-file classification/data/det_ranges_v20190516.csv \
+      --charinfo-table machine_learning_dev_ttl_120d.char_info_v20190516 \
+      --detinfo-table machine_learning_dev_ttl_120d.det_info_v20190516 \
+      --detranges-table machine_learning_dev_ttl_120d.det_ranges_v20190516
+  characterization_training_command: |
+    python -m train.deploy_cloudml \
+      --env dev \
+      --model_name vessel_characterization \
+      --job_name pv3_0516 \
+      --config train/deploy_v.yaml \
+      --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190515/features \
+      --vessel_info char_info_v20190516.csv
+  characterization_inference_command: |
+    python -m pipe_features.vessel_inference \
+      --feature_path gs://machine-learning-dev-ttl-120d/features/v3_vid_features_v20190503b/features \
+      --checkpoint_path gs://machine-learning-dev-ttl-120d/data-production/classification/timothyhochberg/pv3_0516/models/vessel_characterization \
+      --results_table machine_learning_dev_ttl_120d.vessel_char_vid_features_v20190520 \
+      --start_date 2012-01-01 \
+      --end_date 2018-12-31 \
+      --feature_dimensions 14 \
+      --temp_location=gs://machine-learning-dev-ttl-30d/scratch/nnet-char \
+      --runner DataflowRunner \
+      --project=world-fishing-827 \
+      --job_name=vessel-test \
+      --max_num_workers 50 \
+      --requirements_file=./requirements.txt \
+      --setup_file=./setup.py \
+      --worker_machine_type=custom-1-13312-ext \
+      --id_field_name vessel_id
+  characterization_metrics_command: 
+    python -m classification.metrics.compute_vessel_metrics \
+      --inference-table machine_learning_dev_ttl_120d.vessel_char_vid_features_v20190520 \
+      --label-table machine_learning_dev_ttl_120d.char_info_v20190516 \
+      --dest-path ./untracked/metric_results/test_inference_metrics_0516.html
+  detection_training_command: ~
+  detection_inference_command: ~
+  detection_metrics_command: ~
+
+

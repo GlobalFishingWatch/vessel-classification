@@ -20,6 +20,7 @@ import os
 DEPENDENCIES = [
     "ujson",
     "NewlineJSON",
+    "google-api-python-client"
 ]
 
 
@@ -28,7 +29,7 @@ data_files = [os.path.basename(x)
 
 setuptools.setup(
     name='vessel_inference',
-    version='0.1.3',
+    version='3.0.0',
     author='Tim Hochberg',
     author_email='tim@globalfishingwatch.com',
     package_data={
@@ -39,8 +40,8 @@ setuptools.setup(
         'classification',
         'classification.data',
         'classification.models',
-        'classification.models.prod',
-        'classification.models.dev',
+        'classification.feature_generation'
     ],
-    install_requires=DEPENDENCIES #+ DATAFLOW_PINNED_DEPENDENCIES
+    install_requires=DEPENDENCIES 
 )
+

@@ -14,44 +14,30 @@
 
 from __future__ import absolute_import
 import argparse
-import json
 import logging
-import math
 import os
-from pkg_resources import resource_filename
 import sys
-from . import model
-from . import utility
-from .trainer import Trainer
 import importlib
+import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
-import tensorflow.contrib.metrics as metrics
+from pkg_resources import resource_filename
+from . import metadata
 
-
-def run_training(config, server, trainer):
-    logging.info("Starting training task %s, %d", config.task_type,
-                 config.task_index)
-    if config.is_ps():
-        # This task is a parameter server.
-        server.join()
-    else:
-        if config.is_worker():
-            # This task is a worker, running training and sharing parameters with
-            # other workers via the parameter server.
-            device = tf.train.replica_device_setter(
-                worker_device='/job:%s/task:%d' % (config.task_type,
-                                                   config.task_index),
-                cluster=config.cluster_spec)
-            # The chief worker is responsible for writing out checkpoints as the
-            # run progresses.
-            trainer.run_training(
-                server.target, config.is_chief(), device=device)
-        elif config.is_master():
-            # This task is the master, running evaluation.
-            trainer.run_evaluation(server.target)
-        else:
-            raise ValueError('Unexpected task type: %s', config.task_type)
+def compute_approx_norms(model_fn, count=100):
+    dataset = model_fn()
+    print(dataset)
+    iter = model_fn().make_initializable_iterator()
+    print(iter)
+    el = iter.get_next()
+    means = []
+    vars = []
+    with tf.Session() as sess:
+        sess.run(iter.initializer)
+        for _ in range(count):
+            x = sess.run(el)[0]['features']
+            means.append(x.mean(axis=(0, 1)))
+            vars.append(x.var(axis=(0, 1)))
+    return np.mean(means, axis=0), np.sqrt(np.mean(vars, axis=0))
 
 
 def main(args):
@@ -75,41 +61,49 @@ def main(args):
         logging.fatal("Could not find metadata file: %s.", metadata_file)
         sys.exit(-1)
 
-    fishing_range_file = os.path.abspath(
-        resource_filename('classification.data', args.fishing_ranges_file))
-    if not os.path.exists(fishing_range_file):
-        logging.fatal("Could not find fishing range file: %s.",
-                      fishing_range_file)
-        sys.exit(-1)
+    if args.fishing_ranges_file:
+        fishing_ranges_file = os.path.abspath(
+            resource_filename('classification.data', args.fishing_ranges_file))
+        if not os.path.exists(fishing_ranges_file):
+            logging.fatal("Could not find fishing range file: %s.",
+                          fishing_ranges_file)
+            sys.exit(-1)
+        fishing_ranges = metadata.read_fishing_ranges(fishing_ranges_file)
+    else:
+        fishing_ranges = {}
 
-    fishing_ranges = utility.read_fishing_ranges(fishing_range_file)
+    all_available_ids = metadata.find_available_ids(args.root_feature_path)
 
-    all_available_mmsis = utility.find_available_mmsis(args.root_feature_path)
+    split = None if (args.split == -1) else args.split
+    logging.info("Using split: %s", split)
 
     vessel_metadata = Model.read_metadata(
-        all_available_mmsis, metadata_file,
-        fishing_ranges, int(args.fishing_range_training_upweight))
+        all_available_ids, metadata_file,
+        fishing_ranges, split=split)
+
 
     feature_dimensions = int(args.feature_dimensions)
     chosen_model = Model(feature_dimensions, vessel_metadata, args.metrics)
 
-    # TODO: training verbosity --training-verbosity
-    trainer = Trainer(chosen_model, args.root_feature_path,
-                      args.training_output_path)
+    train_input_fn = chosen_model.make_training_input_fn(args.root_feature_path, 
+                                                         args.num_parallel_readers)
 
-    config = json.loads(os.environ.get('TF_CONFIG', '{}'))
-    if (config == {}):
-        logging.info("Running locally, training only...")
-        node_config = utility.ClusterNodeConfig.create_local_server_config()
-        server = tf.train.Server.create_local_server()
-        run_training(node_config, server, trainer)
-    else:
-        logging.info("Config dictionary: %s", config)
+    # print(compute_approx_norms(train_input_fn))
 
-        node_config = utility.ClusterNodeConfig(config)
-        server = node_config.create_server()
+    test_input_fn = chosen_model.make_test_input_fn(args.root_feature_path, args.num_parallel_readers)
+    estimator = chosen_model.make_estimator(args.training_output_path)
+    train_spec = tf.estimator.TrainSpec(
+                    input_fn=train_input_fn, 
+                    max_steps=chosen_model.number_of_steps
+                    )
+    eval_spec = tf.estimator.EvalSpec(
+                    input_fn=test_input_fn,
+                    start_delay_secs=120,
+                    throttle_secs=300
+                    )
 
-        run_training(node_config, server, trainer)
+    tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
+
 
 
 def parse_args():
@@ -133,11 +127,6 @@ def parse_args():
         required=True,
         help='The number of dimensions of a classification feature.')
 
-    argparser.add_argument(
-        '--fishing_range_training_upweight',
-        default=1.0,
-        help='The amount to upweight vessels that have fishing ranges when training.')
-
     argparser.add_argument('--metadata_file', help='Path to metadata.')
 
     argparser.add_argument(
@@ -147,6 +136,16 @@ def parse_args():
         '--metrics',
         default='all',
         help='How many metrics to dump ["all" | "minimal"]')
+
+    argparser.add_argument(
+        '--num_parallel_readers',
+        default=1, type=int,
+        help='How many parallel readers to employ reading data')
+
+    argparser.add_argument(
+        '--split',
+        default=0, type=int,
+        help='Which split to train/test on')
 
     return argparser.parse_args()
 
