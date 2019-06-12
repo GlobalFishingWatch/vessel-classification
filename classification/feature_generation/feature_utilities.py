@@ -46,29 +46,45 @@ def np_zero_pad_slice(slice, window_size, random_state):
   Series that are shorter than window_size are repeated into unfilled space.
 
   Args:
-    slice: a numpy array.
-    window_size: the size the array must be padded to.
+    slice: np.array.
+    window_size: int
+        Size the array must be padded to.
+    random_state: np.RandomState
 
   Returns:
     a numpy array of length window_size in the first dimension.
+
+    TODO: this function has an inaccurate name, really this is doing
+    pad_repeat_slice with a random offset for data augmentation. 
+    Rename or remove at next cleanup since it doesn't appear to be
+    used..
   """
 
     slice_length = len(slice)
     delta = window_size - slice_length
     assert delta >= 0
+    # TODOL: These two lines don't appear to be used. Check and remove at
+    # next cleanup.
     _, n_feat = slice.shape
     padded = np.zeros([window_size, n_feat], dtype=slice.dtype)
     offset = random_state.randint(0, delta + 1)
     return np.concatenate([slice] * reps, axis=0)[offset:offset+window_size]
 
 def np_pad_repeat_slice_2(slice, window_size, random_state):
-    """ Pads slice to the specified window size.
+    """ Pads slice to the specified window size then rolls them.
 
-  Series that are shorter than window_size are repeated into unfilled space.
+  Series that are shorter than window_size are repeated into unfilled space,
+  then the series is randomly rolled along the time axis to generate more 
+  training diversity. This has the side effect of adding a non-physical 
+  seam in the data, but in practice seems to work better than not rolling.
+
+  Similar to `np_pad_repeat_slice` except for rolling the sequence along the
+  time axis.
 
   Args:
     slice: a numpy array.
     window_size: the size the array must be padded to.
+    random_state: a numpy RandomState object.
 
   Returns:
     a numpy array of length window_size in the first dimension.
@@ -104,6 +120,18 @@ def empty_data(window_size, series):
 
 
 def cook_features(features, id_):
+    """Convert raw features into something the model can digest
+
+        Args:
+            features: np.array of raw features
+            id_ : the id associated with these features.
+
+        Returns:
+            (2D np.array of features for the model,
+             2D np.array of timestamps,
+             (start_time, end_time) as seconds from Unix epoch.
+             str id of vessel)
+    """
     # We use min and max here to account for possible rolling / replicating
     # that goes on elsewhere.
     start_time = int(features[:, 0].min())
@@ -307,8 +335,31 @@ def np_array_extract_all_fixed_slices(input_series, num_features, id_,
 
 
 def process_fixed_window_features(random_state, features, id_, 
-        num_features, window_size, shift, start_date, end_date, win_start, win_end):
+        num_features, window_size, shift, start_date, end_date, 
+        win_start, win_end):
+    """Extract sequential sets of features with a given window size.
 
+    This will return multiple sets of training features. Each set
+    will be `window_size` in length and each successive set will be
+    shifted by `shift`.  The algorithm will attempt to place the point
+    `win_start` within the first window at `start_data` and `win_end`
+    within the last window at `end_data`.
+
+    Note that `shift` must equal `win_end `- `win_start`.
+
+    Args:
+        random_state: a numpy randomstate object.
+        features: the input data as a 2d numpy array.
+        id_: the id of the vessel which made this series.
+        num_features: the number of features in the raw features.
+        window_size: the size of the window in points.
+        shift: how many points the window should shift between feature sets.
+        start_date: Attempt to place first point of first window here.
+        end_data: Attempt to place last point of last window here.
+        win_start: first point within in the window where we extact data.
+        win_end: last point within the window where we extract data.
+
+    """
     assert win_end - win_start == shift + 1, (win_end, win_start, shift)
     pad_end = window_size - win_end
     pad_start = win_start

@@ -133,9 +133,6 @@ def misconception_model(inputs,
             onet = ly.batch_normalization(onet, training=training, virtual_batch_size=virtual_batch_size)
             onet = tf.nn.relu(onet)
         onet = ly.conv1d(onet, sub_filters, 1, activation=tf.nn.relu)
-
-        # n = int(onet.get_shape().dims[1])
-        # onet = ly.average_pooling1d(onet, n, n)
         onet = ly.flatten(onet)
         #
         onet = ly.dropout(onet, training=training, rate=dropout_rate)
