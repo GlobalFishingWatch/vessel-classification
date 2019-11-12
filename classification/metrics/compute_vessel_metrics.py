@@ -235,7 +235,7 @@ def f1_score(y_true, y_pred, sample_weights=None):
     prec = precision_score(y_true, y_pred, sample_weights)
     recall = recall_score(y_true, y_pred, sample_weights)
 
-    return 2 / (1 / prec + 1 / recall)
+    return 2 * prec * recall / (prec + recall + 1e-10)
 
 
 def accuracy_score(y_true, y_pred, sample_weights=None):
@@ -622,7 +622,7 @@ def consolidate_attribute_across_dates(results):
 
 
 def harmonic_mean(x, y):
-    return 2.0 / ((1.0 / x) + (1.0 / y))
+    return 2.0 * x * y / (x + y + 1e-10)
 
 
 def confusion_matrix(results):
@@ -670,11 +670,11 @@ def load_inferred(inference_table, label_table, extractors):
     """
     query = """
 
-    SELECT inference_table.* except (vessel_id), vessel_id as id FROM 
+    SELECT inference_table.* except (ssvid), ssvid as id FROM 
     `{}` label_table
     JOIN
    `{}*` inference_table
-    ON (label_table.id = inference_table.vessel_id)
+    ON (label_table.id = inference_table.ssvid)
     """.format(label_table, inference_table)
     print(query)
     df = pd.read_gbq(query, project_id='world-fishing-827', dialect='standard')
