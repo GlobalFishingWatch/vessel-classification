@@ -457,14 +457,15 @@ def ydump_metrics(doc, results, weights_map):
 
     rows = [
         (x, accuracy_score(results.true_labels, results.inferred_labels,
-                           (results.start_dates == x)))
+                           (results.start_dates == x)), 
+                           (results.start_dates == x).sum())
         for x in np.unique(results.start_dates)
     ]
 
     with tag('div', klass='unbreakable'):
         line('h3', 'Accuracy by Date')
-        ydump_table(doc, ['Start Date', 'Accuracy'],
-                    [(a.date(), '{:.2f}'.format(b)) for (a, b) in rows])
+        ydump_table(doc, ['Start Date', 'Count', 'Accuracy'],
+                    [(a.date(), c, '{:.2f}'.format(b)) for (a, b, c) in rows])
 
     consolidated = consolidate_across_dates(results)
 
@@ -487,9 +488,9 @@ def ydump_metrics(doc, results, weights_map):
                                        consolidated.true_labels,
                                        consolidated.inferred_labels,
                                        weights)
-        ydump_table(doc, ['Label (id:true/total)', 'Precision', 'Recall', 'F1-Score'], [
-            (a, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
-            for (a, b, c, d) in row_vals
+        ydump_table(doc, ['Label', 'Count', 'Precision', 'Recall', 'F1-Score'], [
+            (a, e, '{:.2f}'.format(b), '{:.2f}'.format(c), '{:.2f}'.format(d))
+            for (a, b, c, d, e) in row_vals
         ])
 
 
@@ -513,16 +514,19 @@ def precision_recall_f1(labels, y_true, y_pred, weights):
             results.append(
                 (lbl, precision_score(trues, positives),
                  recall_score(trues, positives), 
-                 f1_score(trues, positives)))
+                 f1_score(trues, positives),
+                 trues.sum()))
     # Note that the micro-avereage precision/recall/F1 are the same
     # as the accuracy for the vanilla case we have here. (Predictions
     # in all cases, on prediction per case.)
     results.append(('ALL (unweighted)', precision_score(y_true, y_pred),
                             recall_score(y_true, y_pred),
-                            f1_score(y_true, y_pred)))
+                            f1_score(y_true, y_pred),
+                            len(y_true)))
     results.append(('ALL (by prevalence)', precision_score(y_true, y_pred, sample_weights=weights),
                         recall_score(y_true, y_pred, sample_weights=weights),
-                            f1_score(y_true, y_pred, sample_weights=weights))
+                            f1_score(y_true, y_pred, sample_weights=weights),
+                             len(y_true))
         )
     return results
 
@@ -674,7 +678,7 @@ def load_inferred(inference_table, label_table, extractors):
     `{}` label_table
     JOIN
    `{}*` inference_table
-    ON (label_table.id = inference_table.ssvid)
+    ON (cast(label_table.id as string) = inference_table.ssvid)
     """.format(label_table, inference_table)
     print(query)
     df = pd.read_gbq(query, project_id='world-fishing-827', dialect='standard')
@@ -893,7 +897,7 @@ def compute_results(args):
     label_df = pd.read_gbq("select * from `{}`".format(args.label_table), 
                    project_id='world-fishing-827', dialect='standard')
     for row in label_df.itertuples():
-        id_ = row.id
+        id_ = str(row.id)
         if not row.split == TEST_SPLIT:
             continue
         for field in ['label', 'length', 'tonnage', 'engine_power', 'crew_size', 'split']:
@@ -902,7 +906,7 @@ def compute_results(args):
                 if field == 'label':
                     if row.label.strip(
                     ) not in VESSEL_CLASS_DETAILED_NAMES:
-                        print("SHOULDNT HAPPEN!", field)
+                        print("SHOULDNT HAPPEN!", row.label)
                         continue
                 maps[field][id_] = getattr(row, field)
     results = {}
@@ -910,7 +914,9 @@ def compute_results(args):
     # Sanity check the attribute mappings
     for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
         for id_, value in maps[field].items():
-            assert float(value) > 0, (id_, value)
+            if float(value) <= 0:
+                logging.warning('%s has a values of %s for %s',
+                                    id_, value, field)
 
     results['fine'] = ClassificationExtractor(maps['label'])
     results['fine'].mapping = {x : set([x]) for x in all_classes}
