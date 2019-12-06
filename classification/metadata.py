@@ -36,7 +36,12 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 # be defined in principle, although at present the interaction between the mulithot and non multihot
 # versions makes that more complicated.
 
-schema = yaml.load('''
+try:
+    yaml_load = yaml.safe_load
+except:
+    yaml_load = yaml.load
+
+schema = yaml.safe_load('''
 unknown:
   non_fishing:
     passenger:
