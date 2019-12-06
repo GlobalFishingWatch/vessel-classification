@@ -88,18 +88,19 @@ def main(args):
     train_input_fn = chosen_model.make_training_input_fn(args.root_feature_path, 
                                                          args.num_parallel_readers)
 
-    # print(compute_approx_norms(train_input_fn))
+    test_input_fn = chosen_model.make_test_input_fn(args.root_feature_path, 
+                                                    args.num_parallel_readers)
 
-    test_input_fn = chosen_model.make_test_input_fn(args.root_feature_path, args.num_parallel_readers)
     estimator = chosen_model.make_estimator(args.training_output_path)
     train_spec = tf.estimator.TrainSpec(
                     input_fn=train_input_fn, 
                     max_steps=chosen_model.number_of_steps
                     )
     eval_spec = tf.estimator.EvalSpec(
+                    steps=10,
                     input_fn=test_input_fn,
                     start_delay_secs=120,
-                    throttle_secs=300
+                    throttle_secs=600
                     )
 
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
