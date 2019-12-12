@@ -50,7 +50,7 @@ import pytz
 import pandas as pd
 
 coarse_categories = [
-    'cargo_or_tanker', 'passenger', 'tug',  'seismic_vessel','other_not_fishing', 
+    'cargo_or_tanker', 'passenger', 'tug',  'research','other_not_fishing', 
     'drifting_longlines', 'gear', 'purse_seines', 'set_gillnets', 'set_longlines', 'pots_and_traps',
      'trawlers', 'squid_jigger','other_fishing', 
     ]
@@ -69,8 +69,8 @@ for cat in coarse_categories:
     used |= atomic_cats
     coarse_mapping[cat] = atomic_cats
 unused = all_classes - used
-coarse_mapping['other_fishing'] |= (is_fishing & unused)
-coarse_mapping['other_not_fishing'] |= (not_fishing & unused)
+coarse_mapping['other_fishing*'] |= (is_fishing & unused)
+coarse_mapping['other_not_fishing*'] |= (not_fishing & unused)
 
 coarse_mapping = [(k, coarse_mapping[k]) for k in coarse_categories]
 
@@ -181,6 +181,11 @@ table {
     text-align: left;
 }
 
+.confusion-matrix th.corner  {
+    text-align: right;
+    vertical-align: bottom;
+}
+
 .confusion-matrix th.row {
     text-align: right;
 }
@@ -286,7 +291,7 @@ def base_confusion_matrix(y_true, y_pred, labels):
         if yp not in label_map:
             logging.warn('%s not in label_map', yp)
             continue
-        cm[label_map[yt], label_map[yp]] += 1
+        cm[label_map[yp], label_map[yt]] += 1
 
     return cm
 
@@ -304,15 +309,16 @@ def ydump_confusion_matrix(doc, cm, labels, **kwargs):
     """
     doc, tag, text, line = doc.ttl()
     with tag('table', klass='confusion-matrix', **kwargs):
-        with tag('tr'):
-            line('th', '')
+        with tag('corner'):
+            with tag('th'):
+                doc.asis('true&rarr;<br/>positive&darr;')
             for x in labels:
                 with tag('th', klass='col'):
                     with tag('div'):
                         line('span', x)
         for i, (l, row) in enumerate(zip(labels, cm.scaled)):
             with tag('tr'):
-                line('th', str(l), klass='row')
+                line('th', l, klass='row')
                 for j, x in enumerate(row):
                     if i == j:
                         if x == -1:

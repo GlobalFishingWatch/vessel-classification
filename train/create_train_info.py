@@ -480,7 +480,7 @@ def read_fishing_ranges_mmsi(fishdbname, dataset):
         raise
 
 
-def assign_split(df, seed=888, check_fishing=False):
+def assign_split(df, max_examples, seed=888, check_fishing=False):
     rnd = np.random.RandomState(seed)
     if check_fishing:
         # If we are looking at fishing any vessel can be
@@ -496,13 +496,23 @@ def assign_split(df, seed=888, check_fishing=False):
     else:
         # Characterization doesn's support splits yet
         split_a, split_b = 'Test', 'Training'
+    # Half for train half for test
+    total_max_examples =  2 * max_examples 
     for lbl in labels:
-        mask = (df.label == lbl)
+        base_mask = (df.label.values == lbl)
+        mask = base_mask.copy()
+        print(lbl, mask.sum())
         if check_fishing:
-            mask &= (df.transit_only == 0)
+            mask &= (df.transit_only.values == 0)
+        elif mask.sum() > total_max_examples: 
+            trues = np.random.choice(np.nonzero(mask)[0], size=[total_max_examples], replace=False)
+            mask.fill(False)
+            mask[trues] = True
+        for i in all_args[base_mask]:
+          split[i] = None
         candidates = all_args[mask]
         rnd.shuffle(candidates)
-        for i in  candidates[:len(candidates)//2]:
+        for i in candidates[:len(candidates)//2]:
           split[i] = split_a
         for i in candidates[len(candidates)//2:]:
           split[i] = split_b
@@ -567,6 +577,11 @@ if __name__ == '__main__':
         help='gear IDS to add to training mmsi'
         )
 
+    parser.add_argument(
+        '--max_examples', type=int,  default=999,
+        help='Include at most this number of total examples each in train/test'
+        )
+
     args = parser.parse_args()
 
     if args.id_type == 'vessel-id':
@@ -617,8 +632,11 @@ if __name__ == '__main__':
           columns=[u'id', u'length', u'tonnage', u'engine_power', u'crew_size', u'label'])
         charinfo_df = pd.concat([charinfo_df, new_df])
 
-    assign_split(charinfo_df, check_fishing=False)
-    assign_split(detinfo_df, check_fishing=True)
+    assign_split(charinfo_df, args.max_examples, check_fishing=False)
+    assign_split(detinfo_df, args.max_examples, check_fishing=True)
+
+    charinfo_df = charinfo_df[~charinfo_df.split.isnull()]
+    detinfo_df = detinfo_df[~detinfo_df.split.isnull()]
 
     if args.charinfo_file:
         charinfo_df.to_csv(args.charinfo_file, index=False)

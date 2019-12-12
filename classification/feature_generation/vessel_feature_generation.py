@@ -14,7 +14,7 @@ def input_fn(vessel_metadata,
              min_timeslice_size,
              objectives,
              parallelism=4,
-             num_slices_per_id=8):
+             num_slices_per_id=4):
 
     random_state = np.random.RandomState()
 

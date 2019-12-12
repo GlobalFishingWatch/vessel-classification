@@ -65,7 +65,6 @@ unknown:
     dredge_non_fishing:
     supply_vessel:
     tug:
-    seismic_vessel:
     helicopter:
     other_not_fishing:
 
