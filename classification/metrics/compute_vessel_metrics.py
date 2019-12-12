@@ -50,13 +50,13 @@ import pytz
 import pandas as pd
 
 coarse_categories = [
-    'cargo_or_tanker', 'passenger', 'tug',  'research','other_not_fishing', 
+    'cargo_or_tanker', 'passenger', 'tug',  'research', 'other_not_fishing*',
     'drifting_longlines', 'gear', 'purse_seines', 'set_gillnets', 'set_longlines', 'pots_and_traps',
-     'trawlers', 'squid_jigger','other_fishing', 
+     'trawlers', 'squid_jigger',  'other_fishing*'
     ]
 
 
-all_classes = set(VESSEL_CLASS_DETAILED_NAMES)
+all_classes = set(VESSEL_CLASS_DETAILED_NAMES) 
 categories = dict(VESSEL_CATEGORIES)
 is_fishing = set(categories['fishing'])
 not_fishing = set(categories['non_fishing'])
@@ -64,10 +64,13 @@ not_fishing = set(categories['non_fishing'])
 coarse_mapping = defaultdict(set)
 used = set()
 for cat in coarse_categories:
-    atomic_cats = set(categories[cat])
-    assert not atomic_cats & used
-    used |= atomic_cats
-    coarse_mapping[cat] = atomic_cats
+    if cat.endswith('*'):
+        coarse_mapping[cat] = set()
+    else:
+        atomic_cats = set(categories[cat])
+        assert not atomic_cats & used
+        used |= atomic_cats
+        coarse_mapping[cat] = atomic_cats
 unused = all_classes - used
 coarse_mapping['other_fishing*'] |= (is_fishing & unused)
 coarse_mapping['other_not_fishing*'] |= (not_fishing & unused)
@@ -871,7 +874,7 @@ def assemble_composite(results, mapping):
         inferred_scores.append(scores)
         inferred_labels.append(max(scores, key=scores.__getitem__))
         old_label = results.all_true_labels[i]
-        new_label = None if (old_label is None) else inverse_mapping[old_label]
+        new_label = None if (old_label is None) else inverse_mapping.get(old_label)
         true_labels.append(new_label)
         start_dates.append(results.all_start_dates[i])
 
