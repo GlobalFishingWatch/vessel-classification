@@ -870,7 +870,7 @@ def assemble_composite(results, mapping):
         for (new_label, base_labels) in mapping:
             scores[new_label] = 0
             for lbl in base_labels:
-                scores[new_label] += results.all_scores[i][lbl]
+                scores[new_label] += results.all_scores[i].get(lbl, 0)
         inferred_scores.append(scores)
         inferred_labels.append(max(scores, key=scores.__getitem__))
         old_label = results.all_true_labels[i]

@@ -23,7 +23,7 @@ import sys
 import tensorflow as tf
 import yaml
 import numpy as np
-from feature_generation.file_iterator import GCSFile
+from .feature_generation.file_iterator import GCSFile
 
 
 """ The main column for vessel classification. """
@@ -65,6 +65,7 @@ unknown:
     dredge_non_fishing:
     supply_vessel:
     tug:
+    seismic_vessel:
     helicopter:
     other_not_fishing:
 

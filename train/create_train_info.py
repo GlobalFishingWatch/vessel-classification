@@ -7,7 +7,7 @@ from classification import metadata
 
 def read_ids(gcs_path):
     id_text = subprocess.check_output(['gsutil', 'cat', gcs_path])
-    return set(id_text.strip().split())
+    return set([x.strip() for x in id_text.strip().split()])
 
 def fishing_range_uvi(fishdbname, dataset):
     return '''
