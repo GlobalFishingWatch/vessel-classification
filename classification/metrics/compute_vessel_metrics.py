@@ -42,7 +42,8 @@ from collections import namedtuple, defaultdict
 import sys
 import yattag
 import newlinejson as nlj
-from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT, schema, atomic
+from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT
+from classification.metadata import raw_schema, schema, atomic
 import gzip
 import dateutil.parser
 import datetime
@@ -54,6 +55,11 @@ coarse_categories = [
     'drifting_longlines', 'gear', 'purse_seines', 'set_gillnets', 'set_longlines', 'pots_and_traps',
      'trawlers', 'squid_jigger',  'other_fishing*'
     ]
+
+
+raw_names = [x[:-1] for x in raw_schema.split() if x.strip()]   
+names = [x for x in raw_names if x in VESSEL_CLASS_DETAILED_NAMES]
+fine_mapping = [(x, set([x])) for x in names]
 
 
 all_classes = set(VESSEL_CLASS_DETAILED_NAMES) 
@@ -730,7 +736,12 @@ def composite_weights(weight_map, class_map, y_true):
 
     weights = np.zeros([len(y_true)])
     for lbl, wt in new_weight_map.items():
-        trues = (y_true == lbl)
+        try:
+            trues = (y_true == lbl)
+        except:
+            print(y_true)
+            print(lbl)
+            raise
         if trues.sum():
             weights[trues] = wt / trues.sum()
 
@@ -927,9 +938,7 @@ def compute_results(args):
                 logging.warning('%s has a values of %s for %s',
                                     id_, value, field)
 
-    results['fine'] = ClassificationExtractor(maps['label'])
-    results['fine'].mapping = {x : set([x]) for x in all_classes}
-
+    results['raw_classes'] = ClassificationExtractor(maps['label'])
     ext = AttributeExtractor('length', maps['length'], maps['label'])
     results['length'] = ext
     ext = AttributeExtractor('tonnage', maps['tonnage'], maps['label'])
@@ -957,11 +966,14 @@ def compute_results(args):
                 len(results[field].inferred_attrs))
 
     # Assemble coarse and is_fishing scores:
+    logging.info('Assembling fine data')
+    results['fine'] = assemble_composite(results['raw_classes'], fine_mapping)
+    results['fine'].mapping = {k : v for (k, v) in fine_mapping}
     logging.info('Assembling coarse data')
-    results['coarse'] = assemble_composite(results['fine'], coarse_mapping)
+    results['coarse'] = assemble_composite(results['raw_classes'] , coarse_mapping)
     results['coarse'].mapping = {k : v for (k, v) in coarse_mapping}
     logging.info('Assembling fishing data')
-    results['fishing'] = assemble_composite(results['fine'],fishing_mapping)
+    results['fishing'] = assemble_composite(results['raw_classes'] , fishing_mapping)
     results['fishing'].mapping = {k : v for (k, v) in fishing_mapping}
     return results
 

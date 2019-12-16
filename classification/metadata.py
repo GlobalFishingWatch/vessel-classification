@@ -41,7 +41,8 @@ try:
 except:
     yaml_load = yaml.load
 
-schema = yaml.safe_load('''
+
+raw_schema = '''
 unknown:
   non_fishing:
     passenger:
@@ -87,7 +88,10 @@ unknown:
       other_purse_seines:
      other_seines:
     driftnets:
-''')
+'''
+
+
+schema = yaml.safe_load(raw_schema)
 
 
 def atomic(obj):
