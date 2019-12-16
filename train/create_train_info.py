@@ -4,6 +4,10 @@ import pandas as pd
 import argparse
 from classification import metadata
 
+remapping = {
+  'seismic_vessel' : 'research'
+}
+
 
 def read_ids(gcs_path):
     id_text = subprocess.check_output(['gsutil', 'cat', gcs_path])
@@ -468,7 +472,7 @@ def read_fishing_ranges_mmsi(fishdbname, dataset):
           join `fishing_ranges` c
           on c.mmsi = cast(a.mmsi as string)
         )
-            
+
         select * from core
     '''.format(fishdbname=fishdbname,
                dataset=dataset, 
@@ -478,6 +482,32 @@ def read_fishing_ranges_mmsi(fishdbname, dataset):
     except:
         print(query)
         raise
+
+
+category_map = {k: v for (k, v) in  metadata.VESSEL_CATEGORIES}
+def disintegrate(label):
+    parts = set()
+
+    for sub in label.split('|'):
+        for atomic in category_map[sub]:
+            parts.add(atomic)
+    return parts
+
+
+def apply_remapping(df, map):
+    new_labels = []
+    for lbl in df.label:
+        if lbl:
+            atoms = disintegrate(lbl)
+            new_atoms = set([remapping.get(x, x) for x in atoms])
+            if new_atoms == atoms:
+                # If no remapping occurred, keep old label as it's likely more compact.
+                new_labels.append(lbl)
+            else:
+                new_labels.append('|'.join(sorted(new_atoms)))
+        else:
+          new_labels.append(lbl)
+    df['label'] = new_labels
 
 
 def assign_split(df, max_examples, seed=888, check_fishing=False):
@@ -632,6 +662,9 @@ if __name__ == '__main__':
           columns=[u'id', u'length', u'tonnage', u'engine_power', u'crew_size', u'label'])
         charinfo_df = pd.concat([charinfo_df, new_df])
 
+    apply_remapping(charinfo_df, remapping)
+    print()
+    apply_remapping(detinfo_df, remapping)
     assign_split(charinfo_df, args.max_examples, check_fishing=False)
     assign_split(detinfo_df, args.max_examples, check_fishing=True)
 
