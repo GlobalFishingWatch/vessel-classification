@@ -497,7 +497,7 @@ def disintegrate(label):
 def apply_remapping(df, map):
     new_labels = []
     for lbl in df.label:
-        if lbl:
+        if lbl and lbl not in ["unknown", "fishing", "non_fishing"]:
             atoms = disintegrate(lbl)
             new_atoms = set([remapping.get(x, x) for x in atoms])
             if new_atoms == atoms:
