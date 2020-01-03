@@ -51,7 +51,7 @@ import pytz
 import pandas as pd
 
 coarse_categories = [
-    'cargo_or_tanker', 'passenger', 'tug',  'research', 'other_not_fishing*',
+    'bunker_or_tanker', 'cargo_or_reefer', 'passenger', 'tug',  'research', 'other_not_fishing*',
     'drifting_longlines', 'gear', 'purse_seines', 'set_gillnets', 'set_longlines', 'pots_and_traps',
      'trawlers', 'squid_jigger',  'other_fishing*'
     ]
