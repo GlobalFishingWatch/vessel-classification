@@ -96,7 +96,7 @@ schema = yaml.safe_load(raw_schema)
 
 def atomic(obj):
     for k, v in obj.items():
-        if v is None:
+        if v is None or isinstance(v, str):
             yield k
         else:
             for x in atomic(v):
@@ -104,7 +104,7 @@ def atomic(obj):
 
 def categories(obj, include_atomic=True):
     for k, v in obj.items():
-        if v is None:
+        if v is None or isinstance(v, str):
             if include_atomic:
                 yield k, [k]
         else:

@@ -694,6 +694,7 @@ def load_inferred(inference_table, label_table, extractors):
     JOIN
    `{}*` inference_table
     ON (cast(label_table.id as string) = inference_table.ssvid)
+    where split = "Test"
     """.format(label_table, inference_table)
     print(query)
     df = pd.read_gbq(query, project_id='world-fishing-827', dialect='standard')
@@ -747,13 +748,20 @@ def composite_weights(weight_map, class_map, y_true):
 
     return weights / weights.sum()
 
+def rescale_scores(scores, T):
+    keys = list(scores)
+    logits = [np.log(scores[k] + 1e-100) for k in keys]
+    new_scores = [np.exp(l / T) for l in logits]
+    total = sum(new_scores)
+    return {k: s / total for (k, s) in zip(keys, new_scores)}  
 
 
 class ClassificationExtractor(InferenceResults):
     # Conceptually an InferenceResult
     # TODO: fix to make true subclass or return true inference result at finalization time or something.
-    def __init__(self, label_map):
+    def __init__(self, label_map, T):
         self.label_map = label_map
+        self.T = T
         #
         self.all_ids = []
         self.all_inferred_labels = []
@@ -772,8 +780,8 @@ class ClassificationExtractor(InferenceResults):
     def extract(self, row):
         id_ = row.id
         lbl = self.label_map.get(id_)
-        raw_label_scores = row.label_scores
-        label_scores = {x['label'] : x['score'] for x in raw_label_scores}
+        raw_label_scores = {x['label'] : x['score'] for x in row.label_scores}
+        label_scores = rescale_scores(raw_label_scores, self.T)
         self.all_labels |= set(label_scores.keys())
         start_date = row.start_time
         # TODO: write out TZINFO in inference
@@ -938,7 +946,7 @@ def compute_results(args):
                 logging.warning('%s has a values of %s for %s',
                                     id_, value, field)
 
-    results['raw_classes'] = ClassificationExtractor(maps['label'])
+    results['raw_classes'] = ClassificationExtractor(maps['label'], args.T)
     ext = AttributeExtractor('length', maps['length'], maps['label'])
     results['length'] = ext
     ext = AttributeExtractor('tonnage', maps['tonnage'], maps['label'])
@@ -955,7 +963,6 @@ def compute_results(args):
     class_weights = load_class_weights(args.inference_table)
     results['class_weights'] = class_weights
 
-
     # Sanity check attribute values after loading
     for field in ['length', 'tonnage', 'engine_power', 'crew_size']:
         if not all(results[field].inferred_attrs >= 0):
@@ -964,6 +971,13 @@ def compute_results(args):
                 field, min(results[field].inferred_attrs),
                 (results[field].inferred_attrs < 0).sum(),
                 len(results[field].inferred_attrs))
+
+    # import pickle
+    # with open('dumped_results.pkl', 'wb') as f:
+    #     pickle.dump(results, f, pickle.HIGHEST_PROTOCOL)
+
+
+    # label_df.to_csv('dumped_labels.csv')
 
     # Assemble coarse and is_fishing scores:
     logging.info('Assembling fine data')
@@ -1032,7 +1046,8 @@ if __name__ == '__main__':
         help='path to test table of labels to compare results with')
     parser.add_argument('--dest-path', required=True, 
         help='output path to write results to')
-
+    parser.add_argument('--T', default=1.0, type=float,
+        help='Temperature to adjust scores by')
 
     args = parser.parse_args()
 
