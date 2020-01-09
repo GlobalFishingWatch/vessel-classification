@@ -15,7 +15,7 @@
 import os
 import csv
 import numpy as np
-import metadata
+from . import metadata
 import tensorflow as tf
 from datetime import datetime
 
@@ -72,12 +72,12 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
             available_vessels, parsed_lines, {})
 
         # First one is test so weighted as 1 for now
-        self.assertEquals(1.0, result.vessel_weight('100001'))
-        self.assertEquals(1.118033988749895, result.vessel_weight('100002'))
-        self.assertEquals(1.0, result.vessel_weight('100008'))
-        self.assertEquals(1.2909944487358056, result.vessel_weight('100012'))
-        self.assertEquals(1.5811388300841898, result.vessel_weight('100007'))
-        self.assertEquals(1.1454972243679027, result.vessel_weight('100013'))
+        self.assertEqual(1.0, result.vessel_weight('100001'))
+        self.assertEqual(1.118033988749895, result.vessel_weight('100002'))
+        self.assertEqual(1.0, result.vessel_weight('100008'))
+        self.assertEqual(1.2909944487358056, result.vessel_weight('100012'))
+        self.assertEqual(1.5811388300841898, result.vessel_weight('100007'))
+        self.assertEqual(1.1454972243679027, result.vessel_weight('100013'))
 
         self._check_splits(result)
 
@@ -88,10 +88,10 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
             available_vessels, parsed_lines, self.fishing_range_dict,
             'Test')
 
-        self.assertEquals(1.0, result.vessel_weight('100001'))
-        self.assertEquals(1.0, result.vessel_weight('100002'))
-        self.assertEquals(3.0, result.vessel_weight('100009'))
-        self.assertEquals(0.0, result.vessel_weight('100012'))
+        self.assertEqual(1.0, result.vessel_weight('100001'))
+        self.assertEqual(1.0, result.vessel_weight('100002'))
+        self.assertEqual(3.0, result.vessel_weight('100009'))
+        self.assertEqual(0.0, result.vessel_weight('100012'))
 
         self._check_splits(result)
 
@@ -101,22 +101,22 @@ class VesselMetadataFileReaderTest(tf.test.TestCase):
         self.assertTrue('Test' in result.metadata_by_split)
         self.assertTrue('passenger', result.vessel_label('label', '100007'))
 
-        self.assertEquals(result.metadata_by_split['Test']['100001'][0],
+        self.assertEqual(result.metadata_by_split['Test']['100001'][0],
                           {'label': 'drifting_longlines',
                            'length': '10.0',
                            'id': '100001',
                            'split': 'Test'})
-        self.assertEquals(result.metadata_by_split['Test']['100005'][0],
+        self.assertEqual(result.metadata_by_split['Test']['100005'][0],
                           {'label': 'trawlers',
                            'length': '10.0',
                            'id': '100005',
                            'split': 'Test'})
-        self.assertEquals(result.metadata_by_split['Training']['100002'][0],
+        self.assertEqual(result.metadata_by_split['Training']['100002'][0],
                           {'label': 'drifting_longlines',
                            'length': '24.0',
                            'id': '100002',
                            'split': 'Training'})
-        self.assertEquals(result.metadata_by_split['Training']['100003'][0],
+        self.assertEqual(result.metadata_by_split['Training']['100003'][0],
                           {'label': 'drifting_longlines',
                            'length': '7.0',
                            'id': '100003',
@@ -153,7 +153,7 @@ class MultihotLabelConsistencyTest(tf.test.TestCase):
             for fine in fine_list:
                 if fine not in names:
                     names.append(fine)
-        self.assertEquals(
+        self.assertEqual(
             sorted(names), sorted(metadata.VESSEL_CLASS_DETAILED_NAMES))
 
 

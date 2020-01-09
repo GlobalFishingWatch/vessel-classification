@@ -134,8 +134,8 @@ class VesselMetadata(object):
         self.metadata_by_split = metadata_dict
         self.metadata_by_id = {}
         self.fishing_ranges_map = fishing_ranges_map
-        for split, vessels in metadata_dict.iteritems():
-            for id_, data in vessels.iteritems():
+        for split, vessels in metadata_dict.items():
+            for id_, data in vessels.items():
                 self.metadata_by_id[id_] = data
         self.id_map_int2str = {}
         # Put both hash and in in mapping to catch either case.
@@ -177,7 +177,7 @@ class VesselMetadata(object):
         replicated_ids = []
         logging.info("Training ids: %d", len(self.ids_for_split(split)))
         fishing_ranges_ids = []
-        for id_, (row, weight) in self.metadata_by_split[split].iteritems():
+        for id_, (row, weight) in self.metadata_by_split[split].items():
             if row_filter(row):
                 if id_ in self.fishing_ranges_map:
                     fishing_ranges_ids.append(id_)
@@ -338,13 +338,13 @@ def read_vessel_multiclass_metadata_lines(available_ids, lines,
     # # now use weights of sqrt(max_count / count), but eventually weight by prevalance
     # # in AIS (as best as we can figure) <== TODO
     dataset_kind_weights = defaultdict(lambda: {})
-    for split, counts in dataset_kind_counts.iteritems():
+    for split, counts in dataset_kind_counts.items():
         max_count = max(counts.values())
-        for atomic_vessel_type, count in counts.iteritems():
+        for atomic_vessel_type, count in counts.items():
             dataset_kind_weights[split][atomic_vessel_type] = np.sqrt(max_count / float(count))
     # dataset_kind_weights = defaultdict(lambda: {})
-    # for split, counts in dataset_kind_counts.iteritems():
-    #     for coarse_vessel_type, count in counts.iteritems():
+    # for split, counts in dataset_kind_counts.items():
+    #     for coarse_vessel_type, count in counts.items():
     #         dataset_kind_weights[split][coarse_vessel_type] = 1
 
     metadata_dict = defaultdict(lambda: {})

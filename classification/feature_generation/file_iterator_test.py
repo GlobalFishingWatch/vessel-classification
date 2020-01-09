@@ -1,7 +1,7 @@
 
 import gc
 import posixpath as pp
-from file_iterator import *
+from .file_iterator import *
 import pytest
 
 @pytest.mark.skip(reason="needs updating")

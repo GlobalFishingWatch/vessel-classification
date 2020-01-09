@@ -1,5 +1,4 @@
 import tensorflow as tf
-import feature_generation
 import numpy as np
 from classification import metadata
 from . import feature_generation
