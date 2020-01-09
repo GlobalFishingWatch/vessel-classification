@@ -1,3 +1,4 @@
+from __future__ import print_function, division, absolute_import
 import subprocess
 import numpy as np
 import pandas as pd
@@ -102,7 +103,7 @@ def read_vessel_database_for_char_vessel_id(dbname, dataset):
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
-        print query
+        print(query)
         raise
 
 # TODO: segment to UVI table is named weird, what is final name
@@ -155,7 +156,7 @@ def read_vessel_database_for_char_uvi(dbname, dataset):
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
-        print query
+        print(query)
         raise
 
 
@@ -186,7 +187,7 @@ def read_vessel_database_for_char_mmsi(dbname, dataset):
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
-        print query
+        print(query)
         raise
 
 
@@ -247,7 +248,7 @@ def read_vessel_database_for_detect_vessel_id(dbname, fishdbname, dataset):
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
-        print query
+        print(query)
         raise
 
 
@@ -308,7 +309,7 @@ def read_vessel_database_for_detect_uvi(dbname, fishdbname, dataset):
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
-        print query
+        print(query)
         raise
 
 # TODO: fix crew size 
@@ -361,7 +362,7 @@ def read_vessel_database_for_detect_mmsi(dbname, fishdbname, dataset):
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
-        print query
+        print(query)
         raise
 
 
