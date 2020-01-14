@@ -2,11 +2,12 @@ import calendar
 import numpy as np
 import os
 import tensorflow as tf
+import six
 from . import feature_generation
 from . import feature_utilities
 
-def input_fn(vessel_metadata,
-             filenames,
+def input_fn(metadata,
+            filenames,
             num_features,
             max_time_delta,
             window_size,
@@ -20,30 +21,30 @@ def input_fn(vessel_metadata,
     weights = []
     for p in filenames:
         id_, _ = os.path.splitext(os.path.basename(p))
-        weights.append(vessel_metadata.vessel_weight(id_))
+        id_ = six.ensure_binary(id_)
+        weights.append(metadata.vessel_weight(id_))
     
     def xform(id_, movement_features):
 
-        def _xform(features, int_id):
+        def _xform(id_, features):
+            id_ = metadata.id_map_int2bytes[id_.numpy()]
+            features = features.numpy()
             # Extract several random windows from each vessel track
-            # TODO: Fix feature generation so it returns strings directly
-            id_ = vessel_metadata.id_map_int2str[int_id]
-            ranges = vessel_metadata.fishing_ranges_map.get(id_, {})
+            ranges = metadata.fishing_ranges_map.get(id_, {})
             return feature_utilities.extract_n_random_fixed_points(
                             random_state, features, num_slices_per_id,
                             window_size, id_, ranges)
 
-        int_id = tf.cast(id_, tf.int64)
         features = tf.cast(movement_features, tf.float32)
-        features, timestamps, time_ranges, id_ = tf.py_func(
+        features, timestamps, time_ranges, id_ = tf.py_function(
             _xform, 
-            [features, int_id],
+            [id_, features],
             [tf.float32, tf.int32, tf.int32, tf.string])
         features = tf.squeeze(features, axis=1)
         return (features, timestamps, time_ranges, id_)
 
     fishing_ranges_map = {}
-    for k, v in vessel_metadata.fishing_ranges_map.items():
+    for k, v in metadata.fishing_ranges_map.items():
         fishing_ranges_map[k] = []
         for sel_range in v:
             start_range = calendar.timegm(sel_range.start_time.utctimetuple())
@@ -53,6 +54,8 @@ def input_fn(vessel_metadata,
     def add_labels(features, timestamps, time_bounds, id_):
 
         def _add_labels(id_, timestamps):
+            id_ = id_.numpy()
+            timestamps = timestamps.numpy()
             dense_labels = np.empty_like(timestamps, dtype=np.float32)
             dense_labels.fill(-1.0)
             if id_ in fishing_ranges_map:
@@ -62,7 +65,7 @@ def input_fn(vessel_metadata,
                     dense_labels[start_ndx:end_ndx] = is_fishing
             return dense_labels
 
-        [labels] =  tf.py_func(
+        [labels] =  tf.compat.v1.py_function(
             _add_labels, 
             [id_, timestamps],
             [tf.float32])
@@ -95,6 +98,7 @@ def input_fn(vessel_metadata,
 
 
 
+
 def predict_input_fn(paths,
                    num_features,
                    window_size,
@@ -113,17 +117,17 @@ def predict_input_fn(paths,
 
     def xform(id_, movement_features):
 
-        def _xform(features, int_id):
-            id_ = str(int_id)
+        def _xform(id_, features):
+            id_ = id_.numpy()
+            features = features.numpy()
             return feature_utilities.process_fixed_window_features(
                     random_state, features, id_, num_features, 
                     window_size, shift, start_date, end_date, b, e)
 
-        int_id = tf.cast(id_, tf.int64)
         features = tf.cast(movement_features, tf.float32)
-        features, timestamps, time_ranges_tensor, id_ = tf.py_func(
+        features, timestamps, time_ranges_tensor, id_ = tf.py_function(
             _xform, 
-            [features, int_id],
+            [id_, features],
             [tf.float32, tf.int32, tf.int32, tf.string])
         features = tf.squeeze(features, axis=1)
         return (features, timestamps, time_ranges_tensor, id_)

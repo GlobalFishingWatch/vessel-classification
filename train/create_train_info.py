@@ -3,6 +3,7 @@ import subprocess
 import numpy as np
 import pandas as pd
 import argparse
+import sys
 from classification import metadata
 
 remapping = {
@@ -551,6 +552,9 @@ def assign_split(df, max_examples, seed=888, check_fishing=False):
 
 
 if __name__ == '__main__':
+    assert sys.version_info[0] == 2, 'must generate with Python 2 until feature sharding is updated'
+
+
     parser = argparse.ArgumentParser('Create Training Info')
 
     parser.add_argument(
@@ -671,6 +675,15 @@ if __name__ == '__main__':
 
     charinfo_df = charinfo_df[~charinfo_df.split.isnull()]
     detinfo_df = detinfo_df[~detinfo_df.split.isnull()]
+
+    hashes = [hash(x) for x in charinfo_df['id']]
+    charinfo_df['idhash'] = hashes
+
+    hashes = [hash(x) for x in detinfo_df['id']]
+    detinfo_df['idhash'] = hashes
+
+
+    # Run create train info, then update metadata to get hashmap from here, then use that.
 
     if args.charinfo_file:
         charinfo_df.to_csv(args.charinfo_file, index=False)

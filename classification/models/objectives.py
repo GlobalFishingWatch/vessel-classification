@@ -93,7 +93,7 @@ class RegressionObjective(ObjectiveBase):
         self.output_shape = []
 
     def create_label(self, id_, timestamps):
-        self.value_from_id(id)
+        self.value_from_id(id_)
 
     def build(self, net):
         self.prediction = tf.layers.dense(net, 1, activation=None)[:, 0]

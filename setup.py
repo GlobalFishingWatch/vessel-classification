@@ -20,7 +20,8 @@ import os
 DEPENDENCIES = [
     "ujson",
     "NewlineJSON",
-    "google-api-python-client"
+    "google-api-python-client",
+    "six>=1.13.0'"
 ]
 
 

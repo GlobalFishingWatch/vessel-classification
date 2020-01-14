@@ -23,6 +23,7 @@ import sys
 import tensorflow as tf
 import yaml
 import numpy as np
+import six
 from .feature_generation.file_iterator import GCSFile
 
 
@@ -134,17 +135,20 @@ class VesselMetadata(object):
         self.metadata_by_split = metadata_dict
         self.metadata_by_id = {}
         self.fishing_ranges_map = fishing_ranges_map
+        self.id_map_int2bytes = {}
         for split, vessels in metadata_dict.items():
             for id_, data in vessels.items():
+                id_ = six.ensure_binary(id_)
                 self.metadata_by_id[id_] = data
-        self.id_map_int2str = {}
+                self.id_map_int2bytes[int(data[0]['idhash'])] = id_
+        # self.id_map_int2str = {}
         # Put both hash and in in mapping to catch either case.
-        for k in self.metadata_by_id:
-            try:
-                self.id_map_int2str[int(k)] = k
-            except ValueError:
-                pass
-            self.id_map_int2str[hash(k)] = k
+        # for k in self.metadata_by_id:
+        #     try:
+        #         self.id_map_int2str[int(k)] = k
+        #     except ValueError:
+        #         pass
+        #     self.id_map_int2str[hash(k)] = k
 
 
         intersection_ids = set(self.metadata_by_id.keys()).intersection(
@@ -234,7 +238,7 @@ def read_vessel_time_weighted_metadata_lines(available_ids, lines,
     min_time_per_id = np.inf
 
     for row in lines:
-        id_ = row['id'].strip()
+        id_ = six.ensure_binary(row['id'].strip())
         if id_ in available_ids:
             if id_ not in fishing_range_dict:
                 continue
@@ -308,7 +312,7 @@ def read_vessel_multiclass_metadata_lines(available_ids, lines,
 
     available_ids = set(available_ids)
     for row in lines:
-        id_ = row['id'].strip()
+        id_ = six.ensure_binary(row['id'].strip())
         if id_ not in available_ids:
             continue
         raw_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
@@ -400,7 +404,7 @@ def find_available_ids(feature_path):
         id_path = os.path.join(root_output_path, 'ids/part-00000-of-00001.txt')
         logging.info('Reading id list file from {}'.format(id_path))
         with GCSFile(id_path) as f:
-            els = f.read().split('\n')
+            els = f.read().split(b'\n')
         id_list = [id_.strip() for id_ in els if id_.strip() != '']
 
         logging.info('Found %d ids.', len(id_list))
@@ -428,7 +432,7 @@ def read_fishing_ranges(fishing_range_file):
     with open(fishing_range_file, 'r') as f:
         for l in f.readlines()[1:]:
             els = l.split(',')
-            id_ = els[0].strip()
+            id_ = six.ensure_binary(els[0].strip())
             start_time = parse_date(els[1]).replace(tzinfo=pytz.utc)
             end_time = parse_date(els[2]).replace(tzinfo=pytz.utc)
             is_fishing = float(els[3])
