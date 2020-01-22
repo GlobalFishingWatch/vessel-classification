@@ -115,8 +115,6 @@ def categories(obj, include_atomic=True):
 
 
 
-
-#TODO: Better names
 VESSEL_CLASS_DETAILED_NAMES = sorted(atomic(schema))
 
 VESSEL_CATEGORIES = sorted(categories(schema))
@@ -339,8 +337,7 @@ def read_vessel_multiclass_metadata_lines(available_ids, lines,
         #         type(id_), type(sorted(available_ids)[0]))
 
     # # Calculate weights for each vessel type per split, for
-    # # now use weights of sqrt(max_count / count), but eventually weight by prevalance
-    # # in AIS (as best as we can figure) <== TODO
+    # # now use weights of sqrt(max_count / count)
     dataset_kind_weights = defaultdict(lambda: {})
     for split, counts in dataset_kind_counts.items():
         max_count = max(counts.values())

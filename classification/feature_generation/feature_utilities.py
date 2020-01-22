@@ -40,8 +40,9 @@ def np_pad_repeat_slice(slice, window_size):
     assert (slice_length <= window_size)
     reps = int(np.ceil(window_size / float(slice_length)))
     if reps > 1:
-        slice = np.concatenate([slice] * reps, axis=0)
-    return slice[:window_size]
+        return np.concatenate([slice] * reps, axis=0)[:window_size]
+    else:
+        return slice[:window_size].copy()
 
 def np_zero_pad_slice(slice, window_size, random_state):
     """ Pads slice to the specified window size.
@@ -66,10 +67,6 @@ def np_zero_pad_slice(slice, window_size, random_state):
     slice_length = len(slice)
     delta = window_size - slice_length
     assert delta >= 0
-    # TODOL: These two lines don't appear to be used. Check and remove at
-    # next cleanup.
-    _, n_feat = slice.shape
-    padded = np.zeros([window_size, n_feat], dtype=slice.dtype)
     offset = random_state.randint(0, delta + 1)
     return np.concatenate([slice] * reps, axis=0)[offset:offset+window_size]
 
@@ -213,7 +210,7 @@ def extract_n_random_fixed_points(random_state, input_series, n,
 
 def setup_cook_features_into(n, features_shape):
     s0, s1 = features_shape
-    features = np.empty((n, s0, s1 - 1))
+    features = np.empty((n, s0, s1 - 1), np.float32)
     timestamps = np.empty([n, s0], np.int32)
     ranges = np.empty([n, 2], np.int32)
     ids = np.empty([n], object)

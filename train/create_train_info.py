@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import
 import subprocess
 import numpy as np
 import pandas as pd
+import hashlib
 import argparse
 import sys
 from classification import metadata
@@ -542,8 +543,8 @@ def assign_split(df, max_examples, seed=888, check_fishing=False):
             mask[trues] = True
         for i in all_args[base_mask]:
           split[i] = None
-        candidates = all_args[mask]
-        rnd.shuffle(candidates)
+        candidates = sorted(all_args[mask], 
+                       key=lambda x: hashlib.sha256(df.id.iloc[x]).hexdigest())
         for i in candidates[:len(candidates)//2]:
           split[i] = split_a
         for i in candidates[len(candidates)//2:]:
@@ -742,3 +743,16 @@ python -m train.create_train_info \
     --detranges-file classification/data/det_ranges_mmsi_v20191127.csv \
     --gear_file classification/data/old_gear.txt
 '''
+
+r'''
+    python -m train.create_train_info \
+        --vessel-database vessel_database.matched_vessels_one_record_per_ssvid_v20200101 \
+        --fishing-table machine_learning_production.fishing_ranges_by_mmsi_v20190506 \
+        --id-type mmsi \
+        --id-list gs://machine-learning-dev-ttl-120d/features/mmsi_features_v20191126/ids/part-00000-of-00001.txt \
+        --dataset pipe_production_v20190502 \
+        --charinfo-file classification/data/char_info_mmsi_v20200120.csv \
+        --detinfo-file classification/data/det_info_mmsi_v20200120.csv \
+        --detranges-file classification/data/det_ranges_mmsi_v20200120.csv
+'''
+

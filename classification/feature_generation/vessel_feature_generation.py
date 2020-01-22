@@ -22,14 +22,12 @@ def input_fn(
     def xform(id_, movement_features):
 
         def _xform(id_, features):
-            features = features.numpy()
-            id_ = metadata.id_map_int2bytes[id_.numpy()]
+            id_ = metadata.id_map_int2bytes[id_]
             return feature_utilities.extract_n_random_fixed_times(
                     random_state, features, num_slices_per_id, max_time_delta,
                     window_size, id_, min_timeslice_size)
 
-        # features = tf.cast(movement_features, tf.float32)
-        features, timestamps, time_ranges, id_ = tf.py_function(
+        features, timestamps, time_ranges, id_ = tf.py_func(
             _xform, 
             [id_, movement_features],
             [tf.float32, tf.int32, tf.int32, tf.string])
@@ -38,12 +36,10 @@ def input_fn(
     def add_labels(features, timestamps, time_bounds, id_):
 
         def _add_labels(id_, timestamps):
-            id_ = id_.numpy()
-            timestamps = timestamps.numpy()
             labels = [o.create_label(id_, timestamps) for o in objectives]
             return labels
 
-        labels =  tf.py_function(
+        labels =  tf.py_func(
             _add_labels, 
             [id_, timestamps],
             [tf.float32] * len(objectives))
@@ -93,14 +89,12 @@ def predict_input_fn(paths,
     def xform(id_, movement_features):
 
         def _xform(id_, features):
-            id_ = id_.numpy()
-            features = features.numpy()
             return feature_utilities.np_array_extract_slices_for_time_ranges(
                     random_state, features, id_, time_ranges,
                     window_size, min_timeslice_size)
 
         raw_features = tf.cast(movement_features, tf.float32)
-        features, timestamps, time_ranges_tensor, id_ = tf.py_function(
+        features, timestamps, time_ranges_tensor, id_ = tf.py_func(
             _xform, 
             [id_, raw_features],
             [tf.float32, tf.int32, tf.int32, tf.string])
