@@ -22,6 +22,7 @@ import tensorflow as tf
 import tensorflow.metrics as metrics
 from classification import metadata
 import pytz
+import six
 """ Terminology in the context of objectives.
     
     Net: the raw input to an objective function, an embeddeding that has not
@@ -342,7 +343,7 @@ class FishingLocalizationObjectiveCrossEntropy(ObjectiveBase):
 
         assert (len(prediction) == len(timestamps))
         thresholded_prediction = prediction > 0.5
-        combined = zip(timestamps, thresholded_prediction)
+        combined = list(six.moves.zip(timestamps, thresholded_prediction))
         if self.window:
             b, e = self.window
             combined = combined[b:e]
