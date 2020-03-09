@@ -85,7 +85,7 @@ class Inferer(object):
 
             start_time, end_time = [datetime.utcfromtimestamp(x) for x in result['time_ranges']]
             output = {
-                'id': int(result['id']),
+                'id': result['id'],
                 'start_time': start_time.isoformat(),
                 'end_time': end_time.isoformat()
             }
