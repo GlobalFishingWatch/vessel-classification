@@ -8,7 +8,7 @@ import sys
 from classification import metadata
 
 remapping = {
-  'seismic_vessel' : 'research'
+  # 'seismic_vessel' : 'research'
 }
 
 
