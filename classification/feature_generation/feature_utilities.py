@@ -216,13 +216,16 @@ def setup_cook_features_into(n, features_shape):
     ids = np.empty([n], object)
     return features, timestamps, ranges, ids
 
-def cook_features_into(arrays, i, data, id_):
+def cook_features_into(arrays, i, data, id_, range_=None):
     """Convert raw features into something the model can digest
 
         Args:
             arrays: (features, timestamps, ranges)
             i : index to inserrt into
             features: np.array of raw features
+            range: tuple, optional
+                (start, stop) timestamps, if not supplied, this is derived
+                from features.
 
         Returns:
             (2D np.array of features for the model,
@@ -233,8 +236,11 @@ def cook_features_into(arrays, i, data, id_):
     features, timestamps, ranges, ids = arrays
     features[i] = data[:, 1:]
     timestamps[i] = data[:, 0]
-    ranges[i, 0] = int(data[:, 0].min())
-    ranges[i, 1] = int(data[:, 0].max())
+    if range is None:
+        ranges[i, 0] = int(data[:, 0].min())
+        ranges[i, 1] = int(data[:, 0].max())
+    else:
+        range[i, :] = range_
     ids[i] = id_
 
 def extract_n_random_fixed_times(random_state, input_series, n,
@@ -337,7 +343,7 @@ def np_array_extract_slices_for_time_ranges(
 
         if len(cropped) >= min_points_for_classification:
             padded = np_pad_repeat_slice(cropped, window_size)
-            cook_features_into(arrays, ndx, padded, id_)
+            cook_features_into(arrays, ndx, padded, id_, (start_time, end_time))
             ndx += 1
     return tuple(x[:ndx] for x in arrays)
 
