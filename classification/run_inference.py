@@ -66,6 +66,7 @@ class Inferer(object):
             if dt >= end_date:
                 break
             time_starts.append(dt)
+        logging.warning('TAH: time starts', time_starts)
         delta = timedelta(seconds=self.model.max_window_duration_seconds)
         time_ranges = [(int(time.mktime(dt.timetuple())),
                              int(time.mktime((dt + delta).timetuple())))
