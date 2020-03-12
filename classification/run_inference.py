@@ -76,12 +76,12 @@ class Inferer(object):
         paths = self._feature_files(ids)
 
         if self.model.max_window_duration_seconds != 0:
-            logging.debug('TAH: building time ranges')
+            logging.warning('TAH: building time ranges')
             time_ranges = self._build_time_ranges(interval_months, start_date, end_date)
-            logging.debug('TAH: time ranges', time_ranges)
+            logging.warning('TAH: time ranges', time_ranges)
             input_fn = self.model.make_prediction_input_fn(paths, time_ranges, self.parallelism)
         else:
-            logging.debug('TAH: not time ranges', self.model.max_window_duration_seconds)
+            logging.warning('TAH: not time ranges', self.model.max_window_duration_seconds)
             input_fn = self.model.make_prediction_input_fn(paths, (start_date, end_date), self.parallelism)
 
         for result in self.estimator.predict(input_fn=input_fn):
