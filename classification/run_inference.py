@@ -88,6 +88,7 @@ class Inferer(object):
         for result in self.estimator.predict(input_fn=input_fn):
 
             start_time, end_time = [datetime.utcfromtimestamp(x) for x in result['time_ranges']]
+            logging.warning('TAH: range', result['id'],  start_time.isoformat(), end_time.isoformat())
             output = {
                 'id': result['id'],
                 'start_time': start_time.isoformat(),
