@@ -240,7 +240,7 @@ def cook_features_into(arrays, i, data, id_, range_=None):
         ranges[i, 0] = int(data[:, 0].min())
         ranges[i, 1] = int(data[:, 0].max())
     else:
-        range[i, :] = range_
+        ranges[i, :] = range_
     ids[i] = id_
 
 def extract_n_random_fixed_times(random_state, input_series, n,
