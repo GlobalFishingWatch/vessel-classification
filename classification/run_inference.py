@@ -66,7 +66,6 @@ class Inferer(object):
             if dt >= end_date:
                 break
             time_starts.append(dt)
-        logging.warning('TAH: time starts', time_starts)
         delta = timedelta(seconds=self.model.max_window_duration_seconds)
         time_ranges = [(int(time.mktime(dt.timetuple())),
                              int(time.mktime((dt + delta).timetuple())))
@@ -77,18 +76,14 @@ class Inferer(object):
         paths = self._feature_files(ids)
 
         if self.model.max_window_duration_seconds != 0:
-            logging.warning('TAH: building time ranges')
             time_ranges = self._build_time_ranges(interval_months, start_date, end_date)
-            logging.warning('TAH: time ranges', time_ranges)
             input_fn = self.model.make_prediction_input_fn(paths, time_ranges, self.parallelism)
         else:
-            logging.warning('TAH: not time ranges', self.model.max_window_duration_seconds)
             input_fn = self.model.make_prediction_input_fn(paths, (start_date, end_date), self.parallelism)
 
         for result in self.estimator.predict(input_fn=input_fn):
 
             start_time, end_time = [datetime.utcfromtimestamp(x) for x in result['time_ranges']]
-            logging.warning('TAH: range', result['id'],  start_time.isoformat(), end_time.isoformat())
             output = {
                 'id': result['id'],
                 'start_time': start_time.isoformat(),
