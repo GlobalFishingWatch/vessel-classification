@@ -236,7 +236,7 @@ def cook_features_into(arrays, i, data, id_, range_=None):
     features, timestamps, ranges, ids = arrays
     features[i] = data[:, 1:]
     timestamps[i] = data[:, 0]
-    if range is None:
+    if range_ is None:
         ranges[i, 0] = int(data[:, 0].min())
         ranges[i, 1] = int(data[:, 0].max())
     else:
