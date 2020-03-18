@@ -85,6 +85,11 @@ def main(args):
     feature_dimensions = int(args.feature_dimensions)
     chosen_model = Model(feature_dimensions, vessel_metadata, args.metrics)
 
+    train_input_fn = chosen_model.make_training_input_fn(args.root_feature_path, 
+                                                         args.num_parallel_readers)
+
+    test_input_fn = chosen_model.make_test_input_fn(args.root_feature_path, 
+                                                    args.num_parallel_readers)
 
     estimator = chosen_model.make_estimator(args.training_output_path)
     train_spec = tf.estimator.TrainSpec(
