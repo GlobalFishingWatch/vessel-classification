@@ -410,7 +410,8 @@ def process_fixed_window_features(random_state, features, id_,
     if end_date is not None:
         raw_end_i = np.searchsorted(features[:, 0], end_stamp, side='right')
         # How much padding do we need:
-        n_pad_end = (len(features) - raw_end_i) - pad_end
+        available = len(features) - raw_end_i
+        n_pad_end = max(pad_end - available, 0)
     else:
         raw_end_i = len(features)
         n_pad_end = pad_end
@@ -427,6 +428,7 @@ def process_fixed_window_features(random_state, features, id_,
         raw_start_i = np.searchsorted(features[:, 0], start_stamp, side='left')
     else:
         raw_start_i = 0
+    assert raw_start_i >= 0
 
     start_i = raw_start_i - pad_start
 
