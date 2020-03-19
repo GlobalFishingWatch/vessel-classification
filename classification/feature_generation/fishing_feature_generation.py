@@ -111,6 +111,13 @@ def predict_input_fn(paths,
 
     random_state = np.random.RandomState()
 
+
+
+    # TODO: use paths to build hashlist and test
+    # Look again at differences between fishing and vessel inference
+
+
+
     def xform(id_, movement_features):
 
         def _xform(id_, features):

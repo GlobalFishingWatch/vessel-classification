@@ -354,7 +354,10 @@ def np_array_extract_all_fixed_slices(input_series, num_features, id_,
     for end_index in range(input_length, 0, -shift):
         start_index = end_index - window_size
         if start_index < 0:
-            logging.warning('input not correctly padded, dropping start')
+            if start_index != -shift:
+                logging.warning('input not correctly padded, dropping start')
+                raise ValueError("input not correctly padded %s %s %s %s" % (
+                    input_length, shift, window_size, start_index))
             continue
         cropped = input_series[start_index:end_index]
         start_time = int(cropped[0][0])
@@ -415,8 +418,7 @@ def process_fixed_window_features(random_state, features, id_,
     else:
         raw_end_i = len(features)
         n_pad_end = pad_end
-        
-    end_i = len(features) + n_pad_end
+    end_i = raw_end_i + pad_end
 
     #    \/ raw_start_i
     #              ppBBBBpp<--- shift
