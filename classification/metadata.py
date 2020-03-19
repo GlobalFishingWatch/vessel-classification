@@ -138,7 +138,9 @@ class VesselMetadata(object):
             for id_, data in vessels.items():
                 id_ = six.ensure_binary(id_)
                 self.metadata_by_id[id_] = data
-                self.id_map_int2bytes[int(data[0]['idhash'])] = id_
+                digest = hashlib.blake2b(six.ensure_binary(id_)).hexdigest()[-8:]
+                idhash = int(digest, 16)
+                self.id_map_int2bytes[idhash] = id_
         # self.id_map_int2str = {}
         # Put both hash and in in mapping to catch either case.
         # for k in self.metadata_by_id:
