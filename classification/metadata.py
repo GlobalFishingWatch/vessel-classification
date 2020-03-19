@@ -127,6 +127,11 @@ FishingRange = namedtuple('FishingRange',
                           ['start_time', 'end_time', 'is_fishing'])
 
 
+def stable_hash(x):
+    x = six.ensure_binary(x)
+    digest = hashlib.blake2b(six.ensure_binary(x)).hexdigest()[-8:]
+    return int(digest, 16)
+
 class VesselMetadata(object):
     def __init__(self,
                  metadata_dict,
@@ -139,18 +144,8 @@ class VesselMetadata(object):
             for id_, data in vessels.items():
                 id_ = six.ensure_binary(id_)
                 self.metadata_by_id[id_] = data
-                digest = hashlib.blake2b(six.ensure_binary(id_)).hexdigest()[-8:]
-                idhash = int(digest, 16)
+                idhash = stable_hash(id_)
                 self.id_map_int2bytes[idhash] = id_
-        # self.id_map_int2str = {}
-        # Put both hash and in in mapping to catch either case.
-        # for k in self.metadata_by_id:
-        #     try:
-        #         self.id_map_int2str[int(k)] = k
-        #     except ValueError:
-        #         pass
-        #     self.id_map_int2str[hash(k)] = k
-
 
         intersection_ids = set(self.metadata_by_id.keys()).intersection(
             set(fishing_ranges_map.keys()))

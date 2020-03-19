@@ -423,31 +423,31 @@ def process_fixed_window_features(random_state, features, id_,
     # ppBBBBpp.........ppBBBBpp
     #   end_i - winsize^       ^ end_i
 
-    # if start_date is not None:
-    #     # If possible go to shift before pad so we have good data for whole length
-    #     raw_start_i = np.searchsorted(features[:, 0], start_stamp, side='left')
-    # else:
-    #     raw_start_i = 0
-    # assert raw_start_i >= 0
+    if start_date is not None:
+        # If possible go to shift before pad so we have good data for whole length
+        raw_start_i = np.searchsorted(features[:, 0], start_stamp, side='left')
+    else:
+        raw_start_i = 0
+    assert raw_start_i >= 0
 
-    # start_i = raw_start_i - pad_start
+    start_i = raw_start_i - pad_start
 
-    # while (end_i - start_i - window_size) % shift:
-    #     start_i -= 1
+    while (end_i - start_i - window_size) % shift:
+        start_i -= 1
 
-    # if n_pad_end > 0:
-    #     features = np.concatenate([features, n_pad_end * [features[-1]]], axis=0)
-    # else:
-    #     features = features[:end_i]
-    # assert len(features) == end_i
+    if n_pad_end > 0:
+        features = np.concatenate([features, n_pad_end * [features[-1]]], axis=0)
+    else:
+        features = features[:end_i]
+    assert len(features) == end_i
 
-    # if start_i < 0:
-    #     features = np.concatenate([features, (-start_i) * [features[0]]], axis=0)
-    # else:
-    #     features = features[start_i:]
-    # assert len(features) == end_i - start_i
+    if start_i < 0:
+        features = np.concatenate([features, (-start_i) * [features[0]]], axis=0)
+    else:
+        features = features[start_i:]
+    assert len(features) == end_i - start_i
 
-    # assert (end_i - start_i - window_size) % shift == 0
+    assert (end_i - start_i - window_size) % shift == 0
 
     return np_array_extract_all_fixed_slices(features, num_features,
                                              id_, window_size, shift)
