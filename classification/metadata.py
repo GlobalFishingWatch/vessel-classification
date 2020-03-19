@@ -23,6 +23,7 @@ import sys
 import tensorflow as tf
 import yaml
 import numpy as np
+import hashlib
 import six
 from .feature_generation.file_iterator import GCSFile
 

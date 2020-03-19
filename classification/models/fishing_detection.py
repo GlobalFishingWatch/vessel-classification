@@ -24,6 +24,7 @@ from classification.feature_generation import fishing_feature_generation
 import logging
 import math
 import numpy as np
+import six
 import os
 
 import tensorflow as tf
@@ -105,7 +106,7 @@ class Model(ModelBase):
         training_ids = self.vessel_metadata.fishing_range_only_list(
             random_state, split)
         return [
-            '%s/%s.tfrecord' % (base_feature_path, id_)
+            '%s/%s.tfrecord' % (base_feature_path, six.ensure_text(id_))
             for id_ in training_ids
         ]
 
