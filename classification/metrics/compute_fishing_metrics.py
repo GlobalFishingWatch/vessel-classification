@@ -38,13 +38,13 @@ import argparse
 from collections import namedtuple, defaultdict
 import sys
 import yattag
-import newlinejson as nlj
 from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, schema, atomic
 import gzip
 import dateutil.parser
 import datetime
 import pytz
 from .ydump import css, ydump_table
+import six
 
 
 
@@ -110,8 +110,8 @@ FishingRange = namedtuple('FishingRange',
 def ydump_fishing_localisation(doc, results):
     doc, tag, text, line = doc.ttl()
 
-    y_true = np.concatenate(results.true_fishing_by_id.values())
-    y_pred = np.concatenate(results.pred_fishing_by_id.values())
+    y_true = np.concatenate(list(results.true_fishing_by_id.values()))
+    y_pred = np.concatenate(list(results.pred_fishing_by_id.values()))
 
     header = ['Gear Type (id:true/total)', 'Precision', 'Recall', 'Accuracy', 'F1-Score']
     rows = []
@@ -146,8 +146,8 @@ def ydump_fishing_localisation(doc, results):
 
     rows.append(['', '', '', '', ''])
 
-    y_true = np.concatenate(results.true_fishing_by_id.values())
-    y_pred = np.concatenate(results.pred_fishing_by_id.values())
+    y_true = np.concatenate(list(results.true_fishing_by_id.values()))
+    y_pred = np.concatenate(list(results.pred_fishing_by_id.values()))
 
     rows.append(['Overall',
                  precision_score(y_true, y_pred),
@@ -207,19 +207,19 @@ def load_inferred_fishing(table, id_list, project_id, threshold=True):
 
     """
     query_template = """
-    SELECT vessel_id as id, start_time, end_time, nnet_score FROM 
+    SELECT ssvid as id, start_time, end_time, nnet_score FROM 
         TABLE_DATE_RANGE([{table}],
             TIMESTAMP('{year}-01-01'), TIMESTAMP('{year}-12-31'))
-        WHERE vessel_id in ({ids})
+        WHERE ssvid in ({ids})
     """
     ids = ','.join('"{}"'.format(x) for x in id_list)
     ranges = defaultdict(list)
     for year in range(2012, 2019):
         query = query_template.format(table=table, year=year, ids=ids)
         try:
-            df = pd.read_gbq(query, project_id=project_id)
+            df = pd.read_gbq(query, project_id=project_id, dialect='legacy')
         except pandas_gbq.gbq.GenericGBQException as err:
-            if 'matches no table' in err.message:
+            if 'matches no table' in err.args[0]:
                 print('skipping', year)
                 continue
             else:
@@ -274,7 +274,7 @@ def compare_fishing_localisation(inferred_ranges, fishing_range_path,
     pred_by_id = {}
 
     for id_ in sorted(true_ranges_by_id.keys()):
-        id_ = unicode(id_)
+        id_ = six.ensure_text(id_)
         logging.debug('processing %s', id_)
         if id_ not in inferred_ranges:
             continue

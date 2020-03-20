@@ -41,7 +41,6 @@ import argparse
 from collections import namedtuple, defaultdict
 import sys
 import yattag
-import newlinejson as nlj
 from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT
 from classification.metadata import raw_schema, schema, atomic
 import gzip
