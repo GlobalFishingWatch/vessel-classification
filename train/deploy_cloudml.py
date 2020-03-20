@@ -33,7 +33,7 @@ def launch(args):
     # know the train path and don't need to
     # hardcode it here
     with open(args.config_file) as f:
-        config = yaml.load(f.read())
+        config = yaml.safe_load(f.read())
         tf_config_template = config['tensor_flow_config_template']
 
     gcp = GcpConfig.make_from_env_name(args.env, args.job_name)
@@ -46,12 +46,12 @@ def launch(args):
         '.', '_').replace('-', '_')
 
     # Kick off the job on CloudML
-    with tempfile.NamedTemporaryFile() as temp:
+    with tempfile.NamedTemporaryFile('w') as temp:
         temp.write(tf_config_txt)
         temp.flush()
 
         with open(temp.name) as f:
-            tf_config = yaml.load(f)
+            tf_config = yaml.safe_load(f)
 
         # It seems that we currently need to pass args as both 'args' in the
         # config file and as args after the '--'?!

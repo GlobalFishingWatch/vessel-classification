@@ -1,11 +1,14 @@
+from __future__ import print_function, division, absolute_import
 import subprocess
 import numpy as np
 import pandas as pd
+import hashlib
 import argparse
+import sys
 from classification import metadata
 
 remapping = {
-  'seismic_vessel' : 'research'
+  # 'seismic_vessel' : 'research'
 }
 
 
@@ -102,7 +105,7 @@ def read_vessel_database_for_char_vessel_id(dbname, dataset):
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
-        print query
+        print(query)
         raise
 
 # TODO: segment to UVI table is named weird, what is final name
@@ -155,7 +158,7 @@ def read_vessel_database_for_char_uvi(dbname, dataset):
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
-        print query
+        print(query)
         raise
 
 
@@ -186,7 +189,7 @@ def read_vessel_database_for_char_mmsi(dbname, dataset):
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
-        print query
+        print(query)
         raise
 
 
@@ -247,7 +250,7 @@ def read_vessel_database_for_detect_vessel_id(dbname, fishdbname, dataset):
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
-        print query
+        print(query)
         raise
 
 
@@ -308,7 +311,7 @@ def read_vessel_database_for_detect_uvi(dbname, fishdbname, dataset):
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
-        print query
+        print(query)
         raise
 
 # TODO: fix crew size 
@@ -361,7 +364,7 @@ def read_vessel_database_for_detect_mmsi(dbname, fishdbname, dataset):
     try:
         return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
     except:
-        print query
+        print(query)
         raise
 
 
@@ -540,8 +543,8 @@ def assign_split(df, max_examples, seed=888, check_fishing=False):
             mask[trues] = True
         for i in all_args[base_mask]:
           split[i] = None
-        candidates = all_args[mask]
-        rnd.shuffle(candidates)
+        candidates = sorted(all_args[mask], 
+                       key=lambda x: hashlib.sha256(df.id.iloc[x]).hexdigest())
         for i in candidates[:len(candidates)//2]:
           split[i] = split_a
         for i in candidates[len(candidates)//2:]:
@@ -550,6 +553,9 @@ def assign_split(df, max_examples, seed=888, check_fishing=False):
 
 
 if __name__ == '__main__':
+    assert sys.version_info[0] == 2, 'must generate with Python 2 until feature sharding is updated'
+
+
     parser = argparse.ArgumentParser('Create Training Info')
 
     parser.add_argument(
@@ -671,6 +677,15 @@ if __name__ == '__main__':
     charinfo_df = charinfo_df[~charinfo_df.split.isnull()]
     detinfo_df = detinfo_df[~detinfo_df.split.isnull()]
 
+    hashes = [hash(x) for x in charinfo_df['id']]
+    charinfo_df['idhash'] = hashes
+
+    hashes = [hash(x) for x in detinfo_df['id']]
+    detinfo_df['idhash'] = hashes
+
+
+    # Run create train info, then update metadata to get hashmap from here, then use that.
+
     if args.charinfo_file:
         charinfo_df.to_csv(args.charinfo_file, index=False)
 
@@ -728,3 +743,16 @@ python -m train.create_train_info \
     --detranges-file classification/data/det_ranges_mmsi_v20191127.csv \
     --gear_file classification/data/old_gear.txt
 '''
+
+r'''
+    python -m train.create_train_info \
+        --vessel-database vessel_database.matched_vessels_one_record_per_ssvid_v20200101 \
+        --fishing-table machine_learning_production.fishing_ranges_by_mmsi_v20190506 \
+        --id-type mmsi \
+        --id-list gs://machine-learning-dev-ttl-120d/features/mmsi_features_v20191126/ids/part-00000-of-00001.txt \
+        --dataset pipe_production_v20190502 \
+        --charinfo-file classification/data/char_info_mmsi_v20200120.csv \
+        --detinfo-file classification/data/det_info_mmsi_v20200120.csv \
+        --detranges-file classification/data/det_ranges_mmsi_v20200120.csv
+'''
+

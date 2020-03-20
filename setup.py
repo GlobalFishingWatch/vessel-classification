@@ -16,11 +16,11 @@ import setuptools
 import glob
 import os
 
+package = __import__('classification')
 
 DEPENDENCIES = [
-    "ujson",
-    "NewlineJSON",
-    "google-api-python-client"
+    "google-api-python-client",
+    "six>=1.13.0'"
 ]
 
 
@@ -29,9 +29,10 @@ data_files = [os.path.basename(x)
 
 setuptools.setup(
     name='vessel_inference',
-    version='3.0.0',
-    author='Tim Hochberg',
-    author_email='tim@globalfishingwatch.com',
+    version=package.__version__,
+    author=package.__author__,
+    author_email=package.__email__,
+    description=package.__doc__.strip(),
     package_data={
         'classification.data': data_files
     },
@@ -42,6 +43,6 @@ setuptools.setup(
         'classification.models',
         'classification.feature_generation'
     ],
-    install_requires=DEPENDENCIES 
+    install_requires=DEPENDENCIES
 )
 

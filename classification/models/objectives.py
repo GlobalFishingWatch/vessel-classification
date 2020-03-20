@@ -22,6 +22,7 @@ import tensorflow as tf
 import tensorflow.metrics as metrics
 from classification import metadata
 import pytz
+import six
 """ Terminology in the context of objectives.
     
     Net: the raw input to an objective function, an embeddeding that has not
@@ -93,7 +94,7 @@ class RegressionObjective(ObjectiveBase):
         self.output_shape = []
 
     def create_label(self, id_, timestamps):
-        self.value_from_id(id)
+        self.value_from_id(id_)
 
     def build(self, net):
         self.prediction = tf.layers.dense(net, 1, activation=None)[:, 0]
@@ -342,7 +343,7 @@ class FishingLocalizationObjectiveCrossEntropy(ObjectiveBase):
 
         assert (len(prediction) == len(timestamps))
         thresholded_prediction = prediction > 0.5
-        combined = zip(timestamps, thresholded_prediction)
+        combined = list(six.moves.zip(timestamps, thresholded_prediction))
         if self.window:
             b, e = self.window
             combined = combined[b:e]
