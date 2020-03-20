@@ -13,20 +13,23 @@
 # limitations under the License.
 
 from __future__ import absolute_import
+
+from . import layers
+from .model import ModelBase
+from .objectives import ( FishingLocalizationObjectiveCrossEntropy, TrainNetInfo)
+
+from classification import metadata
+from classification.feature_generation import fishing_feature_generation
+
+from tensorflow.core.protobuf import config_pb2
+
 import argparse
 import json
-from .model import ModelBase
-from . import layers
-from classification import metadata
-from .objectives import (
-    FishingLocalizationObjectiveCrossEntropy, TrainNetInfo)
-from classification.feature_generation import fishing_feature_generation
 import logging
 import math
 import numpy as np
-import six
 import os
-
+import six
 import tensorflow as tf
 
 
@@ -162,7 +165,7 @@ class Model(ModelBase):
         return _model_fn
 
     def make_estimator(self, checkpoint_dir):
-        session_config = tf.ConfigProto(allow_soft_placement=True)
+        session_config = config_pb2.ConfigProto(allow_soft_placement=True)
         return  tf.estimator.Estimator(
             config=tf.estimator.RunConfig(
                             model_dir=checkpoint_dir, 

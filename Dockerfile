@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM python:3.7-stretch
 
 RUN mkdir -p /opt/project
 WORKDIR /opt/project
@@ -20,7 +20,7 @@ ENV PATH $PATH:/root/google-cloud-sdk/bin
 # Install python dependencies
 RUN easy_install pip && \
     pip install --upgrade pip
-RUN pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.2.0-cp27-none-linux_x86_64.whl && \
+RUN pip install tensorflow && \
     pip install google-api-python-client pyyaml pytz newlinejson python-dateutil yattag pandas-gbq && \
     pip install git+https://github.com/GlobalFishingWatch/bqtools.git
 

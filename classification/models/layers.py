@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import tensorflow as tf
-import tensorflow.layers as ly
+import tensorflow.python.keras.layers as ly
 import numpy as np
 
 
