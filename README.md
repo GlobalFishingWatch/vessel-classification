@@ -7,7 +7,7 @@ based on [AIS](https://en.wikipedia.org/wiki/Automatic_identification_system) da
 
 (This is not an official Google Product).
 
-[![Build Status](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline.svg?branch=master)](https://travis-ci.org/GlobalFishingWatch/vessel-classification-pipeline)
+[![Build Status](https://travis-ci.org/GlobalFishingWatch/vessel-classification.svg?branch=master)](https://travis-ci.org/GlobalFishingWatch/vessel-classification)
 
 ## Overview
 
