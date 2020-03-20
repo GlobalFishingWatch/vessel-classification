@@ -14,7 +14,7 @@ tensor_flow_config_template: | # This gets interpolated and then passed onto TF
       ]
     scaleTier: CUSTOM
     masterType: large_model_v100
-    runtimeVersion: "1.12"
+    runtimeVersion: "1.13"
 
 
     

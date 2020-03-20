@@ -14,6 +14,7 @@
 
 import abc
 import numpy as np
+import six
 from classification import metadata
 
 
@@ -74,7 +75,7 @@ class ModelBase(object):
             self.max_replication_factor,
             boundary=boundary)
         return [
-            '%s/%s.tfrecord' % (base_feature_path, id_)
+            '%s/%s.tfrecord' % (base_feature_path, six.ensure_text(id_))
             for id_ in training_ids
         ]
 

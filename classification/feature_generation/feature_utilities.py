@@ -16,6 +16,7 @@ import datetime
 import pytz
 import logging
 import numpy as np
+import six
 import time
 
 
@@ -38,7 +39,10 @@ def np_pad_repeat_slice(slice, window_size):
     slice_length = len(slice)
     assert (slice_length <= window_size)
     reps = int(np.ceil(window_size / float(slice_length)))
-    return np.concatenate([slice] * reps, axis=0)[:window_size]
+    if reps > 1:
+        return np.concatenate([slice] * reps, axis=0)[:window_size]
+    else:
+        return slice[:window_size].copy()
 
 def np_zero_pad_slice(slice, window_size, random_state):
     """ Pads slice to the specified window size.
@@ -63,10 +67,6 @@ def np_zero_pad_slice(slice, window_size, random_state):
     slice_length = len(slice)
     delta = window_size - slice_length
     assert delta >= 0
-    # TODOL: These two lines don't appear to be used. Check and remove at
-    # next cleanup.
-    _, n_feat = slice.shape
-    padded = np.zeros([window_size, n_feat], dtype=slice.dtype)
     offset = random_state.randint(0, delta + 1)
     return np.concatenate([slice] * reps, axis=0)[offset:offset+window_size]
 
@@ -203,8 +203,45 @@ def extract_n_random_fixed_points(random_state, input_series, n,
         end_index = start_index + output_length
         samples.append(cook_features(input_series[start_index:end_index], id_))
 
-    return zip(*samples)
+    return list(zip(*samples))
 
+
+
+
+def setup_cook_features_into(n, features_shape):
+    s0, s1 = features_shape
+    features = np.empty((n, s0, s1 - 1), np.float32)
+    timestamps = np.empty([n, s0], np.int32)
+    ranges = np.empty([n, 2], np.int32)
+    ids = np.empty([n], object)
+    return features, timestamps, ranges, ids
+
+def cook_features_into(arrays, i, data, id_, range_=None):
+    """Convert raw features into something the model can digest
+
+        Args:
+            arrays: (features, timestamps, ranges)
+            i : index to inserrt into
+            features: np.array of raw features
+            range: tuple, optional
+                (start, stop) timestamps, if not supplied, this is derived
+                from features.
+
+        Returns:
+            (2D np.array of features for the model,
+             2D np.array of timestamps,
+             (start_time, end_time) as seconds from Unix epoch.
+             str id of vessel)
+    """
+    features, timestamps, ranges, ids = arrays
+    features[i] = data[:, 1:]
+    timestamps[i] = data[:, 0]
+    if range_ is None:
+        ranges[i, 0] = int(data[:, 0].min())
+        ranges[i, 1] = int(data[:, 0].max())
+    else:
+        ranges[i, :] = range_
+    ids[i] = id_
 
 def extract_n_random_fixed_times(random_state, input_series, n,
                                        max_time_delta, output_length,
@@ -244,16 +281,17 @@ def extract_n_random_fixed_times(random_state, input_series, n,
     if max_time < min_time:
         return empty_data(output_length, input_series)
 
-    samples = []
-    for _ in range(n):
+    # TODO: clarify by breaking into two function
+    arrays = setup_cook_features_into(n, (output_length, input_series.shape[-1]))
+    for i in range(n):
         start_time = random_state.randint(min_time, max_time + 1)
         start_index = np.searchsorted(input_series[:, 0], start_time, side='left')
         end_index = start_index + output_length
         cropped = input_series[start_index:end_index] # Might only have min_timeslice_size points
         padded = np_pad_repeat_slice(cropped, output_length)
-        samples.append(cook_features(padded, id_))
+        cook_features_into(arrays, i, padded, id_)
 
-    return zip(*samples)
+    return arrays
 
 
 
@@ -284,8 +322,10 @@ def np_array_extract_slices_for_time_ranges(
         4. A numpy array with an int64 id for each slice, of dimension [n].
 
     """
-    slices = []
     times = input_series[:, 0]
+    ndx = 0
+    arrays = setup_cook_features_into(len(time_ranges), 
+                        (window_size, input_series.shape[-1]))
     for (start_time, end_time) in time_ranges:
         start_index = np.searchsorted(times, start_time, side='left')
         end_index = np.searchsorted(times, end_time, side='left')
@@ -295,23 +335,17 @@ def np_array_extract_slices_for_time_ranges(
         cropped = input_series[start_index:end_index]
 
         # If this window is too long, pick a random subwindow.
+
         if (length > window_size):
             max_offset = length - window_size
             start_offset = random_state.uniform(max_offset)
             cropped = cropped[max_offset:max_offset + window_size]
 
         if len(cropped) >= min_points_for_classification:
-            output_slice = np_pad_repeat_slice(cropped, window_size)
-            time_bounds = np.array([start_time, end_time], dtype=np.int32)
-            without_timestamp = output_slice[:, 1:]
-            timeseries = output_slice[:, 0].astype(np.int32)
-            slices.append(
-                (np.stack([without_timestamp]), timeseries, time_bounds, id_))
-    # TODO: factor out this logic
-    if slices == []:
-        return empty_data(window_size, input_series)
-    return zip(*slices)
-
+            padded = np_pad_repeat_slice(cropped, window_size)
+            cook_features_into(arrays, ndx, padded, id_, (start_time, end_time))
+            ndx += 1
+    return tuple(x[:ndx] for x in arrays)
 
 def np_array_extract_all_fixed_slices(input_series, num_features, id_,
                                       window_size, shift):
@@ -320,7 +354,8 @@ def np_array_extract_all_fixed_slices(input_series, num_features, id_,
     for end_index in range(input_length, 0, -shift):
         start_index = end_index - window_size
         if start_index < 0:
-            logging.warn('input not correctly padded, dropping start')
+            if start_index != -shift:
+                logging.warning('input not correctly padded, dropping start')
             continue
         cropped = input_series[start_index:end_index]
         start_time = int(cropped[0][0])
@@ -330,7 +365,7 @@ def np_array_extract_all_fixed_slices(input_series, num_features, id_,
         slices.append(cook_features(cropped, id_))
     if slices == []:
         return empty_data(window_size, input_series)
-    return zip(*slices)
+    return list(zip(*slices))
 
 
 
@@ -364,7 +399,8 @@ def process_fixed_window_features(random_state, features, id_,
     pad_end = window_size - win_end
     pad_start = win_start
 
-    is_sorted = all(features[i, 0] <= features[i+1, 0] for i in xrange(len(features)-1))
+    is_sorted = all(features[i, 0] <= features[i+1, 0] 
+                    for i in six.moves.range(len(features)-1))
     assert is_sorted
 
     if start_date is not None:
@@ -375,12 +411,12 @@ def process_fixed_window_features(random_state, features, id_,
     if end_date is not None:
         raw_end_i = np.searchsorted(features[:, 0], end_stamp, side='right')
         # How much padding do we need:
-        n_pad_end = (len(features) - raw_end_i) - pad_end
+        available = len(features) - raw_end_i
+        n_pad_end = max(pad_end - available, 0)
     else:
         raw_end_i = len(features)
         n_pad_end = pad_end
-        
-    end_i = len(features) + n_pad_end
+    end_i = raw_end_i + pad_end
 
     #    \/ raw_start_i
     #              ppBBBBpp<--- shift
@@ -392,6 +428,7 @@ def process_fixed_window_features(random_state, features, id_,
         raw_start_i = np.searchsorted(features[:, 0], start_stamp, side='left')
     else:
         raw_start_i = 0
+    assert raw_start_i >= 0
 
     start_i = raw_start_i - pad_start
 

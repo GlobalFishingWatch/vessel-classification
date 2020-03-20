@@ -1,12 +1,13 @@
 import tensorflow as tf
-import feature_generation
+import logging
 import numpy as np
-from classification import metadata
 from . import feature_generation
 from . import feature_utilities
+import six
 
 
-def input_fn(vessel_metadata,
+def input_fn(
+             metadata,
              filenames,
              num_features,
              max_time_delta,
@@ -14,25 +15,22 @@ def input_fn(vessel_metadata,
              min_timeslice_size,
              objectives,
              parallelism=4,
-             num_slices_per_id=8):
+             num_slices_per_id=4):
 
     random_state = np.random.RandomState()
 
     def xform(id_, movement_features):
 
-        def _xform(features, int_id):
-            id_ = vessel_metadata.id_map_int2str[int_id]
+        def _xform(id_, features):
+            id_ = metadata.id_map_int2bytes[id_]
             return feature_utilities.extract_n_random_fixed_times(
                     random_state, features, num_slices_per_id, max_time_delta,
                     window_size, id_, min_timeslice_size)
 
-        int_id = tf.cast(id_, tf.int64)
-        features = tf.cast(movement_features, tf.float32)
         features, timestamps, time_ranges, id_ = tf.py_func(
             _xform, 
-            [features, int_id],
+            [id_, movement_features],
             [tf.float32, tf.int32, tf.int32, tf.string])
-        features = tf.squeeze(features, axis=1)
         return (features, timestamps, time_ranges, id_)
 
     def add_labels(features, timestamps, time_bounds, id_):
@@ -48,7 +46,6 @@ def input_fn(vessel_metadata,
         return ((features, timestamps, time_bounds, id_), tuple(labels))
 
     def set_shapes(all_features, labels):
-        class_count = len(metadata.VESSEL_CLASS_DETAILED_NAMES)
         feature_generation.set_feature_shapes(all_features, num_features, window_size)
         for i, obj in enumerate(objectives):
             t = labels[i]
@@ -91,19 +88,16 @@ def predict_input_fn(paths,
 
     def xform(id_, movement_features):
 
-        def _xform(features, int_id):
-            id_ = str(int_id)
+        def _xform(id_, features):
             return feature_utilities.np_array_extract_slices_for_time_ranges(
                     random_state, features, id_, time_ranges,
                     window_size, min_timeslice_size)
 
-        int_id = tf.cast(id_, tf.int64)
-        features = tf.cast(movement_features, tf.float32)
+        raw_features = tf.cast(movement_features, tf.float32)
         features, timestamps, time_ranges_tensor, id_ = tf.py_func(
             _xform, 
-            [features, int_id],
+            [id_, raw_features],
             [tf.float32, tf.int32, tf.int32, tf.string])
-        features = tf.squeeze(features, axis=1)
         return (features, timestamps, time_ranges_tensor, id_)
 
     def set_shapes(features, timestamps, time_bounds, id_):

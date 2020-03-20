@@ -23,7 +23,9 @@ import sys
 import tensorflow as tf
 import yaml
 import numpy as np
-from feature_generation.file_iterator import GCSFile
+import hashlib
+import six
+from .feature_generation.file_iterator import GCSFile
 
 
 """ The main column for vessel classification. """
@@ -36,7 +38,13 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 # be defined in principle, although at present the interaction between the mulithot and non multihot
 # versions makes that more complicated.
 
-schema = yaml.load('''
+try:
+    yaml_load = yaml.safe_load
+except:
+    yaml_load = yaml.load
+
+
+raw_schema = '''
 unknown:
   non_fishing:
     passenger:
@@ -82,12 +90,15 @@ unknown:
       other_purse_seines:
      other_seines:
     driftnets:
-''')
+'''
+
+
+schema = yaml.safe_load(raw_schema)
 
 
 def atomic(obj):
     for k, v in obj.items():
-        if v is None:
+        if v is None or isinstance(v, str):
             yield k
         else:
             for x in atomic(v):
@@ -95,7 +106,7 @@ def atomic(obj):
 
 def categories(obj, include_atomic=True):
     for k, v in obj.items():
-        if v is None:
+        if v is None or isinstance(v, str):
             if include_atomic:
                 yield k, [k]
         else:
@@ -105,8 +116,6 @@ def categories(obj, include_atomic=True):
 
 
 
-
-#TODO: Better names
 VESSEL_CLASS_DETAILED_NAMES = sorted(atomic(schema))
 
 VESSEL_CATEGORIES = sorted(categories(schema))
@@ -118,6 +127,11 @@ FishingRange = namedtuple('FishingRange',
                           ['start_time', 'end_time', 'is_fishing'])
 
 
+def stable_hash(x):
+    x = six.ensure_binary(x)
+    digest = hashlib.blake2b(six.ensure_binary(x)).hexdigest()[-8:]
+    return int(digest, 16)
+
 class VesselMetadata(object):
     def __init__(self,
                  metadata_dict,
@@ -125,18 +139,13 @@ class VesselMetadata(object):
         self.metadata_by_split = metadata_dict
         self.metadata_by_id = {}
         self.fishing_ranges_map = fishing_ranges_map
-        for split, vessels in metadata_dict.iteritems():
-            for id_, data in vessels.iteritems():
+        self.id_map_int2bytes = {}
+        for split, vessels in metadata_dict.items():
+            for id_, data in vessels.items():
+                id_ = six.ensure_binary(id_)
                 self.metadata_by_id[id_] = data
-        self.id_map_int2str = {}
-        # Put both hash and in in mapping to catch either case.
-        for k in self.metadata_by_id:
-            try:
-                self.id_map_int2str[int(k)] = k
-            except ValueError:
-                pass
-            self.id_map_int2str[hash(k)] = k
-
+                idhash = stable_hash(id_)
+                self.id_map_int2bytes[idhash] = id_
 
         intersection_ids = set(self.metadata_by_id.keys()).intersection(
             set(fishing_ranges_map.keys()))
@@ -168,7 +177,7 @@ class VesselMetadata(object):
         replicated_ids = []
         logging.info("Training ids: %d", len(self.ids_for_split(split)))
         fishing_ranges_ids = []
-        for id_, (row, weight) in self.metadata_by_split[split].iteritems():
+        for id_, (row, weight) in self.metadata_by_split[split].items():
             if row_filter(row):
                 if id_ in self.fishing_ranges_map:
                     fishing_ranges_ids.append(id_)
@@ -225,7 +234,7 @@ def read_vessel_time_weighted_metadata_lines(available_ids, lines,
     min_time_per_id = np.inf
 
     for row in lines:
-        id_ = row['id'].strip()
+        id_ = six.ensure_binary(row['id'].strip())
         if id_ in available_ids:
             if id_ not in fishing_range_dict:
                 continue
@@ -299,7 +308,7 @@ def read_vessel_multiclass_metadata_lines(available_ids, lines,
 
     available_ids = set(available_ids)
     for row in lines:
-        id_ = row['id'].strip()
+        id_ = six.ensure_binary(row['id'].strip())
         if id_ not in available_ids:
             continue
         raw_vessel_type = row[PRIMARY_VESSEL_CLASS_COLUMN]
@@ -326,17 +335,12 @@ def read_vessel_multiclass_metadata_lines(available_ids, lines,
         #         type(id_), type(sorted(available_ids)[0]))
 
     # # Calculate weights for each vessel type per split, for
-    # # now use weights of sqrt(max_count / count), but eventually weight by prevalance
-    # # in AIS (as best as we can figure) <== TODO
+    # # now use weights of sqrt(max_count / count)
     dataset_kind_weights = defaultdict(lambda: {})
-    for split, counts in dataset_kind_counts.iteritems():
+    for split, counts in dataset_kind_counts.items():
         max_count = max(counts.values())
-        for atomic_vessel_type, count in counts.iteritems():
+        for atomic_vessel_type, count in counts.items():
             dataset_kind_weights[split][atomic_vessel_type] = np.sqrt(max_count / float(count))
-    # dataset_kind_weights = defaultdict(lambda: {})
-    # for split, counts in dataset_kind_counts.iteritems():
-    #     for coarse_vessel_type, count in counts.iteritems():
-    #         dataset_kind_weights[split][coarse_vessel_type] = 1
 
     metadata_dict = defaultdict(lambda: {})
     for id_, split, raw_vessel_type, row in vessel_types:
@@ -391,7 +395,7 @@ def find_available_ids(feature_path):
         id_path = os.path.join(root_output_path, 'ids/part-00000-of-00001.txt')
         logging.info('Reading id list file from {}'.format(id_path))
         with GCSFile(id_path) as f:
-            els = f.read().split('\n')
+            els = f.read().split(b'\n')
         id_list = [id_.strip() for id_ in els if id_.strip() != '']
 
         logging.info('Found %d ids.', len(id_list))
@@ -419,7 +423,7 @@ def read_fishing_ranges(fishing_range_file):
     with open(fishing_range_file, 'r') as f:
         for l in f.readlines()[1:]:
             els = l.split(',')
-            id_ = els[0].strip()
+            id_ = six.ensure_binary(els[0].strip())
             start_time = parse_date(els[1]).replace(tzinfo=pytz.utc)
             end_time = parse_date(els[2]).replace(tzinfo=pytz.utc)
             is_fishing = float(els[3])
