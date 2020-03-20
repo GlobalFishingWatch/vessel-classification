@@ -971,13 +971,6 @@ def compute_results(args):
                 (results[field].inferred_attrs < 0).sum(),
                 len(results[field].inferred_attrs))
 
-    # import pickle
-    # with open('dumped_results.pkl', 'wb') as f:
-    #     pickle.dump(results, f, pickle.HIGHEST_PROTOCOL)
-
-
-    # label_df.to_csv('dumped_labels.csv')
-
     # Assemble coarse and is_fishing scores:
     logging.info('Assembling fine data')
     results['fine'] = assemble_composite(results['raw_classes'], fine_mapping)

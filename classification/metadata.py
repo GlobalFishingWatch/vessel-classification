@@ -341,10 +341,6 @@ def read_vessel_multiclass_metadata_lines(available_ids, lines,
         max_count = max(counts.values())
         for atomic_vessel_type, count in counts.items():
             dataset_kind_weights[split][atomic_vessel_type] = np.sqrt(max_count / float(count))
-    # dataset_kind_weights = defaultdict(lambda: {})
-    # for split, counts in dataset_kind_counts.items():
-    #     for coarse_vessel_type, count in counts.items():
-    #         dataset_kind_weights[split][coarse_vessel_type] = 1
 
     metadata_dict = defaultdict(lambda: {})
     for id_, split, raw_vessel_type, row in vessel_types:
