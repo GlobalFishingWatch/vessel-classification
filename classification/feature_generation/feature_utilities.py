@@ -399,6 +399,9 @@ def process_fixed_window_features(random_state, features, id_,
     pad_end = window_size - win_end
     pad_start = win_start
 
+    if len(features) == 0:
+        return empty_data(window_size, features)
+
     is_sorted = all(features[i, 0] <= features[i+1, 0] 
                     for i in six.moves.range(len(features)-1))
     assert is_sorted
@@ -431,6 +434,10 @@ def process_fixed_window_features(random_state, features, id_,
     assert raw_start_i >= 0
 
     start_i = raw_start_i - pad_start
+
+    if start_i >= len(features) or end_i < 1:
+        # No features overlap with window
+        return empty_data(window_size, features)
 
     while (end_i - start_i - window_size) % shift:
         start_i -= 1
