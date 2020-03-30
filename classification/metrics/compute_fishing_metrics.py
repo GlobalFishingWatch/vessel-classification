@@ -207,10 +207,10 @@ def load_inferred_fishing(table, id_list, project_id, threshold=True):
 
     """
     query_template = """
-    SELECT ssvid as id, start_time, end_time, nnet_score FROM 
+    SELECT vessel_id as id, start_time, end_time, nnet_score FROM 
         TABLE_DATE_RANGE([{table}],
             TIMESTAMP('{year}-01-01'), TIMESTAMP('{year}-12-31'))
-        WHERE ssvid in ({ids})
+        WHERE vessel_id in ({ids})
     """
     ids = ','.join('"{}"'.format(x) for x in id_list)
     ranges = defaultdict(list)

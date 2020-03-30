@@ -6,6 +6,7 @@ import hashlib
 import argparse
 import sys
 from classification import metadata
+import six
 
 remapping = {
   # 'seismic_vessel' : 'research'
@@ -14,23 +15,8 @@ remapping = {
 
 def read_ids(gcs_path):
     id_text = subprocess.check_output(['gsutil', 'cat', gcs_path])
-    return set([x.strip() for x in id_text.strip().split()])
+    return set([six.ensure_text(x).strip() for x in id_text.strip().split()])
 
-def fishing_range_uvi(fishdbname, dataset):
-    return '''
-        (
-            select c.uvi, 
-                min(start_time) as first_timestamp,
-                max(end_time) as last_timestamp,
-                sum(is_fishing) = 0 as transit_only
-            from `{fishdbname}` a
-            join `{dataset}.segment_info` b
-            on (a.mmsi = cast(ssvid as int64))
-            join `scratch_uvi_pipe_production_v20190502_ttl100.segment_to_uvi_20190528` c
-            using (seg_id)
-            group by uvi
-        )
-    '''.format(fishdbname=fishdbname, dataset=dataset)
 
 def fishing_range_vessel_id(fishdbname, dataset):
     return '''
@@ -63,14 +49,17 @@ def read_vessel_database_for_char_vessel_id(dbname, dataset):
         with 
 
         core as (
-          select vessel_id as id, feature.length_m as length, feature.tonnage_gt as tonnage, 
+          select vessel_id as id, 
+                 feature.length_m as length, 
+                 feature.tonnage_gt as tonnage, 
                  feature.engine_power_kw as engine_power, 
-                 feature.geartype as label, 0 as crew_size,
-                 confidence, -- 1==low, 2==typical, 3==high
+                 feature.geartype as label, 
+                 feature.crew as crew_size,
+                 array_to_string(feature.geartype, '|') as lbl,
                  pos_count
-          from {dbname} a
+          from (select * from {dbname} cross join unnest (activity)) a
           join `{dataset}.vessel_info` b
-          on (a.mmsi = cast(ssvid as int64))
+          on (a.identity.ssvid = b.ssvid)
           where 
            (not ((a.last_timestamp is not null and 
                   a.last_timestamp < b.first_timestamp) or 
@@ -83,11 +72,10 @@ def read_vessel_database_for_char_vessel_id(dbname, dataset):
         ),
 
         counted as (
-          select * except(pos_count), sum(pos_count) as count
+          select * except(pos_count, label, lbl), lbl as label, sum(pos_count) as count
           from core 
           group by id, length, tonnage, 
-                 engine_power, label, crew_size,
-                 confidence
+                 engine_power, label, crew_size
         ),
 
         ordered as (
@@ -95,60 +83,7 @@ def read_vessel_database_for_char_vessel_id(dbname, dataset):
                  row_number() over (partition by id 
                         order by count desc, label,
                         length, tonnage, engine_power, 
-                        crew_size, confidence) as rk
-          from counted
-        )
-            
-        select * except(rk, count) from ordered
-        where rk = 1
-    '''.format(**locals())
-    try:
-        return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
-    except:
-        print(query)
-        raise
-
-# TODO: segment to UVI table is named weird, what is final name
-def read_vessel_database_for_char_uvi(dbname, dataset):
-    query = '''
-        with 
-
-        core as (
-          select c.uvi as id, feature.length_m as length, feature.tonnage_gt as tonnage, 
-                 feature.engine_power_kw as engine_power, 
-                 feature.geartype as label, 0 as crew_size,
-                 confidence, -- 1==low, 2==typical, 3==high
-                 pos_count
-          from {dbname} a
-          join `{dataset}.segment_info` b
-            on (a.mmsi = cast(ssvid as int64))
-          join `scratch_uvi_pipe_production_v20190502_ttl100.segment_to_uvi_20190528` c
-            using (seg_id)          
-          where 
-           (not ((a.last_timestamp is not null and 
-                  a.last_timestamp < b.first_timestamp) or 
-                 (a.first_timestamp is not null and
-                  a.first_timestamp > b.last_timestamp)))
-            and (feature.length_m is not null or feature.tonnage_gt is not null or 
-                feature.engine_power_kw is not null or feature.geartype is not null
-                --or feature.crew is not null
-                )
-        ),
-
-        counted as (
-          select * except(pos_count), sum(pos_count) as count
-          from core 
-          group by id, length, tonnage, 
-                 engine_power, label, crew_size,
-                 confidence
-        ),
-
-        ordered as (
-          select *, 
-                 row_number() over (partition by id 
-                        order by count desc, label,
-                        length, tonnage, engine_power, 
-                        crew_size, confidence) as rk
+                        crew_size) as rk
           from counted
         )
             
@@ -198,20 +133,18 @@ def read_vessel_database_for_detect_vessel_id(dbname, fishdbname, dataset):
     query = '''
         with 
 
-        fishing_range_mmsi as {fishing_range_query},
+        fishing_range_vessel_id as {fishing_range_query},
 
         core as (
-          select e.uvi as id, feature.length_m as length, feature.tonnage_gt as tonnage, 
+          select vessel_id as id, feature.length_m as length, feature.tonnage_gt as tonnage, 
                  feature.engine_power_kw as engine_power, 
-                 feature.geartype as label, 0 as crew_size,
-                 confidence, -- 1==low, 2==typical, 3==high
+                 array_to_string(feature.geartype, '|') as label,
+                 feature.crew as crew_size,
                  pos_count, transit_only
-          from {dbname} a
+          from (select * from {dbname} cross join unnest (activity)) a
          join `{dataset}.segment_info` b
-            on (a.mmsi = cast(ssvid as int64))
-            join `scratch_uvi_pipe_production_v20190502_ttl100.segment_to_uvi_20190528` e
-            using (seg_id)
-          join `fishing_range_mmsi` c
+            on (cast(a.identity.ssvid as string) = ssvid)
+          join `fishing_range_vessel_id` c
           using (vessel_id)
           where -- valid times overlap with segments
            (not ((a.last_timestamp is not null and 
@@ -226,10 +159,10 @@ def read_vessel_database_for_detect_vessel_id(dbname, fishdbname, dataset):
         ),
 
         counted as (
-          select * except(pos_count, confidence, transit_only, length, tonnage, engine_power,
+          select * except(pos_count, transit_only, length, tonnage, engine_power,
                           label, crew_size), 
                     sum(pos_count) as count,
-                   avg(confidence) as confidence, min(transit_only) as transit_only,
+                   min(transit_only) as transit_only,
                    avg(length) as length, avg(tonnage) as tonnage, avg(engine_power) as engine_power,
                    any_value(label) as label, avg(crew_size) as crew_size
           from core 
@@ -241,7 +174,7 @@ def read_vessel_database_for_detect_vessel_id(dbname, fishdbname, dataset):
                  row_number() over (partition by id 
                         order by count desc, label,
                         length, tonnage, engine_power, 
-                        crew_size, confidence) as rk
+                        crew_size) as rk
           from counted
         )
             
@@ -254,67 +187,7 @@ def read_vessel_database_for_detect_vessel_id(dbname, fishdbname, dataset):
         raise
 
 
-def read_vessel_database_for_detect_uvi(dbname, fishdbname, dataset):
-    fishing_range_query=fishing_range_uvi(fishdbname, dataset)
-    query = '''
-        with 
 
-        fishing_range_mmsi as {fishing_range_query},
-
-        core as (
-          select e.uvi as id, feature.length_m as length, feature.tonnage_gt as tonnage, 
-                 feature.engine_power_kw as engine_power, 
-                 feature.geartype as label, 0 as crew_size,
-                 confidence, -- 1==low, 2==typical, 3==high
-                 pos_count, transit_only
-          from {dbname} a
-         join `{dataset}.segment_info` b
-            on (a.mmsi = cast(ssvid as int64))
-            join `scratch_uvi_pipe_production_v20190502_ttl100.segment_to_uvi_20190528` e
-            using (seg_id)          
-          join `fishing_range_mmsi` c
-          on c.uvi = e.uvi
-          where -- valid times overlap with segments
-           (not ((a.last_timestamp is not null and 
-                 a.last_timestamp < b.first_timestamp) or 
-                 (a.first_timestamp is not null and
-                 a.first_timestamp > b.last_timestamp)))
-            and -- valid times overlaps with fishing ranges
-           (not ((a.last_timestamp is not null and 
-                  a.last_timestamp < c.first_timestamp) or 
-                 (a.first_timestamp is not null and 
-                  a.first_timestamp > c.last_timestamp))) 
-        ),
-
-        counted as (
-          select * except(pos_count, confidence, transit_only, length, tonnage, engine_power,
-                          label, crew_size), 
-                    sum(pos_count) as count,
-                   avg(confidence) as confidence, min(transit_only) as transit_only,
-                   avg(length) as length, avg(tonnage) as tonnage, avg(engine_power) as engine_power,
-                   any_value(label) as label, avg(crew_size) as crew_size
-          from core 
-          group by id
-        ),     
-
-        ordered as (
-          select *, 
-                 row_number() over (partition by id 
-                        order by count desc, label,
-                        length, tonnage, engine_power, 
-                        crew_size, confidence) as rk
-          from counted
-        )
-            
-        select * except(rk, count) from ordered
-    '''.format(**locals())
-    try:
-        return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
-    except:
-        print(query)
-        raise
-
-# TODO: fix crew size 
 
 def read_vessel_database_for_detect_mmsi(dbname, fishdbname, dataset):
     fishing_range_query=fishing_range_mmsi(fishdbname, dataset)
@@ -414,52 +287,7 @@ def read_fishing_ranges_vessel_id(fishdbname, dataset):
         raise
 
 
-def read_fishing_ranges_uvi(fishdbname, dataset):
-    query = '''
-        with 
 
-        fishing_ranges as {fishing_ranges},
-
-        core as (
-          select mmsi as ssvid, e.uvi as id, 
-                 start_time, end_time, is_fishing, pos_count
-          from
-          `{fishdbname}` a
-          join 
-          `{dataset}.segment_info` b
-          on (a.mmsi = cast(ssvid as int64))
-          join `scratch_uvi_pipe_production_v20190502_ttl100.segment_to_uvi_20190528` e
-            using (seg_id)
-          join `fishing_ranges` c
-          on c.uvi = e.uvi
-          where 
-            (not (b.last_timestamp <  c.first_timestamp or 
-                  b.first_timestamp > c.last_timestamp))
-        ),
-
-        counted as (
-          select id, start_time, end_time, is_fishing, sum(pos_count) as count
-          from core 
-          group by id, start_time, end_time, is_fishing
-        ),
-            
-        ordered as (
-          select *, 
-                 row_number() over (partition by id, start_time, end_time
-                                     order by count desc) as rk
-          from counted
-        )
-            
-        select * except(rk, count) from ordered
-        where rk = 1
-    '''.format(fishdbname=fishdbname,
-               dataset=dataset, 
-               fishing_ranges=fishing_range_uvi(fishdbname, dataset))
-    try:
-        return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
-    except:
-        print(query)
-        raise
 
 def read_fishing_ranges_mmsi(fishdbname, dataset):
     query = '''
@@ -532,9 +360,9 @@ def assign_split(df, max_examples, seed=888, check_fishing=False):
     # Half for train half for test
     total_max_examples =  2 * max_examples 
     for lbl in labels:
-        base_mask = (df.label.values == lbl)
+        lbl = six.ensure_text(lbl)
+        base_mask = np.array([six.ensure_text(x) == lbl for x in df.label.values], dtype=bool)
         mask = base_mask.copy()
-        print(lbl, mask.sum())
         if check_fishing:
             mask &= (df.transit_only.values == 0)
         elif mask.sum() > total_max_examples: 
@@ -544,7 +372,7 @@ def assign_split(df, max_examples, seed=888, check_fishing=False):
         for i in all_args[base_mask]:
           split[i] = None
         candidates = sorted(all_args[mask], 
-                       key=lambda x: hashlib.sha256(df.id.iloc[x]).hexdigest())
+                       key=lambda x: hashlib.sha256(six.ensure_binary(df.id.iloc[x])).hexdigest())
         for i in candidates[:len(candidates)//2]:
           split[i] = split_a
         for i in candidates[len(candidates)//2:]:
@@ -553,7 +381,7 @@ def assign_split(df, max_examples, seed=888, check_fishing=False):
 
 
 if __name__ == '__main__':
-    assert sys.version_info[0] == 2, 'must generate with Python 2 until feature sharding is updated'
+    # assert sys.version_info[0] == 2, 'must generate with Python 2 until feature sharding is updated'
 
 
     parser = argparse.ArgumentParser('Create Training Info')
@@ -570,7 +398,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--id-type',
-        choices=['vessel-id', 'uvi', 'mmsi'],
+        choices=['vessel-id', 'mmsi'],
         required=True
         )
 
@@ -581,7 +409,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--dataset',
-        help="Name of the dataset to draw uvi mapping from"
+        help="Name of the dataset to draw vessel_id mapping from"
         )
 
     parser.add_argument(
@@ -626,12 +454,6 @@ if __name__ == '__main__':
         detinfo_df = read_vessel_database_for_detect_vessel_id(args.vessel_database, 
                                                  args.fishing_table, args.dataset)
         det_df = read_fishing_ranges_vessel_id(args.fishing_table, args.dataset)
-    elif args.id_type == 'uvi':
-        charinfo_df = read_vessel_database_for_char_uvi(args.vessel_database, 
-                                                              args.dataset)
-        detinfo_df = read_vessel_database_for_detect_uvi(args.vessel_database, 
-                                                 args.fishing_table, args.dataset)
-        det_df = read_fishing_ranges_uvi(args.fishing_table, args.dataset)
     elif args.id_type == 'mmsi':
         charinfo_df = read_vessel_database_for_char_mmsi(args.vessel_database, 
                                                               args.dataset)
@@ -644,6 +466,10 @@ if __name__ == '__main__':
     charinfo_df, detinfo_df, det_df = [x.sort_values(by=list(x.columns)) 
                                 for x in (charinfo_df, detinfo_df, det_df)]
 
+    print(charinfo_df.head())
+    print(detinfo_df.head())
+    print(det_df.head())
+
     if args.id_list:
         # Remove unavailable ids
         available_ids = read_ids(args.id_list)
@@ -652,6 +478,9 @@ if __name__ == '__main__':
             return df[mask]
         charinfo_df, detinfo_df, det_df = [filter(x) 
                                   for x in (charinfo_df, detinfo_df, det_df)]
+
+    print(len(detinfo_df))
+    print(available_ids)
 
     if args.gear_file:
         with open(args.gear_file) as f:
@@ -676,15 +505,6 @@ if __name__ == '__main__':
 
     charinfo_df = charinfo_df[~charinfo_df.split.isnull()]
     detinfo_df = detinfo_df[~detinfo_df.split.isnull()]
-
-    hashes = [hash(x) for x in charinfo_df['id']]
-    charinfo_df['idhash'] = hashes
-
-    hashes = [hash(x) for x in detinfo_df['id']]
-    detinfo_df['idhash'] = hashes
-
-
-    # Run create train info, then update metadata to get hashmap from here, then use that.
 
     if args.charinfo_file:
         charinfo_df.to_csv(args.charinfo_file, index=False)
