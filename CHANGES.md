@@ -8,8 +8,15 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 
 ## [Unreleased]
 
+## v3.0.2 - 2020-03-29
 
-## v3.0.1 - (2020-03-20)
+### Added
+
+  * [GlobalFishingWatch/gfw-eng-tasks#44](https://github.com/GlobalFishingWatch/gfw-eng-tasks/issues/44): Adds
+    a fix bug when range didn't include features.
+    Also adds missing test files
+
+## v3.0.1 - 2020-03-20
 
 ### Added
 
@@ -52,7 +59,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
     * Tweak training invokation to try to improve speed
     * Switch to computing vessel parameters in terms of MMSI
 
-## v3.0.0 - (2019-06-12)
+## v3.0.0 - 2019-06-12
 
 ### Added
 
