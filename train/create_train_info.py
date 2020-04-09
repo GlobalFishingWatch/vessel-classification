@@ -479,9 +479,6 @@ if __name__ == '__main__':
         charinfo_df, detinfo_df, det_df = [filter(x) 
                                   for x in (charinfo_df, detinfo_df, det_df)]
 
-    print(len(detinfo_df))
-    print(available_ids)
-
     if args.gear_file:
         with open(args.gear_file) as f:
             gear_ids = [x for x in f.read().strip().split()]
