@@ -1,0 +1,21 @@
+region: us-central1
+staging_bucket: gs://world-fishing-827-ml
+tensor_flow_config_template: | # This gets interpolated and then passed onto TF
+  trainingInput:
+    args: [
+      "{model_name}",
+      "--feature_dimensions", "14",
+      "--root_feature_path", "{feature_path}",
+      "--training_output_path", "{output_path}/{model_name}",
+      "--metadata_file", "{vessel_info}",
+      "--fishing_ranges_file", "{fishing_ranges}",
+      "--metrics", "minimal",
+      "--split", "{split}"
+      ]
+    scaleTier: CUSTOM
+    masterType: large_model_v100
+    runtimeVersion: "1.15"
+    pythonVersion: "3.7"
+
+
+    
