@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import tensorflow as tf
+from . import vessel_characterization, fishing_detection
 
 from classification import metadata
-from . import vessel_characterization, fishing_detection 
+
+from tensorflow.python.ops import variable_scope
+
+import numpy as np
+import tensorflow as tf
 
 
 class ModelsTest(tf.test.TestCase):
@@ -32,7 +35,7 @@ class ModelsTest(tf.test.TestCase):
         for i, model_class in enumerate(self.model_classes):
             with self.test_session():
                 # This protects against multiple model using same variable names
-                with tf.variable_scope("training-test-{}".format(i)):
+                with variable_scope.variable_scope("training-test-{}".format(i)):
                     est = self._build_estimator(model_class)
 
     # TODO: test input_fn

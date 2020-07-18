@@ -1,0 +1,22 @@
+version: '2'
+services:
+  vessel-classification:
+    image: vessel-classification
+    build: .
+    volumes:
+      - ".:/opt/project"
+
+  tests:
+    image: vessel-classification
+    build: .
+    entrypoint: ./test_all
+    volumes:
+      - ".:/opt/project"
+
+  bash:
+    image: vessel-classification
+    build: .
+    entrypoint: bash
+    volumes:
+      - ".:/opt/project"
+

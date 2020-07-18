@@ -1,6 +1,9 @@
 sudo: required
 dist: trusty
 
+python:
+  - "3.7"
+
 before_script:
   - export PATH=$HOME/.local/bin:$PATH
   - sudo pip install tensorflow

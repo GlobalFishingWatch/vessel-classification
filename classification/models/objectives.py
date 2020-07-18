@@ -12,19 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from classification import metadata
+
+from collections import namedtuple, OrderedDict
+
+from tensorflow.python.ops import variable_scope
+
 import abc
 import calendar
-from collections import namedtuple, OrderedDict
 import datetime
 import logging
 import numpy as np
-import tensorflow as tf
-import tensorflow.metrics as metrics
-from classification import metadata
 import pytz
 import six
+import tensorflow as tf
+import tensorflow.python.keras.metrics as metrics
 """ Terminology in the context of objectives.
-    
+
     Net: the raw input to an objective function, an embeddeding that has not
          yet been shaped for the predictive task in hand.
     Logits: the input to a softmax classifier.
@@ -244,7 +248,7 @@ class MultiClassificationObjective(ObjectiveBase):
         return encoded.astype(np.float32)
 
     def create_loss(self, labels):
-        with tf.variable_scope("custom-loss"):
+        with variable_scope.variable_scope("custom-loss"):
             mask = tf.to_float(tf.greater_equal(tf.reduce_sum(labels, axis=1), 1))
             positives = tf.reduce_sum(
                 tf.to_float(labels) * self.prediction, reduction_indices=[1])
