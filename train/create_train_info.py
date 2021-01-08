@@ -479,9 +479,6 @@ if __name__ == '__main__':
         charinfo_df, detinfo_df, det_df = [filter(x) 
                                   for x in (charinfo_df, detinfo_df, det_df)]
 
-    print(len(detinfo_df))
-    print(available_ids)
-
     if args.gear_file:
         with open(args.gear_file) as f:
             gear_ids = [x for x in f.read().strip().split()]
@@ -500,11 +497,14 @@ if __name__ == '__main__':
     apply_remapping(charinfo_df, remapping)
     print()
     apply_remapping(detinfo_df, remapping)
-    assign_split(charinfo_df, args.max_examples, check_fishing=False)
-    assign_split(detinfo_df, args.max_examples, check_fishing=True)
 
-    charinfo_df = charinfo_df[~charinfo_df.split.isnull()]
-    detinfo_df = detinfo_df[~detinfo_df.split.isnull()]
+    if args.charinfo_file or args.charinfo_table:
+        assign_split(charinfo_df, args.max_examples, check_fishing=False)
+        charinfo_df = charinfo_df[~charinfo_df.split.isnull()]
+
+    if args.detinfo_file or args.detinfo_table:
+        assign_split(detinfo_df, args.max_examples, check_fishing=True)
+        detinfo_df = detinfo_df[~detinfo_df.split.isnull()]
 
     if args.charinfo_file:
         charinfo_df.to_csv(args.charinfo_file, index=False)
