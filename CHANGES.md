@@ -8,6 +8,15 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 
 ## [Unreleased]
 
+## v3.0.3 - 2023-07-19
+
+### Changed
+
+  * [PIPELINE-1407](https://globalfishingwatch.atlassian.net/browse/PIPELINE-1407): Changes
+    Removes the char `'` present in install_requirements. It fixes the issue at build:
+    'install_requires' must be a string or list of strings containing valid
+    project/version requirement specifiers.
+
 ## v3.0.2 - 2020-03-29
 
 ### Added

@@ -20,7 +20,7 @@ package = __import__('classification')
 
 DEPENDENCIES = [
     "google-api-python-client",
-    "six>=1.13.0'"
+    "six>=1.13.0"
 ]
 
 
