@@ -37,8 +37,8 @@ class ModelBase(object):
 
     @property
     def max_window_duration_seconds(self):
-        """ Window max duration in seconds. A value of zero indicates that
-            we would instead like to choose a fixed-length window. """
+        """Window max duration in seconds. A value of zero indicates that
+        we would instead like to choose a fixed-length window."""
         return None
 
     # We often allocate a much smaller buffer than would fit the specified time
@@ -70,32 +70,27 @@ class ModelBase(object):
         boundary = 1 if (split == metadata.TRAINING_SPLIT) else self.batch_size
         random_state = np.random.RandomState()
         training_ids = self.vessel_metadata.weighted_training_list(
-            random_state,
-            split,
-            self.max_replication_factor,
-            boundary=boundary)
+            random_state, split, self.max_replication_factor, boundary=boundary
+        )
         return [
-            '%s/%s.tfrecord' % (base_feature_path, six.ensure_text(id_))
+            "%s/%s.tfrecord" % (base_feature_path, six.ensure_text(id_))
             for id_ in training_ids
         ]
 
     @staticmethod
-    def read_metadata(all_available_ids,
-                      metadata_file,
-                      fishing_ranges,
-                      split):
+    def read_metadata(all_available_ids, metadata_file, fishing_ranges, split):
         # Ignore split for the time being
         return metadata.read_vessel_multiclass_metadata(
-            all_available_ids, metadata_file, fishing_ranges)
+            all_available_ids, metadata_file, fishing_ranges
+        )
 
     def zero_pad_features(self, features):
-        """ Zero-pad features in the depth dimension to match requested feature depth. """
+        """Zero-pad features in the depth dimension to match requested feature depth."""
 
         feature_pad_size = self.feature_depth - self.num_feature_dimensions
-        assert (feature_pad_size >= 0)
+        assert feature_pad_size >= 0
         batch_size, _, _, _ = features.get_shape()
-        zero_padding = tf.tile(features[:, :, :, :1] * 0,
-                               [1, 1, 1, feature_pad_size])
+        zero_padding = tf.tile(features[:, :, :, :1] * 0, [1, 1, 1, feature_pad_size])
         padded = tf.concat(3, [features, zero_padding])
 
         return padded

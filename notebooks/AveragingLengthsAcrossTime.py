@@ -18,95 +18,120 @@ import pandas as pd
 import numpy as np
 
 query = """
-with 
+with
 
-labels as (
-  select cast(id as string) as ssvid, length as length_lbl
-  from `machine_learning_dev_ttl_120d.char_info_mmsi_v20200124`
-  where split = 'Test' and length is not null
-    and cast(id as string) not in ('367661820') -- this has bogus length
+_lengths as (
+  SELECT ssvid, date(timestamp_add(start_time, interval 182 day)) as change_date,
+         LAG(length, 3) over (partition by ssvid order by start_time) as length_p4,
+         LAG(length, 2) over (partition by ssvid order by start_time) as length_p3,
+         LAG(length, 1) over (partition by ssvid order by start_time) as length_p2,
+         length as length_p1, 
+         LEAD(length, 1) over (partition by ssvid order by start_time) as length_n1,
+         LEAD(length, 2) over (partition by ssvid order by start_time) as length_n2,
+         LEAD(length, 3) over (partition by ssvid order by start_time) as length_n3,
+         LEAD(length, 4) over (partition by ssvid order by start_time) as length_n4,
+  FROM `world-fishing-827.gfw_research_precursors.vc_v20200124_results_*`
 ),
 
-inferred as (
-  select ssvid, start_time, length
-  from `world-fishing-827.gfw_research_precursors.vc_v20200124_results_*`
-),
-
-monthly_activity as (
-  select ssvid, sum(positions) positions, sum(active_positions) active_positions,
-         extract(month from date) month, 
-         extract(year from date) year 
-  from gfw_research.pipe_v20190502_segs_daily
-  group by ssvid, month, year
-),
-
-semiyearly_activity as (
- select ssvid, sum(positions) positions, sum(active_positions) active_positions,
-        timestamp(datetime(year, 1, 1, 0, 0, 0)) start_time, year
- from monthly_activity
- where month <= 6
- group by ssvid, year
- union all 
- select ssvid, sum(positions) positions, sum(active_positions) active_positions,
-        timestamp(datetime(year, 7, 1, 0, 0, 0)) start_time, year
- from monthly_activity
- where month > 6
- group by ssvid, year
+lengths as (
+  select *
+  from _lengths
+  where length_p1 is not null
+    and length_p2 is not null
+    and length_p3 is not null
+    and length_p4 is not null
+    and length_n1 is not null
+    and length_n2 is not null
+    and length_n3 is not null
+    and length_n4 is not null
 )
 
 
-select * 
-from labels
-join inferred
-using (ssvid)
-join semiyearly_activity 
-using (ssvid, start_time)
+select * from lengths
+where least(length_p1, length_p2, length_p3, length_p4) > 2 * greatest(length_n1, length_n2, length_n3, length_n4)
+   or 2 * greatest(length_p1, length_p2, length_p3, length_p4) < least(length_n1, length_n2, length_n3, length_n4)
+order by ssvid, change_date
 """
-length_df = pd.read_gbq(query, project_id='world-fishing-827', dialect='standard')
+length_df = pd.read_gbq(query, project_id="world-fishing-827", dialect="standard")
 
 # ## By SSVID only
 
 # +
 
-df = length_df.groupby(by = ['ssvid']).mean()
-plt.plot(df.length_lbl, df.length, '.')
-r2 = np.corrcoef(length_df.length_lbl, length_df.length)[0,1] ** 2
-r2avg = np.corrcoef(df.length_lbl, df.length)[0,1] ** 2
+df = length_df.groupby(by=["ssvid"]).mean()
+plt.plot(df.length_lbl, df.length, ".")
+r2 = np.corrcoef(length_df.length_lbl, length_df.length)[0, 1] ** 2
+r2avg = np.corrcoef(df.length_lbl, df.length)[0, 1] ** 2
 
 # +
 lbls = []
 lens = []
-for key, group in length_df.groupby(by = ['ssvid']):
+for key, group in length_df.groupby(by=["ssvid"]):
     lbls.append(group.length_lbl.mean())
     scale = 10 * np.log(group.active_positions + 1) + np.log(group.positions + 1)
     l = (group.length * scale).sum() / scale.sum()
     lens.append(l)
 
-plt.plot(lbls, lens, '.')
+plt.plot(lbls, lens, ".")
 
-r2avg2 = np.corrcoef(lbls, lens)[0,1] ** 2
-print(f'{r2:.3f}, {r2avg:.3f}, {r2avg2:.3f}')
+r2avg2 = np.corrcoef(lbls, lens)[0, 1] ** 2
+print(f"{r2:.3f}, {r2avg:.3f}, {r2avg2:.3f}")
 # -
 
 # ## By SSVID and year
 
 # +
 
-df = length_df.groupby(by = ['ssvid', 'year']).mean()
-plt.plot(df.length_lbl, df.length, '.')
-r2 = np.corrcoef(length_df.length_lbl, length_df.length)[0,1] ** 2
-r2avg = np.corrcoef(df.length_lbl, df.length)[0,1] ** 2
+df = length_df.groupby(by=["ssvid", "year"]).mean()
+plt.plot(df.length_lbl, df.length, ".")
+r2 = np.corrcoef(length_df.length_lbl, length_df.length)[0, 1] ** 2
+r2avg = np.corrcoef(df.length_lbl, df.length)[0, 1] ** 2
 
 # +
 lbls = []
 lens = []
-for key, group in length_df.groupby(by = ['ssvid', 'year']):
+for key, group in length_df.groupby(by=["ssvid", "year"]):
     lbls.append(group.length_lbl.mean())
     scale = 100 * np.log(group.active_positions + 1) + np.log(group.positions + 1)
     l = (group.length * scale).sum() / scale.sum()
     lens.append(l)
 
-plt.plot(lbls, lens, '.')
+plt.plot(lbls, lens, ".")
 
-r2avg2 = np.corrcoef(lbls, lens)[0,1] ** 2
-print(f'{r2:.3f}, {r2avg:.3f}, {r2avg2:.3f}')
+r2avg2 = np.corrcoef(lbls, lens)[0, 1] ** 2
+print(f"{r2:.3f}, {r2avg:.3f}, {r2avg2:.3f}")
+# -
+
+
+"""
+with
+
+_lengths as (
+  SELECT ssvid, start_time,
+         LAG(length, 2) over (partition by ssvid order by start_time) as length_p3,
+         LAG(length, 1) over (partition by ssvid order by start_time) as length_p2,
+         length as length_p1, 
+         LEAD(length, 1) over (partition by ssvid order by start_time) as length_n1,
+         LEAD(length, 2) over (partition by ssvid order by start_time) as length_n2,
+         LEAD(length, 3) over (partition by ssvid order by start_time) as length_n3,
+  FROM `world-fishing-827.gfw_research_precursors.vc_v20200124_results_*`
+),
+
+lengths as (
+  select *
+  from _lengths
+  where length_p1 is not null
+    and length_p2 is not null
+    and length_p3 is not null
+    and length_n1 is not null
+    and length_n2 is not null
+    and length_n3 is not null
+)
+
+
+select * from lengths
+where least(length_p1, length_p2, length_p3) > 1.5 * greatest(length_n1, length_n2, length_n3)
+   or 1.5 * greatest(length_p1, length_p2, length_p3) < least(length_n1, length_n2, length_n3)
+order by ssvid, start_time
+
+"""

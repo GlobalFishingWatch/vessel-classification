@@ -9,17 +9,17 @@ from classification import metadata
 import six
 
 remapping = {
-  # 'seismic_vessel' : 'research'
+    # 'seismic_vessel' : 'research'
 }
 
 
 def read_ids(gcs_path):
-    id_text = subprocess.check_output(['gsutil', 'cat', gcs_path])
+    id_text = subprocess.check_output(["gsutil", "cat", gcs_path])
     return set([six.ensure_text(x).strip() for x in id_text.strip().split()])
 
 
 def fishing_range_vessel_id(fishdbname, dataset):
-    return '''
+    return """
         (
             select vessel_id, 
                 min(start_time) as first_timestamp,
@@ -30,10 +30,13 @@ def fishing_range_vessel_id(fishdbname, dataset):
             on (a.mmsi = cast(ssvid as int64))
             group by vessel_id
         )
-    '''.format(fishdbname=fishdbname, dataset=dataset)
+    """.format(
+        fishdbname=fishdbname, dataset=dataset
+    )
+
 
 def fishing_range_mmsi(fishdbname, dataset):
-    return '''
+    return """
         (
             select cast(mmsi as string) as mmsi, 
                 min(start_time) as first_timestamp,
@@ -42,10 +45,13 @@ def fishing_range_mmsi(fishdbname, dataset):
             from `{fishdbname}`
             group by mmsi
         )
-    '''.format(fishdbname=fishdbname, dataset=dataset)
+    """.format(
+        fishdbname=fishdbname, dataset=dataset
+    )
+
 
 def read_vessel_database_for_char_vessel_id(dbname, dataset):
-    query = '''
+    query = """
         with 
 
         core as (
@@ -89,16 +95,18 @@ def read_vessel_database_for_char_vessel_id(dbname, dataset):
             
         select * except(rk, count) from ordered
         where rk = 1
-    '''.format(**locals())
+    """.format(
+        **locals()
+    )
     try:
-        return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
+        return pd.read_gbq(query, dialect="standard", project_id="world-fishing-827")
     except:
         print(query)
         raise
 
 
 def read_vessel_database_for_char_mmsi(dbname, dataset):
-    query = '''
+    query = """
       with multi_id as (
         select identity.ssvid as id
         from {dbname}
@@ -120,17 +128,19 @@ def read_vessel_database_for_char_mmsi(dbname, dataset):
             (feature.geartype is not null and array_length(feature.geartype) > 0)) and
             identity.ssvid not in (select * from multi_id)
             order by id
-    '''.format(**locals())
+    """.format(
+        **locals()
+    )
     try:
-        return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
+        return pd.read_gbq(query, dialect="standard", project_id="world-fishing-827")
     except:
         print(query)
         raise
 
 
 def read_vessel_database_for_detect_vessel_id(dbname, fishdbname, dataset):
-    fishing_range_query=fishing_range_vessel_id(fishdbname, dataset)
-    query = '''
+    fishing_range_query = fishing_range_vessel_id(fishdbname, dataset)
+    query = """
         with 
 
         fishing_range_vessel_id as {fishing_range_query},
@@ -179,19 +189,19 @@ def read_vessel_database_for_detect_vessel_id(dbname, fishdbname, dataset):
         )
             
         select * except(rk, count) from ordered
-    '''.format(**locals())
+    """.format(
+        **locals()
+    )
     try:
-        return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
+        return pd.read_gbq(query, dialect="standard", project_id="world-fishing-827")
     except:
         print(query)
         raise
 
 
-
-
 def read_vessel_database_for_detect_mmsi(dbname, fishdbname, dataset):
-    fishing_range_query=fishing_range_mmsi(fishdbname, dataset)
-    query = '''
+    fishing_range_query = fishing_range_mmsi(fishdbname, dataset)
+    query = """
         with 
 
         fishing_range_mmsi as {fishing_range_query},
@@ -233,16 +243,18 @@ def read_vessel_database_for_detect_mmsi(dbname, fishdbname, dataset):
         )
             
         select * except(rk, count) from ordered
-    '''.format(**locals())
+    """.format(
+        **locals()
+    )
     try:
-        return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
+        return pd.read_gbq(query, dialect="standard", project_id="world-fishing-827")
     except:
         print(query)
         raise
 
 
 def read_fishing_ranges_vessel_id(fishdbname, dataset):
-    query = '''
+    query = """
         with 
 
         fishing_ranges as {fishing_ranges},
@@ -277,20 +289,20 @@ def read_fishing_ranges_vessel_id(fishdbname, dataset):
             
         select * except(rk, count) from ordered
         where rk = 1
-    '''.format(fishdbname=fishdbname,
-               dataset=dataset, 
-               fishing_ranges=fishing_range_vessel_id(fishdbname, dataset))
+    """.format(
+        fishdbname=fishdbname,
+        dataset=dataset,
+        fishing_ranges=fishing_range_vessel_id(fishdbname, dataset),
+    )
     try:
-        return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
+        return pd.read_gbq(query, dialect="standard", project_id="world-fishing-827")
     except:
         print(query)
         raise
 
 
-
-
 def read_fishing_ranges_mmsi(fishdbname, dataset):
-    query = '''
+    query = """
         with 
 
         fishing_ranges as {fishing_ranges},
@@ -305,21 +317,25 @@ def read_fishing_ranges_mmsi(fishdbname, dataset):
         )
 
         select * from core
-    '''.format(fishdbname=fishdbname,
-               dataset=dataset, 
-               fishing_ranges=fishing_range_mmsi(fishdbname, dataset))
+    """.format(
+        fishdbname=fishdbname,
+        dataset=dataset,
+        fishing_ranges=fishing_range_mmsi(fishdbname, dataset),
+    )
     try:
-        return pd.read_gbq(query, dialect='standard', project_id='world-fishing-827')
+        return pd.read_gbq(query, dialect="standard", project_id="world-fishing-827")
     except:
         print(query)
         raise
 
 
-category_map = {k: v for (k, v) in  metadata.VESSEL_CATEGORIES}
+category_map = {k: v for (k, v) in metadata.VESSEL_CATEGORIES}
+
+
 def disintegrate(label):
     parts = set()
 
-    for sub in label.split('|'):
+    for sub in label.split("|"):
         for atomic in category_map[sub]:
             parts.add(atomic)
     return parts
@@ -335,10 +351,10 @@ def apply_remapping(df, map):
                 # If no remapping occurred, keep old label as it's likely more compact.
                 new_labels.append(lbl)
             else:
-                new_labels.append('|'.join(sorted(new_atoms)))
+                new_labels.append("|".join(sorted(new_atoms)))
         else:
-          new_labels.append(lbl)
-    df['label'] = new_labels
+            new_labels.append(lbl)
+    df["label"] = new_labels
 
 
 def assign_split(df, max_examples, seed=888, check_fishing=False):
@@ -351,120 +367,120 @@ def assign_split(df, max_examples, seed=888, check_fishing=False):
         # Otherwise, only allow atomic classes into test
         labels = metadata.VESSEL_CLASS_DETAILED_NAMES
     all_args = np.arange(len(df))
-    split = ['Training'] * len(df)
+    split = ["Training"] * len(df)
     if check_fishing:
-        split_a, split_b = '0', '1'
+        split_a, split_b = "0", "1"
     else:
         # Characterization doesn's support splits yet
-        split_a, split_b = 'Test', 'Training'
+        split_a, split_b = "Test", "Training"
     # Half for train half for test
-    total_max_examples =  2 * max_examples 
+    total_max_examples = 2 * max_examples
     for lbl in labels:
         lbl = six.ensure_text(lbl)
-        base_mask = np.array([six.ensure_text(x) == lbl for x in df.label.values], dtype=bool)
+        base_mask = np.array(
+            [six.ensure_text(x) == lbl for x in df.label.values], dtype=bool
+        )
         mask = base_mask.copy()
         if check_fishing:
-            mask &= (df.transit_only.values == 0)
-        elif mask.sum() > total_max_examples: 
-            trues = np.random.choice(np.nonzero(mask)[0], size=[total_max_examples], replace=False)
+            mask &= df.transit_only.values == 0
+        elif mask.sum() > total_max_examples:
+            trues = np.random.choice(
+                np.nonzero(mask)[0], size=[total_max_examples], replace=False
+            )
             mask.fill(False)
             mask[trues] = True
         for i in all_args[base_mask]:
-          split[i] = None
-        candidates = sorted(all_args[mask], 
-                       key=lambda x: hashlib.sha256(six.ensure_binary(df.id.iloc[x])).hexdigest())
-        for i in candidates[:len(candidates)//2]:
-          split[i] = split_a
-        for i in candidates[len(candidates)//2:]:
-          split[i] = split_b
-    df['split'] = split
+            split[i] = None
+        candidates = sorted(
+            all_args[mask],
+            key=lambda x: hashlib.sha256(six.ensure_binary(df.id.iloc[x])).hexdigest(),
+        )
+        for i in candidates[: len(candidates) // 2]:
+            split[i] = split_a
+        for i in candidates[len(candidates) // 2 :]:
+            split[i] = split_b
+    df["split"] = split
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # assert sys.version_info[0] == 2, 'must generate with Python 2 until feature sharding is updated'
 
-
-    parser = argparse.ArgumentParser('Create Training Info')
+    parser = argparse.ArgumentParser("Create Training Info")
 
     parser.add_argument(
-        '--vessel-database',
+        "--vessel-database",
         required=True,
-        help='The BQ table holding the vessel database')
+        help="The BQ table holding the vessel database",
+    )
 
     parser.add_argument(
-        '--fishing-table',
-        required=True,
-        help='The BQ table holding fishing ranges')
+        "--fishing-table", required=True, help="The BQ table holding fishing ranges"
+    )
+
+    parser.add_argument("--id-type", choices=["vessel-id", "mmsi"], required=True)
+
+    parser.add_argument("--id-list", help="GCS location of ids present in features")
 
     parser.add_argument(
-        '--id-type',
-        choices=['vessel-id', 'mmsi'],
-        required=True
-        )
+        "--dataset", help="Name of the dataset to draw vessel_id mapping from"
+    )
 
     parser.add_argument(
-        '--id-list',
-        help="GCS location of ids present in features"
-        )
+        "--charinfo-file",
+    )
 
     parser.add_argument(
-        '--dataset',
-        help="Name of the dataset to draw vessel_id mapping from"
-        )
+        "--detinfo-file",
+    )
 
     parser.add_argument(
-        '--charinfo-file',
-        )
+        "--detranges-file",
+    )
 
     parser.add_argument(
-        '--detinfo-file',
-        )
+        "--charinfo-table",
+    )
 
     parser.add_argument(
-        '--detranges-file',
-        )
+        "--detinfo-table",
+    )
 
     parser.add_argument(
-        '--charinfo-table',
-        )
+        "--detranges-table",
+    )
+
+    parser.add_argument("--gear_file", help="gear IDS to add to training mmsi")
 
     parser.add_argument(
-        '--detinfo-table',
-        )
-
-    parser.add_argument(
-        '--detranges-table',
-        )
-
-    parser.add_argument(
-        '--gear_file',
-        help='gear IDS to add to training mmsi'
-        )
-
-    parser.add_argument(
-        '--max_examples', type=int,  default=999,
-        help='Include at most this number of total examples each in train/test'
-        )
+        "--max_examples",
+        type=int,
+        default=999,
+        help="Include at most this number of total examples each in train/test",
+    )
 
     args = parser.parse_args()
 
-    if args.id_type == 'vessel-id':
-        charinfo_df = read_vessel_database_for_char_vessel_id(args.vessel_database, 
-                                                              args.dataset)
-        detinfo_df = read_vessel_database_for_detect_vessel_id(args.vessel_database, 
-                                                 args.fishing_table, args.dataset)
+    if args.id_type == "vessel-id":
+        charinfo_df = read_vessel_database_for_char_vessel_id(
+            args.vessel_database, args.dataset
+        )
+        detinfo_df = read_vessel_database_for_detect_vessel_id(
+            args.vessel_database, args.fishing_table, args.dataset
+        )
         det_df = read_fishing_ranges_vessel_id(args.fishing_table, args.dataset)
-    elif args.id_type == 'mmsi':
-        charinfo_df = read_vessel_database_for_char_mmsi(args.vessel_database, 
-                                                              args.dataset)
-        detinfo_df = read_vessel_database_for_detect_mmsi(args.vessel_database, 
-                                                 args.fishing_table, args.dataset)
+    elif args.id_type == "mmsi":
+        charinfo_df = read_vessel_database_for_char_mmsi(
+            args.vessel_database, args.dataset
+        )
+        detinfo_df = read_vessel_database_for_detect_mmsi(
+            args.vessel_database, args.fishing_table, args.dataset
+        )
         det_df = read_fishing_ranges_mmsi(args.fishing_table, args.dataset)
 
-
     # Make ordering consistent across runs
-    charinfo_df, detinfo_df, det_df = [x.sort_values(by=list(x.columns)) 
-                                for x in (charinfo_df, detinfo_df, det_df)]
+    charinfo_df, detinfo_df, det_df = [
+        x.sort_values(by=list(x.columns)) for x in (charinfo_df, detinfo_df, det_df)
+    ]
 
     print(charinfo_df.head())
     print(detinfo_df.head())
@@ -473,14 +489,17 @@ if __name__ == '__main__':
     if args.id_list:
         # Remove unavailable ids
         available_ids = read_ids(args.id_list)
+
         def filter(df):
             mask = [(x in available_ids) for x in df.id]
             return df[mask]
-        charinfo_df, detinfo_df, det_df = [filter(x) 
-                                  for x in (charinfo_df, detinfo_df, det_df)]
 
-    print(len(detinfo_df))
-    print(available_ids)
+        charinfo_df, detinfo_df, det_df = [
+            filter(x) for x in (charinfo_df, detinfo_df, det_df)
+        ]
+
+        print(len(detinfo_df))
+        print(available_ids)
 
     if args.gear_file:
         with open(args.gear_file) as f:
@@ -488,13 +507,29 @@ if __name__ == '__main__':
         existing_ids = set(charinfo_df.id)
         new = []
         for id_ in gear_ids:
-              if id_ in existing_ids: 
-                  continue
-              new.append({'id' : id_, 'length' : np.nan, 'tonnage' : np.nan, 
-                     'engine_power' : np.nan, 'crew_size' : np.nan,
-                     'label' : 'gear'})
-        new_df = pd.DataFrame(new, 
-          columns=[u'id', u'length', u'tonnage', u'engine_power', u'crew_size', u'label'])
+            if id_ in existing_ids:
+                continue
+            new.append(
+                {
+                    "id": id_,
+                    "length": np.nan,
+                    "tonnage": np.nan,
+                    "engine_power": np.nan,
+                    "crew_size": np.nan,
+                    "label": "gear",
+                }
+            )
+        new_df = pd.DataFrame(
+            new,
+            columns=[
+                "id",
+                "length",
+                "tonnage",
+                "engine_power",
+                "crew_size",
+                "label",
+            ],
+        )
         charinfo_df = pd.concat([charinfo_df, new_df])
 
     apply_remapping(charinfo_df, remapping)
@@ -516,15 +551,12 @@ if __name__ == '__main__':
         det_df.to_csv(args.detranges_file, index=False)
 
     if args.charinfo_table:
-        charinfo_df.to_gbq(args.charinfo_table,  
-                          'world-fishing-827', if_exists='fail')
+        charinfo_df.to_gbq(args.charinfo_table, "world-fishing-827", if_exists="fail")
     if args.detinfo_table:
-        detinfo_df.to_gbq(args.detinfo_table,  
-                          'world-fishing-827', if_exists='fail')
+        detinfo_df.to_gbq(args.detinfo_table, "world-fishing-827", if_exists="fail")
     if args.detranges_table:
-        det_df.to_gbq(args.detranges_table,  
-                          'world-fishing-827', if_exists='fail')
-r'''
+        det_df.to_gbq(args.detranges_table, "world-fishing-827", if_exists="fail")
+r"""
 python -m train.create_train_info \
     --vessel-database vessel_database.all_vessels_20190102 \
     --fishing-table machine_learning_production.fishing_ranges_by_mmsi_v20190506 \
@@ -537,9 +569,9 @@ python -m train.create_train_info \
     --charinfo-table machine_learning_dev_ttl_120d.char_info_v20190515 \
     --detinfo-table machine_learning_dev_ttl_120d.det_info_v20190515 \
     --detranges-table machine_learning_dev_ttl_120d.det_ranges_v20190515
-'''
+"""
 
-r'''
+r"""
 python -m train.create_train_info \
     --vessel-database vessel_database.all_vessels_20190102 \
     --fishing-table machine_learning_production.fishing_ranges_by_mmsi_v20190506 \
@@ -549,10 +581,10 @@ python -m train.create_train_info \
     --charinfo-file classification/data/char_info_uvi_v20190502.csv \
     --detinfo-file classification/data/det_info_uvi_v20190502.csv \
     --detranges-file classification/data/det_ranges_uvi_v20190502.csv 
-'''
+"""
 
 
-r'''
+r"""
 python -m train.create_train_info \
     --vessel-database vessel_database.all_vessels_v20191101 \
     --fishing-table machine_learning_production.fishing_ranges_by_mmsi_v20190506 \
@@ -562,9 +594,9 @@ python -m train.create_train_info \
     --detinfo-file classification/data/det_info_mmsi_v20191127.csv \
     --detranges-file classification/data/det_ranges_mmsi_v20191127.csv \
     --gear_file classification/data/old_gear.txt
-'''
+"""
 
-r'''
+r"""
     python -m train.create_train_info \
         --vessel-database vessel_database.matched_vessels_one_record_per_ssvid_v20200101 \
         --fishing-table machine_learning_production.fishing_ranges_by_mmsi_v20190506 \
@@ -574,5 +606,4 @@ r'''
         --charinfo-file classification/data/char_info_mmsi_v20200120.csv \
         --detinfo-file classification/data/det_info_mmsi_v20200120.csv \
         --detranges-file classification/data/det_ranges_mmsi_v20200120.csv
-'''
-
+"""

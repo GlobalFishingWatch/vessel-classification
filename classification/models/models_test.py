@@ -16,7 +16,7 @@ import numpy as np
 import tensorflow as tf
 
 from classification import metadata
-from . import vessel_characterization, fishing_detection 
+from . import vessel_characterization, fishing_detection
 
 
 class ModelsTest(tf.test.TestCase):
@@ -25,7 +25,7 @@ class ModelsTest(tf.test.TestCase):
 
     def _build_estimator(self, model_class):
         vmd = metadata.VesselMetadata({}, {})
-        model = model_class(self.num_feature_dimensions, vmd, metrics='all')
+        model = model_class(self.num_feature_dimensions, vmd, metrics="all")
         return model.make_estimator("dummy_directory")
 
     def test_estimator_contruction(self):
@@ -38,5 +38,5 @@ class ModelsTest(tf.test.TestCase):
     # TODO: test input_fn
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     tf.test.main()

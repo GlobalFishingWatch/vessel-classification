@@ -16,33 +16,26 @@ import setuptools
 import glob
 import os
 
-package = __import__('classification')
+package = __import__("classification")
 
-DEPENDENCIES = [
-    "google-api-python-client",
-    "six>=1.13.0"
-]
+DEPENDENCIES = ["google-api-python-client", "six>=1.13.0"]
 
 
-data_files = [os.path.basename(x)
-              for x in glob.glob("classification/data/*.csv")]
+data_files = [os.path.basename(x) for x in glob.glob("classification/data/*.csv")]
 
 setuptools.setup(
-    name='vessel_inference',
+    name="vessel_inference",
     version=package.__version__,
     author=package.__author__,
     author_email=package.__email__,
     description=package.__doc__.strip(),
-    package_data={
-        'classification.data': data_files
-    },
+    package_data={"classification.data": data_files},
     packages=[
-        'common',
-        'classification',
-        'classification.data',
-        'classification.models',
-        'classification.feature_generation'
+        "common",
+        "classification",
+        "classification.data",
+        "classification.models",
+        "classification.feature_generation",
     ],
-    install_requires=DEPENDENCIES
+    install_requires=DEPENDENCIES,
 )
-

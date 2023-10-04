@@ -29,34 +29,33 @@ from datetime import timedelta
 
 class Inferer(object):
     def __init__(self, model, model_checkpoint_path, root_feature_path, parallelism=4):
-
         self.model = model
         self.estimator = model.make_estimator(model_checkpoint_path)
         self.root_feature_path = root_feature_path
-        logging.info('created Inferer with Model, %s, and dims %s', model, 
-                    model.num_feature_dimensions)
+        logging.info(
+            "created Inferer with Model, %s, and dims %s",
+            model,
+            model.num_feature_dimensions,
+        )
         self.parallelism = 4
 
     def close(self):
         self.sess.close()
 
-
     def _feature_files(self, ids):
-        return [
-            '%s/%s.tfrecord' % (self.root_feature_path, x)
-            for x in ids
-        ]
+        return ["%s/%s.tfrecord" % (self.root_feature_path, x) for x in ids]
 
     def _build_time_ranges(self, interval_months, start_date, end_date):
         # TODO: should use min_window_duration here
         window_dur_seconds = self.model.max_window_duration_seconds
-        last_viable_date = datetime.now(
-            pytz.utc) - timedelta(seconds=window_dur_seconds)
+        last_viable_date = datetime.now(pytz.utc) - timedelta(
+            seconds=window_dur_seconds
+        )
         time_starts = []
         start_year = start_date.year
         month_count = start_date.month - 1
         if start_date.day != 1:
-            raise ValueError('start_date must fall on the 1st of the month')
+            raise ValueError("start_date must fall on the 1st of the month")
         dt = start_date
         while True:
             year = start_year + month_count // 12
@@ -67,9 +66,13 @@ class Inferer(object):
                 break
             time_starts.append(dt)
         delta = timedelta(seconds=self.model.max_window_duration_seconds)
-        time_ranges = [(int(time.mktime(dt.timetuple())),
-                             int(time.mktime((dt + delta).timetuple())))
-                            for dt in time_starts]
+        time_ranges = [
+            (
+                int(time.mktime(dt.timetuple())),
+                int(time.mktime((dt + delta).timetuple())),
+            )
+            for dt in time_starts
+        ]
         return time_ranges
 
     def run_inference(self, ids, interval_months, start_date, end_date):
@@ -77,25 +80,28 @@ class Inferer(object):
 
         if self.model.max_window_duration_seconds != 0:
             time_ranges = self._build_time_ranges(interval_months, start_date, end_date)
-            input_fn = self.model.make_prediction_input_fn(paths, time_ranges, self.parallelism)
+            input_fn = self.model.make_prediction_input_fn(
+                paths, time_ranges, self.parallelism
+            )
         else:
-            input_fn = self.model.make_prediction_input_fn(paths, (start_date, end_date), self.parallelism)
+            input_fn = self.model.make_prediction_input_fn(
+                paths, (start_date, end_date), self.parallelism
+            )
 
         for result in self.estimator.predict(input_fn=input_fn):
-
-            start_time, end_time = [datetime.utcfromtimestamp(x) for x in result['time_ranges']]
+            start_time, end_time = [
+                datetime.utcfromtimestamp(x) for x in result["time_ranges"]
+            ]
             output = {
-                'id': result['id'],
-                'start_time': start_time.isoformat(),
-                'end_time': end_time.isoformat()
+                "id": result["id"],
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
             }
             for k, v in result.items():
                 if k in self.model.objective_map:
                     o = self.model.objective_map[k]
-                    output[o.metadata_label] = o.build_json_results(v, result['timestamps'])
+                    output[o.metadata_label] = o.build_json_results(
+                        v, result["timestamps"]
+                    )
 
             yield output
-
-
-
-

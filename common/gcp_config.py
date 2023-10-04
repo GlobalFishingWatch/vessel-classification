@@ -25,7 +25,7 @@ class GcpConfig(object):
         self.root_path = root_path
 
     def model_path(self):
-        return self.root_path + '/models'
+        return self.root_path + "/models"
 
     # TODO(alexwilson): This config is too hard-coded to our current setup. Move
     # out to config files for greater flexibility. Note there is an equivalent to
@@ -34,18 +34,21 @@ class GcpConfig(object):
     def make_from_env_name(environment, job_id):
         now = datetime.datetime.utcnow()
         project_id = "world-fishing-827"
-        if environment == 'prod':
-            root_path = 'gs://machine-learning/data-production/classification/%s' % job_id
-        elif environment == 'dev':
-            user_name = os.environ['USER']
+        if environment == "prod":
+            root_path = (
+                "gs://machine-learning/data-production/classification/%s" % job_id
+            )
+        elif environment == "dev":
+            user_name = os.environ["USER"]
             if not user_name:
-                logging.fatal(
-                    'USER environment variable cannot be empty for dev runs.')
+                logging.fatal("USER environment variable cannot be empty for dev runs.")
                 sys.exit(-1)
-            root_path = 'gs://machine-learning-dev-ttl-120d/data-production/classification/%s/%s' % (
-                user_name, job_id)
+            root_path = (
+                "gs://machine-learning-dev-ttl-120d/data-production/classification/%s/%s"
+                % (user_name, job_id)
+            )
         else:
-            logging.fatal('Invalid environment: %s', env)
+            logging.fatal("Invalid environment: %s", env)
             sys.exit(-1)
 
         return GcpConfig(now, project_id, root_path)

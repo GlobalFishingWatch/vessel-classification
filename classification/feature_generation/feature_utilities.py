@@ -24,71 +24,73 @@ EPOCH_DT = datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)
 
 
 def np_pad_repeat_slice(slice, window_size):
-    """ Pads slice to the specified window size.
+    """Pads slice to the specified window size.
 
-  Series that are shorter than window_size are repeated into unfilled space.
+    Series that are shorter than window_size are repeated into unfilled space.
 
-  Args:
-    slice: a numpy array.
-    window_size: the size the array must be padded to.
+    Args:
+      slice: a numpy array.
+      window_size: the size the array must be padded to.
 
-  Returns:
-    a numpy array of length window_size in the first dimension.
-  """
+    Returns:
+      a numpy array of length window_size in the first dimension.
+    """
 
     slice_length = len(slice)
-    assert (slice_length <= window_size)
+    assert slice_length <= window_size
     reps = int(np.ceil(window_size / float(slice_length)))
     if reps > 1:
         return np.concatenate([slice] * reps, axis=0)[:window_size]
     else:
         return slice[:window_size].copy()
 
+
 def np_zero_pad_slice(slice, window_size, random_state):
-    """ Pads slice to the specified window size.
+    """Pads slice to the specified window size.
 
-  Series that are shorter than window_size are repeated into unfilled space.
+    Series that are shorter than window_size are repeated into unfilled space.
 
-  Args:
-    slice: np.array.
-    window_size: int
-        Size the array must be padded to.
-    random_state: np.RandomState
+    Args:
+      slice: np.array.
+      window_size: int
+          Size the array must be padded to.
+      random_state: np.RandomState
 
-  Returns:
-    a numpy array of length window_size in the first dimension.
+    Returns:
+      a numpy array of length window_size in the first dimension.
 
-    TODO: this function has an inaccurate name, really this is doing
-    pad_repeat_slice with a random offset for data augmentation. 
-    Rename or remove at next cleanup since it doesn't appear to be
-    used..
-  """
+      TODO: this function has an inaccurate name, really this is doing
+      pad_repeat_slice with a random offset for data augmentation.
+      Rename or remove at next cleanup since it doesn't appear to be
+      used..
+    """
 
     slice_length = len(slice)
     delta = window_size - slice_length
     assert delta >= 0
     offset = random_state.randint(0, delta + 1)
-    return np.concatenate([slice] * reps, axis=0)[offset:offset+window_size]
+    return np.concatenate([slice] * reps, axis=0)[offset : offset + window_size]
+
 
 def np_pad_repeat_slice_2(slice, window_size, random_state):
-    """ Pads slice to the specified window size then rolls them.
+    """Pads slice to the specified window size then rolls them.
 
-  Series that are shorter than window_size are repeated into unfilled space,
-  then the series is randomly rolled along the time axis to generate more 
-  training diversity. This has the side effect of adding a non-physical 
-  seam in the data, but in practice seems to work better than not rolling.
+    Series that are shorter than window_size are repeated into unfilled space,
+    then the series is randomly rolled along the time axis to generate more
+    training diversity. This has the side effect of adding a non-physical
+    seam in the data, but in practice seems to work better than not rolling.
 
-  Similar to `np_pad_repeat_slice` except for rolling the sequence along the
-  time axis.
+    Similar to `np_pad_repeat_slice` except for rolling the sequence along the
+    time axis.
 
-  Args:
-    slice: a numpy array.
-    window_size: the size the array must be padded to.
-    random_state: a numpy RandomState object.
+    Args:
+      slice: a numpy array.
+      window_size: the size the array must be padded to.
+      random_state: a numpy RandomState object.
 
-  Returns:
-    a numpy array of length window_size in the first dimension.
-  """
+    Returns:
+      a numpy array of length window_size in the first dimension.
+    """
 
     slice_length = len(slice)
     delta = window_size - slice_length
@@ -101,9 +103,8 @@ def np_pad_repeat_slice_2(slice, window_size, random_state):
     offset = random_state.randint(0, window_size)
     return np.roll(repeated, offset, axis=0)[:window_size]
 
-def np_array_random_fixed_length_extract(random_state, input_series,
-                                         output_length):
 
+def np_array_random_fixed_length_extract(random_state, input_series, output_length):
     cropped = input_series[start_offset:end_offset]
 
     return np_pad_repeat_slice_2(cropped, output_length, random_state)
@@ -111,26 +112,26 @@ def np_array_random_fixed_length_extract(random_state, input_series,
 
 def empty_data(window_size, series):
     num_features_inc_timestamp = series.shape[1]
-    return (np.empty(
-        [0, 1, window_size, num_features_inc_timestamp - 1],
-        dtype=np.float32), np.empty(
-            shape=[0, window_size], dtype=np.int32), np.empty(
-                shape=[0, 2], dtype=np.int32), np.empty(
-                    shape=[0], dtype=str))     
+    return (
+        np.empty([0, 1, window_size, num_features_inc_timestamp - 1], dtype=np.float32),
+        np.empty(shape=[0, window_size], dtype=np.int32),
+        np.empty(shape=[0, 2], dtype=np.int32),
+        np.empty(shape=[0], dtype=str),
+    )
 
 
 def cook_features(features, id_):
     """Convert raw features into something the model can digest
 
-        Args:
-            features: np.array of raw features
-            id_ : the id associated with these features.
+    Args:
+        features: np.array of raw features
+        id_ : the id associated with these features.
 
-        Returns:
-            (2D np.array of features for the model,
-             2D np.array of timestamps,
-             (start_time, end_time) as seconds from Unix epoch.
-             str id of vessel)
+    Returns:
+        (2D np.array of features for the model,
+         2D np.array of timestamps,
+         (start_time, end_time) as seconds from Unix epoch.
+         str id of vessel)
     """
     # We use min and max here to account for possible rolling / replicating
     # that goes on elsewhere.
@@ -142,37 +143,39 @@ def cook_features(features, id_):
     features = features[:, 1:]
 
     if not np.isfinite(features).all():
-        logging.fatal('Bad features: %s', features)
+        logging.fatal("Bad features: %s", features)
 
-    return (np.stack([features]), 
-            timestamps, 
-            np.array([start_time, end_time], dtype=np.int32), 
-            id_)
+    return (
+        np.stack([features]),
+        timestamps,
+        np.array([start_time, end_time], dtype=np.int32),
+        id_,
+    )
 
 
-def extract_n_random_fixed_points(random_state, input_series, n,
-                                       output_length, id_,
-                                       selection_ranges):
-    """ Extracts a n, random fixed-points slice from a 2d numpy array.
-    
-    The input array must be 2d, representing a time series, with the first    
-    column representing a timestamp (sorted ascending). 
+def extract_n_random_fixed_points(
+    random_state, input_series, n, output_length, id_, selection_ranges
+):
+    """Extracts a n, random fixed-points slice from a 2d numpy array.
+
+    The input array must be 2d, representing a time series, with the first
+    column representing a timestamp (sorted ascending).
 
     Args:
         random_state: a numpy randomstate object.
         input_series: the input series. A 2d array first column representing an
-            ascending time.  
+            ascending time.
         n: the number of series to extract
-        output_length: the number of points in the output series. Input series    
-            shorter than this will be repeated into the output series.   
+        output_length: the number of points in the output series. Input series
+            shorter than this will be repeated into the output series.
         id_: the id of the vessel
-        selection_ranges: Either a list of time ranges that should be preferentially 
-            selected from (we try to get at least on point from one of the ranges), or 
-            None if to disable this behaviour. 
+        selection_ranges: Either a list of time ranges that should be preferentially
+            selected from (we try to get at least on point from one of the ranges), or
+            None if to disable this behaviour.
 
-    Returns:    
+    Returns:
         An array of the same depth as the input, but altered width, representing
-        the fixed points slice.   
+        the fixed points slice.
     """
     input_length = len(input_series)
     if input_length < output_length:
@@ -182,10 +185,10 @@ def extract_n_random_fixed_points(random_state, input_series, n,
     candidate_set = set()
 
     starts = [(x.start_time - EPOCH_DT).total_seconds() for x in selection_ranges]
-    starts_ndxs = np.searchsorted(input_series[:, 0], starts, side='left')
+    starts_ndxs = np.searchsorted(input_series[:, 0], starts, side="left")
 
     ends = [(x.end_time - EPOCH_DT).total_seconds() for x in selection_ranges]
-    end_ndxs = np.searchsorted(input_series[:, 0], ends, side='right')
+    end_ndxs = np.searchsorted(input_series[:, 0], ends, side="right")
 
     for start_ndx, end_ndx in zip(starts_ndxs, end_ndxs):
         valid_start = max(0, start_ndx - output_length + 1)
@@ -206,8 +209,6 @@ def extract_n_random_fixed_points(random_state, input_series, n,
     return list(zip(*samples))
 
 
-
-
 def setup_cook_features_into(n, features_shape):
     s0, s1 = features_shape
     features = np.empty((n, s0, s1 - 1), np.float32)
@@ -216,22 +217,23 @@ def setup_cook_features_into(n, features_shape):
     ids = np.empty([n], object)
     return features, timestamps, ranges, ids
 
+
 def cook_features_into(arrays, i, data, id_, range_=None):
     """Convert raw features into something the model can digest
 
-        Args:
-            arrays: (features, timestamps, ranges)
-            i : index to inserrt into
-            features: np.array of raw features
-            range: tuple, optional
-                (start, stop) timestamps, if not supplied, this is derived
-                from features.
+    Args:
+        arrays: (features, timestamps, ranges)
+        i : index to inserrt into
+        features: np.array of raw features
+        range: tuple, optional
+            (start, stop) timestamps, if not supplied, this is derived
+            from features.
 
-        Returns:
-            (2D np.array of features for the model,
-             2D np.array of timestamps,
-             (start_time, end_time) as seconds from Unix epoch.
-             str id of vessel)
+    Returns:
+        (2D np.array of features for the model,
+         2D np.array of timestamps,
+         (start_time, end_time) as seconds from Unix epoch.
+         str id of vessel)
     """
     features, timestamps, ranges, ids = arrays
     features[i] = data[:, 1:]
@@ -243,31 +245,38 @@ def cook_features_into(arrays, i, data, id_, range_=None):
         ranges[i, :] = range_
     ids[i] = id_
 
-def extract_n_random_fixed_times(random_state, input_series, n,
-                                       max_time_delta, output_length,
-                                       id_, min_timeslice_size):
-    """ Extracts a random fixed-time slice from a 2d numpy array.
-    
-    The input array must be 2d, representing a time series, with the first    
-    column representing a timestamp (sorted ascending). Any values in the series    
-    with a time greater than (first time + max_time_delta) are removed and the    
-    prefix series repeated into the window to pad. 
+
+def extract_n_random_fixed_times(
+    random_state,
+    input_series,
+    n,
+    max_time_delta,
+    output_length,
+    id_,
+    min_timeslice_size,
+):
+    """Extracts a random fixed-time slice from a 2d numpy array.
+
+    The input array must be 2d, representing a time series, with the first
+    column representing a timestamp (sorted ascending). Any values in the series
+    with a time greater than (first time + max_time_delta) are removed and the
+    prefix series repeated into the window to pad.
     Args:
         random_state: a numpy randomstate object.
         input_series: the input series. A 2d array first column representing an
-            ascending time.   
+            ascending time.
         n: the number of series to extract
         max_time_delta: the maximum duration of the returned timeseries in seconds.
-        output_length: the number of points in the output series. Input series    
-            shorter than this will be repeated into the output series.   
+        output_length: the number of points in the output series. Input series
+            shorter than this will be repeated into the output series.
         min_timeslice_size: the minimum number of points in a timeslice for the
-            series to be considered meaningful. 
+            series to be considered meaningful.
 
-    Returns:    
+    Returns:
         An array of the same depth as the input, but altered width, representing
-        the fixed time slice.   
+        the fixed time slice.
     """
-    assert max_time_delta != 0, 'max_time_delta must be non zero for time based windows'
+    assert max_time_delta != 0, "max_time_delta must be non zero for time based windows"
     input_length = len(input_series)
     if input_length < min_timeslice_size:
         return empty_data(output_length, input_series)
@@ -285,21 +294,26 @@ def extract_n_random_fixed_times(random_state, input_series, n,
     arrays = setup_cook_features_into(n, (output_length, input_series.shape[-1]))
     for i in range(n):
         start_time = random_state.randint(min_time, max_time + 1)
-        start_index = np.searchsorted(input_series[:, 0], start_time, side='left')
+        start_index = np.searchsorted(input_series[:, 0], start_time, side="left")
         end_index = start_index + output_length
-        cropped = input_series[start_index:end_index] # Might only have min_timeslice_size points
+        cropped = input_series[
+            start_index:end_index
+        ]  # Might only have min_timeslice_size points
         padded = np_pad_repeat_slice(cropped, output_length)
         cook_features_into(arrays, i, padded, id_)
 
     return arrays
 
 
-
-
 def np_array_extract_slices_for_time_ranges(
-        random_state, input_series, id_,
-        time_ranges, window_size, min_points_for_classification):
-    """ Extract and process a set of specified time slices from a vessel
+    random_state,
+    input_series,
+    id_,
+    time_ranges,
+    window_size,
+    min_points_for_classification,
+):
+    """Extract and process a set of specified time slices from a vessel
         movement feature.
 
     Args:
@@ -324,11 +338,12 @@ def np_array_extract_slices_for_time_ranges(
     """
     times = input_series[:, 0]
     ndx = 0
-    arrays = setup_cook_features_into(len(time_ranges), 
-                        (window_size, input_series.shape[-1]))
-    for (start_time, end_time) in time_ranges:
-        start_index = np.searchsorted(times, start_time, side='left')
-        end_index = np.searchsorted(times, end_time, side='left')
+    arrays = setup_cook_features_into(
+        len(time_ranges), (window_size, input_series.shape[-1])
+    )
+    for start_time, end_time in time_ranges:
+        start_index = np.searchsorted(times, start_time, side="left")
+        end_index = np.searchsorted(times, end_time, side="left")
         length = end_index - start_index
 
         # Slice out the time window.
@@ -336,10 +351,10 @@ def np_array_extract_slices_for_time_ranges(
 
         # If this window is too long, pick a random subwindow.
 
-        if (length > window_size):
+        if length > window_size:
             max_offset = length - window_size
             start_offset = random_state.uniform(max_offset)
-            cropped = cropped[max_offset:max_offset + window_size]
+            cropped = cropped[max_offset : max_offset + window_size]
 
         if len(cropped) >= min_points_for_classification:
             padded = np_pad_repeat_slice(cropped, window_size)
@@ -347,15 +362,17 @@ def np_array_extract_slices_for_time_ranges(
             ndx += 1
     return tuple(x[:ndx] for x in arrays)
 
-def np_array_extract_all_fixed_slices(input_series, num_features, id_,
-                                      window_size, shift):
+
+def np_array_extract_all_fixed_slices(
+    input_series, num_features, id_, window_size, shift
+):
     slices = []
     input_length = len(input_series)
     for end_index in range(input_length, 0, -shift):
         start_index = end_index - window_size
         if start_index < 0:
             if start_index != -shift:
-                logging.warning('input not correctly padded, dropping start')
+                logging.warning("input not correctly padded, dropping start")
             continue
         cropped = input_series[start_index:end_index]
         start_time = int(cropped[0][0])
@@ -368,10 +385,18 @@ def np_array_extract_all_fixed_slices(input_series, num_features, id_,
     return list(zip(*slices))
 
 
-
-def process_fixed_window_features(random_state, features, id_, 
-        num_features, window_size, shift, start_date, end_date, 
-        win_start, win_end):
+def process_fixed_window_features(
+    random_state,
+    features,
+    id_,
+    num_features,
+    window_size,
+    shift,
+    start_date,
+    end_date,
+    win_start,
+    win_end,
+):
     """Extract sequential sets of features with a given window size.
 
     This will return multiple sets of training features. Each set
@@ -402,8 +427,9 @@ def process_fixed_window_features(random_state, features, id_,
     if len(features) == 0:
         return empty_data(window_size, features)
 
-    is_sorted = all(features[i, 0] <= features[i+1, 0] 
-                    for i in six.moves.range(len(features)-1))
+    is_sorted = all(
+        features[i, 0] <= features[i + 1, 0] for i in six.moves.range(len(features) - 1)
+    )
     assert is_sorted
 
     if start_date is not None:
@@ -412,7 +438,7 @@ def process_fixed_window_features(random_state, features, id_,
         end_stamp = time.mktime(end_date.timetuple())
 
     if end_date is not None:
-        raw_end_i = np.searchsorted(features[:, 0], end_stamp, side='right')
+        raw_end_i = np.searchsorted(features[:, 0], end_stamp, side="right")
         # How much padding do we need:
         available = len(features) - raw_end_i
         n_pad_end = max(pad_end - available, 0)
@@ -428,7 +454,7 @@ def process_fixed_window_features(random_state, features, id_,
 
     if start_date is not None:
         # If possible go to shift before pad so we have good data for whole length
-        raw_start_i = np.searchsorted(features[:, 0], start_stamp, side='left')
+        raw_start_i = np.searchsorted(features[:, 0], start_stamp, side="left")
     else:
         raw_start_i = 0
     assert raw_start_i >= 0
@@ -456,8 +482,6 @@ def process_fixed_window_features(random_state, features, id_,
 
     assert (end_i - start_i - window_size) % shift == 0
 
-    return np_array_extract_all_fixed_slices(features, num_features,
-                                             id_, window_size, shift)
-
-
-
+    return np_array_extract_all_fixed_slices(
+        features, num_features, id_, window_size, shift
+    )

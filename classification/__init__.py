@@ -2,10 +2,10 @@
 Vessel classification: feature generation and model training/inference.
 """
 
-__version__ = '3.0.3'
-__author__ = 'Tim Hochberg'
-__email__ = 'tim@globalfishingwatch.com'
-__source__ = 'https://github.com/GlobalFishingWatch/vessel-classification'
+__version__ = "3.0.3"
+__author__ = "Tim Hochberg"
+__email__ = "tim@globalfishingwatch.com"
+__source__ = "https://github.com/GlobalFishingWatch/vessel-classification"
 __license__ = """
 Copyright 2023 Global Fishing Watch Inc.
 Authors:
