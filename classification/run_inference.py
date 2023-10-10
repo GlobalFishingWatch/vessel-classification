@@ -15,16 +15,13 @@
 from __future__ import absolute_import
 
 import logging
-import numpy as np
-import os
-import pytz
-import subprocess
-import tempfile
-import tensorflow as tf
 import time
-import uuid
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
+
+import pytz
+import tensorflow.compat.v1 as tf
+
+tf.disable_v2_behavior()
 
 
 class Inferer(object):
@@ -47,10 +44,6 @@ class Inferer(object):
 
     def _build_time_ranges(self, interval_months, start_date, end_date):
         # TODO: should use min_window_duration here
-        window_dur_seconds = self.model.max_window_duration_seconds
-        last_viable_date = datetime.now(pytz.utc) - timedelta(
-            seconds=window_dur_seconds
-        )
         time_starts = []
         start_year = start_date.year
         month_count = start_date.month - 1

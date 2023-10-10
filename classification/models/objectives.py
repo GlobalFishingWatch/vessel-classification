@@ -13,17 +13,17 @@
 # limitations under the License.
 
 import abc
-import calendar
-from collections import namedtuple, OrderedDict
 import datetime
 import logging
-import numpy as np
-import tensorflow as tf
-import tensorflow.metrics as metrics
-from classification import metadata
-import pytz
-import six
+from collections import namedtuple
 
+import numpy as np
+import six
+import tensorflow.compat.v1 as tf
+import tensorflow.compat.v1.metrics as metrics
+from classification import metadata
+
+tf.disable_v2_behavior()
 """ Terminology in the context of objectives.
     
     Net: the raw input to an objective function, an embeddeding that has not
@@ -114,12 +114,11 @@ class RegressionObjective(ObjectiveBase):
         error = tf.reduce_sum(diff) / tf.maximum(count, EPSILON)
         return error
 
-    def create_loss(self, labels):
-        raw_loss = self._masked_mean_error(self.prediction, ids)
-        return raw_loss * self.loss_weight
+    # def create_loss(self, labels):
+    #     raw_loss = self._masked_mean_error(self.prediction, ids)
+    #     return raw_loss * self.loss_weight
 
     def create_raw_metrics(self, labels):
-        error = self.masked_mean_error(labels)
         loss = self.masked_mean_loss(self.prediction)
         return {
             "loss": tf.metrics.mean(loss),

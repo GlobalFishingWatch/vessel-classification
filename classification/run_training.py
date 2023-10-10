@@ -13,15 +13,20 @@
 # limitations under the License.
 
 from __future__ import absolute_import
+
 import argparse
+import importlib
 import logging
 import os
 import sys
-import importlib
+
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from pkg_resources import resource_filename
+
 from . import metadata
+
+tf.disable_v2_behavior()
 
 
 def compute_approx_norms(model_fn, count=100):

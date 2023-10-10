@@ -1,10 +1,13 @@
 import calendar
-import numpy as np
 import os
-import tensorflow as tf
+
+import numpy as np
 import six
-from . import feature_generation
-from . import feature_utilities
+import tensorflow.compat.v1 as tf
+
+from . import feature_generation, feature_utilities
+
+tf.disable_v2_behavior()
 
 
 def input_fn(

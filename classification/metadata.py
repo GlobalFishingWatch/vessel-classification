@@ -12,21 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict, namedtuple
 import csv
 import datetime
-import dateutil.parser
-import pytz
+import hashlib
 import logging
 import os
 import sys
-import tensorflow as tf
-import yaml
+from collections import defaultdict, namedtuple
+
+import dateutil.parser
 import numpy as np
-import hashlib
+import pytz
 import six
+import tensorflow.compat.v1 as tf
+import yaml
+
 from .feature_generation.file_iterator import GCSFile
 
+tf.disable_v2_behavior()
 
 """ The main column for vessel classification. """
 PRIMARY_VESSEL_CLASS_COLUMN = "label"

@@ -1,11 +1,9 @@
-import gc
-import posixpath as pp
-import tensorflow as tf
-import numpy as np
-from . import feature_generation
-from ..models import vessel_characterization
-import pytest
+import tensorflow.compat.v1 as tf
 
+from ..models import vessel_characterization
+from . import feature_generation
+
+tf.disable_v2_behavior()
 
 metadata = vessel_characterization.Model.read_metadata(
     [b"416853000", b"100209703", b"204225000"],

@@ -1,18 +1,15 @@
-import datetime
-import logging
-import numpy as np
-import tempfile
-import subprocess
 import os
-import resource
 import shutil
-import time
+import subprocess
+import tempfile
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
-from .feature_utilities import np_array_extract_all_fixed_slices
-from .feature_utilities import np_array_extract_slices_for_time_ranges
-from .feature_utilities import np_pad_repeat_slice
+from .feature_utilities import (  # noqa: F401
+    np_array_extract_all_fixed_slices, np_array_extract_slices_for_time_ranges,
+    np_pad_repeat_slice)
+
+tf.disable_v2_behavior()
 
 
 class GCSFile(object):

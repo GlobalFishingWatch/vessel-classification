@@ -1,16 +1,12 @@
 import datetime
-import gc
-import posixpath as pp
-import tensorflow as tf
-import numpy as np
-from . import feature_generation
-from . import fishing_feature_generation
-from . import feature_utilities
-from ..models import fishing_detection
-from .. import metadata as metedata_mod
-import logging
-import pytest
 
+import tensorflow.compat.v1 as tf
+
+from .. import metadata as metedata_mod
+from ..models import fishing_detection
+from . import fishing_feature_generation
+
+tf.disable_v2_behavior()
 MAX_ITERS = 100
 
 # TODO: copy the referenced file to somewhere permanent
@@ -79,7 +75,7 @@ def test_predict_input_fn_out_of_range():
             try:
                 x = sess.run(next_element)
                 assert x["id"] in (b"416853000")
-                td = [datetime.datetime.utcfromtimestamp(y) for y in x["time_ranges"]]
+                # td = [datetime.datetime.utcfromtimestamp(y) for y in x["time_ranges"]]
                 values.append(x.copy())
             except tf.errors.OutOfRangeError:
                 break

@@ -13,20 +13,18 @@
 # limitations under the License.
 
 from __future__ import absolute_import
-import argparse
-import json
-from .model import ModelBase
-from . import layers
-from classification import metadata
-from .objectives import FishingLocalizationObjectiveCrossEntropy, TrainNetInfo
-from classification.feature_generation import fishing_feature_generation
-import logging
-import math
+
 import numpy as np
 import six
-import os
+import tensorflow.compat.v1 as tf
+from classification import metadata
+from classification.feature_generation import fishing_feature_generation
 
-import tensorflow as tf
+from . import layers
+from .model import ModelBase
+from .objectives import FishingLocalizationObjectiveCrossEntropy
+
+tf.disable_v2_behavior()
 
 
 class Model(ModelBase):

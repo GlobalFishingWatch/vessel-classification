@@ -1,9 +1,9 @@
-import tensorflow as tf
-import logging
 import numpy as np
-from . import feature_generation
-from . import feature_utilities
-import six
+import tensorflow.compat.v1 as tf
+
+from . import feature_generation, feature_utilities
+
+tf.disable_v2_behavior()
 
 
 def input_fn(

@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorflow as tf
-import tensorflow.layers as ly
-import numpy as np
-from .shake_shake import shake_shake, shake_out, shake_out2
+import tensorflow.compat.v1 as tf
+import tensorflow.compat.v1.layers as ly
+
+from .shake_shake import shake_out, shake_out2, shake_shake
+
+tf.disable_v2_behavior()
 
 
 def zero_pad_features(features, depth):

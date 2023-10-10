@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorflow as tf
-import tensorflow.layers as ly
-import numpy as np
+
+import tensorflow.compat.v1 as tf
+import tensorflow.compat.v1.layers as ly
+
+tf.disable_v2_behavior()
 
 
 def zero_pad_features(features, depth):

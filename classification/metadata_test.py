@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import csv
-import numpy as np
-from . import metadata
-import tensorflow as tf
+import os
 from datetime import datetime
+
 import six
+import tensorflow.compat.v1 as tf
+
+from . import metadata
+
+tf.disable_v2_behavior()
 
 
 class VesselMetadataFileReaderTest(tf.test.TestCase):

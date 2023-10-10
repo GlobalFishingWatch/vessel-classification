@@ -1,7 +1,8 @@
-import tensorflow as tf
 import numpy as np
 import posixpath as pp
-import os
+import tensorflow.compat.v1 as tf
+
+tf.disable_v2_behavior()
 
 
 def filename_generator(filenames, random_state, weights):

@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import tensorflow as tf
 
+import tensorflow.compat.v1 as tf
 from classification import metadata
-from . import vessel_characterization, fishing_detection
+
+from . import fishing_detection, vessel_characterization
+
+tf.disable_v2_behavior()
 
 
 class ModelsTest(tf.test.TestCase):
@@ -33,7 +35,7 @@ class ModelsTest(tf.test.TestCase):
             with self.test_session():
                 # This protects against multiple model using same variable names
                 with tf.variable_scope("training-test-{}".format(i)):
-                    est = self._build_estimator(model_class)
+                    est = self._build_estimator(model_class)  # noqa: F841
 
     # TODO: test input_fn
 
