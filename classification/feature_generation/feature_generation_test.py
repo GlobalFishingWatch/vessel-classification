@@ -1,11 +1,13 @@
 
 import gc
 import posixpath as pp
+import pytest
 import tensorflow as tf
 import numpy as np
 from . import feature_generation
 from ..models import vessel_characterization
-import pytest
+
+pytestmark = [pytest.mark.tensorflow, pytest.mark.integration]
 
 
 metadata = vessel_characterization.Model.read_metadata([b'416853000', b'100209703', b'204225000'], 

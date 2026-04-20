@@ -26,9 +26,7 @@ Example:
 from __future__ import division
 from __future__ import absolute_import
 from __future__ import print_function
-import os
 import csv
-import subprocess
 import numpy as np
 import pandas as pd
 import pandas_gbq
@@ -36,11 +34,8 @@ import dateutil.parser
 import logging
 import argparse
 from collections import namedtuple, defaultdict
-import sys
 import yattag
-from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, schema, atomic
-import gzip
-import dateutil.parser
+from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, schema, atomic
 import datetime
 import pytz
 from .ydump import css, ydump_table
@@ -74,9 +69,9 @@ fishing_mapping = [
 fishing_category_map = {}
 atomic_fishing = fishing_mapping[0][1]
 for coarse, fine in coarse_mapping:
-    for atomic in fine:
-        if atomic in atomic_fishing:
-            fishing_category_map[atomic] = coarse
+    for atom in fine:
+        if atom in atomic_fishing:
+            fishing_category_map[atom] = coarse
 
 
 # Faster than using dateutil
@@ -266,10 +261,6 @@ def compare_fishing_localisation(inferred_ranges, fishing_range_path,
     logging.debug('loading fishing ranges')
     true_ranges_by_id = load_true_fishing_ranges_by_id(fishing_range_path,
                                                            split_map, split)
-    print("TRUE", sorted(true_ranges_by_id.keys())[:10])
-    print("INF", sorted(inferred_ranges.keys())[:10])
-    print(repr(sorted(true_ranges_by_id.keys())[0]))
-    print(repr(sorted(inferred_ranges.keys())[0]))
     true_by_id = {}
     pred_by_id = {}
 

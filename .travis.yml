@@ -1,10 +1,9 @@
-sudo: required
-dist: trusty
+language: python
+python:
+  - "3.11"
 
-before_script:
-  - export PATH=$HOME/.local/bin:$PATH
-  - sudo pip install tensorflow
-  - sudo pip install google-api-python-client pyyaml python-dateutil NewlineJSON pytz yattag
+install:
+  - pip install -e ".[dev]"
 
 script:
-  - ./test_all
+  - sh ./test_all

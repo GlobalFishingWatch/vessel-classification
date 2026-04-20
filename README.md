@@ -114,6 +114,26 @@ In order to support the above layout, all our programs need the following common
 * Tensorflow version >1.14.0,<2.0 from (https://www.tensorflow.org/get_started/os_setup)
 * `pip install google-api-python-client pyyaml pytz newlinejson python-dateutil yattag`
 
+## Running tests
+
+Run the default local test suite with:
+
+```
+sh ./test_all
+```
+
+Notes:
+
+* `test_all` runs only fast local tests (`not integration and not tensorflow`).
+* Legacy cloud/dataflow tests are tagged as `integration`.
+* Run TensorFlow-only tests with:
+  * `python -m pytest -q -m "tensorflow and not integration"`
+* Run integration tests explicitly with:
+  * `python -m pytest -q -m "integration"`
+* Tests that require GCS fixtures are skipped unless both conditions are met:
+  * `gsutil` is available on `PATH`
+  * `RUN_GCS_TESTS=1` is set in the environment
+
 
 
 

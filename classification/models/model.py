@@ -15,6 +15,7 @@
 import abc
 import numpy as np
 import six
+import tensorflow as tf
 from classification import metadata
 
 

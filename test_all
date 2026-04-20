@@ -1,8 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env sh
 
-set -e
+set -eu
 
-# Run python TF tests.
-export TF_CPP_MIN_LOG_LEVEL=2
-python -m classification.metadata_test
-python -m classification.models.models_test
+# Default test entrypoint for local and CI runs:
+# keep fast and deterministic by excluding integration and TensorFlow suites.
+python -m pytest -q -m "not integration and not tensorflow"

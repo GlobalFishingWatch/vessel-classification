@@ -15,6 +15,7 @@
 import setuptools
 import glob
 import os
+from pathlib import Path
 
 package = __import__('classification')
 
@@ -24,8 +25,13 @@ DEPENDENCIES = [
 ]
 
 
-data_files = [os.path.basename(x)
-              for x in glob.glob("classification/data/*.csv")]
+data_files = [
+    os.path.basename(x)
+    for pattern in ("classification/data/*.csv", "classification/data/*.txt")
+    for x in glob.glob(pattern)
+]
+
+readme = Path("README.md").read_text(encoding="utf-8")
 
 setuptools.setup(
     name='vessel_inference',
@@ -33,16 +39,16 @@ setuptools.setup(
     author=package.__author__,
     author_email=package.__email__,
     description=package.__doc__.strip(),
+    long_description=readme,
+    long_description_content_type="text/markdown",
     package_data={
         'classification.data': data_files
     },
-    packages=[
-        'common',
-        'classification',
-        'classification.data',
-        'classification.models',
-        'classification.feature_generation'
-    ],
-    install_requires=DEPENDENCIES
+    packages=setuptools.find_packages(include=["classification*", "common*"]),
+    install_requires=DEPENDENCIES,
+    extras_require={
+        "dev": ["pytest>=7.0"]
+    },
+    python_requires=">=3.8",
 )
 

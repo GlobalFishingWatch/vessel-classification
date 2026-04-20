@@ -1,6 +1,7 @@
 
 import gc
 import posixpath as pp
+import pytest
 import tensorflow as tf
 import numpy as np
 from . import feature_generation
@@ -8,7 +9,8 @@ from . import vessel_feature_generation
 from . import feature_utilities
 from ..models import vessel_characterization
 import logging
-import pytest
+
+pytestmark = [pytest.mark.tensorflow, pytest.mark.integration]
 
 # TODO: copy the referenced file to somewhere permanent
 prefix = b"gs://machine-learning-dev-ttl-120d/features/mmsi_features_fishing_testpy3/"

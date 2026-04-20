@@ -5,6 +5,8 @@ target
 bigquery_credentials.dat
 *.swp
 *.pyc
+__pycache__/
+.pytest_cache/
 .DS_Store
 dist/
 *.egg-info

@@ -1,0 +1,4 @@
+id,label,length,split,idhash
+100001,drifting_longlines,10.0,Test,2
+100002,trawlers,24.0,Training,3
+100003,tug|trawlers,7.0,Training,4
