@@ -38,10 +38,7 @@ PRIMARY_VESSEL_CLASS_COLUMN = 'label'
 # be defined in principle, although at present the interaction between the mulithot and non multihot
 # versions makes that more complicated.
 
-try:
-    yaml_load = yaml.safe_load
-except:
-    yaml_load = yaml.load
+yaml_load = yaml.safe_load
 
 
 raw_schema = '''
@@ -319,7 +316,7 @@ def read_vessel_multiclass_metadata_lines(available_ids, lines,
             try:
                 for atm in cat_map[kind]:
                     atomic_types.add(atm)
-            except StandardError as err:
+            except Exception as err:
                 logging.warning('unknown vessel type: {}\n{}'.format(kind, err))
         if not atomic_types:
             continue
@@ -405,12 +402,14 @@ def find_available_ids(feature_path):
 def parse_date(date):
     try:
         unix_timestamp = float(date)
-        return datetime.datetime.utcfromtimestamp(unix_timestamp).replace(
-            tzinfo=pytz.utc)
-    except:
+        return datetime.datetime.fromtimestamp(unix_timestamp, tz=pytz.utc)
+    except (TypeError, ValueError):
         try:
-            return dateutil.parser.parse(date)
-        except:
+            parsed = dateutil.parser.parse(date)
+            if parsed.tzinfo is None:
+                return parsed.replace(tzinfo=pytz.utc)
+            return parsed.astimezone(pytz.utc)
+        except (TypeError, ValueError, OverflowError):
             logging.fatal('could not parse date "{}"'.format(date))
             raise
 
@@ -424,8 +423,8 @@ def read_fishing_ranges(fishing_range_file):
         for l in f.readlines()[1:]:
             els = l.split(',')
             id_ = six.ensure_binary(els[0].strip())
-            start_time = parse_date(els[1]).replace(tzinfo=pytz.utc)
-            end_time = parse_date(els[2]).replace(tzinfo=pytz.utc)
+            start_time = parse_date(els[1])
+            end_time = parse_date(els[2])
             is_fishing = float(els[3])
             fishing_range_dict[id_].append(
                 FishingRange(start_time, end_time, is_fishing))

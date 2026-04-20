@@ -14,9 +14,12 @@
 
 import numpy as np
 import tensorflow as tf
+import pytest
 
 from classification import metadata
 from . import vessel_characterization, fishing_detection 
+
+pytestmark = pytest.mark.tensorflow
 
 
 class ModelsTest(tf.test.TestCase):

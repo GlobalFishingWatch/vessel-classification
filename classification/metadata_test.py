@@ -15,10 +15,13 @@
 import os
 import csv
 import numpy as np
+import pytest
 from . import metadata
 import tensorflow as tf
 from datetime import datetime
 import six
+
+pytestmark = pytest.mark.tensorflow
 
 
 class VesselMetadataFileReaderTest(tf.test.TestCase):

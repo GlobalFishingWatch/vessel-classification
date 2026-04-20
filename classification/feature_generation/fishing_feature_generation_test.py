@@ -2,6 +2,7 @@
 import datetime
 import gc
 import posixpath as pp
+import pytest
 import tensorflow as tf
 import numpy as np
 from . import feature_generation
@@ -10,7 +11,8 @@ from . import feature_utilities
 from ..models import fishing_detection
 from .. import metadata as metedata_mod
 import logging
-import pytest
+
+pytestmark = [pytest.mark.tensorflow, pytest.mark.integration]
 
 MAX_ITERS = 100
 

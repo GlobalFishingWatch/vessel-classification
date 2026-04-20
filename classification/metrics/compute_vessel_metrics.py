@@ -32,19 +32,13 @@ from __future__ import division
 from __future__ import absolute_import
 from __future__ import print_function
 import os
-import csv
-import subprocess
 import numpy as np
-import dateutil.parser
 import logging
 import argparse
 from collections import namedtuple, defaultdict
-import sys
 import yattag
 from classification.metadata import VESSEL_CLASS_DETAILED_NAMES, VESSEL_CATEGORIES, TEST_SPLIT
 from classification.metadata import raw_schema, schema, atomic
-import gzip
-import dateutil.parser
 import datetime
 import pytz
 import pandas as pd
@@ -256,7 +250,6 @@ def accuracy_score(y_true, y_pred, sample_weights=None):
     y_pred = np.asarray(y_pred)
     if sample_weights is None:
         sample_weights = np.ones_like(y_pred).astype(float)
-    weights = np.asarray(sample_weights)
 
     correct = (y_true == y_pred)
 
@@ -280,11 +273,14 @@ def weights(labels, y_true, y_pred, max_weight=200):
 def weights_by_class(label_weights, y_true, y_pred):
     y_true = np.asarray(y_true)
     weights = np.zeros([len(y_true)])
-    for lbl, wt  in labels:
+    for lbl, wt in label_weights.items():
         trues = (y_true == lbl)
         if trues.sum():
             weights[trues] = wt
-    return weights / weights.sum()
+    total = weights.sum()
+    if total == 0:
+        return weights
+    return weights / total
 
 
 def base_confusion_matrix(y_true, y_pred, labels):
@@ -561,8 +557,6 @@ def consolidate_across_dates(results, date_range=None):
     if date_range is None:
         valid_date_mask = np.ones([len(results.ids)], dtype=bool)
     else:
-        # TODO: write out end date as well, so that we avoid this hackery
-        end_dates = results.start_dates + datetime.timedelta(days=180)
         valid_date_mask = (results.start_dates >= date_range[0]) & (
             results.start_dates < date_range[1])
 
@@ -881,7 +875,6 @@ def assemble_composite(results, mapping):
     for new_label, base_labels in mapping:
         for lbl in base_labels:
             inverse_mapping[lbl] = new_label
-    base_label_map = {x: i for (i, x) in enumerate(results.label_list)}
 
     for i, id_ in enumerate(results.all_ids):
         scores = {}
@@ -995,7 +988,6 @@ def dump_html(args, results):
         if results[key]:
             logging.info('Dumping "{}"'.format(heading))
             doc.line('h2', heading)
-            wts = results['class_weights'] if (key=='fine') else None
             ydump_metrics(doc, results[key], results['class_weights'])
             doc.stag('hr')
 

@@ -32,7 +32,7 @@ class GcpConfig(object):
     # this in Commmon.scala which should remain in-sync.
     @staticmethod
     def make_from_env_name(environment, job_id):
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         project_id = "world-fishing-827"
         if environment == 'prod':
             root_path = 'gs://machine-learning/data-production/classification/%s' % job_id
@@ -45,7 +45,7 @@ class GcpConfig(object):
             root_path = 'gs://machine-learning-dev-ttl-120d/data-production/classification/%s/%s' % (
                 user_name, job_id)
         else:
-            logging.fatal('Invalid environment: %s', env)
+            logging.fatal('Invalid environment: %s', environment)
             sys.exit(-1)
 
         return GcpConfig(now, project_id, root_path)

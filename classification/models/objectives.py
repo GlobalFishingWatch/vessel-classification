@@ -13,15 +13,13 @@
 # limitations under the License.
 
 import abc
-import calendar
-from collections import namedtuple, OrderedDict
+from collections import namedtuple
 import datetime
 import logging
 import numpy as np
 import tensorflow as tf
 import tensorflow.metrics as metrics
 from classification import metadata
-import pytz
 import six
 """ Terminology in the context of objectives.
     
@@ -72,7 +70,7 @@ class ObjectiveBase(object):
         raw_metrics = self.create_raw_metrics(labels)
         try:
             eval_metrics = {"{}/{}".format(self.name, k) : v for (k, v) in raw_metrics.items()}
-        except:
+        except Exception:
             logging.warning("Problem creating eval_metrics in {}".format(self))
             return {}
         for k, v in eval_metrics.items():
@@ -115,12 +113,11 @@ class RegressionObjective(ObjectiveBase):
         return error
 
     def create_loss(self, labels):
-        raw_loss = self._masked_mean_error(self.prediction, ids)
+        raw_loss = self.masked_mean_error(labels)
         return raw_loss * self.loss_weight
 
     def create_raw_metrics(self, labels):
-        error = self.masked_mean_error(labels)
-        loss = self.masked_mean_loss(self.prediction)
+        loss = self.masked_mean_error(labels)
         return {
             'loss' : tf.metrics.mean(loss),
         }

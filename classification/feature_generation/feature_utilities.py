@@ -65,10 +65,13 @@ def np_zero_pad_slice(slice, window_size, random_state):
   """
 
     slice_length = len(slice)
+    assert slice_length > 0
     delta = window_size - slice_length
     assert delta >= 0
     offset = random_state.randint(0, delta + 1)
-    return np.concatenate([slice] * reps, axis=0)[offset:offset+window_size]
+    reps = int(np.ceil(window_size / float(slice_length))) + 1
+    repeated = np.concatenate([slice] * reps, axis=0)
+    return repeated[offset:offset + window_size]
 
 def np_pad_repeat_slice_2(slice, window_size, random_state):
     """ Pads slice to the specified window size then rolls them.
@@ -103,9 +106,15 @@ def np_pad_repeat_slice_2(slice, window_size, random_state):
 
 def np_array_random_fixed_length_extract(random_state, input_series,
                                          output_length):
+    input_length = len(input_series)
+    assert input_length > 0
+    if input_length <= output_length:
+        return np_pad_repeat_slice_2(input_series, output_length, random_state)
 
+    max_start_offset = input_length - output_length
+    start_offset = random_state.randint(0, max_start_offset + 1)
+    end_offset = start_offset + output_length
     cropped = input_series[start_offset:end_offset]
-
     return np_pad_repeat_slice_2(cropped, output_length, random_state)
 
 
@@ -338,8 +347,8 @@ def np_array_extract_slices_for_time_ranges(
 
         if (length > window_size):
             max_offset = length - window_size
-            start_offset = random_state.uniform(max_offset)
-            cropped = cropped[max_offset:max_offset + window_size]
+            start_offset = random_state.randint(0, max_offset + 1)
+            cropped = cropped[start_offset:start_offset + window_size]
 
         if len(cropped) >= min_points_for_classification:
             padded = np_pad_repeat_slice(cropped, window_size)
@@ -358,9 +367,6 @@ def np_array_extract_all_fixed_slices(input_series, num_features, id_,
                 logging.warning('input not correctly padded, dropping start')
             continue
         cropped = input_series[start_index:end_index]
-        start_time = int(cropped[0][0])
-        end_time = int(cropped[-1][0])
-        time_bounds = np.array([start_time, end_time], dtype=np.int32)
         assert len(cropped) == window_size
         slices.append(cook_features(cropped, id_))
     if slices == []:

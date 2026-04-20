@@ -1,3 +1,7 @@
+import logging
+
+import numpy as np
+
 css = """
 
 table {
@@ -134,9 +138,9 @@ def ydump_confusion_matrix(doc, cm, labels, **kwargs):
                 with tag('th', klass='col'):
                     with tag('div'):
                         line('span', x)
-        for i, (l, row) in enumerate(zip(labels, cm.scaled)):
+        for i, (label, row) in enumerate(zip(labels, cm.scaled)):
             with tag('tr'):
-                line('th', str(l), klass='row')
+                line('th', str(label), klass='row')
                 for j, x in enumerate(row):
                     if i == j:
                         if x == -1:
@@ -194,6 +198,7 @@ def ydump_attrs(doc, results):
 
     """
     doc, tag, text, line = doc.ttl()
+    from .compute_vessel_metrics import consolidate_attribute_across_dates
 
     def RMS(a, b):
         return np.sqrt(np.square(a - b).mean())
@@ -279,6 +284,11 @@ def ydump_metrics(doc, results):
 
     """
     doc, tag, text, line = doc.ttl()
+    from .compute_vessel_metrics import (
+        confusion_matrix,
+        consolidate_across_dates,
+        precision_recall_f1,
+    )
 
     rows = [
         (x, accuracy_score(results.true_labels, results.inferred_labels,
